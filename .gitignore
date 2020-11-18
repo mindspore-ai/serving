@@ -1,3 +1,16 @@
+# MindSpore Serving
+build/
+mindspore_serving/lib
+output
+*.ir
+
+# Cmake files
+CMakeFiles/
+cmake_install.cmake
+CMakeCache.txt
+Makefile
+cmake-build-debug
+
 # Prerequisites
 *.d
 
@@ -15,6 +28,7 @@
 *.so
 *.dylib
 *.dll
+*.so.*
 
 # Fortran module files
 *.mod
@@ -30,3 +44,50 @@
 *.exe
 *.out
 *.app
+
+# Protocol buffers
+*_pb2.py
+*.pb.h
+*.pb.cc
+*.pb
+*_grpc.py
+
+# Editor
+.vscode
+.idea/
+
+# Cquery
+.cquery_cached_index/
+compile_commands.json
+
+# Ctags and cscope
+tags
+TAGS
+CTAGS
+GTAGS
+GRTAGS
+GSYMS
+GPATH
+cscope.*
+
+# Python files
+*__pycache__*
+.pytest_cache
+
+# Mac files
+*.DS_Store
+
+# Test results
+test_temp_summary_event_file/
+*.dot
+*.dat
+*.svg
+*.perf
+*.info
+*.ckpt
+*.shp
+*.pkl
+.clangd
+mindspore_serving/version.py
+mindspore_serving/default_config.py
+mindspore_serving/.commit_id
