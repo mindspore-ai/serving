@@ -52,12 +52,14 @@ size_t BufferTensor::bytes_data_size() const {
   return 1;
 }
 
-void BufferTensor::get_bytes_data(size_t index, const uint8_t *&data, size_t &bytes_len) const {
+void BufferTensor::get_bytes_data(size_t index, const uint8_t **data, size_t *bytes_len) const {
+  MSI_EXCEPTION_IF_NULL(data);
+  MSI_EXCEPTION_IF_NULL(bytes_len);
   if (!is_bytes_val_data()) {
     MSI_LOG_EXCEPTION << "Buffer tensor data type is not kMSI_Bytes or kMSI_String, cannot get bytes data";
   }
-  data = data_;
-  bytes_len = data_len_;
+  *data = data_;
+  *bytes_len = data_len_;
 }
 
 }  // namespace mindspore::serving

@@ -57,7 +57,7 @@ DispatcherWorkerContext Dispatcher::GetWorkSession(const RequestSpec &request_sp
 Status Dispatcher::Dispatch(const proto::PredictRequest &request, proto::PredictReply &reply) {
   std::shared_lock<std::shared_mutex> lock(servable_shared_lock_);
   RequestSpec request_spec;
-  GrpcTensorHelper::GetRequestSpec(request, request_spec);
+  GrpcTensorHelper::GetRequestSpec(request, &request_spec);
   auto worker = GetWorkSession(request_spec);
   if (!worker.stub_ && !worker.worker_running_in_master) {
     return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Request " << request_spec.Repr() << ", servable is not available";
@@ -77,7 +77,7 @@ Status Dispatcher::Dispatch(const proto::PredictRequest &request, proto::Predict
              << "Predict failed, worker gRPC error: " << status.error_code() << ", " << status.error_message();
     }
   } else {
-    return Worker::GetInstance().Run(request, reply);
+    return Worker::GetInstance().Run(request, &reply);
   }
   return SUCCESS;
 }
@@ -85,7 +85,7 @@ Status Dispatcher::Dispatch(const proto::PredictRequest &request, proto::Predict
 Status Dispatcher::RegisterServable(const proto::RegisterRequest &request, proto::RegisterReply &reply) {
   std::unique_lock<std::shared_mutex> lock(servable_shared_lock_);
   std::vector<WorkerSpec> worker_specs;
-  GrpcTensorHelper::GetWorkerSpec(request, worker_specs);
+  GrpcTensorHelper::GetWorkerSpec(request, &worker_specs);
   if (worker_specs.empty()) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Register failed, servable cannot be empty";
   }
@@ -153,7 +153,7 @@ Status Dispatcher::UnregisterServable(const proto::ExitRequest &request, proto::
 Status Dispatcher::AddServable(const proto::AddWorkerRequest &request, proto::AddWorkerReply &reply) {
   std::unique_lock<std::shared_mutex> lock(servable_shared_lock_);
   WorkerSpec worker_spec;
-  GrpcTensorHelper::GetWorkerSpec(request, worker_spec);
+  GrpcTensorHelper::GetWorkerSpec(request, &worker_spec);
   auto target_str = request.address();
   if (worker_spec.servable_name.empty()) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "AddServable failed, servable name cannot be empty";
@@ -186,7 +186,7 @@ Status Dispatcher::AddServable(const proto::AddWorkerRequest &request, proto::Ad
 Status Dispatcher::RemoveServable(const proto::RemoveWorkerRequest &request, proto::RemoveWorkerReply &reply) {
   std::unique_lock<std::shared_mutex> lock(servable_shared_lock_);
   WorkerSpec worker_spec;
-  GrpcTensorHelper::GetWorkerSpec(request, worker_spec);
+  GrpcTensorHelper::GetWorkerSpec(request, &worker_spec);
   auto target_str = request.address();
   Status status;
   for (auto iter = servable_map_.begin(); iter != servable_map_.end();) {

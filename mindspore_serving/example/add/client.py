@@ -13,8 +13,8 @@
 # limitations under the License.
 # ============================================================================
 """client example of add"""
-from mindspore_serving.client import Client
 import numpy as np
+from mindspore_serving.client import Client
 
 
 def run_add_common():

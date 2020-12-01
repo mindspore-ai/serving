@@ -33,7 +33,7 @@ grpc::Status MSWorkerImpl::Predict(grpc::ServerContext *context, const proto::Pr
   MSI_LOG(INFO) << "Begin call service Eval";
   try {
     MSI_TIME_STAMP_START(Predict)
-    status = Worker::GetInstance().Run(*request, *reply);
+    status = Worker::GetInstance().Run(*request, reply);
     MSI_TIME_STAMP_END(Predict)
   } catch (const std::bad_alloc &ex) {
     MSI_LOG(ERROR) << "Serving Error: malloc memory failed";

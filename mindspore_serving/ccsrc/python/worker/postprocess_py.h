@@ -34,7 +34,7 @@ namespace mindspore::serving {
 
 class PyPostprocess : public PostprocessBase {
  public:
-  Status Postprocess(const std::string &postprocess_name, const InstanceData &input, InstanceData &output) override {
+  Status Postprocess(const std::string &postprocess_name, const InstanceData &input, InstanceData *output) override {
     MSI_LOG_EXCEPTION << "PyPostprocess::Postprocess not expected to be invoked, preprocess name " << postprocess_name;
   }
   size_t GetInputsCount(const std::string &postprocess_name) const override;
@@ -48,7 +48,7 @@ class MS_API PyPostprocessStorage {
 
   void Register(const std::string &preprocess_name, size_t inputs_count, size_t outputs_count);
 
-  bool GetPyPostprocessInfo(const std::string &postprocess_name, size_t &inputs_count, size_t &outputs_count);
+  bool GetPyPostprocessInfo(const std::string &postprocess_name, size_t *inputs_count, size_t *outputs_count);
 
   std::vector<size_t> GetPyCppPostprocessInfo(const std::string &postprocess_name) const;
   PyPostprocessStorage();

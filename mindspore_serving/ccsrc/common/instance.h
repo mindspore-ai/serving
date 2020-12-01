@@ -30,10 +30,10 @@ namespace mindspore::serving {
 using InstanceData = std::vector<TensorBasePtr>;
 using TensorsData = std::vector<TensorBasePtr>;
 struct Instance;
-using WorkerCallBack = std::function<void(const Instance &output, const Status &error_msg)>;
+using WorkCallBack = std::function<void(const Instance &output, const Status &error_msg)>;
 
 struct WorkerUserContext {
-  WorkerCallBack worker_call_back = nullptr;
+  WorkCallBack worker_call_back = nullptr;
   RequestSpec request_spec;
   MethodSignature method_def;
 };
@@ -42,7 +42,7 @@ struct InstanceContext {
   uint64_t user_id = 0;
   uint32_t instance_index = 0;
 
-  WorkerCallBack worker_call_back = nullptr;
+  WorkCallBack worker_call_back = nullptr;
   std::shared_ptr<std::promise<void>> promise = nullptr;
   std::shared_ptr<WorkerUserContext> user_context = nullptr;
 

@@ -137,8 +137,8 @@ def start_servable_in_master(servable_directory, servable_name, version_number=0
 
     Serving has two running modes. One is running in a single process, providing the Serving service of a single model.
     The other includes a master and multiple workers. The master is responsible for providing the Serving access
-    interface for client, the worker is responsible for providing the service of the specific model, and the master and worker
-    communicate through gPRC.
+    interface for client, the worker is responsible for providing the service of the specific model, and the master
+    and worker communicate through gPRC.
 
     Args:
         servable_directory (str): The directory where the servable located in, there expected to has a directory named

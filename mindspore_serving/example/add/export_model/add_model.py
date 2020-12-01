@@ -15,14 +15,14 @@
 """add model generator"""
 
 import numpy as np
+import os
+from shutil import copyfile
 
 import mindspore.context as context
 import mindspore.nn as nn
 from mindspore.ops import operations as P
 from mindspore import Tensor
 from mindspore.train.serialization import export
-import os
-from shutil import copyfile
 
 context.set_context(mode=context.GRAPH_MODE, device_target="Ascend")
 
@@ -41,10 +41,10 @@ def export_net():
     y = np.ones([2, 2]).astype(np.float32)
     add = Net()
     output = add(Tensor(x), Tensor(y))
-    export(add, Tensor(x), Tensor(y), file_name='tensor_add.mindir', file_format='MINDIR')
+    export(add, Tensor(x), Tensor(y), file_name='tensor_add', file_format='MINDIR')
     try:
         os.mkdir("../add/1")
-    except:
+    except OSError:
         pass
     try:
         copyfile('tensor_add.mindir', '../add/1/tensor_add.mindir')

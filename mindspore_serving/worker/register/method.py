@@ -18,7 +18,6 @@ import inspect
 import ast
 from easydict import EasyDict
 
-from mindspore_serving._mindspore_serving import PreprocessStorage_, PostprocessStorage_
 from mindspore_serving._mindspore_serving import ServableStorage_, MethodSignature_, PredictPhaseTag_
 from mindspore_serving.worker.common import get_func_name, get_servable_dir
 from mindspore_serving.worker import check_type

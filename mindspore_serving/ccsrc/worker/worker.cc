@@ -79,7 +79,7 @@ Status Worker::StartVersionController() {
   return SUCCESS;
 }
 
-Status Worker::AddWorker(ServableWorkerContext &work) {
+Status Worker::AddWorker(const ServableWorkerContext &work) {
   WorkerSpec worker_spec;
   worker_spec.servable_name = work.servable_spec.servable_name;
   worker_spec.version_number = work.servable_spec.version_number;
@@ -94,7 +94,7 @@ Status Worker::AddWorker(ServableWorkerContext &work) {
   return notify_master_->AddWorker(worker_spec);
 }
 
-Status Worker::RemoveWorker(ServableWorkerContext &work) {
+Status Worker::RemoveWorker(const ServableWorkerContext &work) {
   WorkerSpec worker_spec;
   worker_spec.servable_name = work.servable_spec.servable_name;
   worker_spec.version_number = work.servable_spec.version_number;
@@ -109,11 +109,12 @@ Status Worker::RemoveWorker(ServableWorkerContext &work) {
   return notify_master_->RemoveWorker(worker_spec);
 }
 
-Status Worker::Run(const proto::PredictRequest &request, proto::PredictReply &reply) {
+Status Worker::Run(const proto::PredictRequest &request, proto::PredictReply *reply) {
+  MSI_EXCEPTION_IF_NULL(reply);
   std::vector<InstanceData> inputs;
   RequestSpec request_spec;
   MSI_TIME_STAMP_START(CreateInstanceFromRequest)
-  auto status = GrpcTensorHelper::CreateInstanceFromRequest(request, request_spec, inputs);
+  auto status = GrpcTensorHelper::CreateInstanceFromRequest(request, &request_spec, &inputs);
   MSI_TIME_STAMP_END(CreateInstanceFromRequest)
   if (status != SUCCESS) {
     MSI_LOG(ERROR) << "transfer request to instances failed";
@@ -124,7 +125,7 @@ Status Worker::Run(const proto::PredictRequest &request, proto::PredictReply &re
   }
   std::vector<Instance> outputs;
   MSI_TIME_STAMP_START(RUN_METHOD)
-  status = Run(request_spec, inputs, outputs);
+  status = Run(request_spec, inputs, &outputs);
   MSI_TIME_STAMP_END(RUN_METHOD)
   if (status != SUCCESS) {
     MSI_LOG(ERROR) << "Run servable " << request_spec.Repr() << " failed";
@@ -142,7 +143,8 @@ Status Worker::Run(const proto::PredictRequest &request, proto::PredictReply &re
 }
 
 Status Worker::Run(const RequestSpec &request_spec, const std::vector<serving::InstanceData> &inputs,
-                   std::vector<serving::Instance> &outputs) {
+                   std::vector<serving::Instance> *outputs) {
+  MSI_EXCEPTION_IF_NULL(outputs);
   auto result_pair = RunAsync(request_spec, inputs);
   if (result_pair.first != SUCCESS) {
     return result_pair.first;
@@ -151,7 +153,7 @@ Status Worker::Run(const RequestSpec &request_spec, const std::vector<serving::I
   while (result->HasNext()) {
     serving::Instance instance;
     result->GetNext(instance);
-    outputs.push_back(instance);
+    outputs->push_back(instance);
   }
   return SUCCESS;
 }
@@ -163,7 +165,7 @@ std::pair<Status, std::shared_ptr<AsyncResult>> Worker::RunAsync(const RequestSp
   if (worker.worker_service == nullptr) {
     return {INFER_STATUS_LOG_ERROR(FAILED) << "Cannot find servable match " << request_spec.Repr(), nullptr};
   }
-  WorkerCallBack on_process_done = [result](const Instance &output, const Status &error_msg) {
+  WorkCallBack on_process_done = [result](const Instance &output, const Status &error_msg) {
     auto output_index = output.context.instance_index;
     if (output_index < result->result_.size()) {
       result->result_[output_index].error_msg = error_msg;
@@ -206,35 +208,37 @@ Status Worker::FinalizeEnv() {
   }
   return SUCCESS;
 }
-Status Worker::LoadModel(LoadServableSpec &servable_spec, uint64_t version_number, ServableWorkerContext &work) {
-  servable_spec.version_number = version_number;
+Status Worker::LoadModel(LoadServableSpec *servable_spec, uint64_t version_number, ServableWorkerContext *work) {
+  MSI_EXCEPTION_IF_NULL(servable_spec);
+  MSI_EXCEPTION_IF_NULL(work);
+  servable_spec->version_number = version_number;
   ServableSignature signature;
-  if (!ServableStorage::Instance()->GetServableDef(servable_spec.servable_name, signature)) {
-    return INFER_STATUS_LOG_ERROR(FAILED) << "Servable " << servable_spec.servable_name << " has not been registerd";
+  if (!ServableStorage::Instance()->GetServableDef(servable_spec->servable_name, signature)) {
+    return INFER_STATUS_LOG_ERROR(FAILED) << "Servable " << servable_spec->servable_name << " has not been registerd";
   }
   const auto &servable_meta = signature.servable_meta;
-  std::string model_file_name = servable_spec.servable_directory + "/" + servable_spec.servable_name + "/" +
+  std::string model_file_name = servable_spec->servable_directory + "/" + servable_spec->servable_name + "/" +
                                 std::to_string(version_number) + "/" + servable_meta.servable_file;
   uint32_t model_id;
   auto context = ServableContext::Instance();
   Status status = session_->LoadModelFromFile(context->GetDeviceType(), context->GetDeviceId(), model_file_name,
-                                              servable_meta.model_format, model_id);
+                                              servable_meta.model_format, &model_id);
   if (status != SUCCESS) {
     return INFER_STATUS_LOG_ERROR(FAILED)
-           << "Load model failed, model directory " << servable_spec.servable_directory << ", model file "
+           << "Load model failed, model directory " << servable_spec->servable_directory << ", model file "
            << servable_meta.servable_file << ", version number " << version_number;
   }
-  auto service = std::make_shared<WorkerExecute>(GetPyTaskQueuePreprocess(), GetPyTaskQueuePostprocess(),
-                                                 GetCppTaskQueuePreprocess(), GetCppTaskQueuePostprocess());
+  auto service = std::make_shared<WorkExecutor>(GetPyTaskQueuePreprocess(), GetPyTaskQueuePostprocess(),
+                                                GetCppTaskQueuePreprocess(), GetCppTaskQueuePostprocess());
   status = service->Init(signature, std::make_shared<AscendModelServable>(session_, model_id));
   if (status != SUCCESS) {
     return status;
   }
-  work.servable_spec = servable_spec;
-  work.servable_signature = signature;
-  work.worker_service = service;
-  work.model_id = model_id;
-  work.model_file_name = model_file_name;
+  work->servable_spec = *servable_spec;
+  work->servable_signature = signature;
+  work->worker_service = service;
+  work->model_id = model_id;
+  work->model_file_name = model_file_name;
   return SUCCESS;
 }
 
@@ -244,7 +248,7 @@ void Worker::Update() {
   }
 
   std::vector<uint64_t> versions;
-  GetVersions(base_spec_, versions);
+  GetVersions(base_spec_, &versions);
   for (auto &version : versions) {
     bool isfind = std::any_of(work_list_.begin(), work_list_.end(), [&](const ServableWorkerContext &work) {
       return work.servable_spec.version_number == version;
@@ -253,7 +257,7 @@ void Worker::Update() {
       continue;
     }
     ServableWorkerContext work;
-    LoadModel(base_spec_, version, work);
+    LoadModel(&base_spec_, version, &work);
     auto status = AddWorker(work);
     if (status != SUCCESS) {
       MSI_LOG_ERROR << "AddWorker failed";
@@ -305,7 +309,7 @@ Status Worker::StartServable(const std::string &servable_directory, const std::s
   }
 
   std::vector<uint64_t> real_versions;
-  status = LoadServableConfig(base_spec_, real_versions, version_strategy);
+  status = LoadServableConfig(base_spec_, version_strategy, &real_versions);
   if (status != SUCCESS) {
     MSI_LOG_ERROR << "Load servable config file failed, model directory " << base_spec_.servable_directory
                   << ", model name " << base_spec_.servable_name;
@@ -313,7 +317,7 @@ Status Worker::StartServable(const std::string &servable_directory, const std::s
   }
   for (auto real_version_number : real_versions) {
     ServableWorkerContext work;
-    status = LoadModel(base_spec_, real_version_number, work);
+    status = LoadModel(&base_spec_, real_version_number, &work);
     if (status != SUCCESS) {
       return status;
     }
@@ -363,10 +367,11 @@ bool Worker::HasCleared() { return servable_stoppedd_; }
 
 Worker::~Worker() { Clear(); }
 
-void Worker::GetVersions(const LoadServableSpec &servable_spec, std::vector<uint64_t> &real_versions) {
+void Worker::GetVersions(const LoadServableSpec &servable_spec, std::vector<uint64_t> *real_versions) {
+  MSI_EXCEPTION_IF_NULL(real_versions);
   // define version_strategy:"specific","lastest","multi"
   if (version_strategy_ == kVersionStrategySpecific) {
-    real_versions.push_back(servable_spec.version_number);
+    real_versions->push_back(servable_spec.version_number);
     return;
   }
   auto trans_to_integer = [](const std::string &str) -> uint32_t {
@@ -397,20 +402,21 @@ void Worker::GetVersions(const LoadServableSpec &servable_spec, std::vector<uint
       }
       continue;
     }
-    real_versions.push_back(version_parse);
+    real_versions->push_back(version_parse);
     if (version_parse > newest_version) {
       newest_version = version_parse;
     }
   }
   if (version_strategy_ == kVersionStrategyLastest) {
-    real_versions.clear();
+    real_versions->clear();
     if (newest_version != 0) {
-      real_versions.push_back(newest_version);
+      real_versions->push_back(newest_version);
     }
   }
 }
-Status Worker::LoadServableConfig(const LoadServableSpec &servable_spec, std::vector<uint64_t> &real_versions,
-                                  const std::string &version_strategy) {
+Status Worker::LoadServableConfig(const LoadServableSpec &servable_spec, const std::string &version_strategy,
+                                  std::vector<uint64_t> *real_versions) {
+  MSI_EXCEPTION_IF_NULL(real_versions);
   auto model_directory = servable_spec.servable_directory;
   auto model_name = servable_spec.servable_name;
 
@@ -425,11 +431,11 @@ Status Worker::LoadServableConfig(const LoadServableSpec &servable_spec, std::ve
   version_strategy_ = version_strategy;
   // version_strategy:"specific","lastest","multi"
   GetVersions(servable_spec, real_versions);
-  if (real_versions.size() == 0) {
+  if (real_versions->size() == 0) {
     return INFER_STATUS_LOG_ERROR(FAILED)
            << "Not found invalid model version , model_directory " << model_directory << ", model_name " << model_name;
   }
-  for (auto real_version_number : real_versions) {
+  for (auto real_version_number : *real_versions) {
     if (!DirOrFileExist(version_directory(real_version_number))) {
       return INFER_STATUS_LOG_ERROR(FAILED) << "Open failed for version " << real_version_number << ", model_directory "
                                             << model_directory << ", model_name " << model_name;

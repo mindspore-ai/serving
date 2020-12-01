@@ -207,7 +207,9 @@ std::vector<int64_t> RestfulService::GetSpecifiedShape(const json &js) {
   return shape;
 }
 
-DataType RestfulService::GetArrayDataType(const json &json_array, HTTP_DATA_TYPE &type_format) {
+DataType RestfulService::GetArrayDataType(const json &json_array, HTTP_DATA_TYPE *type_format_ptr) {
+  MSI_EXCEPTION_IF_NULL(type_format_ptr);
+  auto &type_format = *type_format_ptr;
   DataType data_type = kMSI_Unknown;
   const json *tmp_json = &json_array;
   while (tmp_json->is_array()) {
@@ -427,7 +429,7 @@ Status RestfulService::ParseItem(const json &value, ProtoTensor *const pb_tensor
     if (shape.empty()) {
       return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Json array, shape is empty";
     }
-    DataType data_type = GetArrayDataType(value, type_format);
+    DataType data_type = GetArrayDataType(value, &type_format);
     if (data_type == kMSI_Unknown) {
       return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Json array, data type is unknown";
     }
@@ -631,14 +633,14 @@ Status RestfulService::GetScalarData(const json &js, size_t index, bool is_bytes
         return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "'" << value << "' is not legal b64 encode string";
       }
       auto origin_size = GetB64OriginSize(value.length(), tail_equal_size);
-      uint8_t buffer[origin_size];
-      auto target_size = Base64Decode(reinterpret_cast<uint8_t *>(value.data()), value.length(), buffer);
+      std::vector<uint8_t> buffer(origin_size, 0);
+      auto target_size = Base64Decode(reinterpret_cast<uint8_t *>(value.data()), value.length(), buffer.data());
       if (target_size != origin_size) {
         return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Decode base64 failed, size is not matched.";
       }
       DataType real_type = request_tensor->data_type();
       if (real_type == kMSI_Bytes || real_type == kMSI_String) {
-        request_tensor->add_bytes_data(buffer, origin_size);
+        request_tensor->add_bytes_data(buffer.data(), origin_size);
       } else {
         auto type_size = request_tensor->GetTypeSize(real_type);
         auto element_cnt = request_tensor->element_cnt();
@@ -649,7 +651,7 @@ Status RestfulService::GetScalarData(const json &js, size_t index, bool is_bytes
         }
 
         auto data = reinterpret_cast<T *>(request_tensor->mutable_data()) + index;
-        memcpy_s(data, origin_size, buffer, origin_size);
+        memcpy_s(data, origin_size, buffer.data(), buffer.size());
       }
     } else {
       request_tensor->add_bytes_data(reinterpret_cast<uint8_t *>(value.data()), value.length());
@@ -691,8 +693,6 @@ Status RestfulService::RunRestful(const std::shared_ptr<RestfulRequest> &restful
 
   MSI_TIME_STAMP_START(Predict)
   status = dispatcher_->Dispatch(request, reply);
-
-  // FadeReply(request, reply);
   MSI_TIME_STAMP_END(Predict)
   if (status != SUCCESS) {
     std::string error_msg = status.StatusMessage();
@@ -837,25 +837,23 @@ Status RestfulService::PaserKeyOneInstance(const json &instance_msg, PredictRequ
     }
     auto value = it.value();
 
-    proto::Tensor tensor;
-    ProtoTensor pb_tensor(tensor);
+    auto &map_item = *(instance->mutable_items());
+    proto::Tensor &tensor = map_item[key];
+    ProtoTensor pb_tensor(&tensor);
 
     status = ParseItem(value, &pb_tensor);
     if (status != SUCCESS) {
       return status;
     }
-
-    auto &map_item = *(instance->mutable_items());
-    map_item[key] = tensor;
   }
   return status;
 }
 
 /************************************************************************************/
 // 4.parse reply common func
-Status RestfulService::ParseReplyDetail(proto::Tensor tensor, json *const js) {
+Status RestfulService::ParseReplyDetail(const proto::Tensor &tensor, json *const js) {
   Status status(SUCCESS);
-  ProtoTensor pb_tensor(tensor);
+  const ProtoTensor pb_tensor(const_cast<proto::Tensor *>(&tensor));
   auto shape = pb_tensor.shape();
   size_t shape_size = std::accumulate(shape.begin(), shape.end(), 1LL, std::multiplies<size_t>());
 
@@ -959,7 +957,7 @@ Status RestfulService::ParseScalarData(const ProtoTensor &pb_tensor, bool is_byt
       std::string value;
       size_t length;
       const uint8_t *ptr = nullptr;
-      pb_tensor.get_bytes_data(index, ptr, length);
+      pb_tensor.get_bytes_data(index, &ptr, &length);
       value.resize(length);
       memcpy_s(value.data(), length, reinterpret_cast<const char *>(ptr), length);
       MSI_LOG_INFO << "Parse string value:" << value;
@@ -977,19 +975,19 @@ Status RestfulService::ParseScalarData(const ProtoTensor &pb_tensor, bool is_byt
       std::string value;
       size_t length;
       const uint8_t *ptr = nullptr;
-      pb_tensor.get_bytes_data(index, ptr, length);
+      pb_tensor.get_bytes_data(index, &ptr, &length);
       value.resize(length);
       memcpy_s(value.data(), length, reinterpret_cast<const char *>(ptr), length);
       MSI_LOG_INFO << "bytes type, origin str:" << value;
 
       auto target_size = GetB64TargetSize(length);
-      uint8_t buffer[target_size];
-      auto size = Base64Encode(reinterpret_cast<uint8_t *>(value.data()), value.length(), buffer);
+      std::vector<uint8_t> buffer(target_size, 0);
+      auto size = Base64Encode(reinterpret_cast<uint8_t *>(value.data()), value.length(), buffer.data());
       if (size != target_size) {
         return INFER_STATUS_LOG_ERROR(FAILED)
                << "Reply bytes, size is not matched, expected size:" << target_size << ", encode size:" << size;
       }
-      std::string str = GetString(buffer, target_size);
+      std::string str = GetString(buffer.data(), buffer.size());
       MSI_LOG_INFO << "bytes type, decoded str:" << str;
       (*js)[kB64] = str;
     }
@@ -997,7 +995,8 @@ Status RestfulService::ParseScalarData(const ProtoTensor &pb_tensor, bool is_byt
   return status;
 }
 
-Status RestfulService::RecursiveParseArray(ProtoTensor pb_tensor, size_t depth, size_t pos, json *const out_json) {
+Status RestfulService::RecursiveParseArray(const ProtoTensor &pb_tensor, size_t depth, size_t pos,
+                                           json *const out_json) {
   Status status(SUCCESS);
   std::vector<int64_t> required_shape = pb_tensor.shape();
   if (depth >= 10) {
@@ -1116,13 +1115,14 @@ Status RestfulService::ParseInstancesReply(const PredictReply &reply, json *cons
 }
 
 // For test, to be deleted
-void RestfulService::FadeReply(const proto::PredictRequest &request, proto::PredictReply &reply) {
+void RestfulService::FadeReply(const proto::PredictRequest &request, proto::PredictReply *reply) {
+  MSI_EXCEPTION_IF_NULL(reply);
   MSI_LOG_INFO << "Start";
   if (request_type_ == kInstanceType) {
     size_t instances_size = request.instances_size();
     for (size_t i = 0; i < instances_size; i++) {
       auto cur_instance = request.instances(i);
-      auto target_ptr = reply.add_instances();
+      auto target_ptr = reply->add_instances();
       for (const auto &item : cur_instance.items()) {
         auto key = item.first;
         auto tensor = item.second;
@@ -1148,8 +1148,8 @@ void RestfulService::PrintRequest(const proto::PredictRequest *const request) {
       for (const auto &item : cur_map) {
         MSI_LOG_INFO << "======deail instance=======";
         auto key = item.first;
-        auto tensor = item.second;
-        ProtoTensor pb_tensor(tensor);
+        auto &tensor = item.second;
+        const ProtoTensor pb_tensor(const_cast<proto::Tensor *>(&tensor));
         MSI_LOG_INFO << "key:" << key;
         DataType type = pb_tensor.data_type();
         MSI_LOG_INFO << "data type:" << type;
@@ -1169,7 +1169,7 @@ void RestfulService::PrintRequest(const proto::PredictRequest *const request) {
         for (size_t k = 0; k < bytes_data_size; k++) {
           const uint8_t *data1;
           size_t bytes_len;
-          pb_tensor.get_bytes_data(k, data1, bytes_len);
+          pb_tensor.get_bytes_data(k, &data1, &bytes_len);
           MSI_LOG_INFO << "start ptr:" << data1 << "; bytes length:" << bytes_len;
         }
       }
@@ -1192,8 +1192,8 @@ void RestfulService::PrintReply(const proto::PredictReply &reply) {
       for (const auto &item : cur_map) {
         MSI_LOG_INFO << "======deail instance=======";
         auto key = item.first;
-        auto tensor = item.second;
-        ProtoTensor pb_tensor(tensor);
+        auto &tensor = item.second;
+        const ProtoTensor pb_tensor(const_cast<proto::Tensor *>(&tensor));
         MSI_LOG_INFO << "key:" << key;
         DataType type = pb_tensor.data_type();
         MSI_LOG_INFO << "data type:" << type;
@@ -1209,7 +1209,7 @@ void RestfulService::PrintReply(const proto::PredictReply &reply) {
         for (size_t k = 0; k < bytes_data_size; k++) {
           const uint8_t *data;
           size_t bytes_len;
-          pb_tensor.get_bytes_data(k, data, bytes_len);
+          pb_tensor.get_bytes_data(k, &data, &bytes_len);
           MSI_LOG_INFO << "start ptr:" << data << "; bytes length:" << bytes_len;
         }
       }

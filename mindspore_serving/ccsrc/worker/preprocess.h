@@ -32,7 +32,7 @@ class PreprocessBase : public std::enable_shared_from_this<PreprocessBase> {
   PreprocessBase() = default;
   virtual ~PreprocessBase() = default;
 
-  virtual Status Preprocess(const std::string &preprocess_name, const InstanceData &input, InstanceData &output) = 0;
+  virtual Status Preprocess(const std::string &preprocess_name, const InstanceData &input, InstanceData *output) = 0;
   virtual size_t GetInputsCount(const std::string &preprocess_name) const = 0;
   virtual size_t GetOutputsCount(const std::string &preprocess_name) const = 0;
   virtual bool IsPythonPreprocess() const { return false; }

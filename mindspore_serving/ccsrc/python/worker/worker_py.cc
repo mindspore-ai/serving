@@ -57,19 +57,19 @@ void PyWorker::StartServableInMaster(const std::string &model_directory, const s
 
 TaskItem PyWorker::GetPyTask() {
   TaskItem item;
-  Worker::GetInstance().GetPyTaskQueueGroup().PopPyTask(item);
+  Worker::GetInstance().GetPyTaskQueueGroup().PopPyTask(&item);
   return item;
 }
 
 TaskItem PyWorker::TryGetPreprocessPyTask() {
   TaskItem item;
-  Worker::GetInstance().GetPyTaskQueueGroup().TryPopPreprocessTask(item);
+  Worker::GetInstance().GetPyTaskQueueGroup().TryPopPreprocessTask(&item);
   return item;
 }
 
 TaskItem PyWorker::TryGetPostprocessPyTask() {
   TaskItem item;
-  Worker::GetInstance().GetPyTaskQueueGroup().TryPopPostprocessTask(item);
+  Worker::GetInstance().GetPyTaskQueueGroup().TryPopPostprocessTask(&item);
   return item;
 }
 

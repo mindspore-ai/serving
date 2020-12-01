@@ -18,7 +18,7 @@
 #define MINDSPORE_SERVING_INC_TENSOR_IMP_H
 
 #include <vector>
-#include "tensor_base.h"
+#include "common/tensor_base.h"
 
 namespace mindspore::serving {
 
@@ -44,7 +44,7 @@ class MS_API Tensor : public TensorBase {
   void clear_bytes_data() override;
   void add_bytes_data(const uint8_t *data, size_t bytes_len) override;
   size_t bytes_data_size() const override;
-  void get_bytes_data(size_t index, const uint8_t *&data, size_t &bytes_len) const override;
+  void get_bytes_data(size_t index, const uint8_t **data, size_t *bytes_len) const override;
 
  private:
   DataType type_;
@@ -56,17 +56,17 @@ class MS_API Tensor : public TensorBase {
 
 class MS_API VectorTensorWrapReply : public ReplyBase {
  public:
-  explicit VectorTensorWrapReply(std::vector<Tensor> &tensor_list) : tensor_list_(tensor_list) {}
-  ~VectorTensorWrapReply() = default;
+  explicit VectorTensorWrapReply(std::vector<Tensor> *tensor_list);
+  ~VectorTensorWrapReply();
 
-  size_t size() const override { return tensor_list_.size(); }
+  size_t size() const override;
   TensorBase *operator[](size_t index) override;
   const TensorBase *operator[](size_t index) const override;
   TensorBase *add() override;
-  void clear() override { tensor_list_.clear(); }
+  void clear() override;
 
  private:
-  std::vector<Tensor> &tensor_list_;
+  std::vector<Tensor> *tensor_list_;
 };
 
 class MS_API VectorTensorWrapRequest : public RequestBase {
@@ -83,22 +83,17 @@ class MS_API VectorTensorWrapRequest : public RequestBase {
 
 class MS_API VectorTensorPtrWrapReply : public ReplyBase {
  public:
-  explicit VectorTensorPtrWrapReply(std::vector<TensorBasePtr> &tensor_list, std::function<TensorBasePtr()> create_fun)
-      : tensor_list_(tensor_list), tensor_create_fun_(create_fun) {
-    if (tensor_create_fun_ == nullptr) {
-      MSI_LOG_EXCEPTION << "tensor create function cannot be nullptr";
-    }
-  }
-  ~VectorTensorPtrWrapReply() = default;
+  explicit VectorTensorPtrWrapReply(std::vector<TensorBasePtr> *tensor_list, std::function<TensorBasePtr()> create_fun);
+  ~VectorTensorPtrWrapReply();
 
-  size_t size() const override { return tensor_list_.size(); }
+  size_t size() const override;
   TensorBase *operator[](size_t index) override;
   const TensorBase *operator[](size_t index) const override;
   TensorBase *add() override;
-  void clear() override { tensor_list_.clear(); }
+  void clear() override;
 
  private:
-  std::vector<TensorBasePtr> &tensor_list_;
+  std::vector<TensorBasePtr> *tensor_list_;
   std::function<TensorBasePtr()> tensor_create_fun_;
 };
 

@@ -109,9 +109,10 @@ Status TaskQueue::PushTaskPyResult(const std::vector<ResultInstance> &outputs) {
   return SUCCESS;
 }
 
-void TaskQueue::PopTask(TaskItem &task_item) {
+void TaskQueue::PopTask(TaskItem *task_item) {
+  MSI_EXCEPTION_IF_NULL(task_item);
   if (is_stoped_) {
-    task_item.task_type = kTaskTypeStop;
+    task_item->task_type = kTaskTypeStop;
     return;
   }
   std::unique_lock<std::mutex> lock{*lock_};
@@ -119,7 +120,7 @@ void TaskQueue::PopTask(TaskItem &task_item) {
     if (task_priority_list_.empty()) {
       cond_var_->wait(lock, [this] { return is_stoped_.load() || !task_priority_list_.empty(); });
       if (is_stoped_) {
-        task_item.task_type = kTaskTypeStop;
+        task_item->task_type = kTaskTypeStop;
         return;
       }
     }
@@ -129,22 +130,23 @@ void TaskQueue::PopTask(TaskItem &task_item) {
     if (cur_task.instance_list.empty()) {
       continue;
     }
-    task_item = cur_task;
+    *task_item = cur_task;
     cur_task.context_list.clear();
     cur_task.instance_list.clear();
     break;
   }
 }
 
-void TaskQueue::TryPopTask(TaskItem &task_item) {
+void TaskQueue::TryPopTask(TaskItem *task_item) {
+  MSI_EXCEPTION_IF_NULL(task_item);
   if (is_stoped_) {
-    task_item.task_type = kTaskTypeStop;
+    task_item->task_type = kTaskTypeStop;
     return;
   }
   std::unique_lock<std::mutex> lock{*lock_};
   while (true) {
     if (task_priority_list_.empty()) {
-      task_item.task_type = kTaskTypeEmpty;
+      task_item->task_type = kTaskTypeEmpty;
       return;
     }
     auto task_item_info = task_priority_list_.front();
@@ -153,17 +155,18 @@ void TaskQueue::TryPopTask(TaskItem &task_item) {
     if (cur_task.instance_list.empty()) {
       continue;
     }
-    task_item = cur_task;
+    *task_item = cur_task;
     cur_task.context_list.clear();
     cur_task.instance_list.clear();
     break;
   }
 }
 
-void TaskQueue::TryPopPyTask(TaskItem &task_item) {
+void TaskQueue::TryPopPyTask(TaskItem *task_item) {
+  MSI_EXCEPTION_IF_NULL(task_item);
   TryPopTask(task_item);
-  if (IsValidTask(task_item)) {
-    task_item_processing_ = task_item;
+  if (IsValidTask(*task_item)) {
+    task_item_processing_ = *task_item;
   }
 }
 
@@ -187,7 +190,8 @@ PyTaskQueueGroup::~PyTaskQueueGroup() = default;
 
 std::shared_ptr<TaskQueue> PyTaskQueueGroup::GetPreprocessTaskQueue() { return preprocess_task_que_; }
 std::shared_ptr<TaskQueue> PyTaskQueueGroup::GetPostprocessTaskQueue() { return postprocess_task_que_; }
-void PyTaskQueueGroup::PopPyTask(TaskItem &task_item) {
+void PyTaskQueueGroup::PopPyTask(TaskItem *task_item) {
+  MSI_EXCEPTION_IF_NULL(task_item);
   while (true) {
     {
       std::unique_lock<std::mutex> lock{*lock_};
@@ -196,35 +200,37 @@ void PyTaskQueueGroup::PopPyTask(TaskItem &task_item) {
           return is_stoped_.load() || !(preprocess_task_que_->Empty() && postprocess_task_que_->Empty());
         });
         if (is_stoped_) {
-          task_item.task_type = kTaskTypeStop;
+          task_item->task_type = kTaskTypeStop;
           return;
         }
       }
     }
     preprocess_task_que_->TryPopPyTask(task_item);
-    if (TaskQueue::IsValidTask(task_item)) {
-      task_item.task_type = kTaskTypePreprocess;
+    if (TaskQueue::IsValidTask(*task_item)) {
+      task_item->task_type = kTaskTypePreprocess;
       break;
     }
     postprocess_task_que_->TryPopPyTask(task_item);
-    if (TaskQueue::IsValidTask(task_item)) {
-      task_item.task_type = kTaskTypePostprocess;
+    if (TaskQueue::IsValidTask(*task_item)) {
+      task_item->task_type = kTaskTypePostprocess;
       break;
     }
   }
 }
 
-void PyTaskQueueGroup::TryPopPreprocessTask(TaskItem &task_item) {
+void PyTaskQueueGroup::TryPopPreprocessTask(TaskItem *task_item) {
+  MSI_EXCEPTION_IF_NULL(task_item);
   preprocess_task_que_->TryPopPyTask(task_item);
-  if (TaskQueue::IsValidTask(task_item)) {
-    task_item.task_type = kTaskTypePreprocess;
+  if (TaskQueue::IsValidTask(*task_item)) {
+    task_item->task_type = kTaskTypePreprocess;
   }
 }
 
-void PyTaskQueueGroup::TryPopPostprocessTask(TaskItem &task_item) {
+void PyTaskQueueGroup::TryPopPostprocessTask(TaskItem *task_item) {
+  MSI_EXCEPTION_IF_NULL(task_item);
   postprocess_task_que_->TryPopPyTask(task_item);
-  if (TaskQueue::IsValidTask(task_item)) {
-    task_item.task_type = kTaskTypePostprocess;
+  if (TaskQueue::IsValidTask(*task_item)) {
+    task_item->task_type = kTaskTypePostprocess;
   }
 }
 
@@ -241,7 +247,7 @@ TaskQueueThreadPool::~TaskQueueThreadPool() = default;
 void TaskQueueThreadPool::ThreadFunc(TaskQueueThreadPool *thread_pool) {
   while (true) {
     TaskItem task_item;
-    thread_pool->task_queue_->PopTask(task_item);
+    thread_pool->task_queue_->PopTask(&task_item);
     if (task_item.task_type == kTaskTypeStop) {
       return;
     }
@@ -277,7 +283,7 @@ void TaskQueueThreadPool::Stop() {
   pool_.clear();
 }
 
-Status PreprocessThreadPool::HandleTask(TaskItem &task_item) {
+Status PreprocessThreadPool::HandleTask(const TaskItem &task_item) {
   Status status;
   auto preprocess = PreprocessStorage::Instance().GetPreprocess(task_item.name);
   if (!preprocess) {
@@ -289,7 +295,7 @@ Status PreprocessThreadPool::HandleTask(TaskItem &task_item) {
     auto &context = task_item.context_list[i];
     ResultInstance result;
     try {
-      status = preprocess->Preprocess(task_item.name, instance.data, result.data);
+      status = preprocess->Preprocess(task_item.name, instance.data, &result.data);
     } catch (const std::bad_alloc &ex) {
       status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Serving Error: malloc memory failed";
     } catch (const std::runtime_error &ex) {
@@ -307,7 +313,7 @@ Status PreprocessThreadPool::HandleTask(TaskItem &task_item) {
   return SUCCESS;
 }
 
-Status PostprocessThreadPool::HandleTask(TaskItem &task_item) {
+Status PostprocessThreadPool::HandleTask(const TaskItem &task_item) {
   Status status;
   auto postprocess = PostprocessStorage::Instance().GetPostprocess(task_item.name);
   if (!postprocess) {
@@ -319,7 +325,7 @@ Status PostprocessThreadPool::HandleTask(TaskItem &task_item) {
     auto &context = task_item.context_list[i];
     ResultInstance result;
     try {
-      status = postprocess->Postprocess(task_item.name, instance.data, result.data);
+      status = postprocess->Postprocess(task_item.name, instance.data, &result.data);
     } catch (const std::bad_alloc &ex) {
       status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Serving Error: malloc memory failed";
     } catch (const std::runtime_error &ex) {

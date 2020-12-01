@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "worker/worker_execute.h"
+#include "worker/work_executor.h"
 #include <utility>
 #include <cstring>
 #include <thread>
@@ -29,10 +29,10 @@ namespace serving {
 
 #define NO_THREAD_POOL
 
-WorkerExecute::WorkerExecute(std::shared_ptr<TaskQueue> py_preprocess_task_queue,
-                             std::shared_ptr<TaskQueue> py_postprocess_task_queue,
-                             std::shared_ptr<TaskQueue> cpp_preprocess_task_queue,
-                             std::shared_ptr<TaskQueue> cpp_postprocess_task_queue)
+WorkExecutor::WorkExecutor(std::shared_ptr<TaskQueue> py_preprocess_task_queue,
+                           std::shared_ptr<TaskQueue> py_postprocess_task_queue,
+                           std::shared_ptr<TaskQueue> cpp_preprocess_task_queue,
+                           std::shared_ptr<TaskQueue> cpp_postprocess_task_queue)
     : py_preprocess_task_queue_(py_preprocess_task_queue),
       py_postprocess_task_queue_(py_postprocess_task_queue),
       cpp_preprocess_task_queue_(cpp_preprocess_task_queue),
@@ -41,9 +41,9 @@ WorkerExecute::WorkerExecute(std::shared_ptr<TaskQueue> py_preprocess_task_queue
   worker_id_ = ++g_worker_id;
 }
 
-WorkerExecute::~WorkerExecute() = default;
+WorkExecutor::~WorkExecutor() = default;
 
-Status WorkerExecute::CheckSevableSignature() {
+Status WorkExecutor::CheckSevableSignature() {
   Status status;
   const auto &input_infos = input_infos_;
   if (input_infos.size() != servable_declare_.servable_meta.inputs_count) {
@@ -85,7 +85,7 @@ Status WorkerExecute::CheckSevableSignature() {
   return SUCCESS;
 }
 
-Status WorkerExecute::Init(const ServableSignature &servable_declare, const std::shared_ptr<ServableBase> &servable) {
+Status WorkExecutor::Init(const ServableSignature &servable_declare, const std::shared_ptr<ServableBase> &servable) {
   Status status;
   if (init_flag_) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Worker service has been initialized";
@@ -125,7 +125,7 @@ Status WorkerExecute::Init(const ServableSignature &servable_declare, const std:
   return SUCCESS;
 }
 
-void WorkerExecute::InitPrePostprocess() {
+void WorkExecutor::InitPrePostprocess() {
   for (auto &method : servable_declare_.methods) {
     if (!method.preprocess_name.empty()) {
       auto preprocess = PreprocessStorage::Instance().GetPreprocess(method.preprocess_name);
@@ -183,7 +183,7 @@ void WorkerExecute::InitPrePostprocess() {
   cpp_postprocess_task_queue_->SetWorkerCallback(GetWorkerId(), postprocess_callback);
 }
 
-void WorkerExecute::InitInputTensors() {
+void WorkExecutor::InitInputTensors() {
   inference_inputs_.clear();
   for (const auto &input_info : input_infos_) {
     TensorBasePtr tensor = servable_->MakeInferenceTensor(input_info.data_type, input_info.shape);
@@ -197,22 +197,22 @@ void WorkerExecute::InitInputTensors() {
   }
 }
 
-std::vector<std::future<void>> WorkerExecute::Work(const RequestSpec &request_spec,
-                                                   const std::vector<InstanceData> &instances_data,
-                                                   WorkerCallBack on_process_done) {
+std::vector<std::future<void>> WorkExecutor::Work(const RequestSpec &request_spec,
+                                                  const std::vector<InstanceData> &instances_data,
+                                                  WorkCallBack on_process_done) {
   if (!init_flag_) {
     MSI_LOG_EXCEPTION << "Worker service has not been initialized";
   }
   std::vector<std::future<void>> future_list(instances_data.size());
   std::vector<Instance> new_inputs(instances_data.size());
-  auto user_id = WorkerExecute::GetNextUserId();
+  auto user_id = WorkExecutor::GetNextUserId();
   auto user_context = std::make_shared<WorkerUserContext>();
   user_context->worker_call_back = on_process_done;
   user_context->request_spec = request_spec;
 
   MethodSignature &method_def = user_context->method_def;
   Status status;
-  if (!servable_declare_.GetMethodDeclare(request_spec.method_name, method_def)) {
+  if (!servable_declare_.GetMethodDeclare(request_spec.method_name, &method_def)) {
     MSI_LOG_EXCEPTION << "Not support method " << request_spec.method_name;
   }
 
@@ -233,7 +233,7 @@ std::vector<std::future<void>> WorkerExecute::Work(const RequestSpec &request_sp
   return future_list;
 }
 
-void WorkerExecute::OnRecievePreprocessInputs(const std::vector<Instance> &inputs) {
+void WorkExecutor::OnRecievePreprocessInputs(const std::vector<Instance> &inputs) {
   if (inputs.empty()) {
     MSI_LOG_EXCEPTION << "Inputs cannot be empty";
   }
@@ -246,7 +246,7 @@ void WorkerExecute::OnRecievePreprocessInputs(const std::vector<Instance> &input
   }
 }
 
-void WorkerExecute::OnRecievePostprocessInputs(const Instance &input) {
+void WorkExecutor::OnRecievePostprocessInputs(const Instance &input) {
   const MethodSignature &method_def = input.context.user_context->method_def;
   auto real_input = CreateInputInstance(input, kPredictPhaseTag_Postprocess);
   if (python_postprocess_names_.count(method_def.postprocess_name) > 0) {
@@ -256,7 +256,7 @@ void WorkerExecute::OnRecievePostprocessInputs(const Instance &input) {
   }
 }
 
-void WorkerExecute::OnRecievePredictInputs(const std::vector<Instance> &inputs) {
+void WorkExecutor::OnRecievePredictInputs(const std::vector<Instance> &inputs) {
   // create input for predict, and check
   auto real_inputs = CreateInputInstance(inputs, kPredictPhaseTag_Predict);
   std::vector<Instance> valid_inputs;
@@ -271,14 +271,14 @@ void WorkerExecute::OnRecievePredictInputs(const std::vector<Instance> &inputs) 
   predict_thread_.PushPredictTask(valid_inputs);
 }
 
-bool WorkerExecute::ReplyRequest(const std::vector<Instance> &outputs) {
+bool WorkExecutor::ReplyRequest(const std::vector<Instance> &outputs) {
   for (auto &item : outputs) {
     ReplyRequest(item);
   }
   return true;
 }
 
-bool WorkerExecute::ReplyRequest(const Instance &outputs) {
+bool WorkExecutor::ReplyRequest(const Instance &outputs) {
   Status status;
   Instance trans_outputs = CreateInputInstance(outputs, kPredictPhaseTag_Output);
   outputs.context.user_context->worker_call_back(trans_outputs, Status(SUCCESS));
@@ -286,14 +286,14 @@ bool WorkerExecute::ReplyRequest(const Instance &outputs) {
   return true;
 }
 
-bool WorkerExecute::ReplyError(const std::vector<Instance> &context, const Status &error_msg) {
+bool WorkExecutor::ReplyError(const std::vector<Instance> &context, const Status &error_msg) {
   for (auto &item : context) {
     ReplyError(item, error_msg);
   }
   return true;
 }
 
-bool WorkerExecute::ReplyError(const Instance &instance, const Status &error_msg) {
+bool WorkExecutor::ReplyError(const Instance &instance, const Status &error_msg) {
   Instance error_instance;
   error_instance.context = instance.context;
   instance.context.user_context->worker_call_back(error_instance, error_msg);
@@ -301,7 +301,7 @@ bool WorkerExecute::ReplyError(const Instance &instance, const Status &error_msg
   return true;
 }
 
-void WorkerExecute::PredictHandle(const std::vector<Instance> &inputs) {
+void WorkExecutor::PredictHandle(const std::vector<Instance> &inputs) {
   Status status;
   try {
     std::vector<Instance> outputs;
@@ -331,7 +331,7 @@ void WorkerExecute::PredictHandle(const std::vector<Instance> &inputs) {
   ReplyError(inputs, status);
 }
 
-Status WorkerExecute::PrePredict(const std::vector<Instance> &inputs) {
+Status WorkExecutor::PrePredict(const std::vector<Instance> &inputs) {
   auto input_batch_size = static_cast<uint32_t>(inputs.size());
   uint32_t model_batch_size = model_batch_size_;
   if (input_batch_size == 0 || input_batch_size > model_batch_size) {
@@ -363,8 +363,8 @@ Status WorkerExecute::PrePredict(const std::vector<Instance> &inputs) {
   return SUCCESS;
 }
 
-Status WorkerExecute::PostPredict(const std::vector<Instance> &inputs, const std::vector<TensorBasePtr> &predict_result,
-                                  std::vector<Instance> &outputs) {
+Status WorkExecutor::PostPredict(const std::vector<Instance> &inputs, const std::vector<TensorBasePtr> &predict_result,
+                                 std::vector<Instance> &outputs) {
   auto input_batch_size = static_cast<uint32_t>(inputs.size());
   uint32_t model_batch_size = model_batch_size_;
   if (input_batch_size == 0 || input_batch_size > model_batch_size) {
@@ -397,7 +397,7 @@ Status WorkerExecute::PostPredict(const std::vector<Instance> &inputs, const std
   return SUCCESS;
 }
 
-Status WorkerExecute::Predict(const std::vector<Instance> &inputs, std::vector<Instance> &outputs) {
+Status WorkExecutor::Predict(const std::vector<Instance> &inputs, std::vector<Instance> &outputs) {
   Status status;
   std::vector<TensorBasePtr> predict_outputs;
   status = PrePredict(inputs);
@@ -405,7 +405,7 @@ Status WorkerExecute::Predict(const std::vector<Instance> &inputs, std::vector<I
     MSI_LOG_ERROR << "Call Pre Predict failed, model info " << servable_declare_.servable_meta.Repr();
     return status;
   }
-  status = servable_->Predict(inference_inputs_, predict_outputs);
+  status = servable_->Predict(inference_inputs_, &predict_outputs);
   if (status != SUCCESS) {
     MSI_LOG_ERROR << "Predict failed, model info " << servable_declare_.servable_meta.Repr();
     return status;
@@ -418,7 +418,7 @@ Status WorkerExecute::Predict(const std::vector<Instance> &inputs, std::vector<I
   return SUCCESS;
 }
 
-Status WorkerExecute::CheckPredictInput(const Instance &instance) {
+Status WorkExecutor::CheckPredictInput(const Instance &instance) {
   const auto &inputs_info = input_infos_;
   if (instance.data.size() < inputs_info.size()) {
     return INFER_STATUS(INVALID_INPUTS) << "Given model inputs size " << instance.data.size()
@@ -440,8 +440,7 @@ Status WorkerExecute::CheckPredictInput(const Instance &instance) {
   return SUCCESS;
 }
 
-std::vector<Instance> WorkerExecute::CreateInputInstance(const std::vector<Instance> &instances,
-                                                         PredictPhaseTag phase) {
+std::vector<Instance> WorkExecutor::CreateInputInstance(const std::vector<Instance> &instances, PredictPhaseTag phase) {
   std::vector<Instance> ret(instances.size());
   for (size_t i = 0; i < instances.size(); i++) {
     ret[i] = CreateInputInstance(instances[i], phase);
@@ -449,7 +448,7 @@ std::vector<Instance> WorkerExecute::CreateInputInstance(const std::vector<Insta
   return ret;
 }
 
-Instance WorkerExecute::CreateInputInstance(const Instance &instance, PredictPhaseTag phase) {
+Instance WorkExecutor::CreateInputInstance(const Instance &instance, PredictPhaseTag phase) {
   Instance result = instance;
   result.data.clear();
 
@@ -501,9 +500,9 @@ Instance WorkerExecute::CreateInputInstance(const Instance &instance, PredictPha
   return result;
 }
 
-std::vector<Instance> WorkerExecute::CreateResultInstance(const std::vector<Instance> &inputs,
-                                                          const std::vector<ResultInstance> &results,
-                                                          PredictPhaseTag phase) {
+std::vector<Instance> WorkExecutor::CreateResultInstance(const std::vector<Instance> &inputs,
+                                                         const std::vector<ResultInstance> &results,
+                                                         PredictPhaseTag phase) {
   std::vector<Instance> ret(inputs.size());
   for (size_t i = 0; i < inputs.size(); i++) {
     ret[i] = CreateResultInstance(inputs[i], results[i], phase);
@@ -511,8 +510,8 @@ std::vector<Instance> WorkerExecute::CreateResultInstance(const std::vector<Inst
   return ret;
 }
 
-Instance WorkerExecute::CreateResultInstance(const Instance &input, const ResultInstance &result,
-                                             PredictPhaseTag phase) {
+Instance WorkExecutor::CreateResultInstance(const Instance &input, const ResultInstance &result,
+                                            PredictPhaseTag phase) {
   Instance instance = input;
   instance.data.clear();
   switch (phase) {
@@ -535,12 +534,12 @@ Instance WorkerExecute::CreateResultInstance(const Instance &input, const Result
   return instance;
 }
 
-uint64_t WorkerExecute::GetNextUserId() {
+uint64_t WorkExecutor::GetNextUserId() {
   static std::atomic<uint64_t> user_id;
   return ++user_id;
 }
 
-uint32_t WorkerExecute::GetWorkerId() const { return worker_id_; }
+uint32_t WorkExecutor::GetWorkerId() const { return worker_id_; }
 
 }  // namespace serving
 }  // namespace mindspore

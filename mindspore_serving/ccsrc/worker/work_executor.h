@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MINDSPORE_SERVING_WORKER_EXECUTE_H
-#define MINDSPORE_SERVING_WORKER_EXECUTE_H
+#ifndef MINDSPORE_SERVING_WORK_EXECUTOR_H
+#define MINDSPORE_SERVING_WORK_EXECUTOR_H
 
 #include <vector>
 #include <unordered_map>
@@ -35,19 +35,19 @@
 namespace mindspore {
 namespace serving {
 
-using WorkerCallBack = std::function<void(const Instance &output, const Status &error_msg)>;
+using WorkCallBack = std::function<void(const Instance &output, const Status &error_msg)>;
 
-class WorkerExecute {
+class WorkExecutor {
  public:
-  WorkerExecute(std::shared_ptr<TaskQueue> py_preprocess_task_queue,
-                std::shared_ptr<TaskQueue> py_postprocess_task_queue,
-                std::shared_ptr<TaskQueue> cpp_preprocess_task_queue,
-                std::shared_ptr<TaskQueue> cpp_postprocess_task_queue);
-  ~WorkerExecute();
+  WorkExecutor(std::shared_ptr<TaskQueue> py_preprocess_task_queue,
+               std::shared_ptr<TaskQueue> py_postprocess_task_queue,
+               std::shared_ptr<TaskQueue> cpp_preprocess_task_queue,
+               std::shared_ptr<TaskQueue> cpp_postprocess_task_queue);
+  ~WorkExecutor();
 
   Status Init(const ServableSignature &servable_declare, const std::shared_ptr<ServableBase> &servable);
   std::vector<std::future<void>> Work(const RequestSpec &request_spec, const std::vector<InstanceData> &inputs,
-                                      WorkerCallBack on_process_done);
+                                      WorkCallBack on_process_done);
 
   static uint64_t GetNextUserId();
   uint32_t GetWorkerId() const;
@@ -101,4 +101,4 @@ class WorkerExecute {
 }  // namespace serving
 }  // namespace mindspore
 
-#endif  // MINDSPORE_SERVING_WORKER_EXECUTE_H
+#endif  // MINDSPORE_SERVING_WORK_EXECUTOR_H

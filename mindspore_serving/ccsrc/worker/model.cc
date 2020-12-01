@@ -20,7 +20,7 @@
 
 namespace mindspore::serving {
 
-Status AscendModelServable::Predict(const std::vector<TensorBasePtr> &input, std::vector<TensorBasePtr> &output) {
+Status AscendModelServable::Predict(const std::vector<TensorBasePtr> &input, std::vector<TensorBasePtr> *output) {
   return session_->ExecuteModel(model_id_, input, output);
 }
 

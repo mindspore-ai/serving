@@ -22,14 +22,14 @@ namespace mindspore::serving {
 size_t PyPostprocess::GetInputsCount(const std::string &postprocess_name) const {
   size_t inputs_count;
   size_t outputs_count;
-  (void)PyPostprocessStorage::Instance()->GetPyPostprocessInfo(postprocess_name, inputs_count, outputs_count);
+  (void)PyPostprocessStorage::Instance()->GetPyPostprocessInfo(postprocess_name, &inputs_count, &outputs_count);
   return inputs_count;
 }
 
 size_t PyPostprocess::GetOutputsCount(const std::string &postprocess_name) const {
   size_t inputs_count;
   size_t outputs_count;
-  (void)PyPostprocessStorage::Instance()->GetPyPostprocessInfo(postprocess_name, inputs_count, outputs_count);
+  (void)PyPostprocessStorage::Instance()->GetPyPostprocessInfo(postprocess_name, &inputs_count, &outputs_count);
   return outputs_count;
 }
 
@@ -47,14 +47,16 @@ void PyPostprocessStorage::Register(const std::string &postprocess_name, size_t 
   PostprocessStorage::Instance().Register(postprocess_name, py_postprocess_);
 }
 
-bool PyPostprocessStorage::GetPyPostprocessInfo(const std::string &postprocess_name, size_t &inputs_count,
-                                                size_t &outputs_count) {
+bool PyPostprocessStorage::GetPyPostprocessInfo(const std::string &postprocess_name, size_t *inputs_count,
+                                                size_t *outputs_count) {
+  MSI_EXCEPTION_IF_NULL(inputs_count);
+  MSI_EXCEPTION_IF_NULL(outputs_count);
   auto it = postprocess_infos_.find(postprocess_name);
   if (it == postprocess_infos_.end()) {
     return false;
   }
-  inputs_count = it->second.first;
-  outputs_count = it->second.second;
+  *inputs_count = it->second.first;
+  *outputs_count = it->second.second;
   return true;
 }
 
