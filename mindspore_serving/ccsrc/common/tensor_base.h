@@ -24,8 +24,8 @@
 #include <map>
 #include <functional>
 #include <cstring>
-#include "log.h"
-#include "status.h"
+#include "common/log.h"
+#include "common/status.h"
 
 namespace mindspore {
 namespace serving {
@@ -80,7 +80,7 @@ class MS_API TensorBase {
   virtual void clear_bytes_data() = 0;
   virtual void add_bytes_data(const uint8_t *data, size_t bytes_len) = 0;
   virtual size_t bytes_data_size() const = 0;
-  virtual void get_bytes_data(size_t index, const uint8_t *&data, size_t &bytes_len) const = 0;
+  virtual void get_bytes_data(size_t index, const uint8_t **data, size_t *bytes_len) const = 0;
 
   // TensorBase(const TensorBase& other) = delete;
   // TensorBase& operator=(const TensorBase& other) = delete;

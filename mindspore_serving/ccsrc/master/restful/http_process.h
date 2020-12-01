@@ -43,7 +43,7 @@ enum InstancesType { kNokeyWay = 0, kKeyWay, kInvalidWay };
 enum HTTP_DATA_TYPE { HTTP_DATA_NONE, HTTP_DATA_INT, HTTP_DATA_FLOAT, HTTP_DATA_BOOL, HTTP_DATA_STR, HTTP_DATA_OBJ };
 class RestfulService {
  public:
-  explicit RestfulService(std::shared_ptr<Dispatcher> dispatcher) : dispatcher_(dispatcher) {}
+  explicit RestfulService(const std::shared_ptr<Dispatcher> &dispatcher) : dispatcher_(dispatcher) {}
   ~RestfulService() = default;
   Status RunRestful(const std::shared_ptr<RestfulRequest> &restful_request, json *const out_json);
 
@@ -56,7 +56,7 @@ class RestfulService {
   std::vector<int64_t> GetObjShape(const json &js);
   std::vector<int64_t> GetArrayShape(const json &json_array);
   std::vector<int64_t> GetSpecifiedShape(const json &js);
-  DataType GetArrayDataType(const json &json_array, HTTP_DATA_TYPE &type_format);
+  DataType GetArrayDataType(const json &json_array, HTTP_DATA_TYPE *type_format);
   Status CheckReqJsonValid(const json &js_msg);
   std::string GetStringByDataType(DataType type);
   bool JsonMatchDataType(const json &js, DataType type);
@@ -84,9 +84,9 @@ class RestfulService {
   Status ParseReply(const proto::PredictReply &reply, json *const out_json);
   Status CheckReply(const ProtoTensor &pb_tensor);
   Status ParseInstancesReply(const proto::PredictReply &reply, json *const out_json);
-  Status ParseReplyDetail(proto::Tensor tensor, json *const js);
+  Status ParseReplyDetail(const proto::Tensor &tensor, json *const js);
   Status ParseScalar(const ProtoTensor &pb_tensor, size_t index, json *const js);
-  Status RecursiveParseArray(ProtoTensor pb_tensor, size_t depth, size_t pos, json *const out_json);
+  Status RecursiveParseArray(const ProtoTensor &pb_tensor, size_t depth, size_t pos, json *const out_json);
 
   template <typename T>
   Status ParseScalarData(const ProtoTensor &pb_tensor, bool is_bytes, size_t index, json *const js);
@@ -96,7 +96,7 @@ class RestfulService {
 
   void PrintRequest(const proto::PredictRequest *const request);
   void PrintReply(const proto::PredictReply &reply);
-  void FadeReply(const proto::PredictRequest &request, proto::PredictReply &reply);
+  void FadeReply(const proto::PredictRequest &request, proto::PredictReply *reply);
 
   RequestType request_type_{kInvalidType};
   InstancesType instances_type_{kInvalidWay};

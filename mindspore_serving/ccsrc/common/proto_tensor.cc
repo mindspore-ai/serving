@@ -31,25 +31,32 @@ using std::vector;
 namespace mindspore::serving {
 
 const size_t kMaxShapeElementCount = INT32_MAX;
-const size_t kMaxDataBufferSize = UINT32_MAX;
 
-ProtoTensor::ProtoTensor(proto::Tensor &other) : tensor_(other) {}
+ProtoTensor::ProtoTensor(proto::Tensor *other) : tensor_(other) {}
 
 ProtoTensor::~ProtoTensor() {}
 
-DataType ProtoTensor::data_type() const { return TransDataType2Inference(tensor_.dtype()); }
+DataType ProtoTensor::data_type() const {
+  MSI_EXCEPTION_IF_NULL(tensor_);
+  return TransDataType2Inference(tensor_->dtype());
+}
 
-void ProtoTensor::set_data_type(DataType data_type) { tensor_.set_dtype(TransDataType2Proto(data_type)); }
+void ProtoTensor::set_data_type(DataType data_type) {
+  MSI_EXCEPTION_IF_NULL(tensor_);
+  tensor_->set_dtype(TransDataType2Proto(data_type));
+}
 
 std::vector<int64_t> ProtoTensor::shape() const {
+  MSI_EXCEPTION_IF_NULL(tensor_);
   std::vector<int64_t> result;
-  auto dims = tensor_.shape().dims();
+  auto dims = tensor_->shape().dims();
   std::transform(dims.begin(), dims.end(), std::back_inserter(result), [](const int64_t dim) { return dim; });
   return result;
 }
 
 void ProtoTensor::set_shape(const std::vector<int64_t> &shape) {
-  auto tensor_shape = tensor_.mutable_shape();
+  MSI_EXCEPTION_IF_NULL(tensor_);
+  auto tensor_shape = tensor_->mutable_shape();
   tensor_shape->Clear();
   size_t element_count = 1;
   for (auto dim : shape) {
@@ -64,7 +71,8 @@ void ProtoTensor::set_shape(const std::vector<int64_t> &shape) {
 }
 
 bool ProtoTensor::resize_data(size_t data_len) {
-  string *buffer = tensor_.mutable_data();
+  MSI_EXCEPTION_IF_NULL(tensor_);
+  string *buffer = tensor_->mutable_data();
   if (buffer == nullptr) {
     MSI_LOG_ERROR << "invalid buffer data";
     return false;
@@ -73,35 +81,52 @@ bool ProtoTensor::resize_data(size_t data_len) {
   return true;
 }
 
-size_t ProtoTensor::data_size() const { return tensor_.data().size(); }
+size_t ProtoTensor::data_size() const {
+  MSI_EXCEPTION_IF_NULL(tensor_);
+  return tensor_->data().size();
+}
 
 uint8_t *ProtoTensor::mutable_data() {
+  MSI_EXCEPTION_IF_NULL(tensor_);
   if (data_size() == 0) {
     return nullptr;
   }
-  return reinterpret_cast<uint8_t *>(tensor_.mutable_data()->data());
+  return reinterpret_cast<uint8_t *>(tensor_->mutable_data()->data());
 }
 
 const uint8_t *ProtoTensor::data() const {
+  MSI_EXCEPTION_IF_NULL(tensor_);
   if (data_size() == 0) {
     return nullptr;
   }
-  return reinterpret_cast<const uint8_t *>(tensor_.data().data());
+  return reinterpret_cast<const uint8_t *>(tensor_->data().data());
 }
 
-void ProtoTensor::clear_bytes_data() { return tensor_.mutable_bytes_val()->Clear(); }
+void ProtoTensor::clear_bytes_data() {
+  MSI_EXCEPTION_IF_NULL(tensor_);
+  return tensor_->mutable_bytes_val()->Clear();
+}
 
-void ProtoTensor::add_bytes_data(const uint8_t *data, size_t bytes_len) { tensor_.add_bytes_val(data, bytes_len); }
+void ProtoTensor::add_bytes_data(const uint8_t *data, size_t bytes_len) {
+  MSI_EXCEPTION_IF_NULL(tensor_);
+  tensor_->add_bytes_val(data, bytes_len);
+}
 
-size_t ProtoTensor::bytes_data_size() const { return tensor_.bytes_val().size(); }
+size_t ProtoTensor::bytes_data_size() const {
+  MSI_EXCEPTION_IF_NULL(tensor_);
+  return tensor_->bytes_val().size();
+}
 
-void ProtoTensor::get_bytes_data(size_t index, const uint8_t *&data, size_t &bytes_len) const {
-  if (index >= static_cast<size_t>(tensor_.bytes_val().size())) {
-    MSI_LOG_EXCEPTION << "visit invalid index " << index << " total size " << tensor_.bytes_val().size();
+void ProtoTensor::get_bytes_data(size_t index, const uint8_t **data, size_t *bytes_len) const {
+  MSI_EXCEPTION_IF_NULL(data);
+  MSI_EXCEPTION_IF_NULL(bytes_len);
+  MSI_EXCEPTION_IF_NULL(tensor_);
+  if (index >= static_cast<size_t>(tensor_->bytes_val().size())) {
+    MSI_LOG_EXCEPTION << "visit invalid index " << index << " total size " << tensor_->bytes_val().size();
   }
-  auto &bytes = tensor_.bytes_val(index);
-  data = reinterpret_cast<const uint8_t *>(bytes.data());
-  bytes_len = bytes.size();
+  auto &bytes = tensor_->bytes_val(index);
+  *data = reinterpret_cast<const uint8_t *>(bytes.data());
+  *bytes_len = bytes.size();
 }
 
 proto::DataType ProtoTensor::TransDataType2Proto(DataType data_type) {
@@ -141,13 +166,15 @@ DataType ProtoTensor::TransDataType2Inference(proto::DataType data_type) {
   }
 }
 
-void GrpcTensorHelper::GetRequestSpec(const proto::PredictRequest &request, RequestSpec &request_spec) {
-  request_spec.servable_name = request.servable_spec().name();
-  request_spec.method_name = request.servable_spec().method_name();
-  request_spec.version_number = request.servable_spec().version_number();
+void GrpcTensorHelper::GetRequestSpec(const proto::PredictRequest &request, RequestSpec *request_spec) {
+  MSI_EXCEPTION_IF_NULL(request_spec);
+  request_spec->servable_name = request.servable_spec().name();
+  request_spec->method_name = request.servable_spec().method_name();
+  request_spec->version_number = request.servable_spec().version_number();
 }
 
-void GrpcTensorHelper::GetWorkerSpec(const proto::RegisterRequest &request, std::vector<WorkerSpec> &worker_specs) {
+void GrpcTensorHelper::GetWorkerSpec(const proto::RegisterRequest &request, std::vector<WorkerSpec> *worker_specs) {
+  MSI_EXCEPTION_IF_NULL(worker_specs);
   for (auto &proto_spec : request.worker_spec()) {
     WorkerSpec worker_spec;
     worker_spec.worker_address = request.address();
@@ -161,54 +188,58 @@ void GrpcTensorHelper::GetWorkerSpec(const proto::RegisterRequest &request, std:
       }
       worker_spec.methods.push_back(method_info);
     }
-    worker_specs.push_back(worker_spec);
+    worker_specs->push_back(worker_spec);
   }
 }
 
-void GrpcTensorHelper::GetWorkerSpec(const proto::AddWorkerRequest &request, WorkerSpec &worker_spec) {
-  worker_spec.worker_address = request.address();
-  worker_spec.servable_name = request.worker_spec().name();
-  worker_spec.version_number = request.worker_spec().version_number();
+void GrpcTensorHelper::GetWorkerSpec(const proto::AddWorkerRequest &request, WorkerSpec *worker_spec) {
+  MSI_EXCEPTION_IF_NULL(worker_spec);
+  worker_spec->worker_address = request.address();
+  worker_spec->servable_name = request.worker_spec().name();
+  worker_spec->version_number = request.worker_spec().version_number();
   for (const auto &proto_method : request.worker_spec().methods()) {
     WorkerMethodInfo method_info;
     method_info.name = proto_method.name();
     for (auto &name : proto_method.input_names()) {
       method_info.input_names.push_back(name);
     }
-    worker_spec.methods.push_back(method_info);
+    worker_spec->methods.push_back(method_info);
   }
 }
 
-void GrpcTensorHelper::GetWorkerSpec(const proto::RemoveWorkerRequest &request, WorkerSpec &worker_spec) {
-  worker_spec.worker_address = request.address();
-  worker_spec.servable_name = request.worker_spec().name();
-  worker_spec.version_number = request.worker_spec().version_number();
+void GrpcTensorHelper::GetWorkerSpec(const proto::RemoveWorkerRequest &request, WorkerSpec *worker_spec) {
+  MSI_EXCEPTION_IF_NULL(worker_spec);
+  worker_spec->worker_address = request.address();
+  worker_spec->servable_name = request.worker_spec().name();
+  worker_spec->version_number = request.worker_spec().version_number();
   for (const auto &proto_method : request.worker_spec().methods()) {
     WorkerMethodInfo method_info;
     method_info.name = proto_method.name();
     for (auto &name : proto_method.input_names()) {
       method_info.input_names.push_back(name);
     }
-    worker_spec.methods.push_back(method_info);
+    worker_spec->methods.push_back(method_info);
   }
 }
 
-Status GrpcTensorHelper::CreateInstanceFromRequest(const proto::PredictRequest &request, RequestSpec &request_spec,
-                                                   vector<InstanceData> &results) {
-  results.clear();
+Status GrpcTensorHelper::CreateInstanceFromRequest(const proto::PredictRequest &request, RequestSpec *request_spec,
+                                                   vector<InstanceData> *results) {
+  MSI_EXCEPTION_IF_NULL(request_spec);
+  MSI_EXCEPTION_IF_NULL(results);
+  results->clear();
 
   Status status;
   GetRequestSpec(request, request_spec);
 
-  auto servable_name = request_spec.servable_name;
-  auto method_name = request_spec.method_name;
+  auto servable_name = request_spec->servable_name;
+  auto method_name = request_spec->method_name;
 
   ServableSignature servable_signature;
   if (!ServableStorage::Instance()->GetServableDef(servable_name, servable_signature)) {
     return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Servable " << servable_name << " is not declared";
   }
   MethodSignature method_signature;
-  if (!servable_signature.GetMethodDeclare(request_spec.method_name, method_signature)) {
+  if (!servable_signature.GetMethodDeclare(request_spec->method_name, &method_signature)) {
     return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
            << "Method " << method_name << " is not registed for servable " << servable_name;
   }
@@ -225,7 +256,8 @@ Status GrpcTensorHelper::CreateInstanceFromRequest(const proto::PredictRequest &
 }
 
 Status GrpcTensorHelper::CreateReplyFromInstances(const proto::PredictRequest &request, const vector<Instance> &outputs,
-                                                  proto::PredictReply &reply) {
+                                                  proto::PredictReply *reply) {
+  MSI_EXCEPTION_IF_NULL(reply);
   auto servable_name = request.servable_spec().name();
   auto method_name = request.servable_spec().method_name();
   Status status;
@@ -234,11 +266,11 @@ Status GrpcTensorHelper::CreateReplyFromInstances(const proto::PredictRequest &r
     return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Servable " << servable_name << " is not declared";
   }
   MethodSignature method_signature;
-  if (!servable_signature.GetMethodDeclare(method_name, method_signature)) {
+  if (!servable_signature.GetMethodDeclare(method_name, &method_signature)) {
     return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
            << "Method " << method_name << " is not registed for servable " << servable_name;
   }
-  *reply.mutable_servable_spec() = request.servable_spec();
+  *reply->mutable_servable_spec() = request.servable_spec();
 
   size_t err_cnt = 0;
   for (auto &output_intance : outputs) {
@@ -252,7 +284,7 @@ Status GrpcTensorHelper::CreateReplyFromInstances(const proto::PredictRequest &r
   }
   if (err_cnt > 0) {
     for (auto &output_intance : outputs) {
-      auto proto_err_msg = reply.add_error_msg();
+      auto proto_err_msg = reply->add_error_msg();
       proto_err_msg->set_error_code(output_intance.error_msg.StatusCode());
       if (output_intance.error_msg == INVALID_INPUTS) {
         proto_err_msg->set_error_msg(output_intance.error_msg.StatusMessage());
@@ -264,15 +296,16 @@ Status GrpcTensorHelper::CreateReplyFromInstances(const proto::PredictRequest &r
   // create instance reply, same with request
   if (request.instances_size() > 0) {
     for (auto &output_intance : outputs) {
-      auto proto_instance = reply.add_instances();
+      auto proto_instance = reply->add_instances();
       if (output_intance.data.empty()) {
         continue;
       }
       auto proto_items = proto_instance->mutable_items();
       for (size_t i = 0; i < method_signature.outputs.size(); i++) {
         auto &output_tensor = output_intance.data[i];
-        ProtoTensor proto_tensor((*proto_items)[method_signature.outputs[i]]);
-        proto_tensor.assgin(*output_tensor);
+        auto &proto_tensor = (*proto_items)[method_signature.outputs[i]];
+        ProtoTensor result_tensor(&proto_tensor);
+        result_tensor.assgin(*output_tensor);
       }
     }
   }
@@ -281,7 +314,8 @@ Status GrpcTensorHelper::CreateReplyFromInstances(const proto::PredictRequest &r
 
 Status GrpcTensorHelper::CreateInstanceFromRequestInstances(const proto::PredictRequest &request,
                                                             const std::vector<std::string> &input_names,
-                                                            std::vector<InstanceData> &results) {
+                                                            std::vector<InstanceData> *results) {
+  MSI_EXCEPTION_IF_NULL(results);
   auto servable_name = request.servable_spec().name();
   auto method_name = request.servable_spec().method_name();
   Status status;
@@ -300,17 +334,17 @@ Status GrpcTensorHelper::CreateInstanceFromRequestInstances(const proto::Predict
         MSI_LOG_ERROR << status2.StatusMessage();
         return Status(INVALID_INPUTS, status2.StatusMessage() + ", detail: " + status.StatusMessage());
       }
-      auto add_tensor = std::make_shared<ProtoTensor>(const_cast<proto::Tensor &>(it->second));
+      auto add_tensor = std::make_shared<ProtoTensor>(const_cast<proto::Tensor *>(&it->second));
       instance_data.push_back(add_tensor);
     }
-    results.push_back(instance_data);
+    results->push_back(instance_data);
   }
   return SUCCESS;
 }
 
 Status GrpcTensorHelper::CheckRequestTensor(const proto::Tensor &tensor, bool is_instance_tensor, uint32_t batch_size) {
   Status status;
-  ProtoTensor tensor_input(const_cast<proto::Tensor &>(tensor));
+  ProtoTensor tensor_input(const_cast<proto::Tensor *>(&tensor));
   auto shape = tensor_input.shape();
   if (tensor.dtype() == proto::MS_BYTES || tensor.dtype() == proto::MS_STRING) {
     if (is_instance_tensor) {

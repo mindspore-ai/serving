@@ -33,14 +33,15 @@ class ArgmaxPostprocess : public PostprocessBase {
     }
   }
 
-  Status Postprocess(const std::string &postprocess_name, const InstanceData &input, InstanceData &output) override {
+  Status Postprocess(const std::string &postprocess_name, const InstanceData &input, InstanceData *output) override {
+    MSI_EXCEPTION_IF_NULL(output);
     auto input_x = input[0];
     auto x_data = input_x->data();
     auto out_tensor = std::make_shared<Tensor>();
     out_tensor->set_data_type(serving::kMSI_Int64);
     out_tensor->resize_data(sizeof(int64_t));
     out_tensor->set_shape({});
-    output.push_back(out_tensor);
+    output->push_back(out_tensor);
     auto y_data = reinterpret_cast<int64_t *>(out_tensor->mutable_data());
     switch (input_x->data_type()) {
       case kMSI_Float32:

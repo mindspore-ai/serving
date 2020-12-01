@@ -96,7 +96,7 @@ struct ServableSignature {
   std::vector<MethodSignature> methods;
 
   Status Check() const;
-  bool GetMethodDeclare(const std::string &method_name, MethodSignature &method);
+  bool GetMethodDeclare(const std::string &method_name, MethodSignature *method);
 };
 
 class MS_API ServableStorage {

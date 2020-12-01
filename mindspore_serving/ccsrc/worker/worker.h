@@ -22,7 +22,7 @@
 #include <vector>
 #include <string>
 #include <utility>
-#include "worker/worker_execute.h"
+#include "worker/work_executor.h"
 #include "common/serving_common.h"
 #include "proto/ms_service.pb.h"
 #include "worker/notfiy_master/base_notify.h"
@@ -51,7 +51,7 @@ class AsyncResult {
 struct ServableWorkerContext {
   LoadServableSpec servable_spec;
   ServableSignature servable_signature;
-  std::shared_ptr<WorkerExecute> worker_service = nullptr;
+  std::shared_ptr<WorkExecutor> worker_service = nullptr;
   uint32_t model_id = 0;
   std::string model_file_name;
 };
@@ -62,8 +62,8 @@ class MS_API Worker {
   Worker();
   ~Worker();
 
-  Status Run(const proto::PredictRequest &request, proto::PredictReply &reply);
-  Status Run(const RequestSpec &request_spec, const std::vector<InstanceData> &inputs, std::vector<Instance> &outputs);
+  Status Run(const proto::PredictRequest &request, proto::PredictReply *reply);
+  Status Run(const RequestSpec &request_spec, const std::vector<InstanceData> &inputs, std::vector<Instance> *outputs);
   std::pair<Status, std::shared_ptr<AsyncResult>> RunAsync(const RequestSpec &request_spec,
                                                            const std::vector<InstanceData> &inputs);
 
@@ -77,11 +77,11 @@ class MS_API Worker {
   bool HasCleared();
   Status RegisterWorker();
   Status StartGrpcServer(const std::string &ip, uint32_t grpc_port);
-  Status LoadModel(LoadServableSpec &servable_spec, uint64_t version, ServableWorkerContext &work);
+  Status LoadModel(LoadServableSpec *servable_spec, uint64_t version, ServableWorkerContext *work);
   void Update();
   Status StartVersionController();
-  Status AddWorker(ServableWorkerContext &work);
-  Status RemoveWorker(ServableWorkerContext &work);
+  Status AddWorker(const ServableWorkerContext &work);
+  Status RemoveWorker(const ServableWorkerContext &work);
 
   PyTaskQueueGroup &GetPyTaskQueueGroup() { return py_task_queue_group_; }
   std::shared_ptr<TaskQueue> GetPyTaskQueuePreprocess() { return py_task_queue_group_.GetPreprocessTaskQueue(); }
@@ -108,9 +108,9 @@ class MS_API Worker {
   std::atomic_flag clear_flag_ = ATOMIC_FLAG_INIT;
   std::shared_ptr<BaseNotifyMaster> notify_master_ = nullptr;
 
-  Status LoadServableConfig(const LoadServableSpec &servable_spec, std::vector<uint64_t> &real_version_number,
-                            const std::string &version_strategy);
-  void GetVersions(const LoadServableSpec &servable_spec, std::vector<uint64_t> &real_versions);
+  Status LoadServableConfig(const LoadServableSpec &servable_spec, const std::string &version_strategy,
+                            std::vector<uint64_t> *real_version_number);
+  void GetVersions(const LoadServableSpec &servable_spec, std::vector<uint64_t> *real_versions);
 };
 
 }  // namespace serving

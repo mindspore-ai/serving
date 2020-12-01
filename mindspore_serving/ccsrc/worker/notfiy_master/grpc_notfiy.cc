@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 #include "worker/notfiy_master/grpc_notify.h"
-#include <memory>
 #include <thread>
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>

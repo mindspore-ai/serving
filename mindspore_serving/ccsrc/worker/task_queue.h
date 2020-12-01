@@ -59,13 +59,13 @@ class MS_API TaskQueue {
   Status SetWorkerCallback(uint64_t worker_id, TaskCallBack on_task_done);
 
   void PushTask(const std::string &task_name, uint64_t worker_id, const std::vector<Instance> &inputs);
-  void PopTask(TaskItem &task_item);
-  void TryPopTask(TaskItem &task_item);
+  void PopTask(TaskItem *task_item);
+  void TryPopTask(TaskItem *task_item);
   void PushTaskResult(uint64_t worker_id, const Instance &input, const ResultInstance &output);
   void PushTaskResult(uint64_t worker_id, const std::vector<Instance> &inputs,
                       const std::vector<ResultInstance> &outputs);
 
-  void TryPopPyTask(TaskItem &task_item);
+  void TryPopPyTask(TaskItem *task_item);
   Status PushTaskPyResult(const std::vector<ResultInstance> &outputs);
 
   void Stop();
@@ -91,9 +91,9 @@ class MS_API PyTaskQueueGroup {
 
   std::shared_ptr<TaskQueue> GetPreprocessTaskQueue();
   std::shared_ptr<TaskQueue> GetPostprocessTaskQueue();
-  void PopPyTask(TaskItem &task_item);
-  void TryPopPreprocessTask(TaskItem &task_item);
-  void TryPopPostprocessTask(TaskItem &task_item);
+  void PopPyTask(TaskItem *task_item);
+  void TryPopPreprocessTask(TaskItem *task_item);
+  void TryPopPostprocessTask(TaskItem *task_item);
   void Stop();
 
  private:
@@ -119,18 +119,18 @@ class TaskQueueThreadPool {
   std::vector<std::thread> pool_;
   std::shared_ptr<TaskQueue> task_queue_ = std::make_shared<TaskQueue>();
 
-  virtual Status HandleTask(TaskItem &task_item) = 0;
+  virtual Status HandleTask(const TaskItem &task_item) = 0;
   static void ThreadFunc(TaskQueueThreadPool *thread_pool);
 };
 
 class PreprocessThreadPool : public TaskQueueThreadPool {
  protected:
-  Status HandleTask(TaskItem &task_item) override;
+  Status HandleTask(const TaskItem &task_item) override;
 };
 
 class PostprocessThreadPool : public TaskQueueThreadPool {
  protected:
-  Status HandleTask(TaskItem &task_item) override;
+  Status HandleTask(const TaskItem &task_item) override;
 };
 
 }  // namespace mindspore::serving

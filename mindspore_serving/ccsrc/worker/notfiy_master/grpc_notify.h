@@ -16,6 +16,9 @@
 
 #ifndef MINDSPORE_SERVING_GRPC_NOTIFY_H
 #define MINDSPORE_SERVING_GRPC_NOTIFY_H
+#include <vector>
+#include <string>
+#include <memory>
 #include "worker/notfiy_master/base_notify.h"
 #include "proto/ms_master.pb.h"
 #include "proto/ms_master.grpc.pb.h"

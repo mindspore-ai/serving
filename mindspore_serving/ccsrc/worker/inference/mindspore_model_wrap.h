@@ -18,6 +18,8 @@
 #define MINDSPORE_SERVING_WROERK_ACL_INFERENCE_H
 
 #include <unordered_map>
+#include <string>
+#include <memory>
 #include "common/serving_common.h"
 #include "worker/inference/inference.h"
 #include "api/model.h"
@@ -48,14 +50,14 @@ class MindSporeModelWrap : public InferSession {
   Status FinalizeEnv() override;
 
   Status LoadModelFromFile(serving::DeviceType device_type, uint32_t device_id, const std::string &file_name,
-                           serving::ModelType model_type, uint32_t &model_id) override;
+                           serving::ModelType model_type, uint32_t *model_id) override;
 
   Status UnloadModel(uint32_t model_id) override;
 
   // override this method to avoid request/reply data copy
-  Status ExecuteModel(uint32_t model_id, const RequestBase &request, ReplyBase &reply) override;
+  Status ExecuteModel(uint32_t model_id, const RequestBase &request, ReplyBase *reply) override;
   Status ExecuteModel(uint32_t model_id, const std::vector<TensorBasePtr> &request,
-                      std::vector<TensorBasePtr> &reply) override;
+                      std::vector<TensorBasePtr> *reply) override;
 
   std::vector<serving::TensorInfo> GetInputInfos(uint32_t model_id) const override;
 
@@ -76,7 +78,7 @@ class MindSporeModelWrap : public InferSession {
     std::function<void(const api::Buffer, DataType data_type, const std::vector<int64_t> &shape)>;
   Status ExecuteModelCommon(uint32_t model_id, size_t request_size, const FuncMakeInBuffer &in_func,
                             const FuncMakeOutTensor &out_func);
-  Status GetModelInfos(ApiModelInfo &model_info);
+  Status GetModelInfos(ApiModelInfo *model_info);
 };
 
 class ApiBufferTensorWrap : public TensorBase {
@@ -104,7 +106,7 @@ class ApiBufferTensorWrap : public TensorBase {
     MSI_LOG_EXCEPTION << "Not support for api::Buffer Tensor";
   }
   size_t bytes_data_size() const override { MSI_LOG_EXCEPTION << "Not support for api::Buffer Tensor"; }
-  void get_bytes_data(size_t index, const uint8_t *&data, size_t &bytes_len) const override {
+  void get_bytes_data(size_t index, const uint8_t **data, size_t *bytes_len) const override {
     MSI_LOG_EXCEPTION << "Not support for api::Buffer Tensor";
   }
 

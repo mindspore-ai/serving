@@ -16,6 +16,7 @@
 
 #ifndef MINDSPORE_SERVING_LOCAL_NOTIFY_H
 #define MINDSPORE_SERVING_LOCAL_NOTIFY_H
+#include <vector>
 #include "worker/notfiy_master/base_notify.h"
 
 namespace mindspore {

@@ -1,6 +1,21 @@
-#include "tensor_base.h"
+/**
+ * Copyright 2020 Huawei Technologies Co., Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#include "common/tensor_base.h"
 #include <functional>
-#include "log.h"
+#include "common/log.h"
 #include "securec.h"
 
 #define TENSOR_MAX_ELEMENT_COUNT UINT32_MAX
@@ -61,7 +76,7 @@ void TensorBase::assgin(const TensorBase &other) {
     for (size_t i = 0; i < other.bytes_data_size(); i++) {
       const uint8_t *data;
       size_t data_len;
-      other.get_bytes_data(i, data, data_len);
+      other.get_bytes_data(i, &data, &data_len);
       add_bytes_data(data, data_len);
     }
   } else {
@@ -88,7 +103,7 @@ Status TensorBase::concat(const std::vector<TensorBasePtr> &inputs) {
     }
     const uint8_t *data;
     size_t data_len;
-    input0->get_bytes_data(0, data, data_len);
+    input0->get_bytes_data(0, &data, &data_len);
     add_bytes_data(data, data_len);
   } else {
     resize_data(input0->data_size() * inputs.size());
@@ -112,7 +127,7 @@ Status TensorBase::concat(const std::vector<TensorBasePtr> &inputs) {
       }
       const uint8_t *data = nullptr;
       size_t data_len = 0;
-      other->get_bytes_data(0, data, data_len);
+      other->get_bytes_data(0, &data, &data_len);
       add_bytes_data(data, data_len);
     } else {
       if (input0->data_size() != other->data_size()) {

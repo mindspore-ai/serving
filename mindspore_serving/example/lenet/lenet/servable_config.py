@@ -48,8 +48,8 @@ def lenet_preprocess(instances):
 # this example has one input and one output
 def lenet_postprocess(instances):
     for instance in instances:
-        input = instance[0]
-        yield (np.argmax(input),)
+        result = instance[0]
+        yield (np.argmax(result),)
 
 
 register.declare_servable(servable_file="checkpoint_lenet_2-9_1875.om", model_format="OM")

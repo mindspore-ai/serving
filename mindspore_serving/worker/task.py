@@ -64,7 +64,7 @@ class PyTask:
         self.index += count
 
     def push_result_batch(self):
-        if len(self.result_batch) == 0:
+        if not self.result_batch:
             return
 
         get_result_time_end = time.time()
@@ -95,7 +95,7 @@ class PyTask:
                 get_result_time_end = time.time()
                 last_index = self.index
 
-                for i in range(self.index, min(self.index + self.switch_batch, self.instances_size)):
+                for _ in range(self.index, min(self.index + self.switch_batch, self.instances_size)):
                     output = next(self.temp_result)
                     output = self._handle_result(output)
                     self.result_batch.append(output)
@@ -128,9 +128,9 @@ class PyTask:
 
         self.context_list = self.task.context_list
         # check input
-        for input in instance_list:
-            if not isinstance(input, tuple) or len(input) != self.task_info["inputs_count"]:
-                raise RuntimeError("length of given inputs " + str(len(input))
+        for item in instance_list:
+            if not isinstance(item, tuple) or len(item) != self.task_info["inputs_count"]:
+                raise RuntimeError("length of given inputs " + str(len(item))
                                    + " not match {self.task_name} required " + str(self.task_info["inputs_count"]))
         return self._handle_task_continue()
 

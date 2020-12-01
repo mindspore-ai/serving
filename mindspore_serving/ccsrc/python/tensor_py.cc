@@ -185,8 +185,8 @@ py::array PyTensor::AsNumpy(TensorBasePtr tensor, bool copy) {
     }
     const uint8_t *data = nullptr;
     size_t bytes_len = 0;
-    tensor->get_bytes_data(0, data, bytes_len);
-    std::vector<ssize_t> shape{static_cast<long>(bytes_len)};
+    tensor->get_bytes_data(0, &data, &bytes_len);
+    std::vector<ssize_t> shape{static_cast<ssize_t>(bytes_len)};
     std::vector<ssize_t> strides = GetStrides(shape, sizeof(uint8_t));
     py::buffer_info info(reinterpret_cast<void *>(const_cast<uint8_t *>(data)), sizeof(uint8_t),
                          py::format_descriptor<uint8_t>::format(), 1, shape, strides);

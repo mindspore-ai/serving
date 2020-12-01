@@ -23,6 +23,7 @@
 #include <sstream>
 #include <memory>
 #include <string>
+
 namespace mindspore::serving {
 #define MS_API __attribute__((visibility("default")))
 

@@ -71,7 +71,7 @@ class NumpyTensor : public TensorBase {
   }
 
   size_t bytes_data_size() const override { return 0; }
-  void get_bytes_data(size_t index, const uint8_t *&data, size_t &bytes_len) const override {
+  void get_bytes_data(size_t index, const uint8_t **data, size_t *bytes_len) const override {
     MSI_LOG_EXCEPTION << "NumpyTensor is readyonly, cannot invoke get_bytes_data";
   }
 

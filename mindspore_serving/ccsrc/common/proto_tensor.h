@@ -32,7 +32,7 @@ namespace mindspore::serving {
 class MS_API ProtoTensor : public TensorBase {
  public:
   // the other's lifetime must longer than this object
-  explicit ProtoTensor(proto::Tensor &other);
+  explicit ProtoTensor(proto::Tensor *other);
   ~ProtoTensor();
 
   DataType data_type() const override;
@@ -47,7 +47,7 @@ class MS_API ProtoTensor : public TensorBase {
   void clear_bytes_data() override;
   void add_bytes_data(const uint8_t *data, size_t bytes_len) override;
   size_t bytes_data_size() const override;
-  void get_bytes_data(size_t index, const uint8_t *&data, size_t &bytes_len) const override;
+  void get_bytes_data(size_t index, const uint8_t **data, size_t *bytes_len) const override;
 
   static proto::DataType TransDataType2Proto(DataType data_type);
   static DataType TransDataType2Inference(proto::DataType data_type);
@@ -55,24 +55,24 @@ class MS_API ProtoTensor : public TensorBase {
  private:
   // if tensor_ is reference from other ms_serving::Tensor, the other's lifetime must
   // longer than this object
-  proto::Tensor &tensor_;
+  proto::Tensor *tensor_;
 };
 
 class MS_API GrpcTensorHelper {
  public:
-  static void GetRequestSpec(const proto::PredictRequest &request, RequestSpec &request_spec);
-  static void GetWorkerSpec(const proto::RegisterRequest &request, std::vector<WorkerSpec> &worker_specs);
-  static void GetWorkerSpec(const proto::AddWorkerRequest &request, WorkerSpec &worker_spec);
-  static void GetWorkerSpec(const proto::RemoveWorkerRequest &request, WorkerSpec &worker_spec);
-  static Status CreateInstanceFromRequest(const proto::PredictRequest &request, RequestSpec &request_spec,
-                                          std::vector<InstanceData> &results);
+  static void GetRequestSpec(const proto::PredictRequest &request, RequestSpec *request_spec);
+  static void GetWorkerSpec(const proto::RegisterRequest &request, std::vector<WorkerSpec> *worker_specs);
+  static void GetWorkerSpec(const proto::AddWorkerRequest &request, WorkerSpec *worker_spec);
+  static void GetWorkerSpec(const proto::RemoveWorkerRequest &request, WorkerSpec *worker_spec);
+  static Status CreateInstanceFromRequest(const proto::PredictRequest &request, RequestSpec *request_spec,
+                                          std::vector<InstanceData> *results);
   static Status CreateReplyFromInstances(const proto::PredictRequest &request, const std::vector<Instance> &inputs,
-                                         proto::PredictReply &reply);
+                                         proto::PredictReply *reply);
 
  private:
   static Status CreateInstanceFromRequestInstances(const proto::PredictRequest &request,
                                                    const std::vector<std::string> &input_names,
-                                                   std::vector<InstanceData> &results);
+                                                   std::vector<InstanceData> *results);
   static Status CheckRequestTensor(const proto::Tensor &tensor, bool is_instance_tensor, uint32_t batch_size);
 };
 

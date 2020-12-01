@@ -13,8 +13,8 @@
 # limitations under the License.
 # ============================================================================
 
-from mindspore_serving import worker
 import os
+from mindspore_serving import worker
 
 
 def start():

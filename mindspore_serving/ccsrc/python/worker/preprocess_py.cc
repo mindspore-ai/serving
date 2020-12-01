@@ -26,14 +26,14 @@ namespace mindspore::serving {
 size_t PyPreprocess::GetInputsCount(const std::string &preprocess_name) const {
   size_t inputs_count;
   size_t outputs_count;
-  (void)PyPreprocessStorage::Instance()->GetPyPreprocessInfo(preprocess_name, inputs_count, outputs_count);
+  (void)PyPreprocessStorage::Instance()->GetPyPreprocessInfo(preprocess_name, &inputs_count, &outputs_count);
   return inputs_count;
 }
 
 size_t PyPreprocess::GetOutputsCount(const std::string &preprocess_name) const {
   size_t inputs_count;
   size_t outputs_count;
-  (void)PyPreprocessStorage::Instance()->GetPyPreprocessInfo(preprocess_name, inputs_count, outputs_count);
+  (void)PyPreprocessStorage::Instance()->GetPyPreprocessInfo(preprocess_name, &inputs_count, &outputs_count);
   return outputs_count;
 }
 
@@ -51,14 +51,16 @@ void PyPreprocessStorage::Register(const std::string &preprocess_name, size_t in
   PreprocessStorage::Instance().Register(preprocess_name, py_preprocess_);
 }
 
-bool PyPreprocessStorage::GetPyPreprocessInfo(const std::string &preprocess_name, size_t &inputs_count,
-                                              size_t &outputs_count) {
+bool PyPreprocessStorage::GetPyPreprocessInfo(const std::string &preprocess_name, size_t *inputs_count,
+                                              size_t *outputs_count) {
+  MSI_EXCEPTION_IF_NULL(inputs_count);
+  MSI_EXCEPTION_IF_NULL(outputs_count);
   auto it = preprocess_infos_.find(preprocess_name);
   if (it == preprocess_infos_.end()) {
     return false;
   }
-  inputs_count = it->second.first;
-  outputs_count = it->second.second;
+  *inputs_count = it->second.first;
+  *outputs_count = it->second.second;
   return true;
 }
 

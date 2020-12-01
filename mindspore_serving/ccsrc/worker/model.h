@@ -24,8 +24,8 @@
 
 #include "common/serving_common.h"
 #include "common/instance.h"
-#include "mindspore_serving/ccsrc/worker/inference/inference.h"
 #include "common/servable.h"
+#include "worker/inference/inference.h"
 
 namespace mindspore::serving {
 
@@ -34,7 +34,7 @@ class ServableBase {
   ServableBase() = default;
   virtual ~ServableBase() = default;
 
-  virtual Status Predict(const std::vector<TensorBasePtr> &input, std::vector<TensorBasePtr> &output) = 0;
+  virtual Status Predict(const std::vector<TensorBasePtr> &input, std::vector<TensorBasePtr> *output) = 0;
 
   virtual std::vector<TensorInfo> GetInputInfos() const = 0;
   virtual std::vector<TensorInfo> GetOutputInfos() const = 0;
@@ -50,7 +50,7 @@ class AscendModelServable : public ServableBase {
       : session_(session), model_id_(model_id) {}
   ~AscendModelServable() = default;
 
-  Status Predict(const std::vector<TensorBasePtr> &input, std::vector<TensorBasePtr> &output) override;
+  Status Predict(const std::vector<TensorBasePtr> &input, std::vector<TensorBasePtr> *output) override;
 
   std::vector<TensorInfo> GetInputInfos() const override;
   std::vector<TensorInfo> GetOutputInfos() const override;

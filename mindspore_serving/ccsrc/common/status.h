@@ -21,7 +21,7 @@
 #include <string>
 #include <sstream>
 
-#include "log.h"
+#include "common/log.h"
 
 namespace mindspore::serving {
 

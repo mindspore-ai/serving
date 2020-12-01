@@ -98,10 +98,6 @@ build_dependencies()
 required_package = [
     'numpy >= 1.17.0',
     'protobuf >= 3.8.0',
-    'scipy == 1.3.3',
-    'easydict >= 1.9',
-    'sympy >= 1.4',
-    'decorator >= 4.4.0',
     'packaging >= 20.0'
 ]
 

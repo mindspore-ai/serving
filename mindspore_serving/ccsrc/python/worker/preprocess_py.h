@@ -34,7 +34,7 @@ namespace mindspore::serving {
 
 class PyPreprocess : public PreprocessBase {
  public:
-  Status Preprocess(const std::string &preprocess_name, const InstanceData &input, InstanceData &output) override {
+  Status Preprocess(const std::string &preprocess_name, const InstanceData &input, InstanceData *output) override {
     MSI_LOG_EXCEPTION << "PyPreprocess::Preprocess not expected to be invoked, preprocess name " << preprocess_name;
   }
   size_t GetInputsCount(const std::string &preprocess_name) const override;
@@ -49,7 +49,7 @@ class MS_API PyPreprocessStorage {
 
   void Register(const std::string &preprocess_name, size_t inputs_count, size_t outputs_count);
 
-  bool GetPyPreprocessInfo(const std::string &preprocess_name, size_t &inputs_count, size_t &outputs_count);
+  bool GetPyPreprocessInfo(const std::string &preprocess_name, size_t *inputs_count, size_t *outputs_count);
 
   std::vector<size_t> GetPyCppPreprocessInfo(const std::string &preprocess_name) const;
 

@@ -16,6 +16,7 @@
 
 #ifndef MINDSPORE_SERVING_BASE_NOTIFY_H
 #define MINDSPORE_SERVING_BASE_NOTIFY_H
+#include <vector>
 #include "common/serving_common.h"
 #include "common/servable.h"
 

@@ -203,11 +203,12 @@ Status ServableSignature::Check() const {
   return SUCCESS;
 }
 
-bool ServableSignature::GetMethodDeclare(const std::string &method_name, MethodSignature &method) {
+bool ServableSignature::GetMethodDeclare(const std::string &method_name, MethodSignature *method) {
+  MSI_EXCEPTION_IF_NULL(method);
   auto item =
     find_if(methods.begin(), methods.end(), [&](const MethodSignature &v) { return v.method_name == method_name; });
   if (item != methods.end()) {
-    method = *item;
+    *method = *item;
     return true;
   }
   return false;
