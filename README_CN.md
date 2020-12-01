@@ -4,9 +4,9 @@
 
 - [概述](#概述)
 - [安装部署](#安装部署)
-    - [安装MindSpore Serving](#安装MindSpore Serving)
+    - [安装MindSpore Serving](#安装MindSpore-Serving)
     - [配置环境变量](#配置环境变量)
-    - [部署MindSpore Serving](#部署MindSpore Serving)
+    - [部署MindSpore Serving](#部署MindSpore-Serving)
 - [快速入门](#快速入门)
     - [导出模型](#导出模型)
     - [部署Serving推理服务](#部署serving推理服务)
