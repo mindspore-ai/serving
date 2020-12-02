@@ -42,13 +42,13 @@ class MS_API Dispatcher {
  public:
   Dispatcher();
   ~Dispatcher();
-  Status Dispatch(const proto::PredictRequest &request, proto::PredictReply &reply);
+  Status Dispatch(const proto::PredictRequest &request, proto::PredictReply *reply);
 
-  Status RegisterServable(const proto::RegisterRequest &request, proto::RegisterReply &reply);
-  Status UnregisterServable(const proto::ExitRequest &request, proto::ExitReply &reply);
+  Status RegisterServable(const proto::RegisterRequest &request, proto::RegisterReply *reply);
+  Status UnregisterServable(const proto::ExitRequest &request, proto::ExitReply *reply);
 
-  Status AddServable(const proto::AddWorkerRequest &request, proto::AddWorkerReply &reply);
-  Status RemoveServable(const proto::RemoveWorkerRequest &request, proto::RemoveWorkerReply &reply);
+  Status AddServable(const proto::AddWorkerRequest &request, proto::AddWorkerReply *reply);
+  Status RemoveServable(const proto::RemoveWorkerRequest &request, proto::RemoveWorkerReply *reply);
 
   void Clear();
 

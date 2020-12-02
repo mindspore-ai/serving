@@ -222,12 +222,13 @@ void ServableStorage::Register(const ServableSignature &def) {
   servable_signatures_map_[model_name] = def;
 }
 
-bool ServableStorage::GetServableDef(const std::string &model_name, ServableSignature &def) const {
+bool ServableStorage::GetServableDef(const std::string &model_name, ServableSignature *def) const {
+  MSI_EXCEPTION_IF_NULL(def);
   auto it = servable_signatures_map_.find(model_name);
   if (it == servable_signatures_map_.end()) {
     return false;
   }
-  def = it->second;
+  *def = it->second;
   return true;
 }
 

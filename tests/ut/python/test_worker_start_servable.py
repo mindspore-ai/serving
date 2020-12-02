@@ -1,5 +1,5 @@
-from mindspore_serving import worker
 import os
+from mindspore_serving import worker
 
 
 def export_add_net():

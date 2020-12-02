@@ -15,6 +15,7 @@
  */
 
 #include "master/grpc/grpc_process.h"
+#include <string>
 #include "master/dispacther.h"
 
 namespace mindspore {
@@ -37,10 +38,12 @@ std::string GetProtorWorkerSpecRepr(const proto::WorkerSpec &worker_spec) {
 
 grpc::Status MSServiceImpl::Predict(grpc::ServerContext *context, const proto::PredictRequest *request,
                                     proto::PredictReply *reply) {
+  MSI_EXCEPTION_IF_NULL(request);
+  MSI_EXCEPTION_IF_NULL(reply);
   Status status(FAILED);
   try {
     MSI_TIME_STAMP_START(Predict)
-    status = dispatcher_->Dispatch(*request, *reply);
+    status = dispatcher_->Dispatch(*request, reply);
     MSI_TIME_STAMP_END(Predict)
   } catch (const std::bad_alloc &ex) {
     MSI_LOG(ERROR) << "Serving Error: malloc memory failed";
@@ -73,6 +76,8 @@ grpc::Status MSServiceImpl::Predict(grpc::ServerContext *context, const proto::P
 
 grpc::Status MSMasterImpl::Register(grpc::ServerContext *context, const proto::RegisterRequest *request,
                                     proto::RegisterReply *reply) {
+  MSI_EXCEPTION_IF_NULL(request);
+  MSI_EXCEPTION_IF_NULL(reply);
   auto worker_sig = [request]() {
     std::stringstream str;
     str << "worker address: " << request->address() << ", servables: [";
@@ -86,7 +91,7 @@ grpc::Status MSMasterImpl::Register(grpc::ServerContext *context, const proto::R
     return str.str();
   };
   Status status(FAILED);
-  status = dispatcher_->RegisterServable(*request, *reply);
+  status = dispatcher_->RegisterServable(*request, reply);
   if (status != SUCCESS) {
     MSI_LOG_ERROR << "Register servable failed, " << worker_sig();
     return grpc::Status::OK;
@@ -97,6 +102,8 @@ grpc::Status MSMasterImpl::Register(grpc::ServerContext *context, const proto::R
 
 grpc::Status MSMasterImpl::AddWorker(grpc::ServerContext *context, const proto::AddWorkerRequest *request,
                                      proto::AddWorkerReply *reply) {
+  MSI_EXCEPTION_IF_NULL(request);
+  MSI_EXCEPTION_IF_NULL(reply);
   auto worker_sig = [request]() {
     std::stringstream str;
     str << "worker address: " << request->address()
@@ -104,7 +111,7 @@ grpc::Status MSMasterImpl::AddWorker(grpc::ServerContext *context, const proto::
     return str.str();
   };
   Status status(FAILED);
-  status = dispatcher_->AddServable(*request, *reply);
+  status = dispatcher_->AddServable(*request, reply);
   if (status != SUCCESS) {
     MSI_LOG_ERROR << "Add servable failed, " << worker_sig();
     return grpc::Status::OK;
@@ -115,6 +122,8 @@ grpc::Status MSMasterImpl::AddWorker(grpc::ServerContext *context, const proto::
 
 grpc::Status MSMasterImpl::RemoveWorker(grpc::ServerContext *context, const proto::RemoveWorkerRequest *request,
                                         proto::RemoveWorkerReply *reply) {
+  MSI_EXCEPTION_IF_NULL(request);
+  MSI_EXCEPTION_IF_NULL(reply);
   auto worker_sig = [request]() {
     std::stringstream str;
     str << "worker address: " << request->address()
@@ -122,7 +131,7 @@ grpc::Status MSMasterImpl::RemoveWorker(grpc::ServerContext *context, const prot
     return str.str();
   };
   Status status(FAILED);
-  status = dispatcher_->RemoveServable(*request, *reply);
+  status = dispatcher_->RemoveServable(*request, reply);
   if (status != SUCCESS) {
     MSI_LOG_ERROR << "Add servable failed, " << worker_sig();
     return grpc::Status::OK;
@@ -133,6 +142,8 @@ grpc::Status MSMasterImpl::RemoveWorker(grpc::ServerContext *context, const prot
 
 grpc::Status MSMasterImpl::Exit(grpc::ServerContext *context, const proto::ExitRequest *request,
                                 proto::ExitReply *reply) {
+  MSI_EXCEPTION_IF_NULL(request);
+  MSI_EXCEPTION_IF_NULL(reply);
   auto worker_sig = [request]() {
     std::stringstream str;
     str << "worker address: " << request->address();
@@ -141,7 +152,7 @@ grpc::Status MSMasterImpl::Exit(grpc::ServerContext *context, const proto::ExitR
 
   MSI_LOG(INFO) << "Worker Exit, " << worker_sig();
   Status status(FAILED);
-  status = dispatcher_->UnregisterServable(*request, *reply);
+  status = dispatcher_->UnregisterServable(*request, reply);
   if (status != SUCCESS) {
     MSI_LOG_ERROR << "UnRegister servable failed, " << worker_sig();
     return grpc::Status::OK;

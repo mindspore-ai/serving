@@ -20,6 +20,7 @@
 #include <unordered_map>
 #include <string>
 #include <memory>
+#include <vector>
 #include "common/serving_common.h"
 #include "worker/inference/inference.h"
 #include "api/model.h"

@@ -104,7 +104,7 @@ class MS_API ServableStorage {
   void Register(const ServableSignature &def);
   void RegisterMethod(const MethodSignature &method);
 
-  bool GetServableDef(const std::string &model_name, ServableSignature &def) const;
+  bool GetServableDef(const std::string &model_name, ServableSignature *def) const;
 
   void DeclareServable(const ServableMeta &servable);
 

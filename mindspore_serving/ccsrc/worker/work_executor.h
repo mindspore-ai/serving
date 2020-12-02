@@ -85,8 +85,8 @@ class WorkExecutor {
   void PredictHandle(const std::vector<Instance> &inputs);
   Status PrePredict(const std::vector<Instance> &inputs);
   Status PostPredict(const std::vector<Instance> &inputs, const std::vector<TensorBasePtr> &predict_result,
-                     std::vector<Instance> &outputs);
-  Status Predict(const std::vector<Instance> &inputs, std::vector<Instance> &outputs);
+                     std::vector<Instance> *outputs);
+  Status Predict(const std::vector<Instance> &inputs, std::vector<Instance> *outputs);
   Status CheckPredictInput(const Instance &instance);
 
   Instance CreateInputInstance(const Instance &instance, PredictPhaseTag phase);

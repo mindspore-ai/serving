@@ -15,9 +15,9 @@
  */
 
 #include "python/worker/worker_py.h"
-#include <unordered_map>
 #include <vector>
 #include <string>
+#include <memory>
 #include "common/exit_handle.h"
 #include "worker/notfiy_master/grpc_notify.h"
 #include "worker/notfiy_master/local_notify.h"

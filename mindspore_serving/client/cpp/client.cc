@@ -224,7 +224,10 @@ Status MutableTensor::SetData(const void *data, size_t data_len, const std::vect
   return SUCCESS;
 }
 
-Status Tensor::GetBytesData(std::vector<uint8_t> &val) const {
+Status Tensor::GetBytesData(std::vector<uint8_t> *val) const {
+  if (val == nullptr) {
+    return Status(SYSTEM_ERROR) << "input val cannot be nullptr";
+  }
   if (proto_tensor_ == nullptr) {
     return Status(SYSTEM_ERROR) << "proto tensor cannot be nullptr";
   }
@@ -235,12 +238,15 @@ Status Tensor::GetBytesData(std::vector<uint8_t> &val) const {
   if (bytes_data.size() != 1) {
     return Status(INVALID_INPUTS) << "Bytes value type size can only be 1";
   }
-  val.resize(bytes_data[0].size());
-  memcpy(val.data(), val.data(), bytes_data[0].size());
+  val->resize(bytes_data[0].size());
+  memcpy(val->data(), val->data(), bytes_data[0].size());
   return SUCCESS;
 }
 
-Status Tensor::GetStrData(std::string &val) const {
+Status Tensor::GetStrData(std::string *val) const {
+  if (val == nullptr) {
+    return Status(SYSTEM_ERROR) << "input val cannot be nullptr";
+  }
   if (proto_tensor_ == nullptr) {
     return Status(SYSTEM_ERROR) << "proto tensor cannot be nullptr";
   }
@@ -251,13 +257,16 @@ Status Tensor::GetStrData(std::string &val) const {
   if (bytes_data.size() != 1) {
     return Status(INVALID_INPUTS) << "Bytes value type size can only be 1";
   }
-  val.resize(bytes_data[0].size());
-  memcpy(val.data(), val.data(), bytes_data[0].size());
+  val->resize(bytes_data[0].size());
+  memcpy(val->data(), val->data(), bytes_data[0].size());
   return SUCCESS;
 }
 
 template <proto::DataType proto_dtype, class DT>
-Status GetInputImp(const proto::Tensor *proto_tensor, std::vector<DT> &val) {
+Status GetInputImp(const proto::Tensor *proto_tensor, std::vector<DT> *val) {
+  if (val == nullptr) {
+    return Status(SYSTEM_ERROR) << "input val cannot be nullptr";
+  }
   if (proto_tensor == nullptr) {
     return Status(SYSTEM_ERROR) << "proto tensor cannot be nullptr";
   }
@@ -266,42 +275,45 @@ Status GetInputImp(const proto::Tensor *proto_tensor, std::vector<DT> &val) {
   }
   auto data = proto_tensor->data().data();
   auto data_len = proto_tensor->data().length();
-  val.resize(data_len / sizeof(DT));
-  memcpy(val.data(), data, data_len);
+  val->resize(data_len / sizeof(DT));
+  memcpy(val->data(), data, data_len);
   return SUCCESS;
 }
 
-Status Tensor::GetData(std::vector<uint8_t> &val) const { return GetInputImp<proto::MS_UINT8>(proto_tensor_, val); }
+Status Tensor::GetData(std::vector<uint8_t> *val) const { return GetInputImp<proto::MS_UINT8>(proto_tensor_, val); }
 
-Status Tensor::GetData(std::vector<uint16_t> &val) const { return GetInputImp<proto::MS_UINT16>(proto_tensor_, val); }
+Status Tensor::GetData(std::vector<uint16_t> *val) const { return GetInputImp<proto::MS_UINT16>(proto_tensor_, val); }
 
-Status Tensor::GetData(std::vector<uint32_t> &val) const { return GetInputImp<proto::MS_UINT32>(proto_tensor_, val); }
+Status Tensor::GetData(std::vector<uint32_t> *val) const { return GetInputImp<proto::MS_UINT32>(proto_tensor_, val); }
 
-Status Tensor::GetData(std::vector<uint64_t> &val) const { return GetInputImp<proto::MS_UINT64>(proto_tensor_, val); }
+Status Tensor::GetData(std::vector<uint64_t> *val) const { return GetInputImp<proto::MS_UINT64>(proto_tensor_, val); }
 
-Status Tensor::GetData(std::vector<int8_t> &val) const { return GetInputImp<proto::MS_INT8>(proto_tensor_, val); }
+Status Tensor::GetData(std::vector<int8_t> *val) const { return GetInputImp<proto::MS_INT8>(proto_tensor_, val); }
 
-Status Tensor::GetData(std::vector<int16_t> &val) const { return GetInputImp<proto::MS_INT16>(proto_tensor_, val); }
+Status Tensor::GetData(std::vector<int16_t> *val) const { return GetInputImp<proto::MS_INT16>(proto_tensor_, val); }
 
-Status Tensor::GetData(std::vector<int32_t> &val) const { return GetInputImp<proto::MS_INT32>(proto_tensor_, val); }
+Status Tensor::GetData(std::vector<int32_t> *val) const { return GetInputImp<proto::MS_INT32>(proto_tensor_, val); }
 
-Status Tensor::GetData(std::vector<int64_t> &val) const { return GetInputImp<proto::MS_INT64>(proto_tensor_, val); }
+Status Tensor::GetData(std::vector<int64_t> *val) const { return GetInputImp<proto::MS_INT64>(proto_tensor_, val); }
 
-Status Tensor::GetData(std::vector<bool> &val) const {
+Status Tensor::GetData(std::vector<bool> *val) const {
+  if (val == nullptr) {
+    return Status(SYSTEM_ERROR) << "input val cannot be nullptr";
+  }
   std::vector<uint8_t> val_uint8;
-  Status status = GetInputImp<proto::MS_BOOL>(proto_tensor_, val_uint8);
+  Status status = GetInputImp<proto::MS_BOOL>(proto_tensor_, &val_uint8);
   if (!status.IsSuccess()) {
     return status;
   }
-  std::transform(val_uint8.begin(), val_uint8.end(), std::back_inserter(val), [](uint8_t item) { return item != 0; });
+  std::transform(val_uint8.begin(), val_uint8.end(), std::back_inserter(*val), [](uint8_t item) { return item != 0; });
   return SUCCESS;
 }
 
-Status Tensor::GetData(std::vector<float> &val) const { return GetInputImp<proto::MS_FLOAT32>(proto_tensor_, val); }
+Status Tensor::GetData(std::vector<float> *val) const { return GetInputImp<proto::MS_FLOAT32>(proto_tensor_, val); }
 
-Status Tensor::GetData(std::vector<double> &val) const { return GetInputImp<proto::MS_FLOAT64>(proto_tensor_, val); }
+Status Tensor::GetData(std::vector<double> *val) const { return GetInputImp<proto::MS_FLOAT64>(proto_tensor_, val); }
 
-Status Tensor::GetFp16Data(std::vector<uint16_t> &val) const {
+Status Tensor::GetFp16Data(std::vector<uint16_t> *val) const {
   return GetInputImp<proto::MS_FLOAT16>(proto_tensor_, val);
 }
 
@@ -350,12 +362,18 @@ Tensor Instance::Get(const std::string &item_name) const {
   return Tensor(message_owner_, &it->second);
 }
 
-bool Instance::HasErrorMsg(int64_t &error_code, std::string &error_msg) const {
+bool Instance::HasErrorMsg(int64_t *error_code, std::string *error_msg) const {
+  if (error_code == nullptr) {
+    return false;
+  }
+  if (error_msg == nullptr) {
+    return false;
+  }
   if (error_msg_ == nullptr) {
     return false;
   }
-  error_code = error_msg_->error_code();
-  error_msg = error_msg_->error_msg();
+  *error_code = error_msg_->error_code();
+  *error_msg = error_msg_->error_msg();
   return true;
 }
 
@@ -428,9 +446,12 @@ Client::Client(const std::string &server_ip, uint64_t server_port, const std::st
       version_number_(version_number),
       impl_(std::make_shared<ClientImpl>(server_ip, server_port)) {}
 
-Status Client::SendRequest(const InstancesRequest &request, InstancesReply &reply) {
+Status Client::SendRequest(const InstancesRequest &request, InstancesReply *reply) {
+  if (reply == nullptr) {
+    return Status(SYSTEM_ERROR) << "input reply cannot be nullptr";
+  }
   proto::PredictRequest *proto_request = request.request_.get();
-  proto::PredictReply *proto_reply = reply.reply_.get();
+  proto::PredictReply *proto_reply = reply->reply_.get();
   auto servable_spec = proto_request->mutable_servable_spec();
   servable_spec->set_name(servable_name_);
   servable_spec->set_method_name(method_name_);

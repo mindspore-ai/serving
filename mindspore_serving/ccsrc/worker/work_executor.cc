@@ -305,7 +305,7 @@ void WorkExecutor::PredictHandle(const std::vector<Instance> &inputs) {
   Status status;
   try {
     std::vector<Instance> outputs;
-    status = Predict(inputs, outputs);
+    status = Predict(inputs, &outputs);
     if (status != SUCCESS) {
       this->ReplyError(inputs, status);
       return;
@@ -364,7 +364,8 @@ Status WorkExecutor::PrePredict(const std::vector<Instance> &inputs) {
 }
 
 Status WorkExecutor::PostPredict(const std::vector<Instance> &inputs, const std::vector<TensorBasePtr> &predict_result,
-                                 std::vector<Instance> &outputs) {
+                                 std::vector<Instance> *outputs) {
+  MSI_EXCEPTION_IF_NULL(outputs);
   auto input_batch_size = static_cast<uint32_t>(inputs.size());
   uint32_t model_batch_size = model_batch_size_;
   if (input_batch_size == 0 || input_batch_size > model_batch_size) {
@@ -393,11 +394,12 @@ Status WorkExecutor::PostPredict(const std::vector<Instance> &inputs, const std:
       results_data[k].data.push_back(tensor);
     }
   }
-  outputs = CreateResultInstance(inputs, results_data, kPredictPhaseTag_Predict);
+  *outputs = CreateResultInstance(inputs, results_data, kPredictPhaseTag_Predict);
   return SUCCESS;
 }
 
-Status WorkExecutor::Predict(const std::vector<Instance> &inputs, std::vector<Instance> &outputs) {
+Status WorkExecutor::Predict(const std::vector<Instance> &inputs, std::vector<Instance> *outputs) {
+  MSI_EXCEPTION_IF_NULL(outputs);
   Status status;
   std::vector<TensorBasePtr> predict_outputs;
   status = PrePredict(inputs);

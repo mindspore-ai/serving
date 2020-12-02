@@ -54,7 +54,8 @@ DispatcherWorkerContext Dispatcher::GetWorkSession(const RequestSpec &request_sp
   return context;
 }
 
-Status Dispatcher::Dispatch(const proto::PredictRequest &request, proto::PredictReply &reply) {
+Status Dispatcher::Dispatch(const proto::PredictRequest &request, proto::PredictReply *reply) {
+  MSI_EXCEPTION_IF_NULL(reply);
   std::shared_lock<std::shared_mutex> lock(servable_shared_lock_);
   RequestSpec request_spec;
   GrpcTensorHelper::GetRequestSpec(request, &request_spec);
@@ -71,18 +72,18 @@ Status Dispatcher::Dispatch(const proto::PredictRequest &request, proto::Predict
   /// TODO spec request version_number
   if (worker.stub_ != nullptr) {
     grpc::ClientContext context;
-    auto status = worker.stub_->Predict(&context, request, &reply);
+    auto status = worker.stub_->Predict(&context, request, reply);
     if (!status.ok()) {
       return INFER_STATUS_LOG_ERROR(FAILED)
              << "Predict failed, worker gRPC error: " << status.error_code() << ", " << status.error_message();
     }
   } else {
-    return Worker::GetInstance().Run(request, &reply);
+    return Worker::GetInstance().Run(request, reply);
   }
   return SUCCESS;
 }
 
-Status Dispatcher::RegisterServable(const proto::RegisterRequest &request, proto::RegisterReply &reply) {
+Status Dispatcher::RegisterServable(const proto::RegisterRequest &request, proto::RegisterReply * /*reply*/) {
   std::unique_lock<std::shared_mutex> lock(servable_shared_lock_);
   std::vector<WorkerSpec> worker_specs;
   GrpcTensorHelper::GetWorkerSpec(request, &worker_specs);
@@ -127,7 +128,7 @@ Status Dispatcher::RegisterServable(const proto::RegisterRequest &request, proto
   return SUCCESS;
 }
 
-Status Dispatcher::UnregisterServable(const proto::ExitRequest &request, proto::ExitReply &reply) {
+Status Dispatcher::UnregisterServable(const proto::ExitRequest &request, proto::ExitReply * /*reply*/) {
   if (clearing_flag) {
     return SUCCESS;
   }
@@ -150,7 +151,7 @@ Status Dispatcher::UnregisterServable(const proto::ExitRequest &request, proto::
   }
   return SUCCESS;
 }
-Status Dispatcher::AddServable(const proto::AddWorkerRequest &request, proto::AddWorkerReply &reply) {
+Status Dispatcher::AddServable(const proto::AddWorkerRequest &request, proto::AddWorkerReply * /*reply*/) {
   std::unique_lock<std::shared_mutex> lock(servable_shared_lock_);
   WorkerSpec worker_spec;
   GrpcTensorHelper::GetWorkerSpec(request, &worker_spec);
@@ -183,7 +184,7 @@ Status Dispatcher::AddServable(const proto::AddWorkerRequest &request, proto::Ad
   return SUCCESS;
 }
 
-Status Dispatcher::RemoveServable(const proto::RemoveWorkerRequest &request, proto::RemoveWorkerReply &reply) {
+Status Dispatcher::RemoveServable(const proto::RemoveWorkerRequest &request, proto::RemoveWorkerReply * /*reply*/) {
   std::unique_lock<std::shared_mutex> lock(servable_shared_lock_);
   WorkerSpec worker_spec;
   GrpcTensorHelper::GetWorkerSpec(request, &worker_spec);

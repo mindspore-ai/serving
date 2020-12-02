@@ -95,20 +95,20 @@ class MS_API Tensor {
       : message_owner_(owner), proto_tensor_(proto_tensor) {}
   virtual ~Tensor() = default;
   // Bytes type: for images etc.
-  Status GetBytesData(std::vector<uint8_t> &val) const;
-  Status GetStrData(std::string &val) const;
-  Status GetData(std::vector<uint8_t> &val) const;
-  Status GetData(std::vector<uint16_t> &val) const;
-  Status GetData(std::vector<uint32_t> &val) const;
-  Status GetData(std::vector<uint64_t> &val) const;
-  Status GetData(std::vector<int8_t> &val) const;
-  Status GetData(std::vector<int16_t> &val) const;
-  Status GetData(std::vector<int32_t> &val) const;
-  Status GetData(std::vector<int64_t> &val) const;
-  Status GetData(std::vector<bool> &val) const;
-  Status GetData(std::vector<float> &val) const;
-  Status GetData(std::vector<double> &val) const;
-  Status GetFp16Data(std::vector<uint16_t> &val) const;
+  Status GetBytesData(std::vector<uint8_t> *val) const;
+  Status GetStrData(std::string *val) const;
+  Status GetData(std::vector<uint8_t> *val) const;
+  Status GetData(std::vector<uint16_t> *val) const;
+  Status GetData(std::vector<uint32_t> *val) const;
+  Status GetData(std::vector<uint64_t> *val) const;
+  Status GetData(std::vector<int8_t> *val) const;
+  Status GetData(std::vector<int16_t> *val) const;
+  Status GetData(std::vector<int32_t> *val) const;
+  Status GetData(std::vector<int64_t> *val) const;
+  Status GetData(std::vector<bool> *val) const;
+  Status GetData(std::vector<float> *val) const;
+  Status GetData(std::vector<double> *val) const;
+  Status GetFp16Data(std::vector<uint16_t> *val) const;
   DataType GetDataType() const;
   std::vector<int64_t> GetShape() const;
 
@@ -158,7 +158,7 @@ class MS_API Instance {
   Tensor Get(const std::string &item_name) const;
 
   bool IsValid() const { return proto_instance_ != nullptr; }
-  bool HasErrorMsg(int64_t &error_code, std::string &error_msg) const;
+  bool HasErrorMsg(int64_t *error_code, std::string *error_msg) const;
 
  protected:
   ProtoMsgOwner message_owner_;
@@ -209,7 +209,7 @@ class MS_API Client {
          const std::string &method_name, uint64_t version_number = 0);
   ~Client() = default;
 
-  Status SendRequest(const InstancesRequest &request, InstancesReply &reply);
+  Status SendRequest(const InstancesRequest &request, InstancesReply *reply);
 
  private:
   std::string server_ip_;
