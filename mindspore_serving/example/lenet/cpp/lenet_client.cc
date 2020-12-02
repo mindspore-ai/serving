@@ -75,19 +75,19 @@ void PrintResultTensor(const Tensor &result_tensor) {
   switch (data_type) {
     case mindspore::serving::client::DT_INT32: {
       std::vector<int32_t> result_label;
-      result_tensor.GetData(result_label);
+      result_tensor.GetData(&result_label);
       std::cout << "result: " << VectorAsString(result_label) << std::endl;
       break;
     }
     case mindspore::serving::client::DT_INT64: {
       std::vector<int64_t> result_label;
-      result_tensor.GetData(result_label);
+      result_tensor.GetData(&result_label);
       std::cout << "result: " << VectorAsString(result_label) << std::endl;
       break;
     }
     case mindspore::serving::client::DT_STRING: {
       std::string result_label;
-      result_tensor.GetStrData(result_label);
+      result_tensor.GetStrData(&result_label);
       std::cout << "result: " << result_label << std::endl;
       break;
     }
@@ -127,7 +127,7 @@ void RunInstances() {
     auto instance_input = instance.Add("image");
     instance_input.SetBytesData(img);
   }
-  auto status = client.SendRequest(request, reply);
+  auto status = client.SendRequest(request, &reply);
   if (!status.IsSuccess()) {
     std::cout << "Instances Mode: Send request failed, failed detail: " << status.StatusMessage() << std::endl;
     return;
@@ -140,7 +140,7 @@ void RunInstances() {
     }
     int64_t error_code;
     std::string error_msg;
-    if (instance.HasErrorMsg(error_code, error_msg)) {
+    if (instance.HasErrorMsg(&error_code, &error_msg)) {
       std::cout << "Error: " << error_msg << std::endl;
       continue;
     }

@@ -235,7 +235,7 @@ Status GrpcTensorHelper::CreateInstanceFromRequest(const proto::PredictRequest &
   auto method_name = request_spec->method_name;
 
   ServableSignature servable_signature;
-  if (!ServableStorage::Instance()->GetServableDef(servable_name, servable_signature)) {
+  if (!ServableStorage::Instance()->GetServableDef(servable_name, &servable_signature)) {
     return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Servable " << servable_name << " is not declared";
   }
   MethodSignature method_signature;
@@ -262,7 +262,7 @@ Status GrpcTensorHelper::CreateReplyFromInstances(const proto::PredictRequest &r
   auto method_name = request.servable_spec().method_name();
   Status status;
   ServableSignature servable_signature;
-  if (!ServableStorage::Instance()->GetServableDef(servable_name, servable_signature)) {
+  if (!ServableStorage::Instance()->GetServableDef(servable_name, &servable_signature)) {
     return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Servable " << servable_name << " is not declared";
   }
   MethodSignature method_signature;

@@ -213,7 +213,7 @@ Status Worker::LoadModel(LoadServableSpec *servable_spec, uint64_t version_numbe
   MSI_EXCEPTION_IF_NULL(work);
   servable_spec->version_number = version_number;
   ServableSignature signature;
-  if (!ServableStorage::Instance()->GetServableDef(servable_spec->servable_name, signature)) {
+  if (!ServableStorage::Instance()->GetServableDef(servable_spec->servable_name, &signature)) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Servable " << servable_spec->servable_name << " has not been registerd";
   }
   const auto &servable_meta = signature.servable_meta;
@@ -297,7 +297,7 @@ Status Worker::StartServable(const std::string &servable_directory, const std::s
   }
   Status status;
   ServableSignature signature;
-  if (!ServableStorage::Instance()->GetServableDef(servable_name, signature)) {
+  if (!ServableStorage::Instance()->GetServableDef(servable_name, &signature)) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Servable " << servable_name << " has not been registerd";
   }
   if (session_ == nullptr) {

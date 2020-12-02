@@ -14,9 +14,9 @@
 # ============================================================================
 """add model generator"""
 
-import numpy as np
 import os
 from shutil import copyfile
+import numpy as np
 
 import mindspore.context as context
 import mindspore.nn as nn
@@ -42,15 +42,21 @@ def export_net():
     add = Net()
     output = add(Tensor(x), Tensor(y))
     export(add, Tensor(x), Tensor(y), file_name='tensor_add', file_format='MINDIR')
+    dst_dir = '../add/1'
     try:
-        os.mkdir("../add/1")
+        os.mkdir(dst_dir)
     except OSError:
         pass
     try:
-        copyfile('tensor_add.mindir', '../add/1/tensor_add.mindir')
-        print("copy tensor_add.mindir to ../add/1/ success")
+        dst_file = os.path.join(dst_dir, 'tensor_add.mindir')
+        if os.path.exists('tensor_add.mindir'):
+            copyfile('tensor_add.mindir', dst_file)
+            print("copy tensor_add.mindir to " + dst_dir + " success")
+        elif os.path.exists('tensor_add'):
+            copyfile('tensor_add', dst_file)
+            print("copy tensor_add to " + dst_dir + " success")
     except:
-        print("copy tensor_add.mindir to ../add/1/ failed")
+        print("copy tensor_add.mindir to " + dst_dir + " failed")
 
     print(x)
     print(y)

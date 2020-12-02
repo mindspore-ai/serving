@@ -18,7 +18,7 @@
 #include <map>
 #include <vector>
 
-#include "mindspore_model_wrap.h"
+#include "worker/inference/mindspore_model_wrap.h"
 #include "api/types.h"
 
 namespace mindspore {

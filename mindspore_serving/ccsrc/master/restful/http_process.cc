@@ -692,7 +692,7 @@ Status RestfulService::RunRestful(const std::shared_ptr<RestfulRequest> &restful
   }
 
   MSI_TIME_STAMP_START(Predict)
-  status = dispatcher_->Dispatch(request, reply);
+  status = dispatcher_->Dispatch(request, &reply);
   MSI_TIME_STAMP_END(Predict)
   if (status != SUCCESS) {
     std::string error_msg = status.StatusMessage();

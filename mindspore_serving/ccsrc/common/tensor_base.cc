@@ -15,6 +15,7 @@
  */
 #include "common/tensor_base.h"
 #include <functional>
+#include <string>
 #include "common/log.h"
 #include "securec.h"
 

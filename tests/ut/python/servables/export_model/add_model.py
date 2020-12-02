@@ -14,6 +14,8 @@
 # ============================================================================
 """add model generator"""
 
+import os
+from shutil import copyfile
 import numpy as np
 
 import mindspore.context as context
@@ -21,8 +23,6 @@ import mindspore.nn as nn
 from mindspore.ops import operations as P
 from mindspore import Tensor
 from mindspore.train.serialization import export
-import os
-from shutil import copyfile
 
 context.set_context(mode=context.GRAPH_MODE, device_target="Ascend")
 
@@ -41,16 +41,22 @@ def export_net():
     y = np.ones([2, 2]).astype(np.float32)
     add = Net()
     output = add(Tensor(x), Tensor(y))
-    export(add, Tensor(x), Tensor(y), file_name='tensor_add.mindir', file_format='MINDIR')
+    export(add, Tensor(x), Tensor(y), file_name='tensor_add', file_format='MINDIR')
+    dst_dir = '../add/1'
     try:
-        os.mkdir("../1")
-    except:
+        os.mkdir(dst_dir)
+    except OSError:
         pass
     try:
-        copyfile('tensor_add.mindir', '../1/tensor_add.mindir')
-        print("copy tensor_add.mindir to ../1/ success")
+        dst_file = os.path.join(dst_dir, 'tensor_add.mindir')
+        if os.path.exists('tensor_add.mindir'):
+            copyfile('tensor_add.mindir', dst_file)
+            print("copy tensor_add.mindir to "+dst_dir+" success")
+        elif os.path.exists('tensor_add'):
+            copyfile('tensor_add', dst_file)
+            print("copy tensor_add to "+dst_dir+" success")
     except:
-        print("copy tensor_add.mindir to ../1/ failed")
+        print("copy tensor_add.mindir to "+dst_dir+" failed")
 
     print(x)
     print(y)

@@ -97,8 +97,7 @@ build_dependencies()
 
 required_package = [
     'numpy >= 1.17.0',
-    'protobuf >= 3.8.0',
-    'packaging >= 20.0'
+    'protobuf >= 3.8.0'
 ]
 
 package_data = {
