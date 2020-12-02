@@ -38,7 +38,7 @@ class AsyncResult {
   explicit AsyncResult(size_t size);
 
   bool HasNext();
-  Status GetNext(Instance &instance_result);
+  Status GetNext(Instance *instance_result);
 
  private:
   std::vector<std::future<void>> future_list_;

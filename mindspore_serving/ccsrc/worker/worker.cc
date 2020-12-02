@@ -152,7 +152,7 @@ Status Worker::Run(const RequestSpec &request_spec, const std::vector<serving::I
   auto result = result_pair.second;
   while (result->HasNext()) {
     serving::Instance instance;
-    result->GetNext(instance);
+    result->GetNext(&instance);
     outputs->push_back(instance);
   }
   return SUCCESS;
@@ -395,8 +395,7 @@ void Worker::GetVersions(const LoadServableSpec &servable_spec, std::vector<uint
     if (dir == "__pycache__") continue;
     auto version_parse = trans_to_integer(dir);
     if (version_parse == 0) {
-      if (ignore_dir.count(servable_spec.servable_directory + dir) == 0) {
-        ignore_dir.emplace(servable_spec.servable_directory + dir);
+      if (ignore_dir.emplace(servable_spec.servable_directory + dir).second) {
         MSI_LOG_INFO << "Ignore directory " << dir << ", model_directory " << servable_spec.servable_directory
                      << ", model_name " << servable_spec.servable_name;
       }
@@ -488,7 +487,8 @@ AsyncResult::AsyncResult(size_t size) : result_(size), next_index_(0) {}
 
 bool AsyncResult::HasNext() { return next_index_ < future_list_.size(); }
 
-Status AsyncResult::GetNext(Instance &instance_result) {
+Status AsyncResult::GetNext(Instance *instance_result) {
+  MSI_EXCEPTION_IF_NULL(instance_result);
   if (next_index_ >= future_list_.size()) {
     MSI_LOG_ERROR << "GetNext failed, index greater than instance count " << future_list_.size();
     return FAILED;
@@ -497,14 +497,14 @@ Status AsyncResult::GetNext(Instance &instance_result) {
   next_index_++;
   auto &future = future_list_[index];
   if (!future.valid()) {
-    instance_result.error_msg = result_[index].error_msg;
+    instance_result->error_msg = result_[index].error_msg;
     return FAILED;
   }
   const int kWaitMaxHundredMs = 100;
   int i;
   for (i = 0; i < kWaitMaxHundredMs; i++) {  //
     if (Worker::GetInstance().HasCleared()) {
-      instance_result.error_msg = Status(FAILED, "Servable stopped");
+      instance_result->error_msg = Status(FAILED, "Servable stopped");
       return FAILED;
     }
     if (future.wait_for(std::chrono::milliseconds(100)) == std::future_status::ready) {
@@ -513,12 +513,12 @@ Status AsyncResult::GetNext(Instance &instance_result) {
   }
   if (i >= kWaitMaxHundredMs) {
     MSI_LOG_ERROR << "GetNext failed, wait time out, index " << index << ", total count " << future_list_.size();
-    instance_result.error_msg = Status(FAILED, "Time out");
+    instance_result->error_msg = Status(FAILED, "Time out");
     return FAILED;
   }
 
   future.get();
-  instance_result = result_[index];
+  *instance_result = result_[index];
   return SUCCESS;
 }
 
