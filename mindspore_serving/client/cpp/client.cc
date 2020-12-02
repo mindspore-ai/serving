@@ -420,11 +420,14 @@ class ClientImpl {
     auto channel = grpc::CreateChannel(target_str, grpc::InsecureChannelCredentials());
     stub_ = proto::MSService::NewStub(channel);
   }
-  Status Predict(const proto::PredictRequest &request, proto::PredictReply &reply) {
+  Status Predict(const proto::PredictRequest &request, proto::PredictReply *reply) {
+    if (reply == nullptr) {
+      return Status(SYSTEM_ERROR, "ClientImpl::Predict input reply cannot be nullptr");
+    }
     grpc::ClientContext context;
 
     // The actual RPC.
-    grpc::Status status = stub_->Predict(&context, request, &reply);
+    grpc::Status status = stub_->Predict(&context, request, reply);
     if (status.ok()) {
       return SUCCESS;
     } else {
@@ -457,10 +460,7 @@ Status Client::SendRequest(const InstancesRequest &request, InstancesReply *repl
   servable_spec->set_method_name(method_name_);
   servable_spec->set_version_number(version_number_);
 
-  Status result = impl_->Predict(*proto_request, *proto_reply);
-  //  std::string str;
-  //  google::protobuf::TextFormat::PrintToString(*proto_reply, &str);
-  //  std::cout << str << std::endl;
+  Status result = impl_->Predict(*proto_request, proto_reply);
   return result;
 }
 

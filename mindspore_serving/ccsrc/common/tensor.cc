@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 #include "common/tensor.h"
+#include <securec.h>
 #include <functional>
 #include <utility>
 #include "common/log.h"
-#include "securec.h"
 
 namespace mindspore::serving {
 
