@@ -42,9 +42,10 @@ checkopts()
   ENABLE_PYTHON="on"
   MS_WHL_LIB_PATH=""
   MS_BACKEND=""
+  MS_VERSION=""
 
   # Process the options
-  while getopts 'dvcj:a:p:e:' opt
+  while getopts 'dvcj:a:p:e:V:' opt
   do
     LOW_OPTARG=$(echo ${OPTARG} | tr '[A-Z]' '[a-z]')
 
@@ -53,6 +54,12 @@ checkopts()
         echo "user opt: -e"${LOW_OPTARG}
         if [[ "$OPTARG" != "" ]]; then
           MS_BACKEND=$OPTARG
+        fi
+        ;;
+      V)
+        echo "user opt: -V"${LOW_OPTARG}
+        if [[ "$OPTARG" != "" ]]; then
+          MS_VERSION=$OPTARG
         fi
         ;;
       p)
@@ -119,6 +126,9 @@ build_mindspore_serving()
   fi
   if [[ "$MS_WHL_LIB_PATH" != "" ]]; then
     CMAKE_ARGS="${CMAKE_ARGS} -DMS_WHL_LIB_PATH=${MS_WHL_LIB_PATH}"
+  fi
+  if [[ "$MS_VERSION" != "" ]]; then
+    CMAKE_ARGS="${CMAKE_ARGS} -DMS_VERSION=${MS_VERSION}"
   fi
   echo "${CMAKE_ARGS}"
   cmake ${CMAKE_ARGS} ../..

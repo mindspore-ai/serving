@@ -19,7 +19,9 @@
 #include <vector>
 
 #include "worker/inference/mindspore_model_wrap.h"
-#include "api/types.h"
+#include "include/api/types.h"
+#include "include/api/serialization.h"
+#include "include/api/context.h"
 
 namespace mindspore {
 namespace serving {
@@ -72,32 +74,23 @@ Status MindSporeModelWrap::LoadModelFromFile(serving::DeviceType device_type, ui
   MSI_EXCEPTION_IF_NULL(model_id);
   std::string device_type_str;
   if (device_type == kDeviceTypeAscendMS) {
-    device_type_str = api::kDeviceTypeAscendMS;
+    device_type_str = api::kDeviceTypeAscend910;
   } else if (device_type == kDeviceTypeAscendCL) {
-    device_type_str = api::kDeviceTypeAscendCL;
+    device_type_str = api::kDeviceTypeAscend310;
   } else {
     MSI_LOG_EXCEPTION << "Only support Ascend310 or Ascend910 in MindSporeModelWrap";
   }
 
   std::shared_ptr<api::Model> model = nullptr;
   try {
-    model = std::make_shared<api::Model>(device_type_str, device_id);
+    api::Context::Instance().SetDeviceTarget(api::kDeviceTypeAscend310).SetDeviceID(device_id);
+    auto graph = api::Serialization::LoadModel(file_name, model_type);
+    model = std::make_shared<api::Model>(api::GraphCell(graph));
   } catch (std::runtime_error &ex) {
     MSI_LOG_ERROR << "Load model from file failed, device_type " << device_type_str << ", device_id " << device_id;
     return FAILED;
   }
-  api::ModelType api_model_type;
-  switch (model_type) {
-    case kMindIR:
-      api_model_type = api::kMindIR;
-      break;
-    case kOM:
-      api_model_type = api::kOM;
-      break;
-    default:
-      MSI_LOG_EXCEPTION << "Only support OM and MindIR, now model type is " << model_type;
-  }
-  api::Status status = model->LoadModel(file_name, api_model_type, {});
+  api::Status status = model->Build({});
   if (!status.IsSuccess()) {
     return Status(FAILED, status.StatusMessage());
   }
@@ -117,12 +110,8 @@ Status MindSporeModelWrap::LoadModelFromFile(serving::DeviceType device_type, ui
 
 Status MindSporeModelWrap::GetModelInfos(ApiModelInfo *api_model_info) {
   MSI_EXCEPTION_IF_NULL(api_model_info);
-  std::vector<api::Tensor> input_tensors;
   auto model = api_model_info->model;
-  api::Status status = model->GetInputsInfo(&input_tensors);
-  if (!status.IsSuccess()) {
-    return Status(FAILED, status.StatusMessage());
-  }
+
   bool first_dim_same = true;
   auto find_batch_size = [&first_dim_same, api_model_info](const std::vector<int64_t> &shape) {
     if (first_dim_same) {
@@ -141,37 +130,64 @@ Status MindSporeModelWrap::GetModelInfos(ApiModelInfo *api_model_info) {
     size_t elements_nums = std::accumulate(shape.begin(), shape.end(), 1LL, std::multiplies<size_t>());
     return elements_nums;
   };
-  auto get_tensor_info_from_tensor = [find_batch_size, shape_element_num](const api::Tensor &tensor) {
+  auto get_tensor_info_from_tensor = [find_batch_size, shape_element_num](const std::vector<int64_t> &shape,
+                                                                          const api::DataType &data_type,
+                                                                          const size_t mem_size) {
     serving::TensorInfo tensor_info;
-    tensor_info.shape = tensor.Shape();
-    tensor_info.data_type = TransTypeId2InferDataType(tensor.DataType());
-    tensor_info.size = tensor.DataSize();
+    tensor_info.shape = shape;
+    tensor_info.data_type = TransTypeId2InferDataType(data_type);
+    tensor_info.size = mem_size;
     if (tensor_info.size == 0) {
       tensor_info.size = TensorBase::GetTypeSize(tensor_info.data_type) * shape_element_num(tensor_info.shape);
     }
     find_batch_size(tensor_info.shape);
     return tensor_info;
   };
-  for (auto &item : input_tensors) {
-    api_model_info->input_names.push_back(item.Name());
-    auto tensor_info = get_tensor_info_from_tensor(item);
-    if (tensor_info.data_type == kMSI_Unknown) {
-      return INFER_STATUS_LOG_ERROR(FAILED) << "Unknown input api data type " << item.DataType();
+  {  // input infos
+    std::vector<std::string> names;
+    std::vector<std::vector<int64_t>> shapes;
+    std::vector<api::DataType> data_types;
+    std::vector<size_t> mem_sizes;
+    api::Status status = model->GetInputsInfo(&names, &shapes, &data_types, &mem_sizes);
+    if (!status.IsSuccess()) {
+      return Status(FAILED, status.StatusMessage());
     }
-    api_model_info->input_tensor_infos.push_back(tensor_info);
-  }
-  std::vector<api::Tensor> output_tensors;
-  status = model->GetOutputsInfo(&output_tensors);
-  if (!status.IsSuccess()) {
-    return Status(FAILED, status.StatusMessage());
-  }
-  for (auto &item : output_tensors) {
-    api_model_info->output_names.push_back(item.Name());
-    auto tensor_info = get_tensor_info_from_tensor(item);
-    if (tensor_info.data_type == kMSI_Unknown) {
-      return INFER_STATUS_LOG_ERROR(FAILED) << "Unknown output api data type " << item.DataType();
+    if (names.size() != shapes.size() || names.size() != data_types.size() || names.size() != mem_sizes.size()) {
+      return INFER_STATUS_LOG_ERROR(FAILED)
+             << "Get input infos failed, names size: " << names.size() << ", shapes size: " << shapes.size()
+             << ", data_types size: " << data_types.size() << ", mem_sizes: " << mem_sizes.size();
     }
-    api_model_info->output_tensor_infos.push_back(tensor_info);
+    for (size_t i = 0; i < names.size(); i++) {
+      api_model_info->input_names.push_back(names[i]);
+      auto tensor_info = get_tensor_info_from_tensor(shapes[i], data_types[i], mem_sizes[i]);
+      if (tensor_info.data_type == kMSI_Unknown) {
+        return INFER_STATUS_LOG_ERROR(FAILED) << "Unknown input api data type " << data_types[i];
+      }
+      api_model_info->input_tensor_infos.push_back(tensor_info);
+    }
+  }
+  {  // output infos
+    std::vector<std::string> names;
+    std::vector<std::vector<int64_t>> shapes;
+    std::vector<api::DataType> data_types;
+    std::vector<size_t> mem_sizes;
+    api::Status status = model->GetOutputsInfo(&names, &shapes, &data_types, &mem_sizes);
+    if (!status.IsSuccess()) {
+      return Status(FAILED, status.StatusMessage());
+    }
+    if (names.size() != shapes.size() || names.size() != data_types.size() || names.size() != mem_sizes.size()) {
+      return INFER_STATUS_LOG_ERROR(FAILED)
+             << "Get output infos failed, names size: " << names.size() << ", shapes size: " << shapes.size()
+             << ", data_types size: " << data_types.size() << ", mem_sizes: " << mem_sizes.size();
+    }
+    for (size_t i = 0; i < names.size(); i++) {
+      api_model_info->output_names.push_back(names[i]);
+      auto tensor_info = get_tensor_info_from_tensor(shapes[i], data_types[i], mem_sizes[i]);
+      if (tensor_info.data_type == kMSI_Unknown) {
+        return INFER_STATUS_LOG_ERROR(FAILED) << "Unknown output api data type " << data_types[i];
+      }
+      api_model_info->output_tensor_infos.push_back(tensor_info);
+    }
   }
   if (!first_dim_same) {
     api_model_info->batch_size = 0;
@@ -184,12 +200,7 @@ Status MindSporeModelWrap::UnloadModel(uint32_t model_id) {
   if (it == model_map_.end()) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Invalid model id " << model_id;
   }
-  auto model = it->second.model;
-  api::Status status = model->UnloadModel();
   model_map_.erase(it);
-  if (!status.IsSuccess()) {
-    return Status(FAILED, status.StatusMessage());
-  }
   return SUCCESS;
 }
 
@@ -247,11 +258,11 @@ Status MindSporeModelWrap::ExecuteModelCommon(uint32_t model_id, size_t request_
     return INFER_STATUS_LOG_ERROR(FAILED) << "Inputs size not match, request inputs size " << request_size
                                           << ", model inputs size " << input_names.size();
   }
-  std::map<std::string, api::Buffer> inputs;
+  std::vector<api::Buffer> inputs;
   for (size_t i = 0; i < input_names.size(); i++) {
-    inputs[input_names[i]] = in_func(i);
+    inputs.push_back(in_func(i));
   }
-  std::map<std::string, api::Buffer> outputs;
+  std::vector<api::Buffer> outputs;
   api::Status status = model->Predict(inputs, &outputs);
   if (!status.IsSuccess()) {
     MSI_LOG_ERROR << "Predict failed: " << status.StatusMessage();
@@ -263,18 +274,12 @@ Status MindSporeModelWrap::ExecuteModelCommon(uint32_t model_id, size_t request_
   }
   auto &output_infos = model_info.output_tensor_infos;
   for (size_t i = 0; i < output_names.size(); i++) {
-    auto &output_name = output_names[i];
-    auto output_it = outputs.find(output_name);
-    if (output_it == outputs.end()) {
-      return INFER_STATUS_LOG_ERROR(FAILED)
-             << "Get output failed, cannot find output " << output_name << " in predict result";
-    }
-    auto &result_tensor = output_it->second;
+    auto &result_tensor = outputs[i];
     auto &output_info = output_infos[i];
     if (result_tensor.DataSize() != output_info.size) {
       return INFER_STATUS_LOG_ERROR(FAILED)
              << "Get output failed, predict output data size " << result_tensor.DataSize()
-             << " not match model info data size " << output_info.size << ", output_name " << output_name;
+             << " not match model info data size " << output_info.size << ", output_name " << output_names[i];
     }
     out_func(result_tensor, output_info.data_type, output_info.shape);
   }
@@ -319,10 +324,10 @@ bool MindSporeModelWrap::CheckModelSupport(DeviceType device_type, ModelType mod
   std::string device_type_str;
   switch (device_type) {
     case kDeviceTypeAscendMS:
-      device_type_str = api::kDeviceTypeAscendMS;
+      device_type_str = api::kDeviceTypeAscend910;
       break;
     case kDeviceTypeAscendCL:
-      device_type_str = api::kDeviceTypeAscendCL;
+      device_type_str = api::kDeviceTypeAscend310;
       break;
     default:
       return false;
