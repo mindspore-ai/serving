@@ -71,17 +71,19 @@ class RestfulService {
 
   Status ParseReqCommonMsg(const std::shared_ptr<RestfulRequest> &restful_request,
                            proto::PredictRequest *const request);
-  Status ParseRequest(const std::shared_ptr<RestfulRequest> &restful_request, proto::PredictRequest *const request);
+
   Status ParseInstancesMsg(const json &js_msg, proto::PredictRequest *const request);
   Status GetInstancesType(const json &instances);
   Status ParseKeyInstances(const json &instances, proto::PredictRequest *const request);
   Status PaserKeyOneInstance(const json &instance_msg, proto::PredictRequest *const request);
   Status ParseItem(const json &value, ProtoTensor *const pb_tensor);
 
+  Status ParseRequest(const std::shared_ptr<RestfulRequest> &restful_request, proto::PredictRequest *const request);
+  Status ParseReply(const proto::PredictReply &reply, json *const out_json);
   // parse reply:trans RequestReply to http msg
   RequestType GetReqType(const std::string &str);
   std::string GetReqTypeStr(RequestType req_type);
-  Status ParseReply(const proto::PredictReply &reply, json *const out_json);
+
   Status CheckReply(const ProtoTensor &pb_tensor);
   Status ParseInstancesReply(const proto::PredictReply &reply, json *const out_json);
   Status ParseReplyDetail(const proto::Tensor &tensor, json *const js);

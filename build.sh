@@ -16,6 +16,7 @@ usage()
   echo "    -c Enable code coverage, default off"
   echo "    -a Enable ASAN, default off. Memory error detection tool."
   echo "    -p MindSpore lib [mindspore_shared_lib] path."
+  echo "    -t Run testcases, default off."
 
 }
 
@@ -43,9 +44,10 @@ checkopts()
   MS_WHL_LIB_PATH=""
   MS_BACKEND=""
   MS_VERSION=""
+  RUN_TESTCASES="off"
 
   # Process the options
-  while getopts 'dvcj:a:p:e:V:' opt
+  while getopts 'dvcj:a:p:e:V:t:' opt
   do
     LOW_OPTARG=$(echo ${OPTARG} | tr '[A-Z]' '[a-z]')
 
@@ -91,6 +93,10 @@ checkopts()
         check_on_off $OPTARG a
         ENABLE_ASAN="$OPTARG"
         ;;
+      t)
+        echo "user opt: -t"${LOW_OPTARG}
+        RUN_TESTCASES="$OPTARG"
+        ;;
       *)
         echo "Unknown option ${opt}!"
         usage
@@ -130,12 +136,19 @@ build_mindspore_serving()
   if [[ "$MS_VERSION" != "" ]]; then
     CMAKE_ARGS="${CMAKE_ARGS} -DMS_VERSION=${MS_VERSION}"
   fi
+  if [[ "X$RUN_TESTCASES" = "Xon" ]]; then
+    CMAKE_ARGS="${CMAKE_ARGS} -DENABLE_TESTCASES=ON"
+  fi
   echo "${CMAKE_ARGS}"
   cmake ${CMAKE_ARGS} ../..
   if [[ -n "$VERBOSE" ]]; then
     CMAKE_VERBOSE="--verbose"
   fi
-  cmake --build . --target package ${CMAKE_VERBOSE} -j$THREAD_NUM
+  if [[ "X$RUN_TESTCASES" = "Xon" ]]; then
+    cmake --build . ${CMAKE_VERBOSE} -j$THREAD_NUM
+  else 
+    cmake --build . --target package ${CMAKE_VERBOSE} -j$THREAD_NUM
+  fi
   echo "success building mindspore_serving project!"
 }
 
