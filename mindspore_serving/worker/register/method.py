@@ -34,22 +34,26 @@ method_tag_postprocess = PredictPhaseTag_.kPredictPhaseTag_Postprocess
 
 
 class _ServableStorage:
+    """Declare servable info"""
     def __init__(self):
         self.methods = {}
         self.servable_metas = {}
         self.storage = ServableStorage_.get_instance()
 
     def declare_servable(self, servable_meta):
+        """Declare servable info excluding method, input and output count"""
         self.storage.declare_servable(servable_meta)
         self.servable_metas[servable_meta.servable_name] = servable_meta
 
     def declare_servable_input_output(self, servable_name, inputs_count, outputs_count):
+        """Declare input and output count of servable"""
         self.storage.register_servable_input_output_info(servable_name, inputs_count, outputs_count)
         servable_meta = self.servable_metas[servable_name]
         servable_meta.inputs_count = inputs_count
         servable_meta.outputs_count = outputs_count
 
     def register_method(self, method_signature):
+        """Declare method of servable"""
         self.storage.register_method(method_signature)
         self.methods[method_signature.method_name] = method_signature
 
@@ -70,6 +74,7 @@ _servable_storage = _ServableStorage()
 
 
 class _TensorDef:
+    """Data flow item, for definitions of data flow in a method"""
     def __init__(self, tag, tensor_index):
         self.tag = tag
         self.tensor_index = tensor_index
@@ -79,6 +84,7 @@ class _TensorDef:
 
 
 def _create_tensor_def_outputs(tag, outputs_cnt):
+    """Create data flow item for output"""
     result = [_TensorDef(tag, i) for i in range(outputs_cnt)]
     if len(result) == 1:
         return result[0]
@@ -98,7 +104,7 @@ def call_preprocess(preprocess_fun, *args):
 
     preprocess_name = preprocess_fun
     if inspect.isfunction(preprocess_fun):
-        register_preprocess(inputs_count=inputs_count, outputs_count=outputs_count)(preprocess_fun)
+        register_preprocess(preprocess_fun, inputs_count=inputs_count, outputs_count=outputs_count)
         preprocess_name = get_servable_dir() + "." + get_func_name(preprocess_fun)
     else:
         if not isinstance(preprocess_name, str):
@@ -144,7 +150,7 @@ def call_postprocess(postprocess_fun, *args):
 
     postprocess_name = postprocess_fun
     if inspect.isfunction(postprocess_fun):
-        register_postprocess(inputs_count=inputs_count, outputs_count=outputs_count)(postprocess_fun)
+        register_postprocess(postprocess_fun, inputs_count=inputs_count, outputs_count=outputs_count)
         postprocess_name = get_servable_dir() + "." + get_func_name(postprocess_fun)
     else:
         if not isinstance(postprocess_name, str):
@@ -165,6 +171,7 @@ _call_postprocess_name = call_postprocess.__name__
 
 
 def _get_method_def_func_meta(method_def_func):
+    """Parse register_method func, and get the input and output count of preproces, servable and postprocess"""
     source = inspect.getsource(method_def_func)
     call_list = ast.parse(source).body[0].body
     func_meta = EasyDict()
@@ -212,17 +219,17 @@ def _get_method_def_func_meta(method_def_func):
 
 def register_method(output_names):
     """register method for servable.
-     Define the data flow of preprocess, model inference and postprocess in the method. 
-     Preprocess and postprocess are optional.
-     Example:
-         @register_method(output_names="y")
-         def method_name(x1, x2):
+    Define the data flow of preprocess, model inference and postprocess in the method.
+    Preprocess and postprocess are optional.
+    Example:
+        @register_method(output_names="y")
+        def method_name(x1, x2):
             x1, x2 = call_preprocess(preprocess_fun, x1, x2)
             y = call_servable(y)
             y = call_postprocess(postprocess_fun, y)
             return y
     """
-    output_names = check_type.check_and_as_str_tuple_list(output_names)
+    output_names = check_type.check_and_as_str_tuple_list('output_names', output_names)
 
     def register(func):
         name = get_func_name(func)

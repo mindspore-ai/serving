@@ -15,7 +15,6 @@
 """Preprocessing registration interface"""
 
 from mindspore_serving._mindspore_serving import PreprocessStorage_
-from mindspore_serving.worker import check_type
 from mindspore_serving.worker.common import get_servable_dir, get_func_name
 
 
@@ -33,6 +32,7 @@ def check_preprocess(preprocess_name, inputs_count, outputs_count):
 
 
 class PreprocessStorage:
+    """Register and get preprocess info, preprocess info include: func, name, input and output count"""
     def __init__(self):
         self.preprocess = {}
         self.storage = PreprocessStorage_.get_instance()
@@ -52,21 +52,11 @@ class PreprocessStorage:
 preprocess_storage = PreprocessStorage()
 
 
-def register_preprocess(inputs_count, outputs_count):
-    """register preprocess, input_names and output_names can be str， tuple or list of str.
-    For input_names and output_names, serving only consider the number of names contained in them,
-    which should be consistent with the number of input and output used in register_method,
-    and the specific names content are ignored."""
-    check_type.check_int(inputs_count)
-    check_type.check_int(outputs_count)
+def register_preprocess(func, inputs_count, outputs_count):
+    """register preprocess"""
+    servable_name = get_servable_dir()
+    func_name = get_func_name(func)
+    name = servable_name + "." + func_name
 
-    def register(func):
-        servable_name = get_servable_dir()
-        func_name = get_func_name(func)
-        name = servable_name + "." + func_name
-
-        print("------------Register preprocess", name, inputs_count, outputs_count)
-        preprocess_storage.register(func, name, inputs_count, outputs_count)
-        return func
-
-    return register
+    print("------------Register preprocess", name, inputs_count, outputs_count)
+    preprocess_storage.register(func, name, inputs_count, outputs_count)
