@@ -63,7 +63,7 @@ def _load_servable_config(servable_directory, servable_name):
 @stop_on_except
 def start_servable(servable_directory, servable_name, version_number=0,
                    device_type=None, device_id=0,
-                   master_ip="0.0.0.0", master_port=6100, host_ip="0.0.0.0", host_port=6200):
+                   master_ip="0.0.0.0", master_port=6100, worker_ip="0.0.0.0", worker_port=6200):
     r"""
     Start up the servable named 'servable_name' defined in 'servable_directory', and the servable linked to the master
     through gRPC (master_ip, master_port).
@@ -71,7 +71,7 @@ def start_servable(servable_directory, servable_name, version_number=0,
     Serving has two running modes. One is running in a single process, providing the Serving service of a single model.
     The other includes a master and multiple workers. The master is responsible for providing the Serving access
     interface for client, the worker is responsible for providing the service of the specific model, and the master
-    and worker communicate through gPRC defined as (master_ip, master_port) and (host_ip, host_port).
+    and worker communicate through gPRC defined as (master_ip, master_port) and (worker_ip, worker_port).
 
     Args:
         servable_directory (str): The directory where the servable located in, there expected to has a directory named
@@ -95,22 +95,22 @@ def start_servable(servable_directory, servable_name, version_number=0,
         device_id (int): The id of the device the model loads into and runs in.
         master_ip (str): The master ip the worker linked to.
         master_port (int): The master port the worker linked to.
-        host_ip (str): The worker ip the master linked to.
-        host_port (int): The worker port the master linked to.
+        worker_ip (str): The worker ip the master linked to.
+        worker_port (int): The worker port the master linked to.
     """
-    check_type.check_str(servable_directory)
-    check_type.check_str(servable_name)
-    check_type.check_int(version_number)
+    check_type.check_str('servable_directory', servable_directory)
+    check_type.check_str('servable_name', servable_name)
+    check_type.check_int('version_number', version_number, 0)
 
     if device_type:
-        check_type.check_str(device_type)
-    check_type.check_int(device_id)
+        check_type.check_str('device_type', device_type)
+    check_type.check_int('device_id', device_id, 0)
 
-    check_type.check_str(master_ip)
-    check_type.check_int(master_port)
+    check_type.check_str('master_ip', master_ip)
+    check_type.check_ip_port('master_port', master_port)
 
-    check_type.check_str(host_ip)
-    check_type.check_int(host_port)
+    check_type.check_str('worker_ip', worker_ip)
+    check_type.check_ip_port('worker_port', worker_port)
 
     _load_servable_config(servable_directory, servable_name)
 
@@ -122,7 +122,7 @@ def start_servable(servable_directory, servable_name, version_number=0,
     context.set_context(device_id=device_id)
 
     Worker_.start_servable(servable_directory, servable_name, version_number, master_ip, master_port,
-                           host_ip, host_port)
+                           worker_ip, worker_port)
     start_py_task(Worker_.get_batch_size())
     _start_wait_and_clear()
 
@@ -161,13 +161,13 @@ def start_servable_in_master(servable_directory, servable_name, version_number=0
                            Default: None.
         device_id (int): The id of the device the model loads into and runs in.
     """
-    check_type.check_str(servable_directory)
-    check_type.check_str(servable_name)
-    check_type.check_int(version_number)
+    check_type.check_str('servable_directory', servable_directory)
+    check_type.check_str('servable_name', servable_name)
+    check_type.check_int('version_number', version_number, 0)
 
     if device_type:
-        check_type.check_int(device_type)
-    check_type.check_int(device_id)
+        check_type.check_str('device_type', device_type)
+    check_type.check_int('device_id', device_id, 0)
 
     _load_servable_config(servable_directory, servable_name)
 

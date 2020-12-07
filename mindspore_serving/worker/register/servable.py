@@ -29,9 +29,9 @@ def declare_servable(servable_file, model_format, with_batch_dim=True):
     which should be consistent with the number of input and output used in register_method and
     the number of input and output of the model.
     The specific names content are ignored."""
-    check_type.check_str(servable_file)
-    check_type.check_str(model_format)
-    check_type.check_bool(with_batch_dim)
+    check_type.check_str('servable_file', servable_file)
+    check_type.check_str('model_format', model_format)
+    check_type.check_bool('with_batch_dim', with_batch_dim)
 
     model_format = model_format.lower()
     if model_format not in ("om", "mindir"):

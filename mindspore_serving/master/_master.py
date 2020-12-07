@@ -16,6 +16,7 @@
 
 import threading
 from functools import wraps
+from mindspore_serving.worker import check_type
 from mindspore_serving._mindspore_serving import Master_
 
 _wait_and_clear_thread = None
@@ -23,6 +24,7 @@ _wait_and_clear_thread = None
 
 # waiting for Ctrl+C, and clear
 def _start_wait_and_clear():
+    """Start thread waiting for catch ctrl+c, and clear env"""
     def thread_func():
         print("Serving master: wait for Ctrl+C to exit ------------------------------------")
         Master_.wait_and_clear()
@@ -34,10 +36,12 @@ def _start_wait_and_clear():
 
 
 def stop():
+    """Stop master"""
     Master_.stop()
 
 
 def stop_on_except(func):
+    """mmon wrap clear and exit on Serving exception"""
     @wraps(func)
     def handle_except(*args, **kwargs):
         try:
@@ -53,20 +57,32 @@ def stop_on_except(func):
 def start_grpc_server(ip="0.0.0.0", grpc_port=5500, max_msg_mb_size=100):
     """start grpc server for the communication between client and serving.
     the ip should be accessible to the client."""
+    check_type.check_str('ip', ip)
+    check_type.check_ip_port('grpc_port', grpc_port)
+    check_type.check_int('max_msg_mb_size', max_msg_mb_size, 1, 512)
+
     Master_.start_grpc_server(ip, grpc_port, max_msg_mb_size)
     _start_wait_and_clear()
 
 
 @stop_on_except
-def start_master_server(ip="0.0.0.0", grpc_port=6100):
+def start_master_server(ip="0.0.0.0", master_port=6100):
     """start grpc server for the communication between workers and the master.
     the ip is expected to be accessed only by workers."""
-    Master_.start_grpc_master_server(ip, grpc_port)
+    check_type.check_str('ip', ip)
+    check_type.check_ip_port('master_port', master_port)
+
+    Master_.start_grpc_master_server(ip, master_port)
+    _start_wait_and_clear()
 
 
 @stop_on_except
 def start_restful_server(ip="0.0.0.0", restful_port=5900, max_msg_mb_size=100):
     """start restful server for the communication between client and serving.
     the ip should be accessible to the client."""
+    check_type.check_str('ip', ip)
+    check_type.check_ip_port('restful_port', restful_port)
+    check_type.check_int('max_msg_mb_size', max_msg_mb_size, 1, 512)
+
     Master_.start_restful_server(ip, restful_port, max_msg_mb_size)
     _start_wait_and_clear()

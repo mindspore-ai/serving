@@ -171,12 +171,14 @@ Status RestfulServer::StartRestfulServer() {
     event_base_dispatch(event_base_);
   };
   event_thread_ = std::thread(event_http_run);
-  in_running_ = true;
   return SUCCESS;
 }
 
 Status RestfulServer::Start(const std::string &ip, uint32_t restful_port, int max_msg_size, int time_out_second) {
   Status status(SUCCESS);
+  if (in_running_) {
+    return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Serving Error: RESTful server is already running";
+  }
 
   restful_ip_ = ip;
   restful_port_ = restful_port;
@@ -190,6 +192,7 @@ Status RestfulServer::Start(const std::string &ip, uint32_t restful_port, int ma
   if (status != SUCCESS) {
     return status;
   }
+  in_running_ = true;
   return status;
 }
 

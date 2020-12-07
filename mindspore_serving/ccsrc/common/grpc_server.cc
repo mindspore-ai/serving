@@ -23,7 +23,7 @@ Status GrpcServer::Start(std::shared_ptr<grpc::Service> service, const std::stri
   service_ = service;
   Status status;
   if (in_running_) {
-    return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Grpc server is running";
+    return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Serving Error: " << server_tag << " server is already running";
   }
 
   std::string server_address = ip + ":" + std::to_string(grpc_port);
@@ -42,13 +42,13 @@ Status GrpcServer::Start(std::shared_ptr<grpc::Service> service, const std::stri
   server_ = serverBuilder.BuildAndStart();
 
   if (server_ == nullptr) {
-    return INFER_STATUS_LOG_ERROR(FAILED)
-           << "Serving Error: create grpc server failed, gRPC address " << server_address;
+    return INFER_STATUS_LOG_ERROR(FAILED) << "Serving Error: " << server_tag
+                                          << " server start failed, create server failed, address " << server_address;
   }
 
   auto grpc_server_run = [this, server_address, server_tag]() {
-    MSI_LOG(INFO) << server_tag << " start success,  listening on " << server_address;
-    std::cout << "Serving: " << server_tag << " start success, listening on " << server_address << std::endl;
+    MSI_LOG(INFO) << server_tag << " server start success,  listening on " << server_address;
+    std::cout << "Serving: " << server_tag << " server start success, listening on " << server_address << std::endl;
     server_->Wait();
   };
 
