@@ -1,4 +1,4 @@
-# gRPC接口使用
+# gRPC接口使用说明
 
 ## 概述
 MindSpore Serving提供gRPC接口访问Serving服务。在Python环境下，我们提供[mindspore_serving.client](../mindspore_serving/client/python/client.py) 接口填写请求、解析回复。接下来我们详细说明`mindspore_serving.client`如何使用。

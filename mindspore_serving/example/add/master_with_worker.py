@@ -22,8 +22,8 @@ def start():
     servable_dir = os.path.abspath(".")
     worker.start_servable_in_master(servable_dir, "add", device_id=0)
 
-    master.start_grpc_server("0.0.0.0", 5500)
-    master.start_restful_server("0.0.0.0", 1500)
+    master.start_grpc_server("127.0.0.1", 5500)
+    master.start_restful_server("127.0.0.1", 1500)
 
 
 if __name__ == "__main__":
