@@ -38,7 +38,7 @@ MindSpore Serving依赖MindSpore训练推理框架，安装完[MindSpore](https:
 
 **1、请从MindSpore Serving下载页面下载并安装whl包。**
 ```python
-pip install https://ms-release.obs.cn-north-4.myhuaweicloud.com/0.0.1/Serving/ascend/ubuntu_x86/mindspore_serving-0.0.1-cp37-cp37m-linux_x86_64.whl
+pip install https://ms-release.obs.cn-north-4.myhuaweicloud.com/1.1.0/Serving/ascend/ubuntu_x86/mindspore_serving-1.1.0-cp37-cp37m-linux_x86_64.whl
 ```
 **2、源码安装。**  
 下载[源码](https://gitee.com/mindspore/serving)。
@@ -58,7 +58,7 @@ sh build.sh -ed
 ```
 编译完后，在output/目录下找到安装包进行安装：
 ```python
-pip install mindspore_serving-0.0.1-cp37-cp37m-linux_x86_64.whl
+pip install mindspore_serving-1.1.0-cp37-cp37m-linux_x86_64.whl
 ```
 **执行以下命令，验证安装结果。导入python模块不报错即安装成功。**  
 ```python
