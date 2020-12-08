@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MINDSPORE_CONTEXT_H
-#define MINDSPORE_CONTEXT_H
+#ifndef MINDSPORE_SERVING_WORKER_CONTEXT_H
+#define MINDSPORE_SERVING_WORKER_CONTEXT_H
 
 #include <string>
 #include <memory>
@@ -43,4 +43,4 @@ class MS_API ServableContext {
 
 }  // namespace mindspore::serving
 
-#endif  // MINDSPORE_CONTEXT_H
+#endif  // MINDSPORE_SERVING_WORKER_CONTEXT_H

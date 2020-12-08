@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MINDSPORE_SERVING_HTTP_HANDLE_H
-#define MINDSPORE_SERVING_HTTP_HANDLE_H
+#ifndef MINDSPORE_SERVING_MASTER_HTTP_HANDLE_H
+#define MINDSPORE_SERVING_MASTER_HTTP_HANDLE_H
 
 #include <string>
 #include <memory>
@@ -35,4 +35,4 @@ size_t GetTailEqualSize(const std::string &str);
 
 }  // namespace serving
 }  // namespace mindspore
-#endif  // MINDSPORE_SERVING_HTTP_HANDLE_H
+#endif  // MINDSPORE_SERVING_MASTER_HTTP_HANDLE_H

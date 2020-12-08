@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MINDSPORE_RESTFUL_REQUEST_H
-#define MINDSPORE_RESTFUL_REQUEST_H
+#ifndef MINDSPORE_SERVING_MASTER_RESTFUL_REQUEST_H
+#define MINDSPORE_SERVING_MASTER_RESTFUL_REQUEST_H
 
 #include <event2/event.h>
 #include <event2/http.h>
@@ -67,4 +67,4 @@ class RestfulRequest {
 }  // namespace serving
 }  // namespace mindspore
 
-#endif  // MINDSPORE_RESTFUL_REQUEST_H
+#endif  // MINDSPORE_SERVING_MASTER_RESTFUL_REQUEST_H

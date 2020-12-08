@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MINDSPORE_SERVER_PY_H
-#define MINDSPORE_SERVER_PY_H
+#ifndef MINDSPORE_SERVER_MASTER_PY_H
+#define MINDSPORE_SERVER_MASTER_PY_H
 
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
@@ -46,4 +46,4 @@ class MS_API PyMaster {
 }  // namespace serving
 }  // namespace mindspore
 
-#endif  // MINDSPORE_SERVER_PY_H
+#endif  // MINDSPORE_SERVER_MASTER_PY_H

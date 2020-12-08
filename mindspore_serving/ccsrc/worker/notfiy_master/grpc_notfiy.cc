@@ -69,8 +69,7 @@ Status GrpcNotfiyMaster::Register(const std::vector<WorkerSpec> &worker_specs) {
     std::this_thread::sleep_for(std::chrono::milliseconds(REGISTER_INTERVAL * 1000));
   }
   if (ExitHandle::Instance().HasStopped()) {
-    MSI_LOG_INFO << "Worker exit, stop registration";
-    return FAILED;
+    return INFER_STATUS_LOG_WARNING(FAILED) << "Worker exit, stop registration";
   }
   return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Register TimeOut";
 }

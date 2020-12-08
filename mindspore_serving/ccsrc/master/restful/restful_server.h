@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MINDSPORE_RESTFUL_SERVER_H
-#define MINDSPORE_RESTFUL_SERVER_H
+#ifndef MINDSPORE_SERVING_MASTER_RESTFUL_SERVER_H
+#define MINDSPORE_SERVING_MASTER_RESTFUL_SERVER_H
 
 #include <event.h>
 #include <event2/event.h>
@@ -67,4 +67,4 @@ class MS_API RestfulServer {
 
 }  // namespace mindspore::serving
 
-#endif  // MINDSPORE_RESTFUL_SERVER_H
+#endif  // MINDSPORE_SERVING_MASTER_RESTFUL_SERVER_H

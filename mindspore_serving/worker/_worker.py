@@ -54,6 +54,15 @@ def stop_on_except(func):
 
 def _load_servable_config(servable_directory, servable_name):
     import sys
+    import os
+    config_dir = os.path.join(servable_directory, servable_name)
+    if not os.path.isdir(config_dir):
+        raise RuntimeError(f"Load servable config failed, directory '{config_dir}' not exist, "
+                           f"servable directory '{servable_directory}', servable name '{servable_name}'")
+    config_file = os.path.join(config_dir, "servable_config.py")
+    if not os.path.isfile(config_file):
+        raise RuntimeError(f"Load servable config failed, file '{config_file}' not exist, "
+                           f"servable directory '{servable_directory}', servable name '{servable_name}'")
     sys.path.append(servable_directory)
     __import__(servable_name + ".servable_config")
 
@@ -102,8 +111,6 @@ def start_servable(servable_directory, servable_name, version_number=0,
     check_type.check_str('servable_name', servable_name)
     check_type.check_int('version_number', version_number, 0)
 
-    if device_type:
-        check_type.check_str('device_type', device_type)
     check_type.check_int('device_id', device_id, 0)
 
     check_type.check_str('master_ip', master_ip)
@@ -115,6 +122,7 @@ def start_servable(servable_directory, servable_name, version_number=0,
     _load_servable_config(servable_directory, servable_name)
 
     if device_type is not None:
+        check_type.check_str('device_type', device_type)
         context.set_context(device_type=device_type)
     else:
         context.set_context(device_type='None')  # depend on register implement
@@ -165,13 +173,12 @@ def start_servable_in_master(servable_directory, servable_name, version_number=0
     check_type.check_str('servable_name', servable_name)
     check_type.check_int('version_number', version_number, 0)
 
-    if device_type:
-        check_type.check_str('device_type', device_type)
     check_type.check_int('device_id', device_id, 0)
 
     _load_servable_config(servable_directory, servable_name)
 
     if device_type is not None:
+        check_type.check_str('device_type', device_type)
         context.set_context(device_type=device_type)
     else:
         context.set_context(device_type='None')  # depend on register implement

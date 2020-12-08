@@ -83,15 +83,9 @@ include_directories("${CMAKE_CURRENT_BINARY_DIR}/mindspore_serving") # for proto
 include_directories("${CMAKE_CURRENT_BINARY_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}" "ccsrc")
 
 # serving_common for c++ server and python interface
-file(GLOB_RECURSE MASTER_CORE_SRC_LIST RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
-        "ccsrc/master/*.cc" "ccsrc/common/*.cc" "ccsrc/worker/*.cc" "ccsrc/inference/*.cc")
+file(GLOB_RECURSE SERVING_SRC RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+        "ccsrc/master/*.cc" "ccsrc/common/*.cc" "ccsrc/worker/*.cc")
 
-file(GLOB_RECURSE RMV_SRC_LIST RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
-        "ccsrc/master/version_control/*.cc")
-
-#list(REMOVE_ITEM MASTER_CORE_SRC_LIST ${RMV_SRC_LIST})
-
-list(APPEND SERVING_SRC ${MASTER_CORE_SRC_LIST})
 add_library(serving_common SHARED ${SERVING_SRC})
 
 include(CheckPIESupported)

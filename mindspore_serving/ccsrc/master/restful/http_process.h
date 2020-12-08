@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MINDSPORE_SERVING_HTTP_PROCESS_H
-#define MINDSPORE_SERVING_HTTP_PROCESS_H
+#ifndef MINDSPORE_SERVING_MASTER_HTTP_PROCESS_H
+#define MINDSPORE_SERVING_MASTER_HTTP_PROCESS_H
 
 #include <string>
 #include <memory>
@@ -107,4 +107,4 @@ class RestfulService {
 
 }  // namespace serving
 }  // namespace mindspore
-#endif  // MINDSPORE_SERVER_H
+#endif  // MINDSPORE_SERVING_MASTER_HTTP_PROCESS_H

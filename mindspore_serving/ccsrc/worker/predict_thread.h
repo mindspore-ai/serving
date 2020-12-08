@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MINDSPORE_PREDICT_THREAD_H
-#define MINDSPORE_PREDICT_THREAD_H
+#ifndef MINDSPORE_SERVING_WORKER_PREDICT_THREAD_H
+#define MINDSPORE_SERVING_WORKER_PREDICT_THREAD_H
 
 #include <queue>
 #include <mutex>
@@ -53,4 +53,4 @@ class MS_API PredictThread {
 
 }  // namespace mindspore::serving
 
-#endif  // MINDSPORE_PREDICT_THREAD_H
+#endif  // MINDSPORE_SERVING_WORKER_PREDICT_THREAD_H

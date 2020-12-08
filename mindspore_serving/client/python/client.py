@@ -44,7 +44,7 @@ def _create_tensor(data, tensor=None):
             tensor.dtype = v
             break
     if tensor.dtype == ms_service_pb2.MS_UNKNOWN:
-        raise RuntimeError("Unknown data type", data.dtype)
+        raise RuntimeError("Unknown data type " + str(data.dtype))
     tensor.data = data.tobytes()
     return tensor
 
@@ -114,22 +114,51 @@ def _create_numpy_from_tensor(tensor):
     return result
 
 
+def _check_str(arg_name, str_val):
+    """Check whether the input parameters are reasonable str input"""
+    if not isinstance(str_val, str):
+        raise RuntimeError(f"Parameter '{arg_name}' should be str, but actually {type(str_val)}")
+    if not str_val:
+        raise RuntimeError(f"Parameter '{arg_name}' should not be empty str")
+
+
+def _check_int(arg_name, int_val, mininum=None, maximum=None):
+    """Check whether the input parameters are reasonable int input"""
+    if not isinstance(int_val, int):
+        raise RuntimeError(f"Parameter '{arg_name}' should be int, but actually {type(int_val)}")
+    if mininum is not None and int_val < mininum:
+        if maximum is not None:
+            raise RuntimeError(f"Parameter '{arg_name}' should be in range [{mininum},{maximum}]")
+        raise RuntimeError(f"Parameter '{arg_name}' should be >= {mininum}")
+    if maximum is not None and int_val > maximum:
+        if mininum is not None:
+            raise RuntimeError(f"Parameter '{arg_name}' should be in range [{mininum},{maximum}]")
+        raise RuntimeError(f"Parameter '{arg_name}' should be <= {maximum}")
+
+
 class Client:
-    def __init__(self, ip, port, servable_name, method_name, version_number=None):
+    def __init__(self, ip, port, servable_name, method_name, version_number=0):
         '''
-        Create Client connect to rving
+        Create Client connect to serving
         :param ip: serving ip
         :param port: serving port
         :param servable_name: the name of servable supplied by serving
         :param method_name:  method supplied by servable
-        :param version_number: the version number of servable, default None.
-                            None meaning the maximum version number in all running versions.
+        :param version_number: the version number of servable, default 0.
+                            0 meaning the maximum version number in all running versions.
         '''
+        _check_str("ip", ip)
+        _check_int("port", port, 0, 65535)
+        _check_str("servable_name", servable_name)
+        _check_str("method_name", method_name)
+        _check_int("version_number", version_number, 0)
+
         self.ip = ip
         self.port = port
         self.servable_name = servable_name
         self.method_name = method_name
         self.version_number = version_number
+
         channel_str = str(ip) + ":" + str(port)
         channel = grpc.insecure_channel(channel_str)
         self.stub = ms_service_pb2_grpc.MSServiceStub(channel)
@@ -138,8 +167,7 @@ class Client:
         request = ms_service_pb2.PredictRequest()
         request.servable_spec.name = self.servable_name
         request.servable_spec.method_name = self.method_name
-        if self.version_number is not None:
-            request.servable_spec.version_number = self.version_number
+        request.servable_spec.version_number = self.version_number
         return request
 
     def _create_instance(self, **kwargs):
@@ -165,9 +193,8 @@ class Client:
         ret_val = []
         instance_len = len(result.instances)
         if error_msg_len not in (0, instance_len):
-            raise RuntimeError(
-                "error msg result size " + error_msg_len + " not be 0,1 or length of instances " + str(
-                    instance_len))
+            raise RuntimeError(f"error msg result size {error_msg_len} not be 0, 1 or "
+                               f"length of instances {instance_len}")
         for i in range(instance_len):
             instance = result.instances[i]
             if error_msg_len == 0 or result.error_msg[i].error_code == 0:

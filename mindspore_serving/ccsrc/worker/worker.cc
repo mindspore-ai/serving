@@ -225,8 +225,9 @@ Status Worker::LoadModel(LoadServableSpec *servable_spec, uint64_t version_numbe
                                               servable_meta.model_format, &model_id);
   if (status != SUCCESS) {
     return INFER_STATUS_LOG_ERROR(FAILED)
-           << "Load model failed, model directory " << servable_spec->servable_directory << ", model file "
-           << servable_meta.servable_file << ", version number " << version_number;
+           << "Load model failed, servable directory: '" << servable_spec->servable_directory << "', servable name: '"
+           << servable_spec->servable_name << "', servable file: '" << servable_meta.servable_file
+           << "', version number " << version_number;
   }
   auto service = std::make_shared<WorkExecutor>(GetPyTaskQueuePreprocess(), GetPyTaskQueuePostprocess(),
                                                 GetCppTaskQueuePreprocess(), GetCppTaskQueuePostprocess());
@@ -282,7 +283,7 @@ void Worker::Update() {
 Status Worker::StartServable(const std::string &servable_directory, const std::string &servable_name,
                              uint32_t version_number, std::shared_ptr<BaseNotifyMaster> notify_master) {
   if (servable_started_) {
-    MSI_LOG_EXCEPTION << "Servable has started";
+    MSI_LOG_EXCEPTION << "A servable has been started, only one servable can run in a process currently.";
   }
   notify_master_ = std::move(notify_master);
   base_spec_.servable_directory = servable_directory;
@@ -298,7 +299,7 @@ Status Worker::StartServable(const std::string &servable_directory, const std::s
   Status status;
   ServableSignature signature;
   if (!ServableStorage::Instance()->GetServableDef(servable_name, &signature)) {
-    return INFER_STATUS_LOG_ERROR(FAILED) << "Servable " << servable_name << " has not been registerd";
+    return INFER_STATUS_LOG_ERROR(FAILED) << "Servable '" << servable_name << "' has not been registered";
   }
   if (session_ == nullptr) {
     status = InitEnv(signature.servable_meta.model_format, {});
@@ -311,9 +312,11 @@ Status Worker::StartServable(const std::string &servable_directory, const std::s
   std::vector<uint64_t> real_versions;
   status = LoadServableConfig(base_spec_, version_strategy, &real_versions);
   if (status != SUCCESS) {
-    MSI_LOG_ERROR << "Load servable config file failed, model directory " << base_spec_.servable_directory
-                  << ", model name " << base_spec_.servable_name;
-    return status;
+    return INFER_STATUS_LOG_ERROR(FAILED)
+           << "Start servable failed, there is no servable of the specified version number, specified version number: "
+           << version_number << ", servable directory: '" << base_spec_.servable_directory << "', servable name: '"
+           << base_spec_.servable_name
+           << "'. version number is a positive integer(started from 1) and 0 represents the maximum version number.";
   }
   for (auto real_version_number : real_versions) {
     ServableWorkerContext work;
@@ -329,6 +332,12 @@ Status Worker::StartServable(const std::string &servable_directory, const std::s
     return status;
   }
   servable_started_ = true;
+  status = INFER_STATUS(SUCCESS) << "Serving: Start servable success, servable directory: '" << servable_directory
+                                 << "', servable name: '" << servable_name
+                                 << "', specified version number: " << version_number
+                                 << ", started version numbers: " << real_versions;
+  MSI_LOG_INFO << status.StatusMessage();
+  std::cout << status.StatusMessage() << std::endl;
   return SUCCESS;
 }
 

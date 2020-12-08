@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MINDSPORE_SERVING_SERVER_DISPACTHER_H
-#define MINDSPORE_SERVING_SERVER_DISPACTHER_H
+#ifndef MINDSPORE_SERVING_MASTER_DISPACTHER_H
+#define MINDSPORE_SERVING_MASTER_DISPACTHER_H
 
 #include <memory>
 #include <string>
@@ -68,4 +68,4 @@ class MS_API Dispatcher {
 
 }  // namespace mindspore::serving
 
-#endif  // MINDSPORE_SERVING_SERVER_DISPACTHER_H
+#endif  // MINDSPORE_SERVING_MASTER_DISPACTHER_H

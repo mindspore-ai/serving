@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MINDSPORE_GRPC_PROCESS_H
-#define MINDSPORE_GRPC_PROCESS_H
+#ifndef MINDSPORE_SERVING_MASTER_GRPC_PROCESS_H
+#define MINDSPORE_SERVING_MASTER_GRPC_PROCESS_H
 
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>
@@ -65,4 +65,4 @@ class MSMasterImpl final : public proto::MSMaster::Service {
 }  // namespace serving
 }  // namespace mindspore
 
-#endif  // MINDSPORE_GRPC_PROCESS_H
+#endif  // MINDSPORE_SERVING_MASTER_GRPC_PROCESS_H

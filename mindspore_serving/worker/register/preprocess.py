@@ -24,15 +24,16 @@ def check_preprocess(preprocess_name, inputs_count, outputs_count):
         return
     last_inputs_count, last_output_count = preprocess_info
     if last_inputs_count != inputs_count:
-        raise RuntimeError(f"Preprocess {preprocess_name} inputs count {inputs_count} not match "
+        raise RuntimeError(f"Preprocess '{preprocess_name}' inputs count {inputs_count} not match "
                            f"last registered count {last_inputs_count}")
     if last_output_count != outputs_count:
-        raise RuntimeError(f"retprocess {preprocess_name} outputs count {outputs_count} not match "
+        raise RuntimeError(f"retprocess '{preprocess_name}' outputs count {outputs_count} not match "
                            f"last registered count {last_output_count}")
 
 
 class PreprocessStorage:
     """Register and get preprocess info, preprocess info include: func, name, input and output count"""
+
     def __init__(self):
         self.preprocess = {}
         self.storage = PreprocessStorage_.get_instance()
@@ -45,7 +46,7 @@ class PreprocessStorage:
     def get(self, preprocess_name):
         preprocess = self.preprocess.get(preprocess_name, None)
         if preprocess is None:
-            raise RuntimeError("Preprocess " + preprocess_name + " not found")
+            raise RuntimeError(f"Preprocess '{preprocess_name}' not found")
         return preprocess
 
 

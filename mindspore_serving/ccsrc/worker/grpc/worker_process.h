@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MINDSPORE_WORKER_PROCESS_H
-#define MINDSPORE_WORKER_PROCESS_H
+#ifndef MINDSPORE_SERVING_WORKER_WORKER_PROCESS_H
+#define MINDSPORE_SERVING_WORKER_WORKER_PROCESS_H
 
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>
@@ -38,4 +38,4 @@ class MSWorkerImpl final : public proto::MSWorker::Service {
 }  // namespace serving
 }  // namespace mindspore
 
-#endif  // MINDSPORE_WORKER_PROCESS_H
+#endif  // MINDSPORE_SERVING_WORKER_WORKER_PROCESS_H

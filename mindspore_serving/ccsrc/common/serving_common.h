@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MINDSPORE_SERVING_COMMON_H
-#define MINDSPORE_SERVING_COMMON_H
+#ifndef MINDSPORE_SERVING_SERVING_COMMON_H
+#define MINDSPORE_SERVING_SERVING_COMMON_H
 
 #include <securec.h>
 
@@ -23,4 +23,4 @@
 #include "common/log.h"
 #include "common/tensor.h"
 
-#endif  // MINDSPORE_SERVING_COMMON_H
+#endif  // MINDSPORE_SERVING_SERVING_COMMON_H

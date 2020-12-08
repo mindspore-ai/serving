@@ -23,12 +23,12 @@ def check_and_as_str_tuple_list(arg_name, strs):
         strs = (strs,)
 
     if not isinstance(strs, (tuple, list)):
-        raise RuntimeError(f"Parameter '{arg_name}' should be str or tuple/list of str, but actually", type(strs))
+        raise RuntimeError(f"Parameter '{arg_name}' should be str or tuple/list of str, but actually {type(strs)}")
 
     if isinstance(strs, (tuple, list)):
         for item in strs:
             if not isinstance(item, str):
-                raise RuntimeError(f"The item of parameter '{arg_name}' should be str, but actually", type(item))
+                raise RuntimeError(f"The item of parameter '{arg_name}' should be str, but actually {type(item)}")
             if not item:
                 raise RuntimeError(f"The item of parameter '{arg_name}' should not be empty str")
 
@@ -38,7 +38,7 @@ def check_and_as_str_tuple_list(arg_name, strs):
 def check_str(arg_name, str_val):
     """Check whether the input parameters are reasonable str input"""
     if not isinstance(str_val, str):
-        raise RuntimeError(f"Parameter '{arg_name}' should be str, but actually", type(str_val))
+        raise RuntimeError(f"Parameter '{arg_name}' should be str, but actually {type(str_val)}")
     if not str_val:
         raise RuntimeError(f"Parameter '{arg_name}' should not be empty str")
 
@@ -46,13 +46,13 @@ def check_str(arg_name, str_val):
 def check_bool(arg_name, bool_val):
     """Check whether the input parameters are reasonable bool input"""
     if not isinstance(bool_val, bool):
-        raise RuntimeError(f"Parameter '{arg_name}' should be bool, but actually", type(bool_val))
+        raise RuntimeError(f"Parameter '{arg_name}' should be bool, but actually {type(bool_val)}")
 
 
 def check_int(arg_name, int_val, mininum=None, maximum=None):
     """Check whether the input parameters are reasonable int input"""
     if not isinstance(int_val, int):
-        raise RuntimeError(f"Parameter '{arg_name}' should be int, but actually", type(int_val))
+        raise RuntimeError(f"Parameter '{arg_name}' should be int, but actually {type(int_val)}")
     if mininum is not None and int_val < mininum:
         if maximum is not None:
             raise RuntimeError(f"Parameter '{arg_name}' should be in range [{mininum},{maximum}]")

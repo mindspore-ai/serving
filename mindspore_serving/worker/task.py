@@ -110,7 +110,7 @@ class PyTask:
                 self.push_result_batch()
                 self.push_failed(self.instances_size - self.index)
                 raise RuntimeError(
-                    f"expecting {self.task_name} yield count equal to instance size {self.instances_size}")
+                    f"expecting '{self.task_name}' yield count equal to instance size {self.instances_size}")
             except ServingSystemException as e:
                 raise e
             except Exception as e:  # catch exception and try next
@@ -130,8 +130,8 @@ class PyTask:
         # check input
         for item in instance_list:
             if not isinstance(item, tuple) or len(item) != self.task_info["inputs_count"]:
-                raise RuntimeError("length of given inputs " + str(len(item))
-                                   + " not match {self.task_name} required " + str(self.task_info["inputs_count"]))
+                raise RuntimeError(f"length of given inputs {len(item)}"
+                                   f" not match {self.task_name} required " + str(self.task_info["inputs_count"]))
         return self._handle_task_continue()
 
     def _handle_task_continue(self):
