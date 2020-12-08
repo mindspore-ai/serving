@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef MINDSPORE_SERVER_H
-#define MINDSPORE_SERVER_H
+#ifndef MINDSPORE_SERVING_MASTER_SERVER_H
+#define MINDSPORE_SERVING_MASTER_SERVER_H
 
 #include <memory>
 #include <string>
@@ -48,4 +48,4 @@ class MS_API Server {
 };
 }  // namespace serving
 }  // namespace mindspore
-#endif  // MINDSPORE_SERVER_H
+#endif  // MINDSPORE_SERVING_MASTER_SERVER_H

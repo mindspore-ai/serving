@@ -25,6 +25,7 @@ _wait_and_clear_thread = None
 # waiting for Ctrl+C, and clear
 def _start_wait_and_clear():
     """Start thread waiting for catch ctrl+c, and clear env"""
+
     def thread_func():
         print("Serving master: wait for Ctrl+C to exit ------------------------------------")
         Master_.wait_and_clear()
@@ -42,6 +43,7 @@ def stop():
 
 def stop_on_except(func):
     """mmon wrap clear and exit on Serving exception"""
+
     @wraps(func)
     def handle_except(*args, **kwargs):
         try:

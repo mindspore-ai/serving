@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef MINDSPORE_SERVING_VERSOIN_CONTROLLER_H_
-#define MINDSPORE_SERVING_VERSOIN_CONTROLLER_H_
+#ifndef MINDSPORE_SERVING_WORKER_VERSOIN_CONTROLLER_H_
+#define MINDSPORE_SERVING_WORKER_VERSOIN_CONTROLLER_H_
 
 #include <string>
 #include <vector>
@@ -47,4 +47,4 @@ class VersionController {
 }  // namespace serving
 }  // namespace mindspore
 
-#endif  // !MINDSPORE_SERVING_VERSOIN_CONTROLLER_H_
+#endif  // !MINDSPORE_SERVING_WORKER_VERSOIN_CONTROLLER_H_

@@ -24,15 +24,16 @@ def check_postprocess(postprocess_name, inputs_count, outputs_count):
         return
     last_inputs_count, last_output_count = postprocess_info
     if last_inputs_count != inputs_count:
-        raise RuntimeError(f" Postprocess {postprocess_name} inputs count {inputs_count} not match "
+        raise RuntimeError(f" Postprocess '{postprocess_name}' inputs count {inputs_count} not match "
                            f"last registered count {last_inputs_count}")
     if last_output_count != outputs_count:
-        raise RuntimeError(f" Postprocess {postprocess_name} outputs count {outputs_count} not match "
+        raise RuntimeError(f" Postprocess '{postprocess_name}' outputs count {outputs_count} not match "
                            f"last registered count {last_output_count}")
 
 
 class PostprocessStorage:
     """Register and get postprocess info, postprocess info include: func, name, input and output count"""
+
     def __init__(self):
         self.postprocess = {}
         self.storage = PostprocessStorage_.get_instance()
@@ -45,7 +46,7 @@ class PostprocessStorage:
     def get(self, postprocess_name):
         postprocess = self.postprocess.get(postprocess_name, None)
         if postprocess is None:
-            raise RuntimeError("Postprocess " + postprocess_name + " not found")
+            raise RuntimeError(f"Postprocess '{postprocess_name}' not found")
         return postprocess
 
 

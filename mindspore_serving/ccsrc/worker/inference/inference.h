@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MINDSPORE_SERVING_INC_INFERENCE_H
-#define MINDSPORE_SERVING_INC_INFERENCE_H
+#ifndef MINDSPORE_SERVING_WORKER_INFERENCE_H
+#define MINDSPORE_SERVING_WORKER_INFERENCE_H
 
 #include <utility>
 #include <unordered_map>
@@ -206,4 +206,4 @@ static inline LogStream &operator<<(LogStream &stream, DeviceType device_type) {
 
 }  // namespace serving
 }  // namespace mindspore
-#endif  // MINDSPORE_SERVING_INC_INFERENCE_H
+#endif  // MINDSPORE_SERVING_WORKER_INFERENCE_H

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MINDSPORE_SERVING_INC_TENSOR_IMP_H
-#define MINDSPORE_SERVING_INC_TENSOR_IMP_H
+#ifndef MINDSPORE_SERVING_TENSOR_H
+#define MINDSPORE_SERVING_TENSOR_H
 
 #include <vector>
 #include "common/tensor_base.h"
@@ -111,4 +111,4 @@ class MS_API VectorTensorPtrWrapRequest : public RequestBase {
 
 }  // namespace mindspore::serving
 
-#endif  // MINDSPORE_SERVING_INC_TENSOR_IMP_H
+#endif  // MINDSPORE_SERVING_TENSOR_H

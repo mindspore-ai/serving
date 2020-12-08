@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MINDSPORE_SERVING_WROERK_ACL_INFERENCE_H
-#define MINDSPORE_SERVING_WROERK_ACL_INFERENCE_H
+#ifndef MINDSPORE_SERVING_WROERK_MODEL_WRAP_H
+#define MINDSPORE_SERVING_WROERK_MODEL_WRAP_H
 
 #include <unordered_map>
 #include <string>
@@ -122,4 +122,4 @@ class ApiBufferTensorWrap : public TensorBase {
 }  // namespace serving
 }  // namespace mindspore
 
-#endif  // MINDSPORE_SERVING_WROERK_ACL_INFERENCE_H
+#endif  // MINDSPORE_SERVING_WROERK_MODEL_WRAP_H

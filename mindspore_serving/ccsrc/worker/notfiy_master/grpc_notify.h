@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MINDSPORE_SERVING_GRPC_NOTIFY_H
-#define MINDSPORE_SERVING_GRPC_NOTIFY_H
+#ifndef MINDSPORE_SERVING_WORKER_GRPC_NOTIFY_H
+#define MINDSPORE_SERVING_WORKER_GRPC_NOTIFY_H
 #include <vector>
 #include <string>
 #include <memory>
@@ -50,4 +50,4 @@ class MS_API GrpcNotfiyMaster : public BaseNotifyMaster {
 }  // namespace serving
 }  // namespace mindspore
 
-#endif  // MINDSPORE_SERVING_GRPC_NOTIFY_H
+#endif  // MINDSPORE_SERVING_WORKER_GRPC_NOTIFY_H

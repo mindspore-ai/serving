@@ -35,6 +35,7 @@ method_tag_postprocess = PredictPhaseTag_.kPredictPhaseTag_Postprocess
 
 class _ServableStorage:
     """Declare servable info"""
+
     def __init__(self):
         self.methods = {}
         self.servable_metas = {}
@@ -60,13 +61,13 @@ class _ServableStorage:
     def get_method(self, method_name):
         method = self.methods.get(method_name, None)
         if method is None:
-            raise RuntimeError(f"Method {method_name} not found")
+            raise RuntimeError(f"Method '{method_name}' not found")
         return method
 
     def get_servable_meta(self, servable_name):
         servable = self.servable_metas.get(servable_name, None)
         if servable is None:
-            raise RuntimeError(f"Servable {servable_name} not found")
+            raise RuntimeError(f"Servable '{servable_name}' not found")
         return servable
 
 
@@ -75,6 +76,7 @@ _servable_storage = _ServableStorage()
 
 class _TensorDef:
     """Data flow item, for definitions of data flow in a method"""
+
     def __init__(self, tag, tensor_index):
         self.tag = tag
         self.tensor_index = tensor_index
@@ -99,7 +101,7 @@ def call_preprocess(preprocess_fun, *args):
         The input parameters number of implemented python and C++ function should equal to length of 'args'
     """
     if _call_preprocess_name not in method_def_ast_meta_:
-        raise RuntimeError(f"Invalid call of ${_call_preprocess_name}")
+        raise RuntimeError(f"Invalid call of '${_call_preprocess_name}'")
     inputs_count, outputs_count = method_def_ast_meta_[_call_preprocess_name]
 
     preprocess_name = preprocess_fun
@@ -128,7 +130,7 @@ def call_servable(*args):
     _servable_storage.declare_servable_input_output(servable_name, inputs_count, outputs_count)
     if inputs_count != len(args):
         raise RuntimeError(f"Given servable input size {len(args)} not match "
-                           f"{servable_name} ast parse size ${inputs_count}")
+                           f"'{servable_name}' ast parse size ${inputs_count}")
 
     global method_def_context_
     method_def_context_.servable_name = servable_name
@@ -145,7 +147,7 @@ def call_postprocess(postprocess_fun, *args):
         The input parameters number of implemented python and C++ function should equal to length of 'args'
     """
     if _call_postprocess_name not in method_def_ast_meta_:
-        raise RuntimeError(f"Invalid call of ${_call_postprocess_name}")
+        raise RuntimeError(f"Invalid call of '{_call_postprocess_name}'")
     inputs_count, outputs_count = method_def_ast_meta_[_call_postprocess_name]
 
     postprocess_name = postprocess_fun
@@ -207,13 +209,13 @@ def _get_method_def_func_meta(method_def_func):
             continue
 
         if inputs_count <= 0:
-            raise RuntimeError(f"Invalid {func.id} invoke args")
+            raise RuntimeError(f"Invalid '{func_name}' invoke args")
 
-        print(f"call type {func_name}, inputs count {inputs_count}, outputs count {outputs_count}")
+        print(f"call type '{func_name}', inputs count {inputs_count}, outputs count {outputs_count}")
         func_meta[func_name] = [inputs_count, outputs_count]
 
     if _call_servable_name not in func_meta:
-        raise RuntimeError(f"Not find the invoke of {_call_servable_name}")
+        raise RuntimeError(f"Not find the invoke of '{_call_servable_name}'")
     return func_meta
 
 
@@ -237,9 +239,9 @@ def register_method(output_names):
         input_names = []
         for k, v in sig.parameters.items():
             if v.kind == inspect.Parameter.VAR_POSITIONAL:
-                raise RuntimeError(name + " input %s cannot be VAR_POSITIONAL !" % k)
+                raise RuntimeError(f"'{name}' input {k} cannot be VAR_POSITIONAL !")
             if v.kind == inspect.Parameter.VAR_KEYWORD:
-                raise RuntimeError(name + " input %s cannot be VAR_KEYWORD !" % k)
+                raise RuntimeError(f"'{name}' input {k} cannot be VAR_KEYWORD !")
             input_names.append(k)
 
         input_tensors = []

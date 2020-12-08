@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MINDSPORE_SERVING_LOCAL_NOTIFY_H
-#define MINDSPORE_SERVING_LOCAL_NOTIFY_H
+#ifndef MINDSPORE_SERVING_WROKER_LOCAL_NOTIFY_H
+#define MINDSPORE_SERVING_WROKER_LOCAL_NOTIFY_H
 #include <vector>
 #include "worker/notfiy_master/base_notify.h"
 
@@ -35,4 +35,4 @@ class MS_API LocalNotifyMaster : public BaseNotifyMaster {
 }  // namespace serving
 }  // namespace mindspore
 
-#endif  // MINDSPORE_SERVING_LOCAL_NOTIFY_H
+#endif  // MINDSPORE_SERVING_WROKER_LOCAL_NOTIFY_H

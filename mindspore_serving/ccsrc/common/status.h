@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MINDSPORE_SERVING_INC_STATUS_H
-#define MINDSPORE_SERVING_INC_STATUS_H
+#ifndef MINDSPORE_SERVING_STATUS_H
+#define MINDSPORE_SERVING_STATUS_H
 
 #include <chrono>
 #include <string>
@@ -72,4 +72,4 @@ class Status {
 
 }  // namespace mindspore::serving
 
-#endif  // MINDSPORE_SERVING_INC_STATUS_H
+#endif  // MINDSPORE_SERVING_STATUS_H

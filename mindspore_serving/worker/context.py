@@ -57,4 +57,4 @@ def set_context(**kwargs):
         elif k == "device_id":
             context.set_device_id(w)
         else:
-            raise RuntimeError("Not support context key " + k)
+            raise RuntimeError(f"Not support context key '{k}'")

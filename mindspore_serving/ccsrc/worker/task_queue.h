@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MINDSPORE_TASK_QUEUE_H
-#define MINDSPORE_TASK_QUEUE_H
+#ifndef MINDSPORE_SERVING_WORKER_TASK_QUEUE_H
+#define MINDSPORE_SERVING_WORKER_TASK_QUEUE_H
 
 #include <vector>
 #include <unordered_map>
@@ -135,4 +135,4 @@ class PostprocessThreadPool : public TaskQueueThreadPool {
 
 }  // namespace mindspore::serving
 
-#endif  // MINDSPORE_TASK_QUEUE_H
+#endif  // MINDSPORE_SERVING_WORKER_TASK_QUEUE_H

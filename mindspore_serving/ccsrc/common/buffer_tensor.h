@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MINDSPORE_BUFFER_TENSOR_H
-#define MINDSPORE_BUFFER_TENSOR_H
+#ifndef MINDSPORE_SERVING_BUFFER_TENSOR_H
+#define MINDSPORE_SERVING_BUFFER_TENSOR_H
 
 #include <vector>
 #include "common/serving_common.h"
@@ -59,4 +59,4 @@ class BufferTensor : public TensorBase {
 
 }  // namespace mindspore::serving
 
-#endif  // MINDSPORE_BUFFER_TENSOR_H
+#endif  // MINDSPORE_SERVING_BUFFER_TENSOR_H

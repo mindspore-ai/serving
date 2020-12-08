@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MS_SERVING_UTILS_THREAD_POOL_H_
-#define MS_SERVING_UTILS_THREAD_POOL_H_
+#ifndef MINDSPORE_SERVING_THREAD_POOL_H_
+#define MINDSPORE_SERVING_THREAD_POOL_H_
 
 #include <atomic>
 #include <condition_variable>
@@ -71,4 +71,4 @@ class ThreadPool {
 };
 }  // namespace mindspore::serving
 
-#endif  // MS_SERVING_UTILS_THREAD_POOL_H_
+#endif  // MINDSPORE_SERVING_THREAD_POOL_H_

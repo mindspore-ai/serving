@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MINDSPORE_SERVING_TENSOR_H_
-#define MINDSPORE_SERVING_TENSOR_H_
+#ifndef MINDSPORE_SERVING_PROTO_TENSOR_H_
+#define MINDSPORE_SERVING_PROTO_TENSOR_H_
 
 #include <string>
 #include <utility>
@@ -79,4 +79,4 @@ class MS_API GrpcTensorHelper {
 extern MS_API LogStream &operator<<(serving::LogStream &stream, proto::DataType data_type);
 
 }  // namespace mindspore::serving
-#endif  // MINDSPORE_SERVING_TENSOR_H_
+#endif  // MINDSPORE_SERVING_PROTO_TENSOR_H_

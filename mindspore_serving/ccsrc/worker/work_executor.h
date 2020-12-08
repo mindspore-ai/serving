@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MINDSPORE_SERVING_WORK_EXECUTOR_H
-#define MINDSPORE_SERVING_WORK_EXECUTOR_H
+#ifndef MINDSPORE_SERVING_WORKER_WORK_EXECUTOR_H
+#define MINDSPORE_SERVING_WORKER_WORK_EXECUTOR_H
 
 #include <vector>
 #include <unordered_map>
@@ -101,4 +101,4 @@ class WorkExecutor {
 }  // namespace serving
 }  // namespace mindspore
 
-#endif  // MINDSPORE_SERVING_WORK_EXECUTOR_H
+#endif  // MINDSPORE_SERVING_WORKER_WORK_EXECUTOR_H

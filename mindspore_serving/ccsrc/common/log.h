@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MINDSPORE_SERVING_INC_LOG_H
-#define MINDSPORE_SERVING_INC_LOG_H
+#ifndef MINDSPORE_SERVING_LOG_H
+#define MINDSPORE_SERVING_LOG_H
 
 #include <iostream>
 #include <vector>
@@ -135,4 +135,4 @@ class MS_API LogWriter {
 
 }  // namespace mindspore::serving
 
-#endif  // MINDSPORE_SERVING_INC_LOG_H
+#endif  // MINDSPORE_SERVING_LOG_H

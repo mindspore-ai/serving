@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MINDSPORE_GRPC_SERVER_H
-#define MINDSPORE_GRPC_SERVER_H
+#ifndef MINDSPORE_SERVING_GRPC_SERVER_H
+#define MINDSPORE_SERVING_GRPC_SERVER_H
 
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>
@@ -49,4 +49,4 @@ class MS_API GrpcServer {
 
 }  // namespace mindspore::serving
 
-#endif  // MINDSPORE_GRPC_SERVER_H
+#endif  // MINDSPORE_SERVING_GRPC_SERVER_H

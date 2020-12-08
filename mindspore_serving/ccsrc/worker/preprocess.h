@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MINDSPORE_SERVING_PREPROCESS_H
-#define MINDSPORE_SERVING_PREPROCESS_H
+#ifndef MINDSPORE_SERVING_WORKER_PREPROCESS_H
+#define MINDSPORE_SERVING_WORKER_PREPROCESS_H
 
 #include <memory>
 #include <unordered_map>
@@ -60,4 +60,4 @@ class RegPreprocess {
 
 }  // namespace mindspore::serving
 
-#endif  // MINDSPORE_SERVING_PREPROCESS_H
+#endif  // MINDSPORE_SERVING_WORKER_PREPROCESS_H

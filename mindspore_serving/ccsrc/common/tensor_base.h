@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MINDSPORE_SERVING_INC_TENSOR_H
-#define MINDSPORE_SERVING_INC_TENSOR_H
+#ifndef MINDSPORE_SERVING_TENSOR_BASE_H
+#define MINDSPORE_SERVING_TENSOR_BASE_H
 
 #include <utility>
 #include <vector>
@@ -113,4 +113,4 @@ extern MS_API LogStream &operator<<(LogStream &stream, DataType data_type);
 }  // namespace serving
 }  // namespace mindspore
 
-#endif  // MINDSPORE_SERVING_INC_TENSOR_H
+#endif  // MINDSPORE_SERVING_TENSOR_BASE_H

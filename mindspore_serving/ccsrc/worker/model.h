@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MINDSPORE_SERVING_MODEL_H
-#define MINDSPORE_SERVING_MODEL_H
+#ifndef MINDSPORE_SERVING_WORKER_MODEL_H
+#define MINDSPORE_SERVING_WORKER_MODEL_H
 
 #include <memory>
 #include <unordered_map>
@@ -64,4 +64,4 @@ class AscendModelServable : public ServableBase {
 
 }  // namespace mindspore::serving
 
-#endif  // MINDSPORE_SERVING_MODEL_H
+#endif  // MINDSPORE_SERVING_WORKER_MODEL_H
