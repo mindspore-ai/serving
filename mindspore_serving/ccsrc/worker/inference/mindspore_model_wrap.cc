@@ -83,11 +83,12 @@ Status MindSporeModelWrap::LoadModelFromFile(serving::DeviceType device_type, ui
 
   std::shared_ptr<api::Model> model = nullptr;
   try {
-    api::Context::Instance().SetDeviceTarget(api::kDeviceTypeAscend310).SetDeviceID(device_id);
+    api::Context::Instance().SetDeviceTarget(device_type_str).SetDeviceID(device_id);
     auto graph = api::Serialization::LoadModel(file_name, model_type);
     model = std::make_shared<api::Model>(api::GraphCell(graph));
   } catch (std::runtime_error &ex) {
-    MSI_LOG_ERROR << "Load model from file failed, device_type " << device_type_str << ", device_id " << device_id;
+    MSI_LOG_ERROR << "Load model from file failed, device_type: '" << device_type_str << "', device_id: " << device_id
+                  << ", model type: " << model_type;
     return FAILED;
   }
   api::Status status = model->Build({});

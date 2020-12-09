@@ -42,7 +42,10 @@ void PyMaster::StartRestfulServer(const std::string &ip, uint32_t grpc_port, int
 }
 
 void PyMaster::WaitAndClear() {
-  ExitHandle::Instance().MasterWait();
+  {
+    py::gil_scoped_release release;
+    ExitHandle::Instance().MasterWait();
+  }
   Server::Instance().Clear();
   MSI_LOG_INFO << "Python server end wait and clear";
 }
