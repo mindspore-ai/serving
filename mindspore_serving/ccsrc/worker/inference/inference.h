@@ -198,7 +198,22 @@ static inline LogStream &operator<<(LogStream &stream, DeviceType device_type) {
       stream << "kDeviceTypeNotSpecified";
       break;
     default:
-      stream << "[device type " << static_cast<int>(device_type) << "]";
+      stream << "[device type: " << static_cast<int>(device_type) << "]";
+      break;
+  }
+  return stream;
+}
+
+static inline LogStream &operator<<(LogStream &stream, api::ModelType model_type) {
+  switch (model_type) {
+    case api::kMindIR:
+      stream << "kMindIR";
+      break;
+    case api::kOM:
+      stream << "kOM";
+      break;
+    default:
+      stream << "[model type: " << static_cast<int>(model_type) << "]";
       break;
   }
   return stream;

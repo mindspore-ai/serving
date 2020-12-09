@@ -118,7 +118,10 @@ void PyWorker::PushPostprocessPyFailed(int count) {
 }
 
 void PyWorker::WaitAndClear() {
-  ExitHandle::Instance().WorkerWait();
+  {
+    py::gil_scoped_release release;
+    ExitHandle::Instance().WorkerWait();
+  }
   Worker::GetInstance().Clear();
 }
 
