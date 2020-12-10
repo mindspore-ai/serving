@@ -354,10 +354,10 @@ void Worker::StopServable(bool notify_master) {
 }
 
 void Worker::Clear() {
-  std::unique_lock<std::shared_mutex> lock(worker_shared_lock_);
   if (clear_flag_.test_and_set()) {
     return;
   }
+  std::unique_lock<std::shared_mutex> lock(worker_shared_lock_);
   MSI_LOG_INFO << "Start clear worker session";
   servable_stoppedd_ = true;
   version_controller_.StopPollModelPeriodic();
