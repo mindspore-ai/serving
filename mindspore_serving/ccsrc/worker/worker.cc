@@ -75,7 +75,7 @@ Status Worker::RegisterWorker() {
 }
 
 Status Worker::StartVersionController() {
-  version_controller_.StartPollModelPeriodic();
+  // first disable auto updated
   return SUCCESS;
 }
 
@@ -110,6 +110,13 @@ Status Worker::RemoveWorker(const ServableWorkerContext &work) {
 }
 
 Status Worker::Run(const proto::PredictRequest &request, proto::PredictReply *reply) {
+  std::shared_lock<std::shared_mutex> lock(worker_shared_lock_);
+  if (servable_stoppedd_) {
+    return INFER_STATUS_LOG_ERROR(FAILED) << "Run worker for inference failed, worker has been stopped";
+  }
+  if (!servable_started_) {
+    return INFER_STATUS_LOG_ERROR(FAILED) << "Run worker for inference failed, worker has not been started";
+  }
   MSI_EXCEPTION_IF_NULL(reply);
   std::vector<InstanceData> inputs;
   RequestSpec request_spec;
@@ -347,6 +354,7 @@ void Worker::StopServable(bool notify_master) {
 }
 
 void Worker::Clear() {
+  std::unique_lock<std::shared_mutex> lock(worker_shared_lock_);
   if (clear_flag_.test_and_set()) {
     return;
   }
