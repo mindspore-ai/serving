@@ -37,12 +37,22 @@ def _start_wait_and_clear():
 
 
 def stop():
-    """Stop master"""
+    r"""
+    Stop the running of master.
+
+    Examples:
+        >>> from mindspore_serving import master
+        >>>
+        >>> master.start_grpc_server("0.0.0.0", 5500)
+        >>> master.start_restful_server("0.0.0.0", 1500)
+        >>> ...
+        >>> master.stop()
+    """
     Master_.stop()
 
 
 def stop_on_except(func):
-    """mmon wrap clear and exit on Serving exception"""
+    """Wrap of clear environment and exit on Serving exception"""
 
     @wraps(func)
     def handle_except(*args, **kwargs):
@@ -57,8 +67,24 @@ def stop_on_except(func):
 
 @stop_on_except
 def start_grpc_server(ip="0.0.0.0", grpc_port=5500, max_msg_mb_size=100):
-    """start grpc server for the communication between client and serving.
-    the ip should be accessible to the client."""
+    r"""
+    Start gRPC server for the communication between client and serving.
+
+    Args:
+        ip (str): gRPC server ip.
+        grpc_port (int): gRPC port ip, default 5500，ip port range [0, 65535].
+        max_msg_mb_size (int): The maximum acceptable gRPC message size in megabytes(MB), default 100,
+            value range [1, 512].
+
+    Raises:
+        RuntimeError: Start gRPC server failed.
+
+    Examples:
+        >>> from mindspore_serving import master
+        >>>
+        >>> master.start_grpc_server("0.0.0.0", 5500)
+        >>> master.start_restful_server("0.0.0.0", 1500)
+    """
     check_type.check_str('ip', ip)
     check_type.check_ip_port('grpc_port', grpc_port)
     check_type.check_int('max_msg_mb_size', max_msg_mb_size, 1, 512)
@@ -68,9 +94,27 @@ def start_grpc_server(ip="0.0.0.0", grpc_port=5500, max_msg_mb_size=100):
 
 
 @stop_on_except
-def start_master_server(ip="0.0.0.0", master_port=6100):
-    """start grpc server for the communication between workers and the master.
-    the ip is expected to be accessed only by workers."""
+def start_master_server(ip="127.0.0.1", master_port=6100):
+    r"""
+    Start gRPC server for the commication between workers and the master.
+
+    Note:
+        The ip is expected to be accessed only by workers, not clients.
+
+    Args:
+        ip (str): gRPC ip for worker to commnicate with, default '127.0.0.1'.
+        master_port (int): gRPC port ip, default 6100，ip port range [0, 65535].
+
+    Raises:
+        RuntimeError: Start gRPC server failed.
+
+    Examples:
+        >>> from mindspore_serving import master
+        >>>
+        >>> master.start_grpc_server("0.0.0.0", 5500)
+        >>> master.start_restful_server("0.0.0.0", 1500)
+        >>> master.start_master_server("127.0.0.1", 6100)
+    """
     check_type.check_str('ip', ip)
     check_type.check_ip_port('master_port', master_port)
 
@@ -80,8 +124,23 @@ def start_master_server(ip="0.0.0.0", master_port=6100):
 
 @stop_on_except
 def start_restful_server(ip="0.0.0.0", restful_port=5900, max_msg_mb_size=100):
-    """start restful server for the communication between client and serving.
-    the ip should be accessible to the client."""
+    r"""
+    Start RESTful server for the communication between client and serving.
+
+    Args:
+        ip (str): RESTful server ip.
+        restful_port (int): gRPC port ip, default 5900，ip port range [0, 65535].
+        max_msg_mb_size (int): The maximum acceptable RESTful message size in megabytes(MB), default 100,
+            value range [1, 512].
+
+    Raises:
+        RuntimeError: Start RESTful server failed.
+
+    Examples:
+        >>> from mindspore_serving import master
+        >>>
+        >>> master.start_restful_server("0.0.0.0", 1500)
+    """
     check_type.check_str('ip', ip)
     check_type.check_ip_port('restful_port', restful_port)
     check_type.check_int('max_msg_mb_size', max_msg_mb_size, 1, 512)

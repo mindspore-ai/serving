@@ -12,5 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
+"""MindSpore Serving Client"""
 
 from .python.client import Client
+
+__all__ = []
+__all__.extend([
+    "Client"
+])

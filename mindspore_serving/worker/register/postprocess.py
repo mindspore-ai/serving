@@ -19,6 +19,7 @@ from mindspore_serving.worker.common import get_servable_dir, get_func_name
 
 
 def check_postprocess(postprocess_name, inputs_count, outputs_count):
+    """Check whether inputs and outputs count is equal with last registered"""
     postprocess_info = PostprocessStorage_.get_instance().get_pycpp_postprocess_info(postprocess_name)
     if not postprocess_info:
         return

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
+"""Worker of lenet Example """
 
 import os
 from mindspore_serving import worker
@@ -21,7 +22,7 @@ def start():
     servable_dir = os.path.abspath(".")
     worker.start_servable(servable_dir, "lenet", device_id=0,
                           master_ip="127.0.0.1", master_port=6500,
-                          host_ip="127.0.0.1", host_port=6600)
+                          worker_ip="127.0.0.1", worker_port=6600)
 
 
 if __name__ == "__main__":

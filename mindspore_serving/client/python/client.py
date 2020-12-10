@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
+"""MindSpore Serving Client"""
 
 import grpc
 import numpy as np
@@ -20,6 +21,7 @@ import mindspore_serving.proto.ms_service_pb2_grpc as ms_service_pb2_grpc
 
 
 def _create_tensor(data, tensor=None):
+    """Create tensor from numpy data"""
     if tensor is None:
         tensor = ms_service_pb2.Tensor()
 
@@ -50,12 +52,14 @@ def _create_tensor(data, tensor=None):
 
 
 def _create_scalar_tensor(vals, tensor=None):
+    """Create tensor from scalar data"""
     if not isinstance(vals, (tuple, list)):
         vals = (vals,)
     return _create_tensor(np.array(vals), tensor)
 
 
 def _create_bytes_tensor(bytes_vals, tensor=None):
+    """Create tensor from bytes data"""
     if tensor is None:
         tensor = ms_service_pb2.Tensor()
 
@@ -69,6 +73,7 @@ def _create_bytes_tensor(bytes_vals, tensor=None):
 
 
 def _create_str_tensor(str_vals, tensor=None):
+    """Create tensor from str data"""
     if tensor is None:
         tensor = ms_service_pb2.Tensor()
 
@@ -82,6 +87,7 @@ def _create_str_tensor(str_vals, tensor=None):
 
 
 def _create_numpy_from_tensor(tensor):
+    """Create numpy from protobuf tensor"""
     dtype_map = {
         ms_service_pb2.MS_BOOL: np.bool,
         ms_service_pb2.MS_INT8: np.int8,
@@ -137,16 +143,33 @@ def _check_int(arg_name, int_val, mininum=None, maximum=None):
 
 
 class Client:
+    """
+    The Client encapsulates the serving gRPC API, which can be used to create requests,
+        access serving, and parse results.
+
+    Args:
+        ip(str): Serving ip.
+        port(int): Serving port.
+        servable_name(str): The name of servable supplied by Serving.
+        method_name(str): The name of method supplied by servable.
+        version_number(int): The version number of servable, default 0,
+            0 meaning the maximum version number in all running versions.
+
+    Raises:
+        RuntimeError: The type or value of the parameters is invalid, or other error happened.
+
+    Examples:
+        >>> from mindspore_serving.client import Client
+        >>> import numpy as np
+        >>> client = Client("localhost", 5500, "add", "add_cast")
+        >>> instances = []
+        >>> x1 = np.ones((2, 2), np.int32)
+        >>> x2 = np.ones((2, 2), np.int32)
+        >>> instances.append({"x1": x1, "x2": x2})
+        >>> result = client.infer(instances)
+        >>> print(result)
+    """
     def __init__(self, ip, port, servable_name, method_name, version_number=0):
-        '''
-        Create Client connect to serving
-        :param ip: serving ip
-        :param port: serving port
-        :param servable_name: the name of servable supplied by serving
-        :param method_name:  method supplied by servable
-        :param version_number: the version number of servable, default 0.
-                            0 meaning the maximum version number in all running versions.
-        '''
         _check_str("ip", ip)
         _check_int("port", port, 0, 65535)
         _check_str("servable_name", servable_name)
@@ -163,50 +186,17 @@ class Client:
         channel = grpc.insecure_channel(channel_str)
         self.stub = ms_service_pb2_grpc.MSServiceStub(channel)
 
-    def _create_request(self):
-        request = ms_service_pb2.PredictRequest()
-        request.servable_spec.name = self.servable_name
-        request.servable_spec.method_name = self.method_name
-        request.servable_spec.version_number = self.version_number
-        return request
-
-    def _create_instance(self, **kwargs):
-        instance = ms_service_pb2.Instance()
-        for k, w in kwargs.items():
-            tensor = instance.items[k]
-            if isinstance(w, (np.ndarray, np.number)):
-                _create_tensor(w, tensor)
-            elif isinstance(w, str):
-                _create_str_tensor(w, tensor)
-            elif isinstance(w, (bool, int, float)):
-                _create_scalar_tensor(w, tensor)
-            elif isinstance(w, bytes):
-                _create_bytes_tensor(w, tensor)
-            else:
-                raise RuntimeError("Not support value type " + str(type(w)))
-        return instance
-
-    def _paser_result(self, result):
-        error_msg_len = len(result.error_msg)
-        if error_msg_len == 1:
-            return {"error": bytes.decode(result.error_msg[0].error_msg)}
-        ret_val = []
-        instance_len = len(result.instances)
-        if error_msg_len not in (0, instance_len):
-            raise RuntimeError(f"error msg result size {error_msg_len} not be 0, 1 or "
-                               f"length of instances {instance_len}")
-        for i in range(instance_len):
-            instance = result.instances[i]
-            if error_msg_len == 0 or result.error_msg[i].error_code == 0:
-                instance_map = {}
-                for k, w in instance.items.items():
-                    instance_map[k] = _create_numpy_from_tensor(w)
-                ret_val.append(instance_map)
-            else:
-                ret_val.append({"error": bytes.decode(result.error_msg[i].error_msg)})
-        return ret_val
-
     def infer(self, instances):
+        """
+        Used to create requests, access serving, and parse results.
+
+        Args:
+            instances(map, tuple of map): Instance or tuple of instance, every instance item is the inputs map.
+                The map key is the input name, and the value is the input value.
+
+        Raises:
+            RuntimeError: The type or value of the parameters is invalid, or other error happened.
+        """
         if not isinstance(instances, (tuple, list)):
             instances = (instances,)
         request = self._create_request()
@@ -225,4 +215,50 @@ class Client:
             status_code = e.code()
             print(status_code.name)
             print(status_code.value)
-            return {"error": status_code.value}
+            return {"error": "Grpc Error, " + str(status_code.value)}
+
+    def _create_request(self):
+        """Used to create request spec."""
+        request = ms_service_pb2.PredictRequest()
+        request.servable_spec.name = self.servable_name
+        request.servable_spec.method_name = self.method_name
+        request.servable_spec.version_number = self.version_number
+        return request
+
+    def _create_instance(self, **kwargs):
+        """Used to create gRPC instance."""
+        instance = ms_service_pb2.Instance()
+        for k, w in kwargs.items():
+            tensor = instance.items[k]
+            if isinstance(w, (np.ndarray, np.number)):
+                _create_tensor(w, tensor)
+            elif isinstance(w, str):
+                _create_str_tensor(w, tensor)
+            elif isinstance(w, (bool, int, float)):
+                _create_scalar_tensor(w, tensor)
+            elif isinstance(w, bytes):
+                _create_bytes_tensor(w, tensor)
+            else:
+                raise RuntimeError("Not support value type " + str(type(w)))
+        return instance
+
+    def _paser_result(self, result):
+        """Used to parse result."""
+        error_msg_len = len(result.error_msg)
+        if error_msg_len == 1:
+            return {"error": bytes.decode(result.error_msg[0].error_msg)}
+        ret_val = []
+        instance_len = len(result.instances)
+        if error_msg_len not in (0, instance_len):
+            raise RuntimeError(f"error msg result size {error_msg_len} not be 0, 1 or "
+                               f"length of instances {instance_len}")
+        for i in range(instance_len):
+            instance = result.instances[i]
+            if error_msg_len == 0 or result.error_msg[i].error_code == 0:
+                instance_map = {}
+                for k, w in instance.items.items():
+                    instance_map[k] = _create_numpy_from_tensor(w)
+                ret_val.append(instance_map)
+            else:
+                ret_val.append({"error": bytes.decode(result.error_msg[i].error_msg)})
+        return ret_val

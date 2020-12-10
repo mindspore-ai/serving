@@ -20,15 +20,19 @@ from mindspore_serving.worker.common import get_servable_dir
 from .method import _servable_storage
 
 
-# with_batch_dim means the model first dim is batch, 'inputs mode' request can split into multi instances,
-# otherwise, 'inputs mode' request will view as one instance
-# model_format: OM, MindIR
 def declare_servable(servable_file, model_format, with_batch_dim=True):
-    """declare servable's model info, input_names and output_names can be str, tuple or list of str.
-    For input_names and output_names, serving only consider the number of names contained in them,
-    which should be consistent with the number of input and output used in register_method and
-    the number of input and output of the model.
-    The specific names content are ignored."""
+    r"""
+    declare the servable info.
+
+    Args:
+        servable_file (str): Model file name.
+        model_format (str): Model format, "OM" or "MindIR", case ignored.
+        with_batch_dim (bool): Whether the first shape dim of the inputs and outpus of model is batch dim, default True.
+
+    Raises:
+        RuntimeError: The type or value of the parameters is invalid.
+    """
+
     check_type.check_str('servable_file', servable_file)
     check_type.check_str('model_format', model_format)
     check_type.check_bool('with_batch_dim', with_batch_dim)
