@@ -1,5 +1,19 @@
 # gRPC接口使用说明
 
+`Linux` `Ascend` `Serving` `初级` `中级` `高级`
+
+<!-- TOC -->
+
+- [gRPC接口使用说明](#grpc接口使用说明)
+  - [概述](#概述)
+  - [样例](#样例)
+    - [add样例](#add样例)
+    - [lenet样例](#lenet样例)
+
+<!-- /TOC -->
+
+<a href="https://gitee.com/mindspore/serving/blob/master/docs/GRPC.md" target="_blank"><img src="image/logo_source.png"></a>
+
 ## 概述
 MindSpore Serving提供gRPC接口访问Serving服务。在Python环境下，我们提供[mindspore_serving.client](../mindspore_serving/client/python/client.py) 接口填写请求、解析回复。接下来我们详细说明`mindspore_serving.client`如何使用。
 

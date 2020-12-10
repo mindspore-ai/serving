@@ -1,5 +1,24 @@
 # 模型配置接口使用说明
 
+`Linux` `Ascend` `Serving` `初级` `中级` `高级`
+
+<!-- TOC -->
+
+- [模型配置接口使用说明](#模型配置接口使用说明)
+  - [概述](#概述)
+  - [相关概念](#相关概念)
+    - [预处理和后处理](#预处理和后处理)
+    - [方法](#方法)
+    - [实例](#实例)
+  - [模型配置](#模型配置)
+    - [预处理和后处理定义](#预处理和后处理定义)
+    - [模型声明](#模型声明)
+    - [方法定义](#方法定义)
+
+<!-- /TOC -->
+
+<a href="https://gitee.com/mindspore/serving/blob/master/docs/MODEL.md" target="_blank"><img src="image/logo_source.png"></a>
+
 ## 概述
 
 MindSpore Serving的Servable包含两种类型。一种是推理服务来源于单模型，一种是推理服务来源于多模型组合，多模型组合当前不支持。
