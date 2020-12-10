@@ -1,14 +1,29 @@
-
-
 ## RESTful 接口使用说明
 
+`Linux` `Ascend` `Serving` `初级` `中级` `高级`
+
+<!-- TOC -->
+
+- [RESTful 接口使用说明](#restful-接口使用说明)
+- [概述](#概述)
+  - [请求方式](#请求方式)
+  - [请求输入格式](#请求输入格式)
+    - [支持的类型总结如下：](#支持的类型总结如下)
+  - [请求应答格式](#请求应答格式)
+
+<!-- /TOC -->
+
+<a href="https://gitee.com/mindspore/serving/blob/master/docs/MODEL.md" target="_blank"><img src="image/logo_source.png"></a>
+
+
+## 概述
 MindSpore Serving支持`GPRC`和`RESTful`两种请求方式。本章节介绍`RESTful`类型请求。
 
 部署`Serving`参考[快速入门](https://gitee.com/mindspore/serving/blob/master/README_CN.md#快速入门) 章节。
 
 与通过`master.start_grpc_server("127.0.0.1", 5500)`启动`GRPC`服务不同的是，`RESTful`服务需要通过`master.start_restful_server("0.0.0.0", 1500)`来启动。
 
-### 1.请求方式
+### 请求方式
 
 当前支持`POST`类型的RESTful请求，请求格式如下：
 
@@ -40,7 +55,7 @@ curl -X POST -d '{"instances":{"image":{"b64":"babe64-encoded-string"}' http://1
 
 
 
-### 2.请求输入格式
+### 请求输入格式
 
 RESTful支持`Json`请求格式，`key`固定为`instances`，`value`:表示多个实例。
 
@@ -129,7 +144,7 @@ RESTful支持`Json`请求格式，`key`固定为`instances`，`value`:表示多�
 
 
 
-##### 支持的类型总结如下：
+#### 支持的类型总结如下：
 
 |                          支持的类型                          | 例子                                                         | 备注                               |
 | :----------------------------------------------------------: | ------------------------------------------------------------ | ---------------------------------- |
@@ -140,7 +155,7 @@ RESTful支持`Json`请求格式，`key`固定为`instances`，`value`:表示多�
 |                           `bytes`                            | {"b64":"AQACAAIAAwADAAQA"} 或者 <br>{"b64":"AQACAAIAAwADAAQA", "type":"bytes"} | 如果不填`type`，默认为`bytes`      |
 | `int8`,`int16`,`int32`,`int64`,`uint8`,`uint16`,`uint32`,`uint64` `float16`,`float32`,`bool` | {"b64":"AQACAAIAAwADAAQA", "type":"int16", "shape":[3,2]}    | 利用base64编码，表示指定type的数据 |
 
-### 3.请求应答格式
+### 请求应答格式
 
 应答格式与请求格式保持一致。返回`Json`格式信息。应答格式如下：
 

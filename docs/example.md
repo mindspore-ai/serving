@@ -1,9 +1,25 @@
 # 实现一个Add网络示例
+`Linux` `Ascend` `Serving` `初级` `中级` `高级`
+
+<!-- TOC -->
+
+- [实现一个Add网络示例](#实现一个add网络示例)
+  - [概述](#概述)
+    - [导出模型](#导出模型)
+    - [部署Serving推理服务](#部署serving推理服务)
+    - [执行推理](#执行推理)
+
+<!-- /TOC -->
+
+<a href="https://gitee.com/mindspore/serving/blob/master/docs/example.md" target="_blank"><img src="image/logo_source.png"></a>
+
 
 ## 概述
+
 以一个简单的Add网络为例，演示MindSpore Serving如何使用。
 
 ### 导出模型
+
 使用[add_model.py](https://gitee.com/mindspore/serving/blob/master/mindspore_serving/example/add/export_model/add_model.py)，构造一个只有Add算子的网络，并导出MindSpore推理部署模型。
 
 ```python
@@ -60,6 +76,7 @@ if __name__ == "__main__":
 执行add_model.py脚本，生成`tensor_add.mindir`文件，该模型的输入为两个shape为[2,2]的二维Tensor，输出结果是两个输入Tensor之和。
 
 ### 部署Serving推理服务
+
 启动Serving服务，当前目录下需要有模型文件夹，如add，文件夹下放置版本模型文件和配置文件，文件目录结果如下图所示：   
 <pre><font color="#268BD2"><b>test_dir/</b></font>
 ├── <font color="#268BD2"><b>add/</b></font>
@@ -159,6 +176,7 @@ if __name__ == "__main__":
 轻量级部署和集群部署除了master和woker进程是否隔离，worker使用的接口也不同，轻量级部署使用worker的start_servable_in_master接口，集群部署使用worker的start_servable接口。   
 
 ### 执行推理
+
 使用[client.py](https://gitee.com/mindspore/serving/blob/master/mindspore_serving/example/add/client.py)，启动Python客户端。
 ```python
 import numpy as np
@@ -205,7 +223,9 @@ if __name__ == '__main__':
 使用mindspore_serving.client定义的Client类，分别调用模型的两个方法，显示如下返回值说明Serving服务已正确执行Add网络的推理。
 ```bash
 [{'y': array([[2. , 2.],
-        [2.,  2.]], dtype=float32)}]
+        [2.,  2.]], dtype=float32)},{'y': array([[4. , 4.],
+        [4.,  4.]], dtype=float32)},{'y': array([[6. , 6.],
+        [6.,  6.]], dtype=float32)}]
 [{'y': array([[2. , 2.],
         [2.,  2.]], dtype=float32)}]
 ```
