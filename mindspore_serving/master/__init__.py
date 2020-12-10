@@ -12,4 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-from ._master import start_grpc_server, start_restful_server, start_master_server
+"""MindSpore Serving Master"""
+
+from ._master import start_grpc_server, start_restful_server, start_master_server, stop
+
+__all__ = []
+__all__.extend([
+    "start_grpc_server",
+    'start_restful_server',
+    'start_master_server',
+    'stop'
+])

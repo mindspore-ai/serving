@@ -12,6 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
+"""MindSpore Serving Worker."""
 
 from . import register
 from ._worker import start_servable, start_servable_in_master, stop
+
+__all__ = []
+__all__.extend(register.__all__)
+__all__.extend([
+    "start_servable",
+    'start_servable_in_master',
+    'stop'
+])

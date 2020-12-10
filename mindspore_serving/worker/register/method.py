@@ -94,12 +94,34 @@ def _create_tensor_def_outputs(tag, outputs_cnt):
 
 
 def call_preprocess(preprocess_fun, *args):
-    """For method registration, define the inputs data of preprocess
-    preprocess_fun can be :
-        Python function of preprocess.
-        The name of the preprocess implemented by C++ registered by REGISTER_PREPROCESS.
-        The input parameters number of implemented python and C++ function should equal to length of 'args'
+    r"""For method registration, define the preprocessing function and its' parameters.
+
+    Args:
+        preprocess_fun (function): Python function for preprocess.
+        args: Preprocess inputs. The length of 'args' should equal to the input parameters number
+            of implemented python function.
+
+    Raises:
+        RuntimeError: The type or value of the parameters is invalid, or other error happened.
+
+    Examples:
+        >>> from mindspore_serving.worker import register
+        >>> import numpy as np
+        >>> def add_trans_datatype(instances): # preprocess python implement
+        ...     for instance in instances:
+        ...         x1 = instance[0]
+        ...         x2 = instance[1]
+        ...         yield x1.astype(np.float32), x2.astype(np.float32)
+        >>>
+        >>> register.declare_servable(servable_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=False)
+        >>>
+        >>> @register.register_method(output_names=["y"]) # register add_cast method in add
+        >>> def add_cast(x1, x2):
+        ...     x1, x2 = register.call_preprocess(add_trans_datatype, x1, x2)  # cast input to float32
+        ...     y = register.call_servable(x1, x2)
+        ...     return y
     """
+
     if _call_preprocess_name not in method_def_ast_meta_:
         raise RuntimeError(f"Invalid call of '${_call_preprocess_name}'")
     inputs_count, outputs_count = method_def_ast_meta_[_call_preprocess_name]
@@ -122,8 +144,25 @@ def call_preprocess(preprocess_fun, *args):
 
 
 def call_servable(*args):
-    """For method registration, define the inputs data of model inference
-    The length of 'args' should be equal to model inputs number declared by declare_servable
+    r"""For method registration, define the inputs data of model inference
+
+    Note:
+        The length of 'args' should be equal to the inputs number of model
+
+    Args:
+        args: Model's inputs, the length of 'args' should be equal to the inputs number of model.
+
+    Raises:
+        RuntimeError: The type or value of the parameters is invalid, or other error happened.
+
+    Examples:
+        >>> from mindspore_serving.worker import register
+        >>> register.declare_servable(servable_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=False)
+        >>>
+        >>> @register.register_method(output_names=["y"]) # register add_common method in add
+        >>> def add_common(x1, x2):
+        ...     y = register.call_servable(x1, x2)
+        ...     return y
     """
     servable_name = get_servable_dir()
     inputs_count, outputs_count = method_def_ast_meta_[_call_servable_name]
@@ -140,11 +179,15 @@ def call_servable(*args):
 
 
 def call_postprocess(postprocess_fun, *args):
-    """For method registration, define the inputs data of postprocess
-    postprocess_name can be :
-        Python function of postprocess.
-        The name of the postprocess implemented by C++ registered by REGISTER_POSTPROCESS.
-        The input parameters number of implemented python and C++ function should equal to length of 'args'
+    r"""For method registration, define the postprocessing function and its' parameters.
+
+    Args:
+        postprocess_fun (function): Python function for postprocess.
+        args: Preprocess inputs. The length of 'args' should equal to the input parameters number
+            of implemented python function.
+
+    Raises:
+        RuntimeError: The type or value of the parameters is invalid, or other error happened.
     """
     if _call_postprocess_name not in method_def_ast_meta_:
         raise RuntimeError(f"Invalid call of '{_call_postprocess_name}'")
@@ -173,7 +216,7 @@ _call_postprocess_name = call_postprocess.__name__
 
 
 def _get_method_def_func_meta(method_def_func):
-    """Parse register_method func, and get the input and output count of preproces, servable and postprocess"""
+    """Parse register_method func, and get the input and output count of preprocess, servable and postprocess"""
     source = inspect.getsource(method_def_func)
     call_list = ast.parse(source).body[0].body
     func_meta = EasyDict()
@@ -221,15 +264,33 @@ def _get_method_def_func_meta(method_def_func):
 
 def register_method(output_names):
     """register method for servable.
+
     Define the data flow of preprocess, model inference and postprocess in the method.
     Preprocess and postprocess are optional.
-    Example:
-        @register_method(output_names="y")
-        def method_name(x1, x2):
-            x1, x2 = call_preprocess(preprocess_fun, x1, x2)
-            y = call_servable(y)
-            y = call_postprocess(postprocess_fun, y)
-            return y
+
+    Args:
+        output_names(str, tuple or list of str): The output names of method. The input names is
+            the args names of the registered function.
+
+    Raises:
+        RuntimeError: The type or value of the parameters is invalid, or other error happened.
+
+    Examples:
+        >>> from mindspore_serving.worker import register
+        >>> import numpy as np
+        >>> def add_trans_datatype(instances): # preprocess python implement
+        ...     for instance in instances:
+        ...         x1 = instance[0]
+        ...         x2 = instance[1]
+        ...         yield x1.astype(np.float32), x2.astype(np.float32)
+        >>>
+        >>> register.declare_servable(servable_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=False)
+        >>>
+        >>> @register.register_method(output_names=["y"]) # register add_cast method in add
+        >>> def add_cast(x1, x2):
+        ...     x1, x2 = register.call_preprocess(add_trans_datatype, x1, x2)  # cast input to float32
+        ...     y = register.call_servable(x1, x2)
+        ...     return y
     """
     output_names = check_type.check_and_as_str_tuple_list('output_names', output_names)
 

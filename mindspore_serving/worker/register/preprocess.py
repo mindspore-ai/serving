@@ -19,6 +19,7 @@ from mindspore_serving.worker.common import get_servable_dir, get_func_name
 
 
 def check_preprocess(preprocess_name, inputs_count, outputs_count):
+    """Check whether inputs and outputs count is equal with last registered"""
     preprocess_info = PreprocessStorage_.get_instance().get_pycpp_preprocess_info(preprocess_name)
     if not preprocess_info:
         return
@@ -32,7 +33,7 @@ def check_preprocess(preprocess_name, inputs_count, outputs_count):
 
 
 class PreprocessStorage:
-    """Register and get preprocess info, preprocess info include: func, name, input and output count"""
+    """Register and get preprocess info, preprocess info include: func, name, inputs and outputs count"""
 
     def __init__(self):
         self.preprocess = {}
