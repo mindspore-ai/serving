@@ -22,6 +22,7 @@
 #include <vector>
 #include <string>
 #include <utility>
+#include <shared_mutex>
 #include "worker/work_executor.h"
 #include "common/serving_common.h"
 #include "proto/ms_service.pb.h"
@@ -107,6 +108,8 @@ class MS_API Worker {
   std::atomic_bool servable_stoppedd_ = false;
   std::atomic_flag clear_flag_ = ATOMIC_FLAG_INIT;
   std::shared_ptr<BaseNotifyMaster> notify_master_ = nullptr;
+
+  std::shared_mutex worker_shared_lock_;
 
   Status LoadServableConfig(const LoadServableSpec &servable_spec, const std::string &version_strategy,
                             std::vector<uint64_t> *real_version_number);
