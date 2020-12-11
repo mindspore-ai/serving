@@ -165,8 +165,8 @@ Status RestfulServer::StartRestfulServer() {
   }
 
   auto event_http_run = [this]() {
-    MSI_LOG(INFO) << "MS Serving restful listening on " << restful_ip_ << ":" << restful_port_;
-    std::cout << "Serving: MS Serving RESTful start success, listening on " << restful_ip_ << ":" << restful_port_
+    MSI_LOG(INFO) << "Serving RESTful server listening on " << restful_ip_ << ":" << restful_port_;
+    std::cout << "Serving: Serving RESTful server start success, listening on " << restful_ip_ << ":" << restful_port_
               << std::endl;
     event_base_dispatch(event_base_);
   };
