@@ -1073,7 +1073,11 @@ Status RestfulService::ParseInstancesReply(const PredictReply &reply, json *cons
   (*out_json)[kInstancesReply] = json();
   json &instances_json = (*out_json)[kInstancesReply];
 
-  for (int32_t i = 0; i < instances_nums_; i++) {
+  int32_t reply_num = instances_nums_;
+  if (reply.instances().empty()) {
+    reply_num = error_size;
+  }
+  for (int32_t i = 0; i < reply_num; i++) {
     bool success_flag = true;
     if (i < error_size) {
       auto &cur_error = reply.error_msg().at(i);

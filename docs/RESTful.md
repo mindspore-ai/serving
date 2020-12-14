@@ -1,33 +1,39 @@
-## RESTful 接口使用说明
+## 使用RESTful 接口
 
 `Linux` `Ascend` `Serving` `初级` `中级` `高级`
 
 <!-- TOC -->
 
-- [RESTful 接口使用说明](#restful-接口使用说明)
+- [使用RESTful 接口](#restful-接口使用说明)
 - [概述](#概述)
-  - [请求方式](#请求方式)
-  - [请求输入格式](#请求输入格式)
-    - [支持的类型总结如下：](#支持的类型总结如下)
-  - [请求应答格式](#请求应答格式)
+    - [请求方式](#请求方式)
+    - [请求输入格式](#请求输入格式)
+        - [支持的类型总结如下：](#支持的类型总结如下)
+    - [请求应答格式](#请求应答格式)
 
 <!-- /TOC -->
 
 <a href="https://gitee.com/mindspore/serving/blob/master/docs/MODEL.md" target="_blank"><img src="image/logo_source.png"></a>
 
-
 ## 概述
+
 MindSpore Serving支持`GPRC`和`RESTful`两种请求方式。本章节介绍`RESTful`类型请求。
+
+`RESTful`是一种基于`HTTP`协议的网络应用程序的设计风格和开发方式，通过`URI`实现对资源的管理及访问，具有扩展性强、结构清晰的特点。基于其轻量级以及通过`HTTP`直接传输数据的特性，`RESTful`已经成为最常见的`Web`服务访问方式。用户通过`RESTful`方式，能够简单直接的与服务进行交互。
 
 部署`Serving`参考[快速入门](https://gitee.com/mindspore/serving/blob/master/README_CN.md#快速入门) 章节。
 
-与通过`master.start_grpc_server("127.0.0.1", 5500)`启动`GRPC`服务不同的是，`RESTful`服务需要通过`master.start_restful_server("0.0.0.0", 1500)`来启动。
+与通过`master.start_grpc_server("127.0.0.1", 5500)`启动`GRPC`服务不同的是，`RESTful`服务需要通过`master.start_restful_server("0.0.0.0", 1500)`方式来启动。
+
+### 特殊说明
+
+`RESTful`请求目前仅支持`Ascend`硬件，不支持`GPU`和`CPU`等硬件。
 
 ### 请求方式
 
 当前支持`POST`类型的RESTful请求，请求格式如下：
 
-```
+```text
 POST http://${HOST}:${PORT}/model/${MODLE_NAME}[/version/${VERSION}]:${METHOD_NAME}
 ```
 
@@ -41,19 +47,17 @@ POST http://${HOST}:${PORT}/model/${MODLE_NAME}[/version/${VERSION}]:${METHOD_NA
 
 如果使用`curl`工具，RESTful请求方式如下：
 
-```
+```text
 curl -X POST -d '${REQ_JSON_MESSAGE}' http://${HOST}:${PORT}/model/${MODLE_NAME}[/version/${VERSION}]:${METHOD_NAME}
 ```
 
 例子：请求`lenet`模型的`predict`方法进行数字图片的推理，请求如下：
 
-```
+```text
 curl -X POST -d '{"instances":{"image":{"b64":"babe64-encoded-string"}' http://127.0.0.1:1500/model/lenet/version/1:predict
 ```
 
 其中：`babe64-encoded-string`是数字`1`图片经过`base64`编码之后的字符串。由于字符串比较长，不显式列出。
-
-
 
 ### 请求输入格式
 
@@ -65,11 +69,11 @@ RESTful支持`Json`请求格式，`key`固定为`instances`，`value`:表示多�
 
 - `value`：表示具体的值。当前支持的`value`类型：
 
-  - 标量：`str`、`bytes`、`int`、`float`、`bool`；
+    - 标量：`str`、`bytes`、`int`、`float`、`bool`；
 
     `bytes`：通过`base64`编码方式支持。
 
-  - 张量：`int`、`float`、`bool`。
+    - 张量：`int`、`float`、`bool`。
 
     张量通过数组格式表示数据和维度信息。
 
@@ -77,7 +81,7 @@ RESTful支持`Json`请求格式，`key`固定为`instances`，`value`:表示多�
 
 请求格式：
 
-```
+```text
 {
 "instances":[
     {
@@ -86,7 +90,7 @@ RESTful支持`Json`请求格式，`key`固定为`instances`，`value`:表示多�
         ...
     },
     {
-    	"input_name1":<value>|<list>|<object>,
+     "input_name1":<value>|<list>|<object>,
         "input_name2":<value>|<list>|<object>,
         ...
     }
@@ -97,7 +101,7 @@ RESTful支持`Json`请求格式，`key`固定为`instances`，`value`:表示多�
 
 例子：
 
-```
+```text
 {
     "instances":[
         {
@@ -120,7 +124,7 @@ RESTful支持`Json`请求格式，`key`固定为`instances`，`value`:表示多�
 
 - `type`：可选，如果不指定，默认为`bytes`；
 
-  支持`int8`、`int16`、`int32`、`int64`、`uint8`、`uint16`、`uint32`、`uint64`、`fp16`、`fp32`、`fp64`、`bool`、`str`、`bytes`.　
+  支持`int8`、`int16`、`int32`、`int64`、`uint8`、`uint16`、`uint32`、`uint64`、`fp16`、`fp32`、`fp64`、`bool`、`str`、`bytes`.
 
 - `shape`：可选，如果不指定，默认为`[1]`.
 
@@ -142,9 +146,7 @@ RESTful支持`Json`请求格式，`key`固定为`instances`，`value`:表示多�
 
 其中`AQACAAIAAwADAAQA`：是`[[1,1],[2,3],[3,4]]`经过`base64`编码字后的字符串。
 
-
-
-#### 支持的类型总结如下：
+#### 支持的类型总结如下
 
 |                          支持的类型                          | 例子                                                         | 备注                               |
 | :----------------------------------------------------------: | ------------------------------------------------------------ | ---------------------------------- |
@@ -159,7 +161,7 @@ RESTful支持`Json`请求格式，`key`固定为`instances`，`value`:表示多�
 
 应答格式与请求格式保持一致。返回`Json`格式信息。应答格式如下：
 
-```
+```text
 {
 "instances":[
     {
@@ -168,7 +170,7 @@ RESTful支持`Json`请求格式，`key`固定为`instances`，`value`:表示多�
         ...
     },
     {
-    	"output_name1":<value>|<list>|<object>,
+     "output_name1":<value>|<list>|<object>,
         "output_name2":<value>|<list>|<object>,
         ...
     }
@@ -176,8 +178,6 @@ RESTful支持`Json`请求格式，`key`固定为`instances`，`value`:表示多�
 ]
 }
 ```
-
-
 
 1. 多实例请求后，如果多实例全部成功处理，则响应格式如下：
 
@@ -189,14 +189,12 @@ RESTful支持`Json`请求格式，`key`固定为`instances`，`value`:表示多�
            {
                "result":0
            },
-           {	
+           {
                "result":1
            }
-   	]
+    ]
    }
    ```
-
-   
 
 2. 如果部分实例出错，则响应格式如下：
 
@@ -211,12 +209,10 @@ RESTful支持`Json`请求格式，`key`固定为`instances`，`value`:表示多�
            {
                "error_msg":"Preprocess Failed"
            }
-   	]
+    ]
    }
    ```
-   
-   
-   
+
 3. 如果请求全部失败，则响应格式如下：
 
    例子：`lenet`请求识别两张错误数字图片为例
@@ -243,4 +239,3 @@ RESTful支持`Json`请求格式，`key`固定为`instances`，`value`:表示多�
     "error_msg":"Parse request failed"
 }
 ```
-
