@@ -412,8 +412,6 @@ Status RestfulService::ParseItem(const json &value, ProtoTensor *const pb_tensor
       size_t shape_size = std::accumulate(shape.begin(), shape.end(), 1LL, std::multiplies<size_t>());
       size_t type_size = pb_tensor->GetTypeSize(type);
       pb_tensor->resize_data(shape_size * type_size);
-      MSI_LOG_DEBUG << "shape size:" << shape_size << "; type size:" << type_size
-                    << "; data size:" << shape_size * type_size;
     }
 
     status = CheckObjTypeMatchShape(type, shape);
@@ -457,8 +455,6 @@ Status RestfulService::ParseItem(const json &value, ProtoTensor *const pb_tensor
       size_t shape_size = std::accumulate(shape.begin(), shape.end(), 1LL, std::multiplies<size_t>());
       size_t type_size = pb_tensor->GetTypeSize(data_type);
       pb_tensor->resize_data(shape_size * type_size);
-      MSI_LOG_DEBUG << "shape size:" << shape_size << "; type size:" << type_size
-                    << "; data size:" << shape_size * type_size;
     }
 
     if (type_format == HTTP_DATA_OBJ) {
@@ -518,7 +514,6 @@ Status RestfulService::GetArrayData(const json &js, size_t data_index, HTTP_DATA
                                     ProtoTensor *const request_tensor) {
   Status status(SUCCESS);
   size_t element_nums = js.size();
-  MSI_LOG_DEBUG << "element nums:" << element_nums << "; data index:" << data_index;
   if (type != HTTP_DATA_OBJ) {
     for (size_t k = 0; k < element_nums; k++) {
       auto &json_data = js[k];
@@ -561,8 +556,6 @@ Status RestfulService::GetScalarByType(DataType type, const json &js, size_t ind
   if (type == kMSI_Unknown) {
     return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "data type is unknown";
   }
-  MSI_LOG_DEBUG << "data type:" << type << " ;real data type:" << request_tensor->data_type()
-                << " ;data index:" << index;
   switch (type) {
     case kMSI_Bool:
       status = GetScalarData<bool>(js, index, false, request_tensor);
@@ -740,7 +733,6 @@ Status RestfulService::ParseRequest(const std::shared_ptr<RestfulRequest> &restf
       return INFER_STATUS_LOG_ERROR(FAILED) << "restful reqeust only support instances mode";
   }
 
-  PrintRequest(request);
   return status;
 }
 
@@ -755,9 +747,6 @@ Status RestfulService::ParseReqCommonMsg(const std::shared_ptr<RestfulRequest> &
   request->mutable_servable_spec()->set_name(request_ptr->model_name_);
   request->mutable_servable_spec()->set_version_number(request_ptr->version_);
   request->mutable_servable_spec()->set_method_name(request_ptr->service_method_);
-  MSI_LOG_INFO << "Restful req, model name:" << request->servable_spec().name();
-  MSI_LOG_INFO << "Version number:" << request->servable_spec().version_number();
-  MSI_LOG_INFO << "Method name:" << request->servable_spec().method_name();
   return status;
 }
 
@@ -882,7 +871,6 @@ Status RestfulService::ParseScalar(const ProtoTensor &pb_tensor, size_t index, j
   if (data_type == kMSI_Unknown) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Data type is unknown";
   }
-  MSI_LOG_DEBUG << "Data type:" << data_type << "; index:" << index;
   switch (data_type) {
     case kMSI_Bool:
       status = ParseScalarData<bool>(pb_tensor, false, index, js);
@@ -895,11 +883,9 @@ Status RestfulService::ParseScalar(const ProtoTensor &pb_tensor, size_t index, j
       break;
     case kMSI_Int32:
       status = ParseScalarData<int32_t>(pb_tensor, false, index, js);
-      MSI_LOG_INFO << "parse int32:" << js->get<int32_t>();
       break;
     case kMSI_Int64:
       status = ParseScalarData<int64_t>(pb_tensor, false, index, js);
-      MSI_LOG_INFO << "parse int64:" << js->get<int64_t>();
       break;
     case kMSI_Uint8:
       status = ParseScalarData<uint8_t>(pb_tensor, false, index, js);
@@ -959,7 +945,6 @@ Status RestfulService::ParseScalarData(const ProtoTensor &pb_tensor, bool is_byt
       pb_tensor.get_bytes_data(index, &ptr, &length);
       value.resize(length);
       memcpy_s(value.data(), length, reinterpret_cast<const char *>(ptr), length);
-      MSI_LOG_INFO << "Parse string value:" << value;
       *js = value;
     } else {
       auto str_nums = pb_tensor.bytes_data_size();
@@ -977,7 +962,6 @@ Status RestfulService::ParseScalarData(const ProtoTensor &pb_tensor, bool is_byt
       pb_tensor.get_bytes_data(index, &ptr, &length);
       value.resize(length);
       memcpy_s(value.data(), length, reinterpret_cast<const char *>(ptr), length);
-      MSI_LOG_DEBUG << "bytes type, origin str:" << value;
 
       auto target_size = GetB64TargetSize(length);
       std::vector<uint8_t> buffer(target_size, 0);
@@ -987,7 +971,6 @@ Status RestfulService::ParseScalarData(const ProtoTensor &pb_tensor, bool is_byt
                << "reply bytes, size is not matched, expected size:" << target_size << ", encode size:" << size;
       }
       std::string str = GetString(buffer.data(), buffer.size());
-      MSI_LOG_DEBUG << "bytes type, decoded str:" << str;
       (*js)[kB64] = str;
     }
   }
@@ -1059,7 +1042,6 @@ Status RestfulService::ParseReply(const PredictReply &reply, json *const out_jso
       return INFER_STATUS_LOG_ERROR(FAILED) << "restful request only support instance mode";
   }
 
-  PrintReply(reply);
   return status;
 }
 
@@ -1136,7 +1118,7 @@ void RestfulService::FadeReply(const proto::PredictRequest &request, proto::Pred
     MSI_LOG_ERROR << "only support two kind type";
   }
   MSI_LOG_INFO << "End";
-}  // namespace serving
+}
 
 void RestfulService::PrintRequest(const proto::PredictRequest *const request) {
   MSI_LOG_INFO << "=============start print quest==================";

@@ -106,7 +106,7 @@ export LD_LIBRARY_PATH=$MINDSPORE_LIB_PATH:${LD_LIBRARY_PATH}
 ### 开发者教程
 
 - [GRPC接口使用说明](docs/GRPC.md)
-- [RESTful接口使用说明](docs/RESTful.md)
+- [使用RESTful接口](docs/RESTful.md)
 - [模型配置接口使用说明](docs/MODEL.md)
 
 有关安装指南、教程和API的更多详细信息，请参阅[用户文档](https://gitee.com/mindspore/serving/tree/master/docs)。
