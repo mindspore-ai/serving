@@ -180,7 +180,7 @@ class MS_API InferSessionRegister {
 static inline LogStream &operator<<(LogStream &stream, DeviceType device_type) {
   switch (device_type) {
     case kDeviceTypeAscend:
-      stream << "kDeviceTypeAscend";
+      stream << "Ascend";
       break;
     case kDeviceTypeAscendMS:
       stream << "kDeviceTypeAscend910";
@@ -189,13 +189,13 @@ static inline LogStream &operator<<(LogStream &stream, DeviceType device_type) {
       stream << "kDeviceTypeAscend310";
       break;
     case kDeviceTypeGpu:
-      stream << "kDeviceTypeGpu";
+      stream << "Gpu";
       break;
     case kDeviceTypeCpu:
-      stream << "kDeviceTypeCpu";
+      stream << "Cpu";
       break;
     case kDeviceTypeNotSpecified:
-      stream << "kDeviceTypeNotSpecified";
+      stream << "None(Default)";
       break;
     default:
       stream << "[device type: " << static_cast<int>(device_type) << "]";
@@ -207,10 +207,10 @@ static inline LogStream &operator<<(LogStream &stream, DeviceType device_type) {
 static inline LogStream &operator<<(LogStream &stream, api::ModelType model_type) {
   switch (model_type) {
     case api::kMindIR:
-      stream << "kMindIR";
+      stream << "MindIR";
       break;
     case api::kOM:
-      stream << "kOM";
+      stream << "OM";
       break;
     default:
       stream << "[model type: " << static_cast<int>(model_type) << "]";

@@ -195,7 +195,8 @@ Status Worker::InitEnv(ModelType model_type, const std::unordered_map<std::strin
   session_ = InferSessionStorage::Instance().Get(context->GetDeviceType(), model_type, &device_type);
   if (session_ == nullptr) {
     return INFER_STATUS_LOG_ERROR(FAILED)
-           << "Cannot find session registed for device type " << context->GetDeviceType();
+           << "Cannot find session registered for device type " << context->GetDeviceType() << " and model type "
+           << model_type << ". Ascend 910 supports MindIR model and Ascend 310 supports OM, MindIR model";
   }
   if (device_type != kDeviceTypeNotSpecified) {
     context->SetDeviceType(device_type);
