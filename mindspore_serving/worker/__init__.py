@@ -14,6 +14,7 @@
 # ============================================================================
 """MindSpore Serving Worker."""
 
+from . import _check_version
 from . import register
 from ._worker import start_servable, start_servable_in_master, stop
 
