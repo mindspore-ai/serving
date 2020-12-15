@@ -28,7 +28,7 @@ MindSpore Serving是一个轻量级、高性能的服务模块，旨在帮助Min
 MindSpore Serving架构：
 
 当前MindSpore Serving服务节点分为client，master和worker。client为用户节点，可以直接通过GRPC或RESTful接口方式下发推理服务命令。执行机worker部署了模型服务。当前仅支持Ascend 310和Ascend 910，后续会逐步支持GPU和CPU场景。master节点用来管理所有的执行机worker及其部署的模型信息，并进行任务管理与分发。master和worker可以部署在一个进程中，也可以部署在不同进程中。  
-<img src="docs/image/architecture.png" alt="MindSpore Architecture" width="600"/>
+<img src="docs/architecture.png" alt="MindSpore Architecture" width="600"/>
 
 MindSpore Serving提供以下功能：
 
@@ -99,15 +99,15 @@ export LD_LIBRARY_PATH=$MINDSPORE_LIB_PATH:${LD_LIBRARY_PATH}
 
 ## 快速入门
 
-以一个简单的[Add网络示例](docs/example.md)，演示MindSpore Serving如何使用。
+以一个简单的[Add网络示例](https://www.mindspore.cn/tutorial/inference/zh-CN/serving_example.html)，演示MindSpore Serving如何使用。
 
 ## 文档
 
 ### 开发者教程
 
-- [GRPC接口使用说明](docs/GRPC.md)
-- [使用RESTful接口](docs/RESTful.md)
-- [模型配置接口使用说明](docs/MODEL.md)
+- [使用GRPC接口](https://www.mindspore.cn/tutorial/inference/zh-CN/serving_grpc.html)
+- [使用RESTful接口](https://www.mindspore.cn/tutorial/inference/zh-CN/serving_restful.html)
+- [配置模型以提供一个Servable](https://www.mindspore.cn/tutorial/inference/zh-CN/serving_model.html)
 
 有关安装指南、教程和API的更多详细信息，请参阅[用户文档](https://gitee.com/mindspore/serving/tree/master/docs)。
 
