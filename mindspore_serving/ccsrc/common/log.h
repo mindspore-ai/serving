@@ -27,6 +27,19 @@
 namespace mindspore::serving {
 #define MS_API __attribute__((visibility("default")))
 
+#define SERVING_LOG_HDR_FILE_REL_PATH "mindspore_serving/ccsrc/common/log.h"
+
+// Get start index of file relative path in __FILE__
+static constexpr int GetRelPathPos() noexcept {
+  return sizeof(__FILE__) > sizeof(SERVING_LOG_HDR_FILE_REL_PATH)
+           ? sizeof(__FILE__) - sizeof(SERVING_LOG_HDR_FILE_REL_PATH)
+           : 0;
+}
+
+#define SERVING_FILE_NAME                                                                     \
+  (sizeof(__FILE__) > GetRelPathPos() ? static_cast<const char *>(__FILE__) + GetRelPathPos() \
+                                      : static_cast<const char *>(__FILE__))
+
 class LogStream {
  public:
   LogStream() { sstream_ = std::make_shared<std::stringstream>(); }
@@ -110,12 +123,12 @@ class MS_API LogWriter {
   ERROR_LEVEL log_level_;
 };
 
-#define MSILOG_IF(level)                                                                             \
-  mindspore::serving::LogWriter(__FILE__, __LINE__, __FUNCTION__, mindspore::serving::LOG_##level) < \
+#define MSILOG_IF(level)                                                                                      \
+  mindspore::serving::LogWriter(SERVING_FILE_NAME, __LINE__, __FUNCTION__, mindspore::serving::LOG_##level) < \
     mindspore::serving::LogStream()
 
-#define MSILOG_THROW                                                                                   \
-  mindspore::serving::LogWriter(__FILE__, __LINE__, __FUNCTION__, mindspore::serving::LOG_EXCEPTION) ^ \
+#define MSILOG_THROW                                                                                            \
+  mindspore::serving::LogWriter(SERVING_FILE_NAME, __LINE__, __FUNCTION__, mindspore::serving::LOG_EXCEPTION) ^ \
     mindspore::serving::LogStream()
 
 #define MSI_LOG(level) MSI_LOG_##level

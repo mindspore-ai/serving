@@ -65,4 +65,4 @@ def check_int(arg_name, int_val, mininum=None, maximum=None):
 
 def check_ip_port(arg_name, port):
     """Check whether the input parameters are reasonable ip port"""
-    check_int(arg_name, port, 0, 65535)
+    check_int(arg_name, port, 1, 65535)
