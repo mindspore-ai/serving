@@ -13,50 +13,45 @@
 # limitations under the License.
 # ============================================================================
 """add model generator"""
-
 import os
 from shutil import copyfile
 import numpy as np
 
 import mindspore.context as context
 import mindspore.nn as nn
-from mindspore.ops import operations as P
-from mindspore import Tensor
-from mindspore.train.serialization import export
+import mindspore.ops as ops
+import mindspore as ms
 
 context.set_context(mode=context.GRAPH_MODE, device_target="Ascend")
 
 
 class Net(nn.Cell):
+    """Define Net of add"""
     def __init__(self):
         super(Net, self).__init__()
-        self.add = P.TensorAdd()
+        self.add = ops.TensorAdd()
 
     def construct(self, x_, y_):
+        """construct add net"""
         return self.add(x_, y_)
 
 
 def export_net():
+    """Export add net of 2x2 + 2x2, and copy output model `tensor_add.mindir` to directory ../add/1"""
     x = np.ones([2, 2]).astype(np.float32)
     y = np.ones([2, 2]).astype(np.float32)
     add = Net()
-    output = add(Tensor(x), Tensor(y))
-    export(add, Tensor(x), Tensor(y), file_name='tensor_add', file_format='MINDIR')
+    output = add(ms.Tensor(x), ms.Tensor(y))
+    ms.export(add, ms.Tensor(x), ms.Tensor(y), file_name='tensor_add', file_format='MINDIR')
     dst_dir = '../add/1'
     try:
         os.mkdir(dst_dir)
     except OSError:
         pass
-    try:
-        dst_file = os.path.join(dst_dir, 'tensor_add.mindir')
-        if os.path.exists('tensor_add.mindir'):
-            copyfile('tensor_add.mindir', dst_file)
-            print("copy tensor_add.mindir to " + dst_dir + " success")
-        elif os.path.exists('tensor_add'):
-            copyfile('tensor_add', dst_file)
-            print("copy tensor_add to " + dst_dir + " success")
-    except:
-        print("copy tensor_add.mindir to " + dst_dir + " failed")
+
+    dst_file = os.path.join(dst_dir, 'tensor_add.mindir')
+    copyfile('tensor_add.mindir', dst_file)
+    print("copy tensor_add.mindir to " + dst_dir + " success")
 
     print(x)
     print(y)
