@@ -57,5 +57,14 @@ include_directories(${PYTHON_INCLUDE_DIRS})
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden")
 find_package(Threads REQUIRED)
-add_subdirectory(mindspore_serving)
-include(cmake/package.cmake)
+
+if(MS_WHL_LIB_PATH OR MS_BACKEND)
+    add_subdirectory(mindspore_serving)
+    include(cmake/package.cmake)
+endif()
+
+if (ENABLE_TESTCASES)
+    add_subdirectory(tests)
+endif()
+
+
