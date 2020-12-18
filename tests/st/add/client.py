@@ -50,6 +50,8 @@ def run_add_cast():
     instances.append({"x1": x1, "x2": x2})
     result = client.infer(instances)
     print(result)
+    y = x1 + x2
+    assert (result[0]["y"] == y).all()
 
 
 if __name__ == '__main__':

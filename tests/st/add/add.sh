@@ -15,7 +15,7 @@ echo "CURRUSER:"  ${CURRUSER}
 echo "PROJECT_PATH:"  ${PROJECT_PATH}
 
 export LD_LIBRARY_PATH=${MINDSPORE_INSTALL_PATH}/lib:/usr/local/python/python375/lib/:${LD_LIBRARY_PATH}
-export PYTHONPATH=${MINDSPORE_INSTALL_PATH}/:${PYTHONPATH}
+#export PYTHONPATH=${MINDSPORE_INSTALL_PATH}/:${PYTHONPATH}
 
 echo "LD_LIBRARY_PATH: " ${LD_LIBRARY_PATH}
 echo "PYTHONPATH: " ${PYTHONPATH}
@@ -85,7 +85,7 @@ pytest_serving()
 {
   unset http_proxy https_proxy
   echo "###  client start ###"
-  python3 -m pytest -v -s client.py > client.log 2>&1
+  python3  client.py > client.log 2>&1
   if [ $? -ne 0 ]
   then
     clean_pid
@@ -99,6 +99,7 @@ test_bert_model()
 {
   start_service
   pytest_serving
+  cat client.log
   clean_pid
 }
 
