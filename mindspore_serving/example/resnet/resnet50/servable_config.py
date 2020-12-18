@@ -20,7 +20,6 @@ import mindspore.dataset as ds
 import mindspore.dataset.transforms.c_transforms as TC
 import mindspore.dataset.vision.c_transforms as VC
 
-
 from mindspore_serving.worker import register
 
 cur_dir = os.path.abspath(os.path.dirname(__file__))
@@ -30,12 +29,35 @@ with open(os.path.join(cur_dir, "imagenet1000_clsidx_to_labels.txt"), "r") as fp
 idx_2_label[1000] = "empty"
 
 
+def preprocess_eager(image):
+    """
+    Define preprocess, input is image numpy, return preprocess result.
+    return type can be numpy, str, bytes, int, float, bool
+    Use MindData Eager, this image processing can also use other image handle, likes numpy, PIL or cv2 etc.
+    """
+    image_size = 224
+    mean = [0.485 * 255, 0.456 * 255, 0.406 * 255]
+    std = [0.229 * 255, 0.224 * 255, 0.225 * 255]
+
+    decode = VC.Decode()
+    resize = VC.Resize([image_size, image_size])
+    normalize = VC.Normalize(mean=mean, std=std)
+    hwc2chw = VC.HWC2CHW()
+
+    image = decode(image)
+    image = resize(image)
+    image = normalize(image)
+    image = hwc2chw(image)
+    return image
+
+
 def preprocess_pipeline(instances):
     """
     Define preprocess pipeline, the function arg is multi instances, every instance is tuple of inputs.
     This example has one input and one output.
     Use MindData Pipeline.
     """
+
     def generator_func():
         for instance in instances:
             image = instance[0]
@@ -59,52 +81,22 @@ def preprocess_pipeline(instances):
         yield (image_result,)
 
 
-def preprocess_eager(instances):
+def postprocess_top1(score):
     """
-    Define preprocess pipeline, the function arg is multi instances, every instance is tuple of inputs.
-    this example has one input and one output.
-    Use MindData Eager.
+    Define postprocess pipeline. This example has one input and one output
     """
-    image_size = 224
-    mean = [0.485 * 255, 0.456 * 255, 0.406 * 255]
-    std = [0.229 * 255, 0.224 * 255, 0.225 * 255]
-
-    decode = VC.Decode()
-    resize = VC.Resize([image_size, image_size])
-    normalize = VC.Normalize(mean=mean, std=std)
-    hwc2chw = VC.HWC2CHW()
-
-    for instance in instances:
-        image = instance[0]
-        image = decode(image)
-        image = resize(image)
-        image = normalize(image)
-        image = hwc2chw(image)
-        yield (image,)
+    max_idx = np.argmax(score)
+    return idx_2_label[max_idx]
 
 
-def postprocess_top1(instances):
+def postprocess_top5(score):
     """
-    Define postprocess pipeline, the function arg is multi instances, every instance is tuple of inputs
-    This example has one input and one output
+    Define postprocess. This example has one input and two output
     """
-    for instance in instances:
-        score = instance[0] # get input 0
-        max_idx = np.argmax(score)
-        yield idx_2_label[max_idx]
-
-
-def postprocess_top5(instances):
-    """
-    Define postprocess pipeline, the function arg is multi instances, every instance is tuple of inputs
-    This example has one input and two output
-    """
-    for instance in instances:
-        score = instance[0] # get input 0
-        idx = np.argsort(score)[::-1][:5] # top 5
-        ret_label = [idx_2_label[i] for i in idx]
-        ret_score = score[idx]
-        yield ";".join(ret_label), ret_score
+    idx = np.argsort(score)[::-1][:5]  # top 5
+    ret_label = [idx_2_label[i] for i in idx]
+    ret_score = score[idx]
+    return ";".join(ret_label), ret_score
 
 
 register.declare_servable(servable_file="resnet50_1b_imagenet.mindir", model_format="MindIR")
@@ -114,7 +106,7 @@ register.declare_servable(servable_file="resnet50_1b_imagenet.mindir", model_for
 def classify_top1(image):
     """Define method `classify_top1` for servable `resnet50`.
      The input is `image` and the output is `lable`."""
-    x = register.call_preprocess(preprocess_pipeline, image)
+    x = register.call_preprocess_pipeline(preprocess_pipeline, image)
     x = register.call_servable(x)
     x = register.call_postprocess(postprocess_top1, x)
     return x
@@ -134,7 +126,7 @@ def classify_top1_v1(image):
 def classify_top5(image):
     """Define method `classify_top5` for servable `resnet50`.
      The input is `image` and the output is `lable` and `score`. """
-    x = register.call_preprocess(preprocess_pipeline, image)
+    x = register.call_preprocess_pipeline(preprocess_pipeline, image)
     x = register.call_servable(x)
     label, score = register.call_postprocess(postprocess_top5, x)
     return label, score

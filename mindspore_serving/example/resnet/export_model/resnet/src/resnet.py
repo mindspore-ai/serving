@@ -21,6 +21,7 @@ from mindspore.ops import functional as F
 from mindspore.common.tensor import Tensor
 from scipy.stats import truncnorm
 
+
 def _conv_variance_scaling_initializer(in_channel, out_channel, kernel_size):
     fan_in = in_channel * kernel_size * kernel_size
     scale = 1.0
@@ -30,6 +31,7 @@ def _conv_variance_scaling_initializer(in_channel, out_channel, kernel_size):
     weight = truncnorm(-2, 2, loc=mu, scale=sigma).rvs(out_channel * in_channel * kernel_size * kernel_size)
     weight = np.reshape(weight, (out_channel, in_channel, kernel_size, kernel_size))
     return Tensor(weight, dtype=mstype.float32)
+
 
 def _weight_variable(shape, factor=0.01):
     init_value = np.random.randn(*shape).astype(np.float32) * factor
@@ -78,7 +80,7 @@ def _bn_last(channel):
 
 def _fc(in_channel, out_channel, use_se=False):
     if use_se:
-        weight = np.random.normal(loc=0, scale=0.01, size=out_channel*in_channel)
+        weight = np.random.normal(loc=0, scale=0.01, size=out_channel * in_channel)
         weight = Tensor(np.reshape(weight, (out_channel, in_channel)), dtype=mstype.float32)
     else:
         weight_shape = (out_channel, in_channel)
@@ -128,8 +130,8 @@ class ResidualBlock(nn.Cell):
         self.bn3 = _bn_last(out_channel)
         if self.se_block:
             self.se_global_pool = P.ReduceMean(keep_dims=False)
-            self.se_dense_0 = _fc(out_channel, int(out_channel/4), use_se=self.use_se)
-            self.se_dense_1 = _fc(int(out_channel/4), out_channel, use_se=self.use_se)
+            self.se_dense_0 = _fc(out_channel, int(out_channel / 4), use_se=self.use_se)
+            self.se_dense_1 = _fc(int(out_channel / 4), out_channel, use_se=self.use_se)
             self.se_sigmoid = nn.Sigmoid()
             self.se_mul = P.Mul()
         self.relu = nn.ReLU()
@@ -353,6 +355,7 @@ def resnet50(class_num=10):
                   [1, 2, 2, 2],
                   class_num)
 
+
 def se_resnet50(class_num=1001):
     """
     Get SE-ResNet50 neural network.
@@ -373,6 +376,7 @@ def se_resnet50(class_num=1001):
                   [1, 2, 2, 2],
                   class_num,
                   use_se=True)
+
 
 def resnet101(class_num=1001):
     """

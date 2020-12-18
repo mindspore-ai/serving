@@ -16,12 +16,15 @@
 
 from .servable import declare_servable
 from .method import register_method, call_preprocess, call_servable, call_postprocess
+from .method import call_preprocess_pipeline, call_postprocess_pipeline
 
 __all__ = []
 __all__.extend([
     "declare_servable",
     'register_method',
     'call_preprocess',
+    'call_preprocess_pipeline',
     'call_servable',
-    'call_postprocess'
+    'call_postprocess',
+    'call_postprocess_pipeline'
 ])

@@ -174,7 +174,7 @@ TensorBasePtr PyTensor::MakeTensorNoCopy(const py::array &input) {
   return tensor_data;
 }
 
-py::array PyTensor::AsNumpy(TensorBasePtr tensor, bool copy) {
+py::object PyTensor::AsPythonData(TensorBasePtr tensor, bool copy) {
   auto data_numpy = std::dynamic_pointer_cast<NumpyTensor>(tensor);
   if (data_numpy) {
     return data_numpy->py_array();
@@ -186,6 +186,11 @@ py::array PyTensor::AsNumpy(TensorBasePtr tensor, bool copy) {
     const uint8_t *data = nullptr;
     size_t bytes_len = 0;
     tensor->get_bytes_data(0, &data, &bytes_len);
+    if (tensor->data_type() == kMSI_String) {
+      std::string str_val;
+      str_val.assign(reinterpret_cast<const char *>(data), bytes_len);
+      return py::str(str_val);
+    }
     std::vector<ssize_t> shape{static_cast<ssize_t>(bytes_len)};
     std::vector<ssize_t> strides = GetStrides(shape, sizeof(uint8_t));
     py::buffer_info info(reinterpret_cast<void *>(const_cast<uint8_t *>(data)), sizeof(uint8_t),
@@ -216,7 +221,7 @@ py::array PyTensor::AsNumpy(TensorBasePtr tensor, bool copy) {
 py::tuple PyTensor::AsNumpyTuple(const InstanceData &instance_data) {
   py::tuple numpy_inputs_tuple(instance_data.size());
   for (size_t i = 0; i < instance_data.size(); i++) {  // inputs
-    numpy_inputs_tuple[i] = PyTensor::AsNumpy(instance_data[i]);
+    numpy_inputs_tuple[i] = PyTensor::AsPythonData(instance_data[i]);
   }
   return numpy_inputs_tuple;
 }

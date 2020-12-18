@@ -12,17 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-
+"""Lenet config python file"""
 import numpy as np
 from mindspore_serving.worker import register
 import mindspore.dataset as ds
-import mindspore.dataset.transforms.py_transforms as P
-import mindspore.dataset.vision.py_transforms as PV
+import mindspore.dataset.transforms.c_transforms as C
+import mindspore.dataset.vision.c_transforms as CV
 
 
-# define preprocess pipeline, the function arg is multi instances, every instance is tuple of inputs
-# this example has one input and one output
-def lenet_preprocess(instances):
+def lenet_preprocess_pipeline(instances):
+    """
+    define preprocess pipeline, the function arg is multi instances, every instance is tuple of inputs
+    this example has one input and one output"""
     def generator_func():
         for instance in instances:
             image = instance[0]
@@ -32,33 +33,30 @@ def lenet_preprocess(instances):
     resize_height, resize_width = 32, 32
     nml_mean = [0.1307]
     nml_std = [0.3081]
-    mnist_ds = mnist_ds.map(operations=P.Compose([
-        PV.Decode(),
-        PV.Grayscale(1),
-        PV.Resize(size=(resize_height, resize_width)),
-        PV.ToTensor(),
-        PV.Normalize(nml_mean, nml_std)
+    mnist_ds = mnist_ds.map(operations=C.Compose([
+        CV.Decode(),
+        CV.Grayscale(1),
+        CV.Resize(size=(resize_height, resize_width)),
+        CV.ToTensor(),
+        CV.Normalize(nml_mean, nml_std)
     ]), input_columns="image", num_parallel_workers=1)
     for data in mnist_ds.create_dict_iterator():
         image_result = data["image"]
         yield (image_result,)
 
 
-# define postprocess pipeline, the function arg is multi instances, every instance is tuple of inputs
-# this example has one input and one output
-def lenet_postprocess(instances):
-    for instance in instances:
-        result = instance[0]
-        yield (np.argmax(result),)
+def lenet_postprocess(result):
+    """define postprocess, this example has one input and one output"""
+    return np.argmax(result)[0]
 
 
 register.declare_servable(servable_file="checkpoint_lenet_2-9_1875.om", model_format="OM")
 
 
-# register predict method in lenet
 @register.register_method(output_names=["result"])
 def predict(image):
-    x = register.call_preprocess(lenet_preprocess, image)
+    """register predict method in lenet"""
+    x = register.call_preprocess_pipeline(lenet_preprocess_pipeline, image)
     x = register.call_servable(x)
     x = register.call_postprocess(lenet_postprocess, x)
     return x
