@@ -72,7 +72,13 @@ MindSpore Serving依赖MindSpore训练推理框架，安装完[MindSpore](https:
     sh build.sh -e ascend
     ```
 
-    其中，`build.sh`为`serving`目录下的编译脚本文件，编译完后，在`serving/build/package/`目录下找到whl安装包进行安装：
+    其中，`build.sh`为`serving`目录下的编译脚本文件，编译完后，在`serving/third_party/mindspore/build/package/`目录下找到MindSpore的whl安装包进行安装：
+
+    ```python
+    pip install mindspore_ascend-1.1.0-cp37-cp37m-linux_x86_64.whl
+    ```
+
+    同时在`serving/build/package/`目录下找到Serving的whl安装包进行安装：
 
     ```python
     pip install mindspore_serving-1.1.0-cp37-cp37m-linux_x86_64.whl
