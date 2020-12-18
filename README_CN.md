@@ -27,12 +27,12 @@ MindSpore Serving是一个轻量级、高性能的服务模块，旨在帮助Min
 
 MindSpore Serving架构：
 
-当前MindSpore Serving服务节点分为client，master和worker。client为用户节点，可以直接通过GRPC或RESTful接口方式下发推理服务命令。执行机worker部署了模型服务。当前仅支持Ascend 310和Ascend 910，后续会逐步支持GPU和CPU场景。master节点用来管理所有的执行机worker及其部署的模型信息，并进行任务管理与分发。master和worker可以部署在一个进程中，也可以部署在不同进程中。  
+当前MindSpore Serving服务节点分为client，master和worker。client为客户端节点，用户可以直接通过gRPC或RESTful接口方式下发推理服务命令。执行机worker部署了模型服务Servable，这里的Servable可以是单个模型，也可以是多个模型的组合，一个Servable可以通过提供多种方法来提供不同的服务。master节点用来管理所有的执行机worker及其部署的模型信息，并进行任务管理与分发。master和worker可以部署在一个进程中，也可以部署在不同进程中。当前client和master不依赖特定硬件平台，worker节点仅支持Ascend 310和Ascend 910平台，后续会逐步支持GPU和CPU场景。  
 <img src="docs/architecture.png" alt="MindSpore Architecture" width="600"/>
 
 MindSpore Serving提供以下功能：
 
-- 支持客户端GRPC和RESTful接口。
+- 支持客户端gRPC和RESTful接口。
 - 支持组装模型的前处理和后处理。
 - 支持batch功能，多实例请求会被拆分组合以满足模型`batch size`需要。
 - 提供客户端python简易接口。
@@ -61,7 +61,7 @@ MindSpore Serving依赖MindSpore训练推理框架，安装完[MindSpore](https:
     sh build.sh -p $MINDSPORE_LIB_PATH
     ```
 
-    其中，`build.sh`为`serving`目录下的编译脚本文件，`$MINDSPORE_LIB_PATH`为MindSpore软件包的安装路径下的`lib`路径，例：`softwarepath/mindspore/lib`，该路径包含MindSpore运行依赖的库文件。
+    其中，`build.sh`为`serving`目录下的编译脚本文件，`$MINDSPORE_LIB_PATH`为MindSpore软件包的安装路径下的`lib`路径，例如，`softwarepath/mindspore/lib`，该路径包含MindSpore运行依赖的库文件。
 
     方式二，直接编译Serving，编译时会配套编译MindSpore的包，需要配置MindSpore编译时的[环境变量](https://gitee.com/mindspore/docs/blob/master/install/mindspore_ascend_install_source.md#配置环境变量) ：
 
@@ -69,7 +69,7 @@ MindSpore Serving依赖MindSpore训练推理框架，安装完[MindSpore](https:
     # ascend 310
     sh build.sh -e d -V 310
     # ascend 910
-    sh build.sh -e accend
+    sh build.sh -e ascend
     ```
 
     其中，`build.sh`为`serving`目录下的编译脚本文件，编译完后，在`serving/build/package/`目录下找到whl安装包进行安装：
@@ -105,9 +105,9 @@ export LD_LIBRARY_PATH=$MINDSPORE_LIB_PATH:${LD_LIBRARY_PATH}
 
 ### 开发者教程
 
-- [使用GRPC接口](https://www.mindspore.cn/tutorial/inference/zh-CN/serving_grpc.html)
-- [使用RESTful接口](https://www.mindspore.cn/tutorial/inference/zh-CN/serving_restful.html)
-- [配置模型以提供一个Servable](https://www.mindspore.cn/tutorial/inference/zh-CN/serving_model.html)
+- [基于gRPC接口访问MindSpore Serving服务](https://www.mindspore.cn/tutorial/inference/zh-CN/serving_grpc.html)
+- [基于RESTful接口访问MindSpore Serving服务](https://www.mindspore.cn/tutorial/inference/zh-CN/serving_restful.html)
+- [通过配置模型提供Servable](https://www.mindspore.cn/tutorial/inference/zh-CN/serving_model.html)
 
 有关安装指南、教程和API的更多详细信息，请参阅[用户文档](https://gitee.com/mindspore/serving/tree/master/docs)。
 

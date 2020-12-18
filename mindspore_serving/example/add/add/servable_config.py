@@ -18,7 +18,7 @@ from mindspore_serving.worker import register
 import numpy as np
 
 
-# define preprocess pipeline, the function arg is multi instances, every instance is tuple of inputs
+# define preprocess pipeline, the function arg is multi instances, every instance is the tuple of inputs
 # this example has one input and one output
 def add_trans_datatype(instances):
     """preprocess python implement"""
@@ -28,8 +28,8 @@ def add_trans_datatype(instances):
         yield x1.astype(np.float32), x2.astype(np.float32)
 
 
-# when with_batch_dim set to False, only support 2x2 add
-# when with_batch_dim set to True(default), support Nx2 add, while N is view as batch
+# when with_batch_dim is set to False, only 2x2 add is supported
+# when with_batch_dim is set to True(default), Nx2 add is supported, while N is viewed as batch
 # float32 inputs/outputs
 register.declare_servable(servable_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=False)
 
