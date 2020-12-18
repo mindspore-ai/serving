@@ -79,7 +79,6 @@ Status DecomposeEvRequest::GetPostMessageToJson() {
       return status;
     }
   }
-  MSI_LOG_INFO << "get request message: [" << message << "]";
   MSI_TIME_STAMP_START(ParseJson)
   try {
     request_message_ = nlohmann::json::parse(message);

@@ -23,6 +23,7 @@ from mindspore.ops import operations as P
 
 class CrossEntropySmooth(_Loss):
     """CrossEntropy"""
+
     def __init__(self, sparse=True, reduction='mean', smooth_factor=0., num_classes=1000):
         super(CrossEntropySmooth, self).__init__()
         self.onehot = P.OneHot()

@@ -132,7 +132,6 @@ def _generate_liner_lr(lr_init, lr_end, lr_max, total_steps, warmup_steps):
     return lr_each_step
 
 
-
 def get_lr(lr_init, lr_end, lr_max, warmup_epochs, total_epochs, steps_per_epoch, lr_decay_mode):
     """
     generate learning rate array

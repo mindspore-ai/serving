@@ -14,18 +14,13 @@
 # ============================================================================
 """add model servable config"""
 
-from mindspore_serving.worker import register
 import numpy as np
+from mindspore_serving.worker import register
 
 
-# define preprocess pipeline, the function arg is multi instances, every instance is the tuple of inputs
-# this example has one input and one output
-def add_trans_datatype(instances):
-    """preprocess python implement"""
-    for instance in instances:
-        x1 = instance[0]
-        x2 = instance[1]
-        yield x1.astype(np.float32), x2.astype(np.float32)
+def add_trans_datatype(x1, x2):
+    """define preprocess, this example has one input and one output"""
+    return x1.astype(np.float32), x2.astype(np.float32)
 
 
 # when with_batch_dim is set to False, only 2x2 add is supported

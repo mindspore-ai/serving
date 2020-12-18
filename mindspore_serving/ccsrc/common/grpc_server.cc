@@ -61,6 +61,7 @@ void GrpcServer::Stop() {
   if (in_running_) {
     server_->Shutdown();
     grpc_thread_.join();
+    server_ = nullptr;
   }
   in_running_ = false;
 }

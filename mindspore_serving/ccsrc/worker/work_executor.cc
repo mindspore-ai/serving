@@ -67,18 +67,18 @@ Status WorkExecutor::CheckSevableSignature() {
   }
   if (servable_declare_.servable_meta.with_batch_dim) {
     if (model_batch_size_ == 0) {
-      return INFER_STATUS(FAILED) << "Servable batch size cannot be " << model_batch_size_;
+      return INFER_STATUS_LOG_ERROR(FAILED) << "Servable batch size cannot be " << model_batch_size_;
     }
     for (const auto &item : input_infos) {
       if (item.shape.empty() || static_cast<uint32_t>(item.shape[0]) != model_batch_size_) {
-        return INFER_STATUS(FAILED) << "Servable batch size " << model_batch_size_ << " not match model input shape "
-                                    << item.shape;
+        return INFER_STATUS_LOG_ERROR(FAILED)
+               << "Servable batch size " << model_batch_size_ << " not match model input shape " << item.shape;
       }
     }
     for (const auto &item : output_infos) {
       if (item.shape.empty() || static_cast<uint32_t>(item.shape[0]) != model_batch_size_) {
-        return INFER_STATUS(FAILED) << "Servable batch size " << model_batch_size_ << " not match model output shape "
-                                    << item.shape;
+        return INFER_STATUS_LOG_ERROR(FAILED)
+               << "Servable batch size " << model_batch_size_ << " not match model output shape " << item.shape;
       }
     }
   }
@@ -423,18 +423,18 @@ Status WorkExecutor::Predict(const std::vector<Instance> &inputs, std::vector<In
 Status WorkExecutor::CheckPredictInput(const Instance &instance) {
   const auto &inputs_info = input_infos_;
   if (instance.data.size() < inputs_info.size()) {
-    return INFER_STATUS(INVALID_INPUTS) << "Given model inputs size " << instance.data.size()
-                                        << " less than model inputs size " << inputs_info.size();
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Given model inputs size " << instance.data.size()
+                                                  << " less than model inputs size " << inputs_info.size();
   }
   for (size_t i = 0; i < instance.data.size(); i++) {
     auto input_data = instance.data[i];
     if (static_cast<size_t>(inputs_info[i].size / model_batch_size_) != input_data->data_size()) {
-      return INFER_STATUS(INVALID_INPUTS)
+      return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
              << "Given model input " << i << " size " << input_data->data_size() << " not match the size "
              << inputs_info[i].size / model_batch_size_ << " defined in model";
     }
     if (inputs_info[i].data_type != input_data->data_type()) {
-      return INFER_STATUS(INVALID_INPUTS)
+      return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
              << "Given model input " << i << " data type " << input_data->data_type() << " not match the data type "
              << inputs_info[i].data_type << " defined in model";
     }

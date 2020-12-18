@@ -115,8 +115,6 @@ def _create_numpy_from_tensor(tensor):
         return result
 
     result = np.frombuffer(tensor.data, dtype_map[tensor.dtype]).reshape(tensor.shape.dims)
-    if not tensor.shape.dims or (len(tensor.shape.dims) == 1 and tensor.shape.dims[0] == 1):
-        result = result.reshape((1,))[0]
     return result
 
 
@@ -170,6 +168,7 @@ class Client:
         >>> result = client.infer(instances)
         >>> print(result)
     """
+
     def __init__(self, ip, port, servable_name, method_name, version_number=0, max_msg_mb_size=512):
         _check_str("ip", ip)
         _check_int("port", port, 0, 65535)

@@ -27,6 +27,7 @@ context.set_context(mode=context.GRAPH_MODE, device_target="Ascend")
 
 class Net(nn.Cell):
     """Define Net of add"""
+
     def __init__(self):
         super(Net, self).__init__()
         self.add = ops.TensorAdd()

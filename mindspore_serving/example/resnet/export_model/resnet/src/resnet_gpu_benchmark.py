@@ -21,11 +21,14 @@ from mindspore.common.tensor import Tensor
 from scipy.stats import truncnorm
 
 format_ = "NHWC"
+
+
 # tranpose shape to NCHW, default init is NHWC.
 def _trans_shape(shape, shape_format):
     if shape_format == "NCHW":
         return (shape[0], shape[3], shape[1], shape[2])
     return shape
+
 
 def _conv_variance_scaling_initializer(in_channel, out_channel, kernel_size):
     fan_in = in_channel * kernel_size * kernel_size
@@ -36,6 +39,7 @@ def _conv_variance_scaling_initializer(in_channel, out_channel, kernel_size):
     weight = truncnorm(-2, 2, loc=mu, scale=sigma).rvs(out_channel * in_channel * kernel_size * kernel_size)
     weight = np.reshape(weight, (out_channel, kernel_size, kernel_size, in_channel))
     return Tensor(weight, dtype=mstype.float32)
+
 
 def _weight_variable(shape, factor=0.01):
     init_value = np.random.randn(*shape).astype(np.float32) * factor
@@ -49,12 +53,14 @@ def _conv3x3(in_channel, out_channel, stride=1):
     return nn.Conv2d(in_channel, out_channel, kernel_size=3, stride=stride,
                      padding=1, pad_mode='pad', weight_init=weight, data_format=format_)
 
+
 def _conv1x1(in_channel, out_channel, stride=1):
     weight_shape = (out_channel, 1, 1, in_channel)
     weight_shape = _trans_shape(weight_shape, format_)
     weight = _weight_variable(weight_shape)
     return nn.Conv2d(in_channel, out_channel, kernel_size=1, stride=stride,
                      padding=0, pad_mode='pad', weight_init=weight, data_format=format_)
+
 
 def _conv7x7(in_channel, out_channel, stride=1):
     weight_shape = (out_channel, 7, 7, in_channel)
@@ -68,9 +74,11 @@ def _bn(channel):
     return nn.BatchNorm2d(channel, eps=1e-4, momentum=0.9, gamma_init=1, beta_init=0,
                           moving_mean_init=0, moving_var_init=1, data_format=format_)
 
+
 def _bn_last(channel):
     return nn.BatchNorm2d(channel, eps=1e-4, momentum=0.9, gamma_init=0, beta_init=0,
                           moving_mean_init=0, moving_var_init=1, data_format=format_)
+
 
 def _fc(in_channel, out_channel):
     weight_shape = (out_channel, in_channel)

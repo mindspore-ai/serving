@@ -85,7 +85,7 @@ class PyTensor {
  public:
   // For all type, but for BYTES type, there can only be one item in bytes_val.
   // If the tensor data is destroyed when the numpy array is return to python env, the tensor data need to be copied
-  static py::array AsNumpy(TensorBasePtr tensor, bool copy = false);
+  static py::object AsPythonData(TensorBasePtr tensor, bool copy = false);
   static TensorBasePtr MakeTensor(const py::array &input);
   static TensorBasePtr MakeTensorNoCopy(const py::array &input);
 

@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 #include "common/tensor_base.h"
+#include <securec.h>
 #include <functional>
 #include <string>
 #include "common/log.h"
-#include "securec.h"
 
 #define TENSOR_MAX_ELEMENT_COUNT UINT32_MAX
 
@@ -25,6 +25,10 @@ namespace mindspore::serving {
 
 bool TensorBase::set_data(const void *data, size_t data_len) {
   resize_data(data_len);
+  if (data_len == 0) {
+    MSI_LOG_INFO << "set data to data len 0";
+    return true;
+  }
   if (mutable_data() == nullptr) {
     MSI_LOG_ERROR << "set data failed, data len " << data_len;
     return false;
@@ -32,9 +36,6 @@ bool TensorBase::set_data(const void *data, size_t data_len) {
   if (data_size() != data_len) {
     MSI_LOG_ERROR << "set data failed, tensor current data size " << data_size() << " not match data len " << data_len;
     return false;
-  }
-  if (data_len == 0) {
-    return true;
   }
   memcpy_s(mutable_data(), data_size(), data, data_len);
   return true;
