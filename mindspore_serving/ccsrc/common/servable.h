@@ -83,7 +83,7 @@ struct RequestSpec {
 struct MS_API ServableMeta {
   std::string servable_name;
   std::string servable_file;   // file name
-  ModelType model_format;      // OM， MindIR
+  ModelType model_format;      // OM, MindIR
   bool with_batch_dim = true;  // whether there is batch dim in model's inputs/outputs
   size_t inputs_count = 0;
   size_t outputs_count = 0;

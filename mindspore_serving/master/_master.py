@@ -72,12 +72,12 @@ def start_grpc_server(ip="0.0.0.0", grpc_port=5500, max_msg_mb_size=100):
 
     Args:
         ip (str): gRPC server ip.
-        grpc_port (int): gRPC port ip, default 5500，ip port range [0, 65535].
+        grpc_port (int): gRPC port ip, default 5500, ip port range [1, 65535].
         max_msg_mb_size (int): The maximum acceptable gRPC message size in megabytes(MB), default 100,
             value range [1, 512].
 
     Raises:
-        RuntimeError: Start gRPC server failed.
+        RuntimeError: Fail to start the gRPC server.
 
     Examples:
         >>> from mindspore_serving import master
@@ -96,17 +96,17 @@ def start_grpc_server(ip="0.0.0.0", grpc_port=5500, max_msg_mb_size=100):
 @stop_on_except
 def start_master_server(ip="127.0.0.1", master_port=6100):
     r"""
-    Start gRPC server for the commication between workers and the master.
+    Start the gRPC server for the communication between workers and the master.
 
     Note:
         The ip is expected to be accessed only by workers, not clients.
 
     Args:
-        ip (str): gRPC ip for worker to commnicate with, default '127.0.0.1'.
-        master_port (int): gRPC port ip, default 6100，ip port range [0, 65535].
+        ip (str): gRPC ip for workers to communicate with, default '127.0.0.1'.
+        master_port (int): gRPC port ip, default 6100, ip port range [1, 65535].
 
     Raises:
-        RuntimeError: Start gRPC server failed.
+        RuntimeError: Fail to start the master server.
 
     Examples:
         >>> from mindspore_serving import master
@@ -129,12 +129,12 @@ def start_restful_server(ip="0.0.0.0", restful_port=5900, max_msg_mb_size=100):
 
     Args:
         ip (str): RESTful server ip.
-        restful_port (int): gRPC port ip, default 5900，ip port range [0, 65535].
+        restful_port (int): gRPC port ip, default 5900, ip port range [1, 65535].
         max_msg_mb_size (int): The maximum acceptable RESTful message size in megabytes(MB), default 100,
             value range [1, 512].
 
     Raises:
-        RuntimeError: Start RESTful server failed.
+        RuntimeError: Fail to start the RESTful server.
 
     Examples:
         >>> from mindspore_serving import master
