@@ -1,12 +1,11 @@
-# Release 0.1.0-alpha
+# MindSpore Serving 1.1.0 Release Notes
 
-## Main Features
+## Major Features and Improvements
 
 ### Ascend 310 & Ascend 910 Serving Framework
-* Recommended OS: Ubuntu 16.04 (or later) or EulerOS 2.5 or EulerOS 2.8
-* Python version: 3.7.5
-* Provide gRPC and RESTful API
-* Support preprocessing & postprocessing
-* Support batching
-* Multiple instances
-* Version Control
+
+Support gRPC and RESTful API.
+Support simple Python API for Client and Server.
+Support Model configuration，User can customize preprocessing & postprocessing for model.
+Support multiple models，Multiple models can run simultaneously.
+Support Model batching，Multiple instances will be split and combined to meet the batch size requirements of the model.
