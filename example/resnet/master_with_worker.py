@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
+"""Start Servable resnet50"""
 
 import os
 from mindspore_serving import master
@@ -20,10 +21,10 @@ from mindspore_serving import worker
 
 def start():
     servable_dir = os.path.abspath(".")
-    worker.start_servable_in_master(servable_dir, "lenet", device_id=0)
+    worker.start_servable_in_master(servable_dir, "resnet50", device_id=0)
 
-    master.start_grpc_server("0.0.0.0", 5500)
-    master.start_restful_server("0.0.0.0", 1500)
+    master.start_grpc_server("127.0.0.1", 5500)
+    master.start_restful_server("127.0.0.1", 1500)
 
 
 if __name__ == "__main__":
