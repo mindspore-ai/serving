@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 #include "worker/notfiy_master/grpc_notify.h"
-#include <thread>
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
+#include <thread>
 #include "common/exit_handle.h"
 
 namespace mindspore {

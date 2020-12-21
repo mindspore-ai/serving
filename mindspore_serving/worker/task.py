@@ -38,6 +38,7 @@ task_type_postprocess = "postprocess"
 
 
 class PyTask:
+    """Base class for preprocess and postprocess"""
     def __init__(self, switch_batch, task_name):
         super(PyTask, self).__init__()
         self.task_name = task_name
@@ -50,38 +51,40 @@ class PyTask:
         self.result_batch = []
 
     def push_failed_impl(self, count):
+        """Base method to push failed result"""
         raise NotImplementedError
 
     def push_result_batch_impl(self, result_batch):
+        """Base method to push success result"""
         raise NotImplementedError
 
     def get_task_info(self, task_name):
+        """Base method to get task info"""
         raise NotImplementedError
 
     def push_failed(self, count):
+        """Push failed result"""
         self.push_result_batch()  # push success first
         self.push_failed_impl(count)
         self.index += count
 
     def push_result_batch(self):
+        """Push success result"""
         if not self.result_batch:
             return
-
-        get_result_time_end = time.time()
-        last_index = self.index
 
         self.index += len(self.result_batch)
         self.push_result_batch_impl(tuple(self.result_batch))
         self.result_batch = []
 
-        get_result_time = time.time()
-        print(f"-----------------{self.task_name} push result {last_index} ~ {self.index - 1} cost time",
-              (get_result_time - get_result_time_end) * 1000, "ms")
-
     def in_processing(self):
+        """Is last task time gab not handled done, every time gab handles some instances of preprocess and
+        postprocess"""
         return self.temp_result is not None
 
     def run(self, task=None):
+        """Run preprocess or postprocess, if last task has not been handled, continue to handle,
+        or handle new task, every task has some instances"""
         if not self.temp_result:
             assert task is not None
             self.instances_size = len(task.instance_list)
@@ -101,7 +104,8 @@ class PyTask:
                     self.result_batch.append(output)
 
                 get_result_time = time.time()
-                print(f"-----------------{self.task_name} get result {last_index} ~  cost time",
+                print(f"-----------------{self.task_name} get result "
+                      f"{last_index} ~ {last_index + len(self.result_batch) - 1} cost time",
                       (get_result_time - get_result_time_end) * 1000, "ms")
 
                 self.push_result_batch()
@@ -123,6 +127,7 @@ class PyTask:
             self.temp_result = None
 
     def _handle_task(self):
+        """Handle new task"""
         self.task_info = self.get_task_info(self.task.name)
         instance_list = self.task.instance_list
 
@@ -135,6 +140,7 @@ class PyTask:
         return self._handle_task_continue()
 
     def _handle_task_continue(self):
+        """Continue to handle task on new task or task exception happened"""
         if self.index >= self.instances_size:
             return None
         instance_list = self.task.instance_list
@@ -148,6 +154,7 @@ class PyTask:
             return None
 
     def _handle_result(self, output):
+        """Further processing results of preprocess or postprocess"""
         if not isinstance(output, (tuple, list)):
             output = (output,)
         if len(output) != self.task_info["outputs_count"]:
@@ -159,34 +166,43 @@ class PyTask:
 
 
 class PyPreprocess(PyTask):
+    """Preprocess implement"""
     def __init__(self, switch_batch):
         super(PyPreprocess, self).__init__(switch_batch, "preprocess")
 
     def push_failed_impl(self, count):
+        """Push failed preprocess result to c++ env"""
         Worker_.push_preprocess_failed(count)
 
     def push_result_batch_impl(self, result_batch):
+        """Push success preprocess result to c++ env"""
         Worker_.push_preprocess_result(result_batch)
 
     def get_task_info(self, task_name):
+        """Get preprocess task info, including inputs, outputs count, function of preprocess"""
         return preprocess_storage.get(task_name)
 
 
 class PyPostprocess(PyTask):
+    """Postprocess implement"""
     def __init__(self, switch_batch):
         super(PyPostprocess, self).__init__(switch_batch, "postprocess")
 
     def push_failed_impl(self, count):
+        """Push failed postprocess result to c++ env"""
         Worker_.push_postprocess_failed(count)
 
     def push_result_batch_impl(self, result_batch):
+        """Push success postprocess result to c++ env"""
         Worker_.push_postprocess_result(result_batch)
 
     def get_task_info(self, task_name):
+        """Get postprocess task info, including inputs, outputs count, function of postprocess"""
         return postprocess_storage.get(task_name)
 
 
 class PyTaskThread(threading.Thread):
+    """Thread for handling preprocess and postprocess"""
     def __init__(self, switch_batch):
         super(PyTaskThread, self).__init__()
         self.switch_batch = switch_batch
@@ -196,6 +212,7 @@ class PyTaskThread(threading.Thread):
         self.postprocess = PyPostprocess(self.switch_batch)
 
     def run(self):
+        """Run tasks of preprocess and postprocess, switch to other type of process when some instances are handled"""
         print("start py task for preprocess and postprocess, switch_batch", self.switch_batch)
         preprocess_turn = True
         while True:
@@ -246,7 +263,8 @@ class PyTaskThread(threading.Thread):
 py_task_thread = None
 
 
-def start_py_task(switch_batch):
+def _start_py_task(switch_batch):
+    """Start python thread for proprocessing and postprocessing"""
     global py_task_thread
     if py_task_thread is None:
         py_task_thread = PyTaskThread(switch_batch)

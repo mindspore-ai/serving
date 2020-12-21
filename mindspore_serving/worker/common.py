@@ -32,4 +32,5 @@ def get_servable_dir():
 
 
 def get_func_name(func):
+    """Get function name for preprocess and postprocess, as the identification name"""
     return func.__name__

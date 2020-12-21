@@ -22,7 +22,7 @@ namespace mindspore::serving {
 class ArgmaxPostprocess : public PostprocessBase {
  public:
   template <typename DT>
-  void ArgmaxImp(const uint8_t *input, int64_t *output, size_t data_size, size_t elemsize) {
+  void ArgmaxImp(const void *input, int64_t *output, size_t data_size, size_t elemsize) {
     auto count = data_size / elemsize;
     auto data = reinterpret_cast<const DT *>(input);
     *output = 0;
