@@ -96,10 +96,6 @@ class RestfulService {
   bool IsString();
   void ParseErrorMsg(const proto::ErrorMsg &error_msg, json *const js);
 
-  void PrintRequest(const proto::PredictRequest *const request);
-  void PrintReply(const proto::PredictReply &reply);
-  void FadeReply(const proto::PredictRequest &request, proto::PredictReply *reply);
-
   RequestType request_type_{kInvalidType};
   InstancesType instances_type_{kInvalidWay};
   int64_t instances_nums_{0};
