@@ -143,19 +143,17 @@ def _check_int(arg_name, int_val, mininum=None, maximum=None):
 class Client:
     """
     The Client encapsulates the serving gRPC API, which can be used to create requests,
-        access serving, and parse results.
+    access serving, and parse results.
 
     Args:
-        ip(str): Serving ip.
-        port(int): Serving port.
-        servable_name(str): The name of servable supplied by Serving.
-        method_name(str): The name of method supplied by servable.
-        version_number(int): The version number of servable, default 0,
-            0 meaning the maximum version number in all running versions.
-        max_msg_mb_size(int):  The maximum acceptable gRPC message size in megabytes(MB), default 512,
-            value range [1, 512].
+        ip (str): Serving ip.
+        port (int): Serving port.
+        servable_name (str): The name of servable supplied by Serving.
+        method_name (str): The name of method supplied by servable.
+        version_number (int): The version number of servable, default 0,
+            which means the maximum version number in all running versions.
     Raises:
-        RuntimeError: The type or value of the parameters is invalid, or other error happened.
+        RuntimeError: The type or value of the parameters is invalid, or other errors happened.
 
     Examples:
         >>> from mindspore_serving.client import Client
@@ -169,13 +167,12 @@ class Client:
         >>> print(result)
     """
 
-    def __init__(self, ip, port, servable_name, method_name, version_number=0, max_msg_mb_size=512):
+    def __init__(self, ip, port, servable_name, method_name, version_number=0):
         _check_str("ip", ip)
-        _check_int("port", port, 0, 65535)
+        _check_int("port", port, 1, 65535)
         _check_str("servable_name", servable_name)
         _check_str("method_name", method_name)
         _check_int("version_number", version_number, 0)
-        _check_int("max_msg_mb_size", max_msg_mb_size, 1, 512)
 
         self.ip = ip
         self.port = port
@@ -184,7 +181,7 @@ class Client:
         self.version_number = version_number
 
         channel_str = str(ip) + ":" + str(port)
-        msg_bytes_size = max_msg_mb_size * 1024 * 1024
+        msg_bytes_size = 512 * 1024 * 1024 # 512MB
         channel = grpc.insecure_channel(channel_str,
                                         options=[
                                             ('grpc.max_send_message_length', msg_bytes_size),
@@ -197,11 +194,11 @@ class Client:
         Used to create requests, access serving, and parse results.
 
         Args:
-            instances(map, tuple of map): Instance or tuple of instance, every instance item is the inputs map.
+            instances (map, tuple of map): Instance or tuple of instances, every instance item is the inputs map.
                 The map key is the input name, and the value is the input value.
 
         Raises:
-            RuntimeError: The type or value of the parameters is invalid, or other error happened.
+            RuntimeError: The type or value of the parameters is invalid, or other errors happened.
         """
         if not isinstance(instances, (tuple, list)):
             instances = (instances,)

@@ -98,22 +98,22 @@ def start_servable(servable_directory, servable_name, version_number=0,
     Serving has two running modes. One is running in a single process, providing the Serving service of a single model.
     The other includes a master and multiple workers. This interface is for the second scenario.
 
-    The master is responsible for providing the Serving access interface for client,
-    while the worker is responsible for providing the inference service of the specific model. The master
-    and worker communicate through gPRC defined as (master_ip, master_port) and (worker_ip, worker_port).
+    The master is responsible for providing the Serving access interface for clients,
+    while the worker is responsible for providing the inference service of the specific model. The communications
+    between the master and workers through gPRC are defined as (master_ip, master_port) and (worker_ip, worker_port).
 
     Args:
-        servable_directory (str): The directory where the servable located in, there expected to has a directory named
-            `servable_name`. For more detail:
-            `How to config Servable <https://gitee.com/mindspore/serving/blob/master/docs/MODEL.md>`_
+        servable_directory (str): The directory where the servable is located in. There expects to has a directory
+            named `servable_name`. For more detail:
+            `How to config Servable <https://www.mindspore.cn/tutorial/inference/zh-CN/master/serving_model.html>`_ .
 
         servable_name (str): The servable name.
-        version_number (int): Servable version number to be loaded. Version number should be a positive integer,
-            started from 1, and 0 means to load the latest version. Default: 0.
-        device_type (str): Current only support "Ascend", "Davinci" and None, Default: None.
-            "Ascend" which means device type can be Ascend910 or Ascend310, etc.
-            "Davinci" has the same meanings of "Ascend".
-            None: The device type is determined by the mindspore environment.
+        version_number (int): Servable version number to be loaded. The version number should be a positive integer,
+            starting from 1, and 0 means to load the latest version. Default: 0.
+        device_type (str): Currently only supports "Ascend", "Davinci" and None, Default: None.
+            "Ascend" means the device type can be Ascend910 or Ascend310, etc.
+            "Davinci" has the same meaning as "Ascend".
+            None means the device type is determined by the MindSpore environment.
         device_id (int): The id of the device the model loads into and runs in.
         master_ip (str): The master ip the worker linked to.
         master_port (int): The master port the worker linked to.
@@ -161,24 +161,24 @@ def start_servable(servable_directory, servable_name, version_number=0,
 def start_servable_in_master(servable_directory, servable_name, version_number=0, device_type=None,
                              device_id=0):
     r"""
-    Start up the servable named 'servable_name' defined in 'svable_directory', and the worker will running in
+    Start up the servable named 'servable_name' defined in 'svable_directory', and the worker will run in
     the process of the master.
 
     Serving has two running modes. One is running in a single process, providing the Serving service of a single model.
     The other includes a master and multiple workers. This interface is for the first scenario.
 
     Args:
-        servable_directory (str): The directory where the servable located in, there expected to has a directory named
-                    `servable_name`. For more detail:
-                    `How to config Servable <https://gitee.com/mindspore/serving/blob/master/docs/MODEL.md>`_
+        servable_directory (str): The directory where the servable is located in. There expects to has a directory named
+            `servable_name`. For more detail:
+            `How to config Servable <https://www.mindspore.cn/tutorial/inference/zh-CN/master/serving_model.html>`_ .
 
         servable_name (str): The servable name.
-        version_number (int): Servable version number to be loaded. Version number should be a positive integer,
-            started from 1, and 0 means to load the latest version. Default: 0.
-        device_type (str): Current only support "Ascend", "Davinci" and None, Default: None.
-            "Ascend" which means device type can be Ascend910 or Ascend310, etc.
-            "Davinci" has the same meanings of "Ascend".
-            None: The device type is determined by the mindspore environment.
+        version_number (int): Servable version number to be loaded. The version number should be a positive integer,
+            starting from 1, and 0 means to load the latest version. Default: 0.
+        device_type (str): Currently only supports "Ascend", "Davinci" and None, Default: None.
+            "Ascend" means the device type can be Ascend910 or Ascend310, etc.
+            "Davinci" has the same meaning as "Ascend".
+            None means the device type is determined by the MindSpore environment.
 
     Examples:
         >>> import os

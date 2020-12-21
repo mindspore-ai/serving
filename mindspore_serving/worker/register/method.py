@@ -368,7 +368,7 @@ def register_method(output_names):
     Preprocess and postprocess are optional.
 
     Args:
-        output_names(str, tuple or list of str): The output names of method. The input names is
+        output_names (str, tuple or list of str): The output names of method. The input names is
             the args names of the registered function.
 
     Raises:
