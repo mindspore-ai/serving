@@ -38,12 +38,12 @@ prepare_model()
 {
   echo "### begin to generate mode for serving test ###"
   cd export_model
-  python3 add_model.py &> add_model.log
+  python3 export_resnet.py &> export_resnet.log
   echo "### end to generate mode for serving test ###"
-  result=`find . -name  tensor_add.mindir | wc -l`
+  result=`find . -name resnet50_1b_imagenet.mindir | wc -l`
   if [ ${result} -ne 1 ]
   then
-    cat add_model.log
+    cat export_resnet.log
     echo "### generate model for serving test failed ###" && exit 1
     clean_pid
     cd -
@@ -93,7 +93,7 @@ pytest_serving()
   echo "### client end ###"
 }
 
-test_add_model()
+test_renet_model()
 {
   start_service
   pytest_serving
@@ -103,7 +103,7 @@ test_add_model()
 
 echo "-----serving start-----"
 rm -rf serving *.log *.mindir *.dat ${CURRPATH}/add ${CURRPATH}/kernel_meta
-rm -rf add  client.py  export_model  master_with_worker.py
-cp -r ../../../example/add/* .
+rm -rf client.py  export_model  master_with_worker.py  resnet50  test_image
+cp -r ../../../example/resnet/* .
 prepare_model
-test_add_model
+test_renet_model

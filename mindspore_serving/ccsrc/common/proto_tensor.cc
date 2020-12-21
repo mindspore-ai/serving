@@ -60,12 +60,7 @@ void ProtoTensor::set_shape(const std::vector<int64_t> &shape) {
   tensor_shape->Clear();
   size_t element_count = 1;
   for (auto dim : shape) {
-    if (dim == 0 && shape.size() == 1) {
-      MSI_LOG_INFO << "Detect shape (0,) ";
-      tensor_shape->add_dims(0);
-      return;
-    }
-    if (dim <= 0 || element_count > kMaxShapeElementCount / dim) {
+    if (dim < 0 || (dim > 0 && element_count > kMaxShapeElementCount / dim)) {
       MSI_LOG_ERROR << "failed to set shape, invalid dim num " << dim;
       tensor_shape->Clear();
       return;

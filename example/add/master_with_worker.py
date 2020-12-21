@@ -12,26 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
+"""Start Servable add"""
 
 import os
-from mindspore_serving.client import Client
+from mindspore_serving import master
+from mindspore_serving import worker
 
 
-def run_predict():
-    client = Client("localhost", 5500, "lenet", "predict")
-    instances = []
-    for path, _, file_list in os.walk("./test_image/"):
-        for file_name in file_list:
-            image_file = os.path.join(path, file_name)
-            print(image_file)
-            with open(image_file, "rb") as fp:
-                instances.append({"image": fp.read()})
-    result = client.infer(instances)
-    if "error" in result:
-        print("error happen:", result["error"])
-        return
-    print(result)
+def start():
+    servable_dir = os.path.abspath(".")
+    worker.start_servable_in_master(servable_dir, "add", device_id=0)
+
+    master.start_grpc_server("127.0.0.1", 5500)
+    master.start_restful_server("127.0.0.1", 1500)
 
 
-if __name__ == '__main__':
-    run_predict()
+if __name__ == "__main__":
+    start()
