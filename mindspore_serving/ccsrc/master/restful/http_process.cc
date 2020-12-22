@@ -66,7 +66,7 @@ Status RestfulService::CheckObjTypeMatchShape(DataType data_type, const std::vec
     size_t elements_nums = std::accumulate(shape.begin(), shape.end(), 1LL, std::multiplies<size_t>());
     if (elements_nums != 1) {
       return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
-             << "json object, only support scalar when data type is string or bytes";
+             << "json object, only support scalar when data type is string or bytes, please check 'type' or 'shape'";
     }
   }
   return SUCCESS;
@@ -680,7 +680,7 @@ Status RestfulService::RunRestful(const std::shared_ptr<RestfulRequest> &restful
   MSI_TIME_STAMP_END(ParseRequest)
   if (status != SUCCESS) {
     std::string error_msg = status.StatusMessage();
-    std::string msg = "Paser reqeust failed, " + error_msg;
+    std::string msg = "Parser reqeust failed, " + error_msg;
     status = msg;
     return status;
   }

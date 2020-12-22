@@ -23,6 +23,7 @@
 #include <string>
 #include <utility>
 #include <shared_mutex>
+#include <map>
 #include "worker/work_executor.h"
 #include "common/serving_common.h"
 #include "proto/ms_service.pb.h"
@@ -68,7 +69,7 @@ class MS_API Worker {
   std::pair<Status, std::shared_ptr<AsyncResult>> RunAsync(const RequestSpec &request_spec,
                                                            const std::vector<InstanceData> &inputs);
 
-  Status InitEnv(ModelType model_type, const std::unordered_map<std::string, std::string> &other_options);
+  Status InitEnv(ModelType model_type, const std::map<std::string, std::string> &other_options);
   Status FinalizeEnv();
 
   Status StartServable(const std::string &servable_directory, const std::string &servable_name, uint32_t version_number,

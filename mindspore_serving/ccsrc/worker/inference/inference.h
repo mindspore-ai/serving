@@ -18,6 +18,7 @@
 #define MINDSPORE_SERVING_WORKER_INFERENCE_H
 
 #include <utility>
+#include <map>
 #include <unordered_map>
 #include <memory>
 #include <vector>
@@ -55,11 +56,13 @@ class MS_API InferSession {
   InferSession() = default;
   virtual ~InferSession() = default;
   virtual Status InitEnv(DeviceType device_type, uint32_t device_id,
-                         const std::unordered_map<std::string, std::string> &other_options) = 0;
+                         const std::map<std::string, std::string> &other_options) = 0;
   virtual Status FinalizeEnv() = 0;
 
   virtual Status LoadModelFromFile(serving::DeviceType device_type, uint32_t device_id, const std::string &file_name,
-                                   ModelType model_type, uint32_t *model_id) = 0;
+                                   ModelType model_type, const std::map<std::string, std::string> &other_options,
+                                   uint32_t *model_id) = 0;
+
   virtual Status UnloadModel(uint32_t model_id) = 0;
   // override this method to avoid request/reply data copy
   virtual Status ExecuteModel(uint32_t model_id, const RequestBase &request, ReplyBase *reply) = 0;

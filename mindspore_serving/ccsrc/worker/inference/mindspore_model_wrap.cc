@@ -27,7 +27,7 @@ namespace mindspore {
 namespace serving {
 
 Status MindSporeModelWrap::InitEnv(serving::DeviceType device_type, uint32_t device_id,
-                                   const std::unordered_map<std::string, std::string> &other_options) {
+                                   const std::map<std::string, std::string> &other_options) {
   return SUCCESS;
 }
 
@@ -70,7 +70,9 @@ DataType TransTypeId2InferDataType(api::DataType type_id) {
 }
 
 Status MindSporeModelWrap::LoadModelFromFile(serving::DeviceType device_type, uint32_t device_id,
-                                             const std::string &file_name, ModelType model_type, uint32_t *model_id) {
+                                             const std::string &file_name, ModelType model_type,
+                                             const std::map<std::string, std::string> &other_options,
+                                             uint32_t *model_id) {
   MSI_EXCEPTION_IF_NULL(model_id);
   std::string device_type_str;
   if (device_type == kDeviceTypeAscendMS) {
@@ -87,12 +89,14 @@ Status MindSporeModelWrap::LoadModelFromFile(serving::DeviceType device_type, ui
     auto graph = api::Serialization::LoadModel(file_name, model_type);
     model = std::make_shared<api::Model>(api::GraphCell(graph));
   } catch (std::runtime_error &ex) {
-    MSI_LOG_ERROR << "Load model from file failed, device_type: '" << device_type_str << "', device_id: " << device_id
-                  << ", model type: " << model_type;
+    MSI_LOG_ERROR << "Load model from file failed, model file: " << file_name << ", device_type: '" << device_type_str
+                  << "', device_id: " << device_id << ", model type: " << model_type << ", options: " << other_options;
     return FAILED;
   }
-  api::Status status = model->Build({});
+  api::Status status = model->Build(other_options);
   if (!status.IsSuccess()) {
+    MSI_LOG_ERROR << "Load model from file failed, model file: " << file_name << ", device_type: '" << device_type_str
+                  << "', device_id: " << device_id << ", model type: " << model_type << ", options: " << other_options;
     return Status(FAILED, status.StatusMessage());
   }
   model_index_++;
@@ -106,6 +110,8 @@ Status MindSporeModelWrap::LoadModelFromFile(serving::DeviceType device_type, ui
     return st;
   }
   model_map_[*model_id] = api_model_info;
+  MSI_LOG_INFO << "Load model from file success, model file: " << file_name << ", device_type: '" << device_type_str
+               << "', device_id: " << device_id << ", model type: " << model_type << ", options: " << other_options;
   return SUCCESS;
 }
 

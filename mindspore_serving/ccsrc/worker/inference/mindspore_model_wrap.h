@@ -21,6 +21,7 @@
 #include <string>
 #include <memory>
 #include <vector>
+#include <map>
 #include "common/serving_common.h"
 #include "worker/inference/inference.h"
 #include "api/model.h"
@@ -46,12 +47,13 @@ class MindSporeModelWrap : public InferSession {
   ~MindSporeModelWrap() = default;
 
   Status InitEnv(serving::DeviceType device_type, uint32_t device_id,
-                 const std::unordered_map<std::string, std::string> &other_options) override;
+                 const std::map<std::string, std::string> &other_options) override;
 
   Status FinalizeEnv() override;
 
   Status LoadModelFromFile(serving::DeviceType device_type, uint32_t device_id, const std::string &file_name,
-                           serving::ModelType model_type, uint32_t *model_id) override;
+                           ModelType model_type, const std::map<std::string, std::string> &other_options,
+                           uint32_t *model_id) override;
 
   Status UnloadModel(uint32_t model_id) override;
 

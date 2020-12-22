@@ -22,6 +22,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <map>
 #include "common/serving_common.h"
 #include "worker/inference/inference.h"
 
@@ -94,6 +95,7 @@ struct MS_API ServableMeta {
 struct ServableSignature {
   ServableMeta servable_meta;
   std::vector<MethodSignature> methods;
+  std::map<std::string, std::string> load_options;  // Acl options
 
   Status Check() const;
   bool GetMethodDeclare(const std::string &method_name, MethodSignature *method);
@@ -106,7 +108,7 @@ class MS_API ServableStorage {
 
   bool GetServableDef(const std::string &model_name, ServableSignature *def) const;
 
-  void DeclareServable(const ServableMeta &servable);
+  void DeclareServable(const ServableMeta &servable, const std::map<std::string, std::string> &options);
 
   void RegisterInputOutputInfo(const std::string &servable_name, size_t inputs_count, size_t outputs_count);
   std::vector<size_t> GetInputOutputInfo(const std::string &servable_name) const;
@@ -116,6 +118,27 @@ class MS_API ServableStorage {
  private:
   std::unordered_map<std::string, ServableSignature> servable_signatures_map_;
 };
+
+static inline LogStream &operator<<(LogStream &stream, PredictPhaseTag data_type) {
+  switch (data_type) {
+    case kPredictPhaseTag_Input:
+      stream << "Input";
+      break;
+    case kPredictPhaseTag_Preproces:
+      stream << "Preprocess";
+      break;
+    case kPredictPhaseTag_Predict:
+      stream << "Predict";
+      break;
+    case kPredictPhaseTag_Postprocess:
+      stream << "Postprocess";
+      break;
+    case kPredictPhaseTag_Output:
+      stream << "Output";
+      break;
+  }
+  return stream;
+}
 
 }  // namespace mindspore::serving
 

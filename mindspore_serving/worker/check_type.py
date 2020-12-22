@@ -26,11 +26,15 @@ def check_and_as_str_tuple_list(arg_name, strs):
         raise RuntimeError(f"Parameter '{arg_name}' should be str or tuple/list of str, but actually {type(strs)}")
 
     if isinstance(strs, (tuple, list)):
+        str_list = []
         for item in strs:
             if not isinstance(item, str):
                 raise RuntimeError(f"The item of parameter '{arg_name}' should be str, but actually {type(item)}")
             if not item:
                 raise RuntimeError(f"The item of parameter '{arg_name}' should not be empty str")
+            if item in str_list:
+                raise RuntimeError(f"The item name '{item}' in parameter '{arg_name}' should not be repeated")
+            str_list.append(item)
 
     return tuple(strs)
 

@@ -42,9 +42,9 @@ class _ServableStorage:
         self.servable_metas = {}
         self.storage = ServableStorage_.get_instance()
 
-    def declare_servable(self, servable_meta):
+    def declare_servable(self, servable_meta, options):
         """Declare servable info excluding method, input and output count"""
-        self.storage.declare_servable(servable_meta)
+        self.storage.declare_servable(servable_meta, options if options else {})
         self.servable_metas[servable_meta.servable_name] = servable_meta
 
     def declare_servable_input_output(self, servable_name, inputs_count, outputs_count):
@@ -56,6 +56,8 @@ class _ServableStorage:
 
     def register_method(self, method_signature):
         """Declare method of servable"""
+        if method_signature.method_name in self.methods:
+            raise RuntimeError(f"Method {method_signature.method_name} has been registered more than once.")
         self.storage.register_method(method_signature)
         self.methods[method_signature.method_name] = method_signature
 
@@ -137,6 +139,16 @@ def call_preprocess_pipeline(preprocess_fun, *args):
         ...     y = register.call_servable(x1, x2)
         ...     return y
     """
+    global method_def_context_
+    if method_def_context_.preprocess_name:
+        raise RuntimeError(f"Check failed in method '{method_def_context_.method_name}', "
+                           f"call_preprocess or call_preprocess_pipeline should not be invoked more than once")
+    if method_def_context_.servable_name:
+        raise RuntimeError(f"Check failed in method '{method_def_context_.method_name}', "
+                           f"call_servable should be invoked after call_preprocess_pipeline")
+    if method_def_context_.postprocess_name:
+        raise RuntimeError(f"Check failed in method '{method_def_context_.method_name}', call_postprocess "
+                           f"or call_postprocess_pipeline should be invoked after call_preprocess_pipeline")
 
     if _call_preprocess_pipeline_name not in method_def_ast_meta_:
         raise RuntimeError(f"Invalid call of '{_call_preprocess_pipeline_name}'")
@@ -149,10 +161,10 @@ def call_preprocess_pipeline(preprocess_fun, *args):
     else:
         if not isinstance(preprocess_name, str):
             raise RuntimeError(
-                f"Check failed, call_preprocess first must be function or str, now is {type(preprocess_name)}")
+                f"Check failed in method '{method_def_context_.method_name}', "
+                f"call_preprocess first must be function or str, now is {type(preprocess_name)}")
         check_preprocess(preprocess_name, inputs_count=inputs_count, outputs_count=outputs_count)
 
-    global method_def_context_
     method_def_context_.preprocess_name = preprocess_name
     method_def_context_.preprocess_inputs = [item.as_pair() for item in args]
 
@@ -184,6 +196,16 @@ def call_preprocess(preprocess_fun, *args):
         ...     y = register.call_servable(x1, x2)
         ...     return y
     """
+    global method_def_context_
+    if method_def_context_.preprocess_name:
+        raise RuntimeError(f"Check failed in method '{method_def_context_.method_name}', "
+                           f"call_preprocess or call_preprocess_pipeline should not be invoked more than once")
+    if method_def_context_.servable_name:
+        raise RuntimeError(f"Check failed in method '{method_def_context_.method_name}', "
+                           f"call_servable should be invoked after call_preprocess")
+    if method_def_context_.postprocess_name:
+        raise RuntimeError(f"Check failed in method '{method_def_context_.method_name}', "
+                           f"call_postprocess or call_postprocess_pipeline should be invoked after call_preprocess")
 
     if _call_preprocess_name not in method_def_ast_meta_:
         raise RuntimeError(f"Invalid call of '{_call_preprocess_name}'")
@@ -197,10 +219,10 @@ def call_preprocess(preprocess_fun, *args):
     else:
         if not isinstance(preprocess_name, str):
             raise RuntimeError(
-                f"Check failed, call_preprocess first must be function or str, now is {type(preprocess_name)}")
+                f"Check failed in method '{method_def_context_.method_name}', "
+                f"call_preprocess first must be function or str, now is {type(preprocess_name)}")
         check_preprocess(preprocess_name, inputs_count=inputs_count, outputs_count=outputs_count)
 
-    global method_def_context_
     method_def_context_.preprocess_name = preprocess_name
     method_def_context_.preprocess_inputs = [item.as_pair() for item in args]
 
@@ -228,14 +250,21 @@ def call_servable(*args):
         ...     y = register.call_servable(x1, x2)
         ...     return y
     """
+    global method_def_context_
+    if method_def_context_.servable_name:
+        raise RuntimeError(f"Check failed in method '{method_def_context_.method_name}', "
+                           f"call_servable should not be invoked more than once")
+    if method_def_context_.postprocess_name:
+        raise RuntimeError(f"Check failed in method '{method_def_context_.method_name}', "
+                           f"call_postprocess or call_postprocess_pipeline should be invoked after call_servable")
+
     servable_name = get_servable_dir()
     inputs_count, outputs_count = method_def_ast_meta_[_call_servable_name]
     _servable_storage.declare_servable_input_output(servable_name, inputs_count, outputs_count)
     if inputs_count != len(args):
-        raise RuntimeError(f"Given servable input size {len(args)} not match "
-                           f"'{servable_name}' ast parse size {inputs_count}")
+        raise RuntimeError(f"Check failed in method '{method_def_context_.method_name}', given servable input "
+                           f"size {len(args)} not match '{servable_name}' ast parse size {inputs_count}")
 
-    global method_def_context_
     method_def_context_.servable_name = servable_name
     method_def_context_.servable_inputs = [item.as_pair() for item in args]
 
@@ -253,6 +282,11 @@ def call_postprocess_pipeline(postprocess_fun, *args):
     Raises:
         RuntimeError: The type or value of the parameters is invalid, or other error happened.
     """
+    global method_def_context_
+    if method_def_context_.postprocess_name:
+        raise RuntimeError(f"Check failed in method '{method_def_context_.method_name}', "
+                           f"call_postprocess or call_postprocess_pipeline should not be invoked more than once")
+
     if _call_postprocess_pipeline_name not in method_def_ast_meta_:
         raise RuntimeError(f"Invalid call of '{_call_postprocess_pipeline_name}'")
     inputs_count, outputs_count = method_def_ast_meta_[_call_postprocess_pipeline_name]
@@ -264,10 +298,10 @@ def call_postprocess_pipeline(postprocess_fun, *args):
     else:
         if not isinstance(postprocess_name, str):
             raise RuntimeError(
-                f"Check failed, call_postprocess first must be function or str, now is {type(postprocess_name)}")
+                f"Check failed in method '{method_def_context_.method_name}', "
+                f"call_postprocess first must be function or str, now is {type(postprocess_name)}")
         check_postprocess(postprocess_name, inputs_count=inputs_count, outputs_count=outputs_count)
 
-    global method_def_context_
     method_def_context_.postprocess_name = postprocess_name
     method_def_context_.postprocess_inputs = [item.as_pair() for item in args]
 
@@ -285,6 +319,11 @@ def call_postprocess(postprocess_fun, *args):
     Raises:
         RuntimeError: The type or value of the parameters is invalid, or other error happened.
     """
+    global method_def_context_
+    if method_def_context_.postprocess_name:
+        raise RuntimeError(f"Check failed in method '{method_def_context_.method_name}', "
+                           f"call_postprocess or call_postprocess_pipeline should not be invoked more than once")
+
     if _call_postprocess_name not in method_def_ast_meta_:
         raise RuntimeError(f"Invalid call of '{_call_postprocess_name}'")
     inputs_count, outputs_count = method_def_ast_meta_[_call_postprocess_name]
@@ -297,10 +336,10 @@ def call_postprocess(postprocess_fun, *args):
     else:
         if not isinstance(postprocess_name, str):
             raise RuntimeError(
-                f"Check failed, call_postprocess first must be function or str, now is {type(postprocess_name)}")
+                f"Check failed in method '{method_def_context_.method_name}', "
+                f"call_postprocess first must be function or str, now is {type(postprocess_name)}")
         check_postprocess(postprocess_name, inputs_count=inputs_count, outputs_count=outputs_count)
 
-    global method_def_context_
     method_def_context_.postprocess_name = postprocess_name
     method_def_context_.postprocess_inputs = [item.as_pair() for item in args]
 
@@ -312,6 +351,7 @@ _call_servable_name = call_servable.__name__
 _call_postprocess_name = call_postprocess.__name__
 _call_preprocess_pipeline_name = call_preprocess_pipeline.__name__
 _call_postprocess_pipeline_name = call_postprocess_pipeline.__name__
+
 
 def _get_method_def_func_meta(method_def_func):
     """Parse register_method func, and get the input and output count of preprocess, servable and postprocess"""
@@ -407,6 +447,10 @@ def register_method(output_names):
 
         global method_def_context_
         method_def_context_ = MethodSignature_()
+        method_def_context_.method_name = name
+        method_def_context_.inputs = input_names
+        method_def_context_.outputs = output_names
+
         global method_def_ast_meta_
         method_def_ast_meta_ = _get_method_def_func_meta(func)
 
@@ -417,9 +461,6 @@ def register_method(output_names):
             raise RuntimeError(
                 f"Method return output size {len(output_tensors)} not match registed {len(output_names)}")
 
-        method_def_context_.method_name = name
-        method_def_context_.inputs = input_names
-        method_def_context_.outputs = output_names
         method_def_context_.returns = [item.as_pair() for item in output_tensors]
         print("------------Register method: method_name", method_def_context_.method_name,
               ", servable_name", method_def_context_.servable_name, ", inputs", input_names, ", outputs", output_names)

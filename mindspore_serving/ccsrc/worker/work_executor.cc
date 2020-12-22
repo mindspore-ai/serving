@@ -46,16 +46,19 @@ WorkExecutor::~WorkExecutor() = default;
 Status WorkExecutor::CheckSevableSignature() {
   Status status;
   const auto &input_infos = input_infos_;
+  if (servable_declare_.methods.empty()) {
+    return INFER_STATUS_LOG_ERROR(FAILED) << "There is no method registered for servable";
+  }
   if (input_infos.size() != servable_declare_.servable_meta.inputs_count) {
     return INFER_STATUS_LOG_ERROR(FAILED)
-           << "The inputs count " << servable_declare_.servable_meta.inputs_count << " declared not eqaul to the count "
-           << input_infos.size() << " defined in servable";
+           << "The inputs count " << servable_declare_.servable_meta.inputs_count << " registered in method "
+           << "not equal to the count " << input_infos.size() << " defined in servable";
   }
   const auto &output_infos = output_infos_;
   if (output_infos.size() != servable_declare_.servable_meta.outputs_count) {
     return INFER_STATUS_LOG_ERROR(FAILED)
            << "The outputs count " << servable_declare_.servable_meta.outputs_count
-           << " declared not eqaul to the count " << output_infos.size() << " defined in servable";
+           << " registered in method not equal to the count " << output_infos.size() << " defined in servable";
   }
   MSI_LOG_INFO << "Model input infos:";
   for (auto &item : input_infos) {

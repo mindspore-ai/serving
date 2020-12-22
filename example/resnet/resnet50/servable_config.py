@@ -32,7 +32,7 @@ idx_2_label[1000] = "empty"
 def preprocess_eager(image):
     """
     Define preprocess, input is image numpy, return preprocess result.
-    return type can be numpy, str, bytes, int, float, bool
+    Return type can be numpy, str, bytes, int, float, or bool.
     Use MindData Eager, this image processing can also use other image processing library, likes numpy, PIL or cv2 etc.
     """
     image_size = 224
@@ -83,7 +83,8 @@ def preprocess_pipeline(instances):
 
 def postprocess_top1(score):
     """
-    Define postprocess pipeline. This example has one input and one output
+    Define postprocess. This example has one input and one output.
+    The input is the numpy tensor of the score, and the output is the label str of top one.
     """
     max_idx = np.argmax(score)
     return idx_2_label[max_idx]
@@ -91,7 +92,9 @@ def postprocess_top1(score):
 
 def postprocess_top5(score):
     """
-    Define postprocess. This example has one input and two output
+    Define postprocess. This example has one input and two outputs.
+    The input is the numpy tensor of the score. The first output is the str joined by labels of top five,
+    and the second output is the score tensor of the top five.
     """
     idx = np.argsort(score)[::-1][:5]  # top 5
     ret_label = [idx_2_label[i] for i in idx]
@@ -115,7 +118,7 @@ def classify_top1(image):
 @register.register_method(output_names=["label"])
 def classify_top1_v1(image):
     """Define method `classify_top1_v1` for servable `resnet50`.
-     The input is `image` and the output is `lable`. """
+     The input is `image` and the output is `label`. """
     x = register.call_preprocess(preprocess_eager, image)
     x = register.call_servable(x)
     x = register.call_postprocess(postprocess_top1, x)
@@ -125,7 +128,7 @@ def classify_top1_v1(image):
 @register.register_method(output_names=["label", "score"])
 def classify_top5(image):
     """Define method `classify_top5` for servable `resnet50`.
-     The input is `image` and the output is `lable` and `score`. """
+     The input is `image` and the output is `label` and `score`. """
     x = register.call_preprocess_pipeline(preprocess_pipeline, image)
     x = register.call_servable(x)
     label, score = register.call_postprocess(postprocess_top5, x)
