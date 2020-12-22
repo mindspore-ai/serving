@@ -17,13 +17,16 @@ from mindspore_serving._mindspore_serving import Context_
 
 
 class Context:
+    """Set context of device, including device id and device type, can only set once currently."""
     def __init__(self):
         self.context_ = Context_.get_instance()
 
     def set_device_type(self, device_type):
+        """Set device type, now can be 'None'(default) and 'Ascend', 'Davinci'(same as 'Ascend'), case ignored. """
         self.context_.set_device_type_str(device_type)
 
     def set_device_id(self, device_id):
+        """Set device id, default 0"""
         self.context_.set_device_id(device_id)
 
 
@@ -44,11 +47,11 @@ def _context():
 
 
 def set_context(**kwargs):
-    """The context setting interf. The acceptable parameters including:
+    """The context setting interface. The acceptable parameters including:
     device_type: 'Ascend','Davinci', 'None'. Case ignored.
-                 'Davinci' and 'Ascend' are the same.
-                 'None' means depend on mindspore register 
-    device_id: reasonable vice id
+        - Davinci' and 'Ascend' are the same, means Ascend910 or Ascend310.
+        - 'None' means depend on MindSpore.
+    device_id: reasonable device id
     """
     context = _context()
     for (k, w) in kwargs.items():

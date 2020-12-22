@@ -33,7 +33,7 @@ def preprocess_eager(image):
     """
     Define preprocess, input is image numpy, return preprocess result.
     return type can be numpy, str, bytes, int, float, bool
-    Use MindData Eager, this image processing can also use other image handle, likes numpy, PIL or cv2 etc.
+    Use MindData Eager, this image processing can also use other image processing library, likes numpy, PIL or cv2 etc.
     """
     image_size = 224
     mean = [0.485 * 255, 0.456 * 255, 0.406 * 255]

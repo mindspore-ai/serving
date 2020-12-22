@@ -617,10 +617,10 @@ Status RestfulService::GetScalarData(const json &js, size_t index, bool is_bytes
     }
 
     auto value = js.get<std::string>();
-    if (value.empty()) {
-      return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "string value is empty";
-    }
     if (is_bytes) {
+      if (value.empty()) {
+        return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "string value is empty";
+      }
       auto tail_equal_size = GetTailEqualSize(value);
       if (tail_equal_size == UINT32_MAX) {
         return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "'" << value << "' is illegal b64 encode string";

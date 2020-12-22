@@ -18,7 +18,7 @@ import threading
 from functools import wraps
 from mindspore_serving._mindspore_serving import Worker_
 from . import context
-from .task import start_py_task
+from .task import _start_py_task
 from . import check_type
 
 _wait_and_clear_thread = None
@@ -153,7 +153,7 @@ def start_servable(servable_directory, servable_name, version_number=0,
 
     Worker_.start_servable(servable_directory, servable_name, version_number, master_ip, master_port,
                            worker_ip, worker_port)
-    start_py_task(Worker_.get_batch_size())
+    _start_py_task(Worker_.get_batch_size())
     _start_wait_and_clear()
 
 
@@ -207,5 +207,5 @@ def start_servable_in_master(servable_directory, servable_name, version_number=0
 
     context.set_context(device_id=device_id)
     Worker_.start_servable_in_master(servable_directory, servable_name, version_number)
-    start_py_task(Worker_.get_batch_size())
+    _start_py_task(Worker_.get_batch_size())
     _start_wait_and_clear()
