@@ -35,6 +35,7 @@ Status GrpcServer::Start(std::shared_ptr<grpc::Service> service, const std::stri
   grpc::ServerBuilder serverBuilder;
   serverBuilder.SetOption(std::move(option));
   if (max_msg_mb_size > 0) {
+    serverBuilder.SetMaxSendMessageSize(static_cast<int>(max_msg_mb_size * (1u << 20)));
     serverBuilder.SetMaxReceiveMessageSize(static_cast<int>(max_msg_mb_size * (1u << 20)));
   }
   serverBuilder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
@@ -64,6 +65,14 @@ void GrpcServer::Stop() {
     server_ = nullptr;
   }
   in_running_ = false;
+}
+
+std::shared_ptr<grpc::Channel> GrpcServer::CreateChannel(const std::string &target_str) {
+  grpc::ChannelArguments channel_args;
+  channel_args.SetInt(GRPC_ARG_MAX_RECEIVE_MESSAGE_LENGTH, gRpcMaxMBMsgSize * 1024 * 1024);
+  std::shared_ptr<grpc::Channel> channel =
+    grpc::CreateCustomChannel(target_str, grpc::InsecureChannelCredentials(), channel_args);
+  return channel;
 }
 
 }  // namespace mindspore::serving

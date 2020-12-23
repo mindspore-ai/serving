@@ -172,12 +172,14 @@ std::pair<Status, std::shared_ptr<AsyncResult>> Worker::RunAsync(const RequestSp
   if (worker.worker_service == nullptr) {
     return {INFER_STATUS_LOG_ERROR(FAILED) << "Cannot find servable match " << request_spec.Repr(), nullptr};
   }
-  WorkCallBack on_process_done = [result](const Instance &output, const Status &error_msg) {
+  std::weak_ptr<AsyncResult> result_weak = result;  // avoid memory leak
+  WorkCallBack on_process_done = [result_weak](const Instance &output, const Status &error_msg) {
     auto output_index = output.context.instance_index;
-    if (output_index < result->result_.size()) {
-      result->result_[output_index].error_msg = error_msg;
+    auto result_ptr = result_weak.lock();
+    if (result_ptr && output_index < result_ptr->result_.size()) {
+      result_ptr->result_[output_index].error_msg = error_msg;
       if (error_msg == SUCCESS) {
-        result->result_[output_index] = output;
+        result_ptr->result_[output_index] = output;
       }
     }
   };

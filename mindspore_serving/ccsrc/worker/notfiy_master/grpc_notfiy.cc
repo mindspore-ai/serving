@@ -19,6 +19,7 @@
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
 #include <thread>
 #include "common/exit_handle.h"
+#include "common/grpc_server.h"
 
 namespace mindspore {
 namespace serving {
@@ -28,7 +29,7 @@ GrpcNotfiyMaster::GrpcNotfiyMaster(const std::string &master_ip, uint32_t master
     : master_ip_(master_ip), master_port_(master_port), host_ip_(host_ip), host_port_(host_port) {
   master_address_ = master_ip_ + ":" + std::to_string(master_port);
   worker_address_ = host_ip_ + ":" + std::to_string(host_port_);
-  auto channel = grpc::CreateChannel(master_address_, grpc::InsecureChannelCredentials());
+  auto channel = GrpcServer::CreateChannel(master_address_);
   stub_ = proto::MSMaster::NewStub(channel);
 }
 
