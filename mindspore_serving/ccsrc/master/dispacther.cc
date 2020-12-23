@@ -101,7 +101,7 @@ Status Dispatcher::RegisterServable(const proto::RegisterRequest &request, proto
     auto target_str = request.address();
     auto it = servable_map_.find(worker_spec.servable_name);
 
-    std::shared_ptr<grpc::Channel> channel = grpc::CreateChannel(target_str, grpc::InsecureChannelCredentials());
+    std::shared_ptr<grpc::Channel> channel = GrpcServer::CreateChannel(target_str);
 
     bool find_registered = false;
     if (it != servable_map_.end()) {
@@ -178,7 +178,8 @@ Status Dispatcher::AddServable(const proto::AddWorkerRequest &request, proto::Ad
   }
   DispatcherWorkerContext context;
   context.worker_spec = worker_spec;
-  std::shared_ptr<grpc::Channel> channel = grpc::CreateChannel(target_str, grpc::InsecureChannelCredentials());
+
+  std::shared_ptr<grpc::Channel> channel = GrpcServer::CreateChannel(target_str);
   context.stub_ = proto::MSWorker::NewStub(channel);
   servable_map_[worker_spec.servable_name].push_back(context);
   return SUCCESS;

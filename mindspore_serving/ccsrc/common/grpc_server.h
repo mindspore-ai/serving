@@ -39,6 +39,7 @@ class MS_API GrpcServer {
   Status Start(std::shared_ptr<grpc::Service> service, const std::string &ip, uint32_t grpc_port, int max_msg_size,
                const std::string &server_tag);
   void Stop();
+  static std::shared_ptr<grpc::Channel> CreateChannel(const std::string &target_str);
 
  private:
   std::unique_ptr<grpc::Server> server_;
