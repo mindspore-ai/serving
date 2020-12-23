@@ -18,6 +18,7 @@ from mindspore_serving._mindspore_serving import Context_
 
 class Context:
     """Set context of device, including device id and device type, can only set once currently."""
+
     def __init__(self):
         self.context_ = Context_.get_instance()
 

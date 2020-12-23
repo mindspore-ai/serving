@@ -181,7 +181,7 @@ class Client:
         self.version_number = version_number
 
         channel_str = str(ip) + ":" + str(port)
-        msg_bytes_size = 512 * 1024 * 1024 # 512MB
+        msg_bytes_size = 512 * 1024 * 1024  # 512MB
         channel = grpc.insecure_channel(channel_str,
                                         options=[
                                             ('grpc.max_send_message_length', msg_bytes_size),

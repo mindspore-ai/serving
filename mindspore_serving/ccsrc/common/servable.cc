@@ -17,6 +17,7 @@
 #include "common/servable.h"
 #include <set>
 #include <sstream>
+#include <map>
 #include "worker/preprocess.h"
 #include "worker/postprocess.h"
 
@@ -158,8 +159,8 @@ Status ServableSignature::Check() const {
           }
         } else {
           return INFER_STATUS_LOG_ERROR(FAILED)
-                 << "Model " << model_str << " method " << method.method_name << ", the postprocess " << i
-                 << "th input phase tag " << input.first << " invalid";
+                 << "Model " << model_str << " method " << method.method_name << ", the data of postprocess " << i
+                 << "th input cannot not come from '" << input.first << "'";
         }
       }
     }
@@ -252,16 +253,19 @@ void ServableStorage::RegisterMethod(const MethodSignature &method) {
   it->second.methods.push_back(method);
 }
 
-void ServableStorage::DeclareServable(const mindspore::serving::ServableMeta &servable) {
+void ServableStorage::DeclareServable(const mindspore::serving::ServableMeta &servable,
+                                      const std::map<std::string, std::string> &options) {
   MSI_LOG_INFO << "Declare servable " << servable.servable_name;
   auto it = servable_signatures_map_.find(servable.servable_name);
   if (it == servable_signatures_map_.end()) {
     ServableSignature signature;
     signature.servable_meta = servable;
+    signature.load_options = options;
     servable_signatures_map_[servable.servable_name] = signature;
     return;
   }
   it->second.servable_meta = servable;
+  it->second.load_options = options;
 }
 
 void ServableStorage::RegisterInputOutputInfo(const std::string &servable_name, size_t inputs_count,

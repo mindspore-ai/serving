@@ -19,12 +19,12 @@
 #include <condition_variable>
 #include <set>
 #include <utility>
+#include <map>
 #include "pybind11/pybind11.h"
 #include "common/proto_tensor.h"
 #include "common/file_system_operation.h"
 #include "common/exit_handle.h"
 #include "worker/context.h"
-#include "master/server.h"
 #include "worker/grpc/worker_process.h"
 #include "worker/task_queue.h"
 
@@ -185,7 +185,7 @@ std::pair<Status, std::shared_ptr<AsyncResult>> Worker::RunAsync(const RequestSp
   return {SUCCESS, result};
 }
 
-Status Worker::InitEnv(ModelType model_type, const std::unordered_map<std::string, std::string> &other_options) {
+Status Worker::InitEnv(ModelType model_type, const std::map<std::string, std::string> &other_options) {
   Status status;
   if (session_) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Session has been inited";
@@ -230,12 +230,12 @@ Status Worker::LoadModel(LoadServableSpec *servable_spec, uint64_t version_numbe
   uint32_t model_id;
   auto context = ServableContext::Instance();
   Status status = session_->LoadModelFromFile(context->GetDeviceType(), context->GetDeviceId(), model_file_name,
-                                              servable_meta.model_format, &model_id);
+                                              servable_meta.model_format, signature.load_options, &model_id);
   if (status != SUCCESS) {
     return INFER_STATUS_LOG_ERROR(FAILED)
            << "Load model failed, servable directory: '" << servable_spec->servable_directory << "', servable name: '"
            << servable_spec->servable_name << "', servable file: '" << servable_meta.servable_file
-           << "', version number " << version_number;
+           << "', version number " << version_number << ", options " << signature.load_options;
   }
   auto service = std::make_shared<WorkExecutor>(GetPyTaskQueuePreprocess(), GetPyTaskQueuePostprocess(),
                                                 GetCppTaskQueuePreprocess(), GetCppTaskQueuePostprocess());

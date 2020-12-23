@@ -39,6 +39,7 @@ task_type_postprocess = "postprocess"
 
 class PyTask:
     """Base class for preprocess and postprocess"""
+
     def __init__(self, switch_batch, task_name):
         super(PyTask, self).__init__()
         self.task_name = task_name
@@ -167,6 +168,7 @@ class PyTask:
 
 class PyPreprocess(PyTask):
     """Preprocess implement"""
+
     def __init__(self, switch_batch):
         super(PyPreprocess, self).__init__(switch_batch, "preprocess")
 
@@ -185,6 +187,7 @@ class PyPreprocess(PyTask):
 
 class PyPostprocess(PyTask):
     """Postprocess implement"""
+
     def __init__(self, switch_batch):
         super(PyPostprocess, self).__init__(switch_batch, "postprocess")
 
@@ -203,6 +206,7 @@ class PyPostprocess(PyTask):
 
 class PyTaskThread(threading.Thread):
     """Thread for handling preprocess and postprocess"""
+
     def __init__(self, switch_batch):
         super(PyTaskThread, self).__init__()
         self.switch_batch = switch_batch

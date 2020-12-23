@@ -20,6 +20,7 @@
 #include <iostream>
 #include <vector>
 #include <unordered_map>
+#include <map>
 #include <sstream>
 #include <memory>
 #include <string>
@@ -66,6 +67,16 @@ class LogStream {
 
   template <typename K, typename V>
   LogStream &operator<<(const std::unordered_map<K, V> &val) noexcept {
+    (*sstream_) << "{";
+    for (auto &item : val) {
+      (*this) << "{" << item.first << ": " << item.second << "} ";
+    }
+    (*sstream_) << "}";
+    return *this;
+  }
+
+  template <typename K, typename V>
+  LogStream &operator<<(const std::map<K, V> &val) noexcept {
     (*sstream_) << "{";
     for (auto &item : val) {
       (*this) << "{" << item.first << ": " << item.second << "} ";
