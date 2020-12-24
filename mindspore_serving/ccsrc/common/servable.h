@@ -88,6 +88,10 @@ struct MS_API ServableMeta {
   bool with_batch_dim = true;  // whether there is batch dim in model's inputs/outputs
   size_t inputs_count = 0;
   size_t outputs_count = 0;
+
+  std::map<std::string, std::string> load_options;  // Acl options
+  std::vector<int> without_batch_dim_inputs;
+
   std::string Repr() const;
   void SetModelFormat(const std::string &format);
 };
@@ -95,7 +99,6 @@ struct MS_API ServableMeta {
 struct ServableSignature {
   ServableMeta servable_meta;
   std::vector<MethodSignature> methods;
-  std::map<std::string, std::string> load_options;  // Acl options
 
   Status Check() const;
   bool GetMethodDeclare(const std::string &method_name, MethodSignature *method);
@@ -108,7 +111,7 @@ class MS_API ServableStorage {
 
   bool GetServableDef(const std::string &model_name, ServableSignature *def) const;
 
-  void DeclareServable(const ServableMeta &servable, const std::map<std::string, std::string> &options);
+  void DeclareServable(const ServableMeta &servable);
 
   void RegisterInputOutputInfo(const std::string &servable_name, size_t inputs_count, size_t outputs_count);
   std::vector<size_t> GetInputOutputInfo(const std::string &servable_name) const;

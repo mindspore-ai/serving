@@ -71,6 +71,7 @@ DataType TransTypeId2InferDataType(api::DataType type_id) {
 
 Status MindSporeModelWrap::LoadModelFromFile(serving::DeviceType device_type, uint32_t device_id,
                                              const std::string &file_name, ModelType model_type,
+                                             const std::vector<int> &without_batch_dim_inputs,
                                              const std::map<std::string, std::string> &other_options,
                                              uint32_t *model_id) {
   MSI_EXCEPTION_IF_NULL(model_id);
@@ -105,6 +106,7 @@ Status MindSporeModelWrap::LoadModelFromFile(serving::DeviceType device_type, ui
   api_model_info.model = model;
   api_model_info.device_type = device_type_str;
   api_model_info.device_id = device_id;
+  api_model_info.without_batch_dim_inputs = without_batch_dim_inputs;
   auto st = GetModelInfos(&api_model_info);
   if (st != SUCCESS) {
     return st;
@@ -137,9 +139,9 @@ Status MindSporeModelWrap::GetModelInfos(ApiModelInfo *api_model_info) {
     size_t elements_nums = std::accumulate(shape.begin(), shape.end(), 1LL, std::multiplies<size_t>());
     return elements_nums;
   };
-  auto get_tensor_info_from_tensor = [find_batch_size, shape_element_num](const std::vector<int64_t> &shape,
-                                                                          const api::DataType &data_type,
-                                                                          const size_t mem_size) {
+  auto get_tensor_info_from_tensor = [find_batch_size, shape_element_num, api_model_info](
+                                       const std::vector<int64_t> &shape, const api::DataType &data_type,
+                                       const size_t mem_size, int input_index = -1) {
     serving::TensorInfo tensor_info;
     tensor_info.shape = shape;
     tensor_info.data_type = TransTypeId2InferDataType(data_type);
@@ -147,7 +149,10 @@ Status MindSporeModelWrap::GetModelInfos(ApiModelInfo *api_model_info) {
     if (tensor_info.size == 0) {
       tensor_info.size = TensorBase::GetTypeSize(tensor_info.data_type) * shape_element_num(tensor_info.shape);
     }
-    find_batch_size(tensor_info.shape);
+    auto list = api_model_info->without_batch_dim_inputs;
+    if (std::find(list.begin(), list.end(), input_index) == list.end()) {
+      find_batch_size(tensor_info.shape);
+    }
     return tensor_info;
   };
   {  // input infos
@@ -166,7 +171,7 @@ Status MindSporeModelWrap::GetModelInfos(ApiModelInfo *api_model_info) {
     }
     for (size_t i = 0; i < names.size(); i++) {
       api_model_info->input_names.push_back(names[i]);
-      auto tensor_info = get_tensor_info_from_tensor(shapes[i], data_types[i], mem_sizes[i]);
+      auto tensor_info = get_tensor_info_from_tensor(shapes[i], data_types[i], mem_sizes[i], i);
       if (tensor_info.data_type == kMSI_Unknown) {
         return INFER_STATUS_LOG_ERROR(FAILED) << "Unknown input api data type " << data_types[i];
       }

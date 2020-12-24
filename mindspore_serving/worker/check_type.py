@@ -70,3 +70,28 @@ def check_int(arg_name, int_val, mininum=None, maximum=None):
 def check_ip_port(arg_name, port):
     """Check whether the input parameters are reasonable ip port"""
     check_int(arg_name, port, 1, 65535)
+
+
+def check_and_as_int_tuple_list(arg_name, ints, mininum=None, maximum=None):
+    """Check whether the input parameters are reasonable multiple str inputs,
+    which can be single str, tuple or list of str.
+    finally, return tuple of str"""
+    if isinstance(ints, int):
+        ints = (ints,)
+
+    if not isinstance(ints, (tuple, list)):
+        raise RuntimeError(f"Parameter '{arg_name}' should be int or tuple/list of int, but actually {type(ints)}")
+
+    if isinstance(ints, (tuple, list)):
+        int_list = []
+        for item in ints:
+            if not isinstance(item, int):
+                raise RuntimeError(f"The item of parameter '{arg_name}' should be int, but actually {type(item)}")
+            if not item:
+                raise RuntimeError(f"The item of parameter '{arg_name}' should not be empty int")
+            if item in int_list:
+                raise RuntimeError(f"The item name '{item}' in parameter '{arg_name}' should not be repeated")
+            check_int(arg_name, item, mininum, maximum)
+            int_list.append(item)
+
+    return tuple(ints)

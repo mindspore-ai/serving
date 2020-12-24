@@ -60,8 +60,8 @@ class MS_API InferSession {
   virtual Status FinalizeEnv() = 0;
 
   virtual Status LoadModelFromFile(serving::DeviceType device_type, uint32_t device_id, const std::string &file_name,
-                                   ModelType model_type, const std::map<std::string, std::string> &other_options,
-                                   uint32_t *model_id) = 0;
+                                   ModelType model_type, const std::vector<int> &without_batch_dim_inputs,
+                                   const std::map<std::string, std::string> &other_options, uint32_t *model_id) = 0;
 
   virtual Status UnloadModel(uint32_t model_id) = 0;
   // override this method to avoid request/reply data copy

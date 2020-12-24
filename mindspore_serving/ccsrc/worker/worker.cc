@@ -232,12 +232,13 @@ Status Worker::LoadModel(LoadServableSpec *servable_spec, uint64_t version_numbe
   uint32_t model_id;
   auto context = ServableContext::Instance();
   Status status = session_->LoadModelFromFile(context->GetDeviceType(), context->GetDeviceId(), model_file_name,
-                                              servable_meta.model_format, signature.load_options, &model_id);
+                                              servable_meta.model_format, servable_meta.without_batch_dim_inputs,
+                                              servable_meta.load_options, &model_id);
   if (status != SUCCESS) {
     return INFER_STATUS_LOG_ERROR(FAILED)
            << "Load model failed, servable directory: '" << servable_spec->servable_directory << "', servable name: '"
            << servable_spec->servable_name << "', servable file: '" << servable_meta.servable_file
-           << "', version number " << version_number << ", options " << signature.load_options;
+           << "', version number " << version_number << ", options " << servable_meta.load_options;
   }
   auto service = std::make_shared<WorkExecutor>(GetPyTaskQueuePreprocess(), GetPyTaskQueuePostprocess(),
                                                 GetCppTaskQueuePreprocess(), GetCppTaskQueuePostprocess());
@@ -523,17 +524,23 @@ Status AsyncResult::GetNext(Instance *instance_result) {
   const int kWaitMaxHundredMs = 100;
   int i;
   for (i = 0; i < kWaitMaxHundredMs; i++) {  //
-    if (Worker::GetInstance().HasCleared()) {
-      instance_result->error_msg = Status(FAILED, "Servable stopped");
-      return FAILED;
+    if (ExitHandle::Instance().HasStopped() || Worker::GetInstance().HasCleared()) {
+      instance_result->error_msg = Status(SYSTEM_ERROR, "Servable stopped");
+      return SYSTEM_ERROR;
     }
     if (future.wait_for(std::chrono::milliseconds(100)) == std::future_status::ready) {
       break;
+    }
+    if (time_out_last_) {
+      MSI_LOG_ERROR << "GetNext failed, wait time out, index " << index << ", total count " << future_list_.size();
+      instance_result->error_msg = Status(FAILED, "Time out");
+      return FAILED;
     }
   }
   if (i >= kWaitMaxHundredMs) {
     MSI_LOG_ERROR << "GetNext failed, wait time out, index " << index << ", total count " << future_list_.size();
     instance_result->error_msg = Status(FAILED, "Time out");
+    time_out_last_ = true;
     return FAILED;
   }
 

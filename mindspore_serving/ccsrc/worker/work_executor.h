@@ -88,6 +88,7 @@ class WorkExecutor {
                      std::vector<Instance> *outputs);
   Status Predict(const std::vector<Instance> &inputs, std::vector<Instance> *outputs);
   Status CheckPredictInput(const Instance &instance);
+  bool IsNoBatchDimInput(int input_index) const;
 
   Instance CreateInputInstance(const Instance &instance, PredictPhaseTag phase);
   std::vector<Instance> CreateInputInstance(const std::vector<Instance> &instance, PredictPhaseTag phase);

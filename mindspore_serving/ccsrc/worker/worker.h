@@ -46,6 +46,7 @@ class AsyncResult {
   std::vector<std::future<void>> future_list_;
   std::vector<Instance> result_;
   size_t next_index_;
+  bool time_out_last_ = false;
 
   friend class Worker;
 };
