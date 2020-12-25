@@ -87,8 +87,6 @@ def check_and_as_int_tuple_list(arg_name, ints, mininum=None, maximum=None):
         for item in ints:
             if not isinstance(item, int):
                 raise RuntimeError(f"The item of parameter '{arg_name}' should be int, but actually {type(item)}")
-            if not item:
-                raise RuntimeError(f"The item of parameter '{arg_name}' should not be empty int")
             if item in int_list:
                 raise RuntimeError(f"The item name '{item}' in parameter '{arg_name}' should not be repeated")
             check_int(arg_name, item, mininum, maximum)
