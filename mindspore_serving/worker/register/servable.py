@@ -20,7 +20,7 @@ from mindspore_serving.worker.common import get_servable_dir
 from .method import _servable_storage
 
 
-def declare_servable(servable_file, model_format, with_batch_dim=True, options=None):
+def declare_servable(servable_file, model_format, with_batch_dim=True, options=None, without_batch_dim_inputs=None):
     r"""
     declare the servable info.
 
@@ -28,7 +28,9 @@ def declare_servable(servable_file, model_format, with_batch_dim=True, options=N
         servable_file (str): Model file name.
         model_format (str): Model format, "OM" or "MindIR", case ignored.
         with_batch_dim (bool): Whether the first shape dim of the inputs and outpus of model is batch dim, default True.
-
+        options (None, AclOptions, map): Options of model, currently AclOptions works.
+        without_batch_dim_inputs (None, int, tuple or list of int): Index of inputs that without batch dim
+            when with_batch_dim is True.
     Raises:
         RuntimeError: The type or value of the parameters is invalid.
     """
@@ -55,11 +57,17 @@ def declare_servable(servable_file, model_format, with_batch_dim=True, options=N
     elif options is not None:
         raise RuntimeError(f"Parameter 'options' should be None, dict of <str,str> or AclOptions, but "
                            f"gotten {type(options)}")
+    if options:
+        meta.options = options
+    if without_batch_dim_inputs:
+        without_batch_dim_inputs = check_type.check_and_as_int_tuple_list('without_batch_dim_inputs',
+                                                                          without_batch_dim_inputs, 0)
+        meta.without_batch_dim_inputs = without_batch_dim_inputs
 
-    _servable_storage.declare_servable(meta, options)
-    print("------------Declare servable: servable_name", meta.servable_name,
-          ", servable file", servable_file,
-          ", model format", model_format, ", model config with batch dim", with_batch_dim)
+    _servable_storage.declare_servable(meta)
+    print("------------Declare servable, servable_name:", meta.servable_name,
+          ", servable_file:", servable_file, ", model_format:", model_format, ", with_batch_dim:", with_batch_dim,
+          ", options:", options, ", without_batch_dim_inputs:", without_batch_dim_inputs)
 
 
 class AclOptions:
@@ -67,27 +75,25 @@ class AclOptions:
     Helper class to set acl options.
 
     Args:
-        kwargs : acl options map. The option can be:
-            - insert_op_cfg_path: Path of aipp config file.
-            - input_format: Manually specify the model input format, the value can be "ND", "NCHW", "NHWC",
-                "CHWN", "NC1HWC0", or "NHWC1C0".
-            - input_shape: Manually specify the model input shape, such as
-                "input_op_name1: n1,c2,h3,w4;input_op_name2: n4,c3,h2,w1",
-            - output_type: Manually specify the model output type, the value can be "FP16", "UINT8"，or "FP32",
-                default "FP32".
-            - precision_mode: Model precision mode, the value can be "force_fp16"，"allow_fp32_to_fp16"，
-                "must_keep_origin_dtype" or "allow_mix_precision", default "force_fp16".
-            - op_select_impl_mode: The operator selection mode, the value can be "high_performance" or "high_precision",
-                default "high_performance".
-            All the values of the options should be str.
+        insert_op_cfg_path (str): Path of aipp config file.
+        input_format (str): Manually specify the model input format, the value can be "ND", "NCHW", "NHWC",
+            "CHWN", "NC1HWC0", or "NHWC1C0".
+        input_shape (str): Manually specify the model input shape, such as
+            "input_op_name1: n1,c2,h3,w4;input_op_name2: n4,c3,h2,w1",
+        output_type (str): Manually specify the model output type, the value can be "FP16", "UINT8"，or "FP32",
+            default "FP32".
+        precision_mode (str): Model precision mode, the value can be "force_fp16"，"allow_fp32_to_fp16"，
+            "must_keep_origin_dtype" or "allow_mix_precision", default "force_fp16".
+        op_select_impl_mode (str): The operator selection mode, the value can be "high_performance" or "high_precision",
+            default "high_performance".
+
     Raises:
         RuntimeError: Acl option is invalid, or value is not str.
 
     Examples:
         >>> from mindspore_serving.worker import register
         >>> options = register.AclOptions(op_select_impl_mode="high_precision", precision_mode="allow_fp32_to_fp16")
-        >>> register.declare_servable(servable_file="resnet50_1b_imagenet.mindir", model_format="MindIR", \
-        ... options=options)
+        >>> register.declare_servable(servable_file="deeptext.mindir", model_format="MindIR", options=options)
     """
 
     def __init__(self, **kwargs):

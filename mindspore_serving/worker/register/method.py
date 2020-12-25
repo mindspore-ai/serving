@@ -42,9 +42,9 @@ class _ServableStorage:
         self.servable_metas = {}
         self.storage = ServableStorage_.get_instance()
 
-    def declare_servable(self, servable_meta, options):
+    def declare_servable(self, servable_meta):
         """Declare servable info excluding method, input and output count"""
-        self.storage.declare_servable(servable_meta, options if options else {})
+        self.storage.declare_servable(servable_meta)
         self.servable_metas[servable_meta.servable_name] = servable_meta
 
     def declare_servable_input_output(self, servable_name, inputs_count, outputs_count):

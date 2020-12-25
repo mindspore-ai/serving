@@ -211,7 +211,7 @@ class PyTaskThread(threading.Thread):
         super(PyTaskThread, self).__init__()
         self.switch_batch = switch_batch
         if self.switch_batch <= 0:
-            self.switch_batch = 8
+            self.switch_batch = 1
         self.preprocess = PyPreprocess(self.switch_batch)
         self.postprocess = PyPostprocess(self.switch_batch)
 

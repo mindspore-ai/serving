@@ -72,6 +72,8 @@ PYBIND11_MODULE(_mindspore_serving, m) {
     .def_readwrite("outputs_count", &ServableMeta::outputs_count)
     .def_readwrite("servable_file", &ServableMeta::servable_file)
     .def_readwrite("with_batch_dim", &ServableMeta::with_batch_dim)
+    .def_readwrite("options", &ServableMeta::load_options)
+    .def_readwrite("without_batch_dim_inputs", &ServableMeta::without_batch_dim_inputs)
     .def("set_model_format", &ServableMeta::SetModelFormat);
 
   py::class_<ServableSignature>(m, "ServableSignature_")

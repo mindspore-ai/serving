@@ -72,7 +72,11 @@ Status WorkExecutor::CheckSevableSignature() {
     if (model_batch_size_ == 0) {
       return INFER_STATUS_LOG_ERROR(FAILED) << "Servable batch size cannot be " << model_batch_size_;
     }
-    for (const auto &item : input_infos) {
+    for (size_t i = 0; i < input_infos.size(); i++) {
+      if (IsNoBatchDimInput(i)) {
+        continue;
+      }
+      const auto &item = input_infos[i];
       if (item.shape.empty() || static_cast<uint32_t>(item.shape[0]) != model_batch_size_) {
         return INFER_STATUS_LOG_ERROR(FAILED)
                << "Servable batch size " << model_batch_size_ << " not match model input shape " << item.shape;
@@ -341,13 +345,15 @@ Status WorkExecutor::PrePredict(const std::vector<Instance> &inputs) {
     MSI_LOG_ERROR << "Input batch size " << input_batch_size << " invalid, model batch size " << model_batch_size;
     return SYSTEM_ERROR;
   }
-
   for (size_t i = 0; i < inference_inputs_.size(); i++) {
     auto &tensor = inference_inputs_[i];
     auto data_size = tensor->data_size();
-    auto item_size = static_cast<size_t>(data_size / model_batch_size);
     auto dst_buffer = reinterpret_cast<uint8_t *>(tensor->mutable_data());
-
+    if (IsNoBatchDimInput(i)) {
+      memcpy_s(dst_buffer, data_size, inputs[0].data[i]->data(), data_size);
+      continue;
+    }
+    auto item_size = static_cast<size_t>(data_size / model_batch_size);
     for (uint32_t k = 0; k < input_batch_size; k++) {
       if (i >= inputs[k].data.size()) {
         return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << " Batch index " << k << " does not have input " << i;
@@ -423,6 +429,16 @@ Status WorkExecutor::Predict(const std::vector<Instance> &inputs, std::vector<In
   return SUCCESS;
 }
 
+bool WorkExecutor::IsNoBatchDimInput(int input_index) const {
+  auto without_batch_dim_inputs = servable_declare_.servable_meta.without_batch_dim_inputs;
+  bool no_batch_dim = true;
+  if (servable_declare_.servable_meta.with_batch_dim) {
+    no_batch_dim = std::find(without_batch_dim_inputs.begin(), without_batch_dim_inputs.end(), input_index) !=
+                   without_batch_dim_inputs.end();
+  }
+  return no_batch_dim;
+}
+
 Status WorkExecutor::CheckPredictInput(const Instance &instance) {
   const auto &inputs_info = input_infos_;
   if (instance.data.size() < inputs_info.size()) {
@@ -431,7 +447,13 @@ Status WorkExecutor::CheckPredictInput(const Instance &instance) {
   }
   for (size_t i = 0; i < instance.data.size(); i++) {
     auto input_data = instance.data[i];
-    if (static_cast<size_t>(inputs_info[i].size / model_batch_size_) != input_data->data_size()) {
+    if (IsNoBatchDimInput(i)) {
+      if (static_cast<size_t>(inputs_info[i].size) != input_data->data_size()) {
+        return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
+               << "Given model input " << i << " size " << input_data->data_size() << " not match the size "
+               << inputs_info[i].size << " defined in model";
+      }
+    } else if (static_cast<size_t>(inputs_info[i].size / model_batch_size_) != input_data->data_size()) {
       return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
              << "Given model input " << i << " size " << input_data->data_size() << " not match the size "
              << inputs_info[i].size / model_batch_size_ << " defined in model";
