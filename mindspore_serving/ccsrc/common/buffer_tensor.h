@@ -57,6 +57,17 @@ class BufferTensor : public TensorBase {
   bool data_readonly_ = false;
 };
 
+class BufferTensorWithOwner : public BufferTensor {
+ public:
+  BufferTensorWithOwner(TensorBasePtr buffer_tensor_owner, DataType type, std::vector<int64_t> shape, uint8_t *data,
+                        size_t data_len, bool data_readonly)
+      : BufferTensor(type, shape, data, data_len, data_readonly), buffer_tensor_owner_(buffer_tensor_owner) {}
+  ~BufferTensorWithOwner() = default;
+
+ private:
+  TensorBasePtr buffer_tensor_owner_;
+};
+
 }  // namespace mindspore::serving
 
 #endif  // MINDSPORE_SERVING_BUFFER_TENSOR_H
