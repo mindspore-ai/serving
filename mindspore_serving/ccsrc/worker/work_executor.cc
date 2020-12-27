@@ -288,7 +288,10 @@ bool WorkExecutor::ReplyRequest(const std::vector<Instance> &outputs) {
 bool WorkExecutor::ReplyRequest(const Instance &outputs) {
   Status status;
   Instance trans_outputs = CreateInputInstance(outputs, kPredictPhaseTag_Output);
-  outputs.context.user_context->worker_call_back(trans_outputs, Status(SUCCESS));
+  Instance real_outputs;
+  real_outputs.data = trans_outputs.data;
+  real_outputs.context = trans_outputs.context;
+  outputs.context.user_context->worker_call_back(real_outputs, Status(SUCCESS));
   outputs.context.promise->set_value();
   return true;
 }
@@ -394,12 +397,10 @@ Status WorkExecutor::PostPredict(const std::vector<Instance> &inputs, const std:
       }
       shape.erase(shape.begin());
     }
-    auto src_buffer = reinterpret_cast<const uint8_t *>(item->data());
+    auto src_buffer = const_cast<uint8_t *>(item->data());
     for (uint32_t k = 0; k < input_batch_size; k++) {
-      auto tensor = std::make_shared<Tensor>();
-      tensor->set_shape(shape);
-      tensor->set_data_type(item->data_type());
-      tensor->set_data(src_buffer + item_size * k, item_size);
+      auto tensor = std::make_shared<BufferTensorWithOwner>(item, item->data_type(), shape, src_buffer + item_size * k,
+                                                            item_size, true);
       results_data[k].data.push_back(tensor);
     }
   }
