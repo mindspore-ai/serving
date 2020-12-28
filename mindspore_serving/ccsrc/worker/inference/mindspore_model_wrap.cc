@@ -31,7 +31,10 @@ Status MindSporeModelWrap::InitEnv(serving::DeviceType device_type, uint32_t dev
   return SUCCESS;
 }
 
-Status MindSporeModelWrap::FinalizeEnv() { return SUCCESS; }
+Status MindSporeModelWrap::FinalizeEnv() {
+  model_map_.clear();
+  return SUCCESS;
+}
 
 api::DataType TransInferDataType2ApiTypeId(DataType data_type) {
   const std::map<DataType, api::DataType> type2id_map{
