@@ -59,7 +59,7 @@ class Status {
   {                                                                                                          \
     auto time_end_##name = std::chrono::steady_clock::now();                                                 \
     auto time_cost = std::chrono::duration<double, std::milli>(time_end_##name - time_start_##name).count(); \
-    MSI_LOG_INFO << #name " Time Cost # " << time_cost << " ms ---------------------";                       \
+    MSI_LOG_DEBUG << #name " Time Cost # " << time_cost << " ms ---------------------";                      \
   }
 
 #define INFER_STATUS(code) mindspore::serving::Status(code) < mindspore::serving::LogStream()
@@ -67,8 +67,8 @@ class Status {
   MSI_LOG_ERROR << msg;                       \
   status = mindspore::serving::Status(type, msg)
 
-#define INFER_STATUS_LOG_ERROR(code) mindspore::serving::Status(code) = MSI_LOG_ERROR
-#define INFER_STATUS_LOG_WARNING(code) mindspore::serving::Status(code) = MSI_LOG_WARNING
+#define INFER_STATUS_LOG_ERROR(code) mindspore::serving::Status(code) = MSILOG_NOIF(ERROR)
+#define INFER_STATUS_LOG_WARNING(code) mindspore::serving::Status(code) = MSILOG_NOIF(WARNING)
 
 }  // namespace mindspore::serving
 

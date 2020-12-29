@@ -187,7 +187,6 @@ Status RestfulRequest::RestfulReplay(const std::string &replay) {
     ERROR_INFER_STATUS(status, INVALID_INPUTS, "replay_buffer_ is nullptr");
     return status;
   }
-  MSI_LOG_INFO << "replay message: " << replay;
   evbuffer_add(replay_buffer_, replay.data(), replay.size());
   evhttp_send_reply(decompose_event_request_->event_request_, HTTP_OK, "Client", replay_buffer_);
   return status;
