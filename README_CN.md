@@ -51,6 +51,9 @@ MindSpore Serving依赖MindSpore训练推理框架，安装完[MindSpore](https:
     pip install mindspore_serving-{version}-cp37-cp37m-linux_{arch}.whl
     ```
 
+    > - `{version}`表示MindSpore Serving版本号，例如下载1.1版本MindSpore Serving时，`{version}`应写为1.1。  
+    > - `{arch}`表示系统架构，例如使用的Linux系统是x86架构64位时，`{arch}`应写为`x86_64`。如果系统是ARM架构64位，则写为`aarch64`。
+
 - 源码编译安装。
 
     下载[源码](https://gitee.com/mindspore/serving)，下载后进入`serving`目录。

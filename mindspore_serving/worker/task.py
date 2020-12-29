@@ -106,9 +106,9 @@ class PyTask:
                     self.result_batch.append(output)
 
                 get_result_time = time.time()
-                logger.debug(f"{self.task_name} get result "
-                             f"{last_index} ~ {last_index + len(self.result_batch) - 1} cost time "
-                             f"{(get_result_time - get_result_time_end) * 1000} ms")
+                logger.info(f"{self.task_name} get result "
+                            f"{last_index} ~ {last_index + len(self.result_batch) - 1} cost time "
+                            f"{(get_result_time - get_result_time_end) * 1000} ms")
 
                 self.push_result_batch()
                 break
@@ -150,7 +150,7 @@ class PyTask:
             outputs = self.task_info["fun"](instance_list[self.index:])
             return outputs
         except Exception as e:
-            ogger.warning(f"{self.task_name} invoke catch exception: ")
+            logger.warning(f"{self.task_name} invoke catch exception: ")
             logging.exception(e)
             self.push_failed(len(instance_list) - self.index)
             return None
