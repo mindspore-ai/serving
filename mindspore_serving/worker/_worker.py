@@ -16,6 +16,7 @@
 
 import threading
 from functools import wraps
+from mindspore_serving import log as logger
 from mindspore_serving._mindspore_serving import Worker_
 from . import context
 from .task import _start_py_task
@@ -28,6 +29,7 @@ def _start_wait_and_clear():
     """Waiting for Ctrl+C, and clear up environment"""
 
     def thread_func():
+        logger.info("Serving worker: wait for Ctrl+C to exit ------------------------------------")
         print("Serving worker: wait for Ctrl+C to exit ------------------------------------")
         Worker_.wait_and_clear()
 

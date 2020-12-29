@@ -16,6 +16,7 @@
 
 from mindspore_serving._mindspore_serving import PostprocessStorage_
 from mindspore_serving.worker.common import get_servable_dir, get_func_name
+from mindspore_serving import log as logger
 
 
 def check_postprocess(postprocess_name, inputs_count, outputs_count):
@@ -60,5 +61,5 @@ def register_postprocess(func, inputs_count, outputs_count):
     func_name = get_func_name(func)
     name = servable_name + "." + func_name
 
-    print("------------Register postprocess", name, inputs_count, outputs_count)
+    logger.info(f"Register postprocess {name} {inputs_count} {outputs_count}")
     postprocess_storage.register(func, name, inputs_count, outputs_count)

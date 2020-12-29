@@ -37,9 +37,10 @@ static constexpr int GetRelPathPos() noexcept {
            : 0;
 }
 
-#define SERVING_FILE_NAME                                                                     \
-  (sizeof(__FILE__) > GetRelPathPos() ? static_cast<const char *>(__FILE__) + GetRelPathPos() \
-                                      : static_cast<const char *>(__FILE__))
+#define SERVING_FILE_NAME                                                        \
+  (sizeof(__FILE__) > mindspore::serving::GetRelPathPos()                        \
+     ? static_cast<const char *>(__FILE__) + mindspore::serving::GetRelPathPos() \
+     : static_cast<const char *>(__FILE__))
 
 class LogStream {
  public:
@@ -97,7 +98,7 @@ class LogStream {
   std::shared_ptr<std::stringstream> sstream_;
 };
 
-enum ERROR_LEVEL {
+enum MsLogLevel {
   LOG_DEBUG,
   LOG_INFO,
   LOG_WARNING,
@@ -107,7 +108,7 @@ enum ERROR_LEVEL {
 
 class MS_API LogWriter {
  public:
-  LogWriter(const char *file, int line, const char *func, ERROR_LEVEL log_level)
+  LogWriter(const char *file, int line, const char *func, MsLogLevel log_level)
       : file_(file), line_(line), func_(func), log_level_(log_level) {}
   ~LogWriter() = default;
 
@@ -131,12 +132,22 @@ class MS_API LogWriter {
   const char *file_;
   int line_;
   const char *func_;
-  ERROR_LEVEL log_level_;
+  MsLogLevel log_level_;
 };
 
-#define MSILOG_IF(level)                                                                                      \
+extern int g_ms_serving_log_level MS_API;
+
+#define MSILOG_IF(level, condition)                                                         \
+  static_cast<void>(0),                                                                     \
+    !(condition) ? std::string()                                                            \
+                 : mindspore::serving::LogWriter(SERVING_FILE_NAME, __LINE__, __FUNCTION__, \
+                                                 mindspore::serving::LOG_##level) < mindspore::serving::LogStream()
+
+#define MSILOG_NOIF(level)                                                                                    \
   mindspore::serving::LogWriter(SERVING_FILE_NAME, __LINE__, __FUNCTION__, mindspore::serving::LOG_##level) < \
     mindspore::serving::LogStream()
+
+#define IS_OUTPUT_ON(level) (mindspore::serving::LOG_##level) >= mindspore::serving::g_ms_serving_log_level
 
 #define MSILOG_THROW                                                                                            \
   mindspore::serving::LogWriter(SERVING_FILE_NAME, __LINE__, __FUNCTION__, mindspore::serving::LOG_EXCEPTION) ^ \
@@ -144,10 +155,11 @@ class MS_API LogWriter {
 
 #define MSI_LOG(level) MSI_LOG_##level
 
-#define MSI_LOG_DEBUG MSILOG_IF(DEBUG)
-#define MSI_LOG_INFO MSILOG_IF(INFO)
-#define MSI_LOG_WARNING MSILOG_IF(WARNING)
-#define MSI_LOG_ERROR MSILOG_IF(ERROR)
+#define MSI_LOG_DEBUG MSILOG_IF(DEBUG, IS_OUTPUT_ON(DEBUG))
+#define MSI_LOG_INFO MSILOG_IF(INFO, IS_OUTPUT_ON(INFO))
+#define MSI_LOG_WARNING MSILOG_IF(WARNING, IS_OUTPUT_ON(WARNING))
+#define MSI_LOG_ERROR MSILOG_IF(ERROR, IS_OUTPUT_ON(ERROR))
+
 #define MSI_LOG_EXCEPTION MSILOG_THROW
 
 #define MSI_EXCEPTION_IF_NULL(ptr)                                   \

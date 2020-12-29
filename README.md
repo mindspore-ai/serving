@@ -45,10 +45,10 @@ MindSpore Serving depends on the MindSpore training and inference framework. The
 
 Use the pip command to install Serving. Perform the following steps:
 
-- Download the .whl package from the MindSpore Serving page and install it.
+- Download the .whl package from the [MindSpore Serving page](https://www.mindspore.cn/versions/en) and install it.
 
     ```python
-    pip install https://ms-release.obs.cn-north-4.myhuaweicloud.com/1.1.0/Serving/ascend/ubuntu_x86/mindspore_serving-1.1.0-cp37-cp37m-linux_x86_64.whl
+    pip install mindspore_serving-{version}-cp37-cp37m-linux_{arch}.whl
     ```
 
 - Install Serving using the source code.
@@ -72,16 +72,16 @@ Use the pip command to install Serving. Perform the following steps:
     sh build.sh -e ascend
     ```
 
-    In the preceding information, `build.sh` is the build script file in the `serving` directory, Take the x86 system as an example. After the build is complete, find the .whl installation package of MindSpore in the `serving/third_party/mindspore/build/package/` directory and install it.
+    In the preceding information, `build.sh` is the build script file in the `serving` directory. After the build is complete, find the .whl installation package of MindSpore in the `serving/third_party/mindspore/build/package/` directory and install it.
 
     ```python
-    pip install mindspore_ascend-1.1.0-cp37-cp37m-linux_x86_64.whl
+    pip install mindspore_ascend-{version}-cp37-cp37m-linux_{arch}.whl
     ```
 
     Find the .whl installation package of Serving in the `serving/build/package/` directory and install it.
 
     ```python
-    pip install mindspore_serving-1.1.0-cp37-cp37m-linux_x86_64.whl
+    pip install mindspore_serving-{version}-cp37-cp37m-linux_{arch}.whl
     ```
 
 Run the following commands to verify the installation. Import the Python module. If no error is reported, the installation is successful.
