@@ -22,6 +22,7 @@ from easydict import EasyDict
 from mindspore_serving._mindspore_serving import ServableStorage_, MethodSignature_, PredictPhaseTag_
 from mindspore_serving.worker.common import get_func_name, get_servable_dir
 from mindspore_serving.worker import check_type
+from mindspore_serving import log as logger
 from .preprocess import register_preprocess, check_preprocess
 from .postprocess import register_postprocess, check_postprocess
 
@@ -393,7 +394,7 @@ def _get_method_def_func_meta(method_def_func):
         if inputs_count <= 0:
             raise RuntimeError(f"Invalid '{func_name}' invoke args")
 
-        print(f"call type '{func_name}', inputs count {inputs_count}, outputs count {outputs_count}")
+        logger.info(f"call type '{func_name}', inputs count {inputs_count}, outputs count {outputs_count}")
         func_meta[func_name] = [inputs_count, outputs_count]
 
     if _call_servable_name not in func_meta:
@@ -462,8 +463,9 @@ def register_method(output_names):
                 f"Method return output size {len(output_tensors)} not match registed {len(output_names)}")
 
         method_def_context_.returns = [item.as_pair() for item in output_tensors]
-        print("------------Register method: method_name", method_def_context_.method_name,
-              ", servable_name", method_def_context_.servable_name, ", inputs", input_names, ", outputs", output_names)
+        logger.info(f"Register method: method_name {method_def_context_.method_name} "
+                    f", servable_name {method_def_context_.servable_name}, inputs: {input_names}, outputs: "
+                    f"{output_names}")
 
         global _servable_storage
         _servable_storage.register_method(method_def_context_)

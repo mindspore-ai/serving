@@ -16,6 +16,7 @@
 import os
 import sys
 from pathlib import Path
+from mindspore_serving import log as logger
 
 
 class AscendEnvChecker:
@@ -133,23 +134,23 @@ class AscendEnvChecker:
     def _check_env(self):
         """ascend dependence path check"""
         if self.path is None or self.path_check not in self.path:
-            print("Can not find ccec_compiler(need by mindspore-ascend), please check if you have set env "
-                  "PATH, you can reference to the installation guidelines https://www.mindspore.cn/install")
+            logger.warning("Can not find ccec_compiler(need by mindspore-ascend), please check if you have set env "
+                           "PATH, you can reference to the installation guidelines https://www.mindspore.cn/install")
 
         if self.python_path is None or self.python_path_check not in self.python_path:
-            print(
+            logger.warning(
                 "Can not find tbe op implement(need by mindspore-ascend), please check if you have set env "
                 "PYTHONPATH, you can reference to the installation guidelines "
                 "https://www.mindspore.cn/install")
 
         if self.ld_lib_path is None or not (self.ld_lib_path_check_fwk in self.ld_lib_path and
                                             self.ld_lib_path_check_addons in self.ld_lib_path):
-            print("Can not find driver so(need by mindspore-ascend), please check if you have set env "
-                  "LD_LIBRARY_PATH, you can reference to the installation guidelines "
-                  "https://www.mindspore.cn/install")
+            logger.warning("Can not find driver so(need by mindspore-ascend), please check if you have set env "
+                           "LD_LIBRARY_PATH, you can reference to the installation guidelines "
+                           "https://www.mindspore.cn/install")
 
         if self.ascend_opp_path is None or self.ascend_opp_path_check not in self.ascend_opp_path:
-            print(
+            logger.warning(
                 "Can not find opp path (need by mindspore-ascend), please check if you have set env ASCEND_OPP_PATH, "
                 "you can reference to the installation guidelines https://www.mindspore.cn/install")
 

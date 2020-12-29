@@ -16,6 +16,7 @@
 
 from mindspore_serving._mindspore_serving import PreprocessStorage_
 from mindspore_serving.worker.common import get_servable_dir, get_func_name
+from mindspore_serving import log as logger
 
 
 def check_preprocess(preprocess_name, inputs_count, outputs_count):
@@ -60,5 +61,5 @@ def register_preprocess(func, inputs_count, outputs_count):
     func_name = get_func_name(func)
     name = servable_name + "." + func_name
 
-    print("------------Register preprocess", name, inputs_count, outputs_count)
+    logger.info(f"Register preprocess {name} {inputs_count} {outputs_count}")
     preprocess_storage.register(func, name, inputs_count, outputs_count)

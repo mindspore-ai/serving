@@ -116,6 +116,8 @@ target_include_directories(_mindspore_serving PRIVATE ${pybind11_INCLUDE_DIRS})
 target_link_libraries(_mindspore_serving PRIVATE serving_common)
 set_property(TARGET _mindspore_serving PROPERTY POSITION_INDEPENDENT_CODE TRUE)
 
+target_link_options(serving_common PRIVATE -Wl,-init,mindspore_serving_log_init)
+
 # user set path
 
 if (MS_WHL_LIB_PATH)

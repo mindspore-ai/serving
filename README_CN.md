@@ -45,10 +45,10 @@ MindSpore Serving依赖MindSpore训练推理框架，安装完[MindSpore](https:
 
 使用pip命令安装，安装方式如下：
 
-- 请从MindSpore Serving下载页面下载并安装whl包。
+- 请从[MindSpore Serving下载页面](https://www.mindspore.cn/versions)下载并安装whl包。
 
     ```python
-    pip install https://ms-release.obs.cn-north-4.myhuaweicloud.com/1.1.0/Serving/ascend/ubuntu_x86/mindspore_serving-1.1.0-cp37-cp37m-linux_x86_64.whl
+    pip install mindspore_serving-{version}-cp37-cp37m-linux_{arch}.whl
     ```
 
 - 源码编译安装。
@@ -72,16 +72,16 @@ MindSpore Serving依赖MindSpore训练推理框架，安装完[MindSpore](https:
     sh build.sh -e ascend
     ```
 
-    其中，`build.sh`为`serving`目录下的编译脚本文件，以x86系统为例，编译完后，在`serving/third_party/mindspore/build/package/`目录下找到MindSpore的whl安装包进行安装：
+    其中，`build.sh`为`serving`目录下的编译脚本文件，编译完后，在`serving/third_party/mindspore/build/package/`目录下找到MindSpore的whl安装包进行安装：
 
     ```python
-    pip install mindspore_ascend-1.1.0-cp37-cp37m-linux_x86_64.whl
+    pip install mindspore_ascend-{version}-cp37-cp37m-linux_{arch}.whl
     ```
 
     同时在`serving/build/package/`目录下找到Serving的whl安装包进行安装：
 
     ```python
-    pip install mindspore_serving-1.1.0-cp37-cp37m-linux_x86_64.whl
+    pip install mindspore_serving-{version}-cp37-cp37m-linux_{arch}.whl
     ```
 
 执行以下命令，验证安装结果。导入Python模块不报错即安装成功：

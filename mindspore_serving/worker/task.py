@@ -20,6 +20,7 @@ import logging
 from mindspore_serving._mindspore_serving import Worker_
 from mindspore_serving.worker.register.preprocess import preprocess_storage
 from mindspore_serving.worker.register.postprocess import postprocess_storage
+from mindspore_serving import log as logger
 
 
 class ServingSystemException(Exception):
@@ -105,9 +106,9 @@ class PyTask:
                     self.result_batch.append(output)
 
                 get_result_time = time.time()
-                print(f"-----------------{self.task_name} get result "
-                      f"{last_index} ~ {last_index + len(self.result_batch) - 1} cost time",
-                      (get_result_time - get_result_time_end) * 1000, "ms")
+                logger.debug(f"{self.task_name} get result "
+                             f"{last_index} ~ {last_index + len(self.result_batch) - 1} cost time "
+                             f"{(get_result_time - get_result_time_end) * 1000} ms")
 
                 self.push_result_batch()
                 break
@@ -119,7 +120,7 @@ class PyTask:
             except ServingSystemException as e:
                 raise e
             except Exception as e:  # catch exception and try next
-                print("{self.task_name} get result catch exception: ")
+                logger.warning(f"{self.task_name} get result catch exception: {e}")
                 logging.exception(e)
                 self.push_failed(1)  # push success results and a failed result
                 self.temp_result = self._handle_task_continue()
@@ -149,7 +150,7 @@ class PyTask:
             outputs = self.task_info["fun"](instance_list[self.index:])
             return outputs
         except Exception as e:
-            print(f"{self.task_name} invoke catch exception: ")
+            ogger.warning(f"{self.task_name} invoke catch exception: ")
             logging.exception(e)
             self.push_failed(len(instance_list) - self.index)
             return None
@@ -217,7 +218,7 @@ class PyTaskThread(threading.Thread):
 
     def run(self):
         """Run tasks of preprocess and postprocess, switch to other type of process when some instances are handled"""
-        print("start py task for preprocess and postprocess, switch_batch", self.switch_batch)
+        logger.info(f"start py task for preprocess and postprocess, switch_batch {self.switch_batch}")
         preprocess_turn = True
         while True:
             try:
@@ -257,10 +258,10 @@ class PyTaskThread(threading.Thread):
                     preprocess_turn = True
 
             except Exception as e:
-                print("py task catch exception and exit: ")
+                logger.error(f"py task catch exception and exit: {e}")
                 logging.exception(e)
                 break
-        print("end py task for preprocess and postprocess")
+        logger.info("end py task for preprocess and postprocess")
         Worker_.stop()
 
 

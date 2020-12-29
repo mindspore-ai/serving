@@ -17,6 +17,7 @@
 import threading
 from functools import wraps
 from mindspore_serving.worker import check_type
+from mindspore_serving import log as logger
 from mindspore_serving._mindspore_serving import Master_
 
 _wait_and_clear_thread = None
@@ -27,6 +28,7 @@ def _start_wait_and_clear():
     """Start thread waiting for catch ctrl+c, and clear env"""
 
     def thread_func():
+        logger.info("Serving master: wait for Ctrl+C to exit ------------------------------------")
         print("Serving master: wait for Ctrl+C to exit ------------------------------------")
         Master_.wait_and_clear()
 

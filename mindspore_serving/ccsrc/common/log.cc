@@ -21,6 +21,8 @@
 namespace mindspore {
 namespace serving {
 
+int g_ms_serving_log_level = LOG_WARNING;
+
 #undef Dlog
 #define Dlog(module_id, level, format, ...)                   \
   do {                                                        \
@@ -78,7 +80,7 @@ static std::string GetProcName() {
   return app_name.substr(pos + 1);
 }
 
-static std::string GetLogLevel(ERROR_LEVEL level) {
+static std::string GetLogLevel(MsLogLevel level) {
   switch (level) {
     case LOG_DEBUG:
       return "DEBUG";
@@ -93,7 +95,7 @@ static std::string GetLogLevel(ERROR_LEVEL level) {
 }
 
 // convert MsLogLevel to corresponding glog level
-static int GetGlogLevel(ERROR_LEVEL level) {
+static int GetGlogLevel(MsLogLevel level) {
   switch (level) {
     case LOG_DEBUG:
     case LOG_INFO:
@@ -107,12 +109,269 @@ static int GetGlogLevel(ERROR_LEVEL level) {
 }
 
 void LogWriter::OutputLog(const std::ostringstream &msg) const {
-  auto submodule_name = "Serving";
+  if (log_level_ < g_ms_serving_log_level) {
+    return;
+  }
+  auto submodule_name = "SERVING";
   google::LogMessage("", 0, GetGlogLevel(log_level_)).stream()
     << "[" << GetLogLevel(log_level_) << "] " << submodule_name << "(" << getpid() << "," << GetProcName()
     << "):" << GetTime() << " "
     << "[" << file_ << ":" << line_ << "] " << func_ << "] " << msg.str() << std::endl;
 }
 
+static MsLogLevel GetGlobalLogLevel() { return static_cast<MsLogLevel>(FLAGS_v); }
+
+static std::string GetEnv(const std::string &envvar) {
+  const char *value = ::getenv(envvar.c_str());
+
+  if (value == nullptr) {
+    return std::string();
+  }
+
+  return std::string(value);
+}
+
+enum LogConfigToken {
+  INVALID,      // indicate invalid token
+  LEFT_BRACE,   // '{'
+  RIGHT_BRACE,  // '}'
+  VARIABLE,     // '[A-Za-z][A-Za-z0-9_]*'
+  NUMBER,       // [0-9]+
+  COMMA,        // ','
+  COLON,        // ':'
+  EOS,          // End Of String, '\0'
+  NUM_LOG_CFG_TOKENS
+};
+
+static const char *g_tok_names[NUM_LOG_CFG_TOKENS] = {
+  "invalid",        // indicate invalid token
+  "{",              // '{'
+  "}",              // '}'
+  "variable",       // '[A-Za-z][A-Za-z0-9_]*'
+  "number",         // [0-9]+
+  ",",              // ','
+  ":",              // ':'
+  "end-of-string",  // End Of String, '\0'
+};
+
+static inline bool IsAlpha(char ch) { return (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z'); }
+
+static inline bool IsDigit(char ch) { return ch >= '0' && ch <= '9'; }
+
+class LogConfigLexer {
+ public:
+  explicit LogConfigLexer(const std::string &text) : buffer_(text) {
+    cur_idx_ = 0;
+    cur_token_ = LogConfigToken::INVALID;
+  }
+  ~LogConfigLexer() = default;
+
+  // skip white space, and return the first char after white space
+  char SkipWhiteSpace() {
+    while (cur_idx_ < buffer_.size()) {
+      char ch = buffer_[cur_idx_];
+      if (ch == ' ' || ch == '\t') {
+        ++cur_idx_;
+        continue;
+      }
+      return ch;
+    }
+    return '\0';
+  }
+
+  LogConfigToken GetNext(std::string *const ptr) {
+    char ch = SkipWhiteSpace();
+    // clang-format off
+    static const std::map<char, LogConfigToken> single_char_map = {
+      {'{', LogConfigToken::LEFT_BRACE},
+      {'}', LogConfigToken::RIGHT_BRACE},
+      {',', LogConfigToken::COMMA},
+      {':', LogConfigToken::COLON},
+      {'\0', LogConfigToken::EOS},
+    };
+    // clang-format on
+
+    auto iter = single_char_map.find(ch);
+    if (iter != single_char_map.end()) {
+      if (ptr != nullptr) {
+        *ptr = std::string() + ch;
+      }
+      ++cur_idx_;
+      return iter->second;
+    } else if (IsAlpha(ch)) {
+      std::ostringstream oss;
+      do {
+        oss << ch;
+        ch = buffer_[++cur_idx_];
+      } while (cur_idx_ < buffer_.size() && (IsAlpha(ch) || IsDigit(ch) || ch == '_'));
+      if (ptr != nullptr) {
+        *ptr = std::string(oss.str());
+      }
+      return LogConfigToken::VARIABLE;
+    } else if (IsDigit(ch)) {
+      std::ostringstream oss;
+      do {
+        oss << ch;
+        ch = buffer_[++cur_idx_];
+      } while (cur_idx_ < buffer_.size() && IsDigit(ch));
+      if (ptr != nullptr) {
+        *ptr = std::string(oss.str());
+      }
+      return LogConfigToken::NUMBER;
+    }
+    return LogConfigToken::INVALID;
+  }
+
+ private:
+  std::string buffer_;
+  size_t cur_idx_;
+
+  LogConfigToken cur_token_;
+  std::string cur_text_;
+};
+
+class LogConfigParser {
+ public:
+  explicit LogConfigParser(const std::string &cfg) : lexer(cfg) {}
+  ~LogConfigParser() = default;
+
+  bool Expect(LogConfigToken expected, LogConfigToken tok) {
+    if (expected != tok) {
+      MSI_LOG_WARNING << "`, but got `" << g_tok_names[tok] << "`. The whole configuration will be ignored.";
+      return false;
+    }
+    return true;
+  }
+
+  // The text of config MS_SUBMODULE_LOG_v is in the form {submodule1:log_level1,submodule2:log_level2,...}.
+  // Valid values of log levels are: 0 - debug, 1 - info, 2 - warning, 3 - error
+  // e.g. MS_SUBMODULE_LOG_v={PARSER:0, ANALYZER:2, PIPELINE:1}
+  std::map<std::string, std::string> Parse() {
+    std::map<std::string, std::string> log_levels;
+
+    bool flag_error = false;
+    std::string text;
+    auto tok = lexer.GetNext(&text);
+    // empty string
+    if (tok == LogConfigToken::EOS) {
+      return log_levels;
+    }
+
+    if (!Expect(LogConfigToken::LEFT_BRACE, tok)) {
+      return log_levels;
+    }
+
+    do {
+      std::string key, val;
+      tok = lexer.GetNext(&key);
+      if (!Expect(LogConfigToken::VARIABLE, tok)) {
+        flag_error = true;
+        break;
+      }
+
+      tok = lexer.GetNext(&text);
+      if (!Expect(LogConfigToken::COLON, tok)) {
+        flag_error = true;
+        break;
+      }
+
+      tok = lexer.GetNext(&val);
+      if (!Expect(LogConfigToken::NUMBER, tok)) {
+        flag_error = true;
+        break;
+      }
+
+      log_levels[key] = val;
+      tok = lexer.GetNext(&text);
+    } while (tok == LogConfigToken::COMMA);
+
+    if (!flag_error && !Expect(LogConfigToken::RIGHT_BRACE, tok)) {
+      flag_error = true;
+    }
+
+    if (flag_error) {
+      log_levels.clear();
+    }
+    return log_levels;
+  }
+
+ private:
+  LogConfigLexer lexer;
+};
+
+bool ParseLogLevel(const std::string &str_level, MsLogLevel *ptr_level) {
+  if (str_level.size() == 1) {
+    int ch = str_level.c_str()[0];
+    ch = ch - '0';  // substract ASCII code of '0', which is 48
+    if (ch >= LOG_DEBUG && ch <= LOG_ERROR) {
+      if (ptr_level != nullptr) {
+        *ptr_level = static_cast<MsLogLevel>(ch);
+      }
+      return true;
+    }
+  }
+  return false;
+}
+
+void InitSubModulesLogLevel() {
+  // initialize submodule's log level using global
+  auto global_log_level = GetGlobalLogLevel();
+  g_ms_serving_log_level = global_log_level;
+
+  // set submodule's log level
+  auto submodule = GetEnv("MS_SUBMODULE_LOG_v");
+  MSI_LOG(DEBUG) << "MS_SUBMODULE_LOG_v=`" << submodule << "`";
+  LogConfigParser parser(submodule);
+  auto configs = parser.Parse();
+  for (const auto &cfg : configs) {
+    if (cfg.first == "SERVING") {
+      MsLogLevel submodule_log_level;
+      if (!ParseLogLevel(cfg.second, &submodule_log_level)) {
+        MSI_LOG(WARNING) << "Illegal log level value " << cfg.second << " for " << cfg.first << ", ignore it.";
+        continue;
+      }
+      g_ms_serving_log_level = submodule_log_level;
+    }
+  }
+}
+
 }  // namespace serving
 }  // namespace mindspore
+
+extern "C" {
+#if defined(_WIN32) || defined(_WIN64)
+__attribute__((constructor)) void common_log_init(void) {
+#else
+void common_log_init(void) {
+#endif
+  // do not use glog predefined log prefix
+  FLAGS_log_prefix = false;
+  // set default log level to WARNING
+  if (mindspore::serving::GetEnv("GLOG_v").empty()) {
+    FLAGS_v = mindspore::serving::LOG_WARNING;
+  }
+
+  // set default log file mode to 0640
+  if (mindspore::serving::GetEnv("GLOG_logfile_mode").empty()) {
+    FLAGS_logfile_mode = 0640;
+  }
+  std::string logtostderr = mindspore::serving::GetEnv("GLOG_logtostderr");
+  // default print log to screen
+  if (logtostderr.empty()) {
+    FLAGS_logtostderr = true;
+  } else if (logtostderr == "0" && mindspore::serving::GetEnv("GLOG_log_dir").empty()) {
+    FLAGS_logtostderr = true;
+    MSI_LOG(WARNING) << "`GLOG_log_dir` is not set, output log to screen.";
+  }
+  mindspore::serving::InitSubModulesLogLevel();
+}
+
+// shared lib init hook
+#if defined(_WIN32) || defined(_WIN64)
+__attribute__((constructor)) void mindspore_serving_log_init(void) {
+#else
+void mindspore_serving_log_init(void) {
+#endif
+  common_log_init();
+}
+}
