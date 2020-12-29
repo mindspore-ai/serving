@@ -51,6 +51,9 @@ Use the pip command to install Serving. Perform the following steps:
     pip install mindspore_serving-{version}-cp37-cp37m-linux_{arch}.whl
     ```
 
+    > - `{version}` denotes the version of MindSpore Serving. For example, when you are downloading MindSpore Serving 1.1, `{version}` should be 1.1.
+    > - `{arch}` denotes the system architecture. For example, the Linux system you are using is x86 architecture 64-bit, `{arch}` should be `x86_64`. If the system is ARM architecture 64-bit, then it should be `aarch64`.
+
 - Install Serving using the source code.
 
     Download the [source code](https://gitee.com/mindspore/serving) and go to the `serving` directory.
