@@ -17,6 +17,7 @@
 from mindspore_serving._mindspore_serving import ServableMeta_
 from mindspore_serving.worker import check_type
 from mindspore_serving.worker.common import get_servable_dir
+from mindspore_serving import log as logger
 from .method import _servable_storage
 
 
@@ -65,9 +66,9 @@ def declare_servable(servable_file, model_format, with_batch_dim=True, options=N
         meta.without_batch_dim_inputs = without_batch_dim_inputs
 
     _servable_storage.declare_servable(meta)
-    print("------------Declare servable, servable_name:", meta.servable_name,
-          ", servable_file:", servable_file, ", model_format:", model_format, ", with_batch_dim:", with_batch_dim,
-          ", options:", options, ", without_batch_dim_inputs:", without_batch_dim_inputs)
+    logger.info(f"Declare servable, servable_name: {meta.servable_name} "
+                f", servable_file: {servable_file} , model_format: {model_format},  with_batch_dim: {with_batch_dim} "
+                f", options: {options}, without_batch_dim_inputs: {without_batch_dim_inputs}")
 
 
 class AclOptions:
