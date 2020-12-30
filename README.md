@@ -51,7 +51,7 @@ Use the pip command to install Serving. Perform the following steps:
     pip install mindspore_serving-{version}-cp37-cp37m-linux_{arch}.whl
     ```
 
-    > - `{version}` denotes the version of MindSpore Serving. For example, when you are downloading MindSpore Serving 1.1, `{version}` should be 1.1.
+    > - `{version}` denotes the version of MindSpore Serving. For example, when you are downloading MindSpore Serving 1.1.0, `{version}` should be 1.1.0.
     > - `{arch}` denotes the system architecture. For example, the Linux system you are using is x86 architecture 64-bit, `{arch}` should be `x86_64`. If the system is ARM architecture 64-bit, then it should be `aarch64`.
 
 - Install Serving using the source code.
@@ -70,9 +70,9 @@ Use the pip command to install Serving. Perform the following steps:
 
     ```shell
     # Ascend 310
-    sh build.sh -e d -V 310
+    sh build.sh -e ascend -V 310
     # Ascend 910
-    sh build.sh -e ascend
+    sh build.sh -e ascend -V 910
     ```
 
     In the preceding information, `build.sh` is the build script file in the `serving` directory. After the build is complete, find the .whl installation package of MindSpore in the `serving/third_party/mindspore/build/package/` directory and install it.
