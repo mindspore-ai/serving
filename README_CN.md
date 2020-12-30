@@ -51,7 +51,7 @@ MindSpore Serving依赖MindSpore训练推理框架，安装完[MindSpore](https:
     pip install mindspore_serving-{version}-cp37-cp37m-linux_{arch}.whl
     ```
 
-    > - `{version}`表示MindSpore Serving版本号，例如下载1.1版本MindSpore Serving时，`{version}`应写为1.1。  
+    > - `{version}`表示MindSpore Serving版本号，例如下载1.1.0版本MindSpore Serving时，`{version}`应写为1.1.0。
     > - `{arch}`表示系统架构，例如使用的Linux系统是x86架构64位时，`{arch}`应写为`x86_64`。如果系统是ARM架构64位，则写为`aarch64`。
 
 - 源码编译安装。
@@ -70,9 +70,9 @@ MindSpore Serving依赖MindSpore训练推理框架，安装完[MindSpore](https:
 
     ```shell
     # Ascend 310
-    sh build.sh -e d -V 310
+    sh build.sh -e ascend -V 310
     # Ascend 910
-    sh build.sh -e ascend
+    sh build.sh -e ascend -V 910
     ```
 
     其中，`build.sh`为`serving`目录下的编译脚本文件，编译完后，在`serving/third_party/mindspore/build/package/`目录下找到MindSpore的whl安装包进行安装：

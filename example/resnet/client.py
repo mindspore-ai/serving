@@ -53,10 +53,15 @@ def run_classify_top5():
     """Client for servable resnet50 and method classify_top5"""
     client = Client("localhost", 5500, "resnet50", "classify_top5")
     instances = []
-    for image in read_images():
-        instances.append({"image": image})
+    for image in read_images():  # read multi image
+        instances.append({"image": image})  # input `image`
     result = client.infer(instances)
     print(result)
+    for result_item in result:  # result for every image
+        label = result_item["label"]  # result `label`
+        score = result_item["score"]  # result `score`
+        print("label result", label)
+        print("score result", score)
 
 
 def run_restful_classify_top1():
