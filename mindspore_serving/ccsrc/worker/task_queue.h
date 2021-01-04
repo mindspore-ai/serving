@@ -68,6 +68,7 @@ class MS_API TaskQueue {
   void TryPopPyTask(TaskItem *task_item);
   Status PushTaskPyResult(const std::vector<ResultInstance> &outputs);
 
+  void Start();
   void Stop();
   bool Empty() const;
 
@@ -81,7 +82,7 @@ class MS_API TaskQueue {
 
   std::shared_ptr<std::mutex> lock_ = std::make_shared<std::mutex>();
   std::shared_ptr<std::condition_variable> cond_var_ = std::make_shared<std::condition_variable>();
-  std::atomic<bool> is_stoped_{false};
+  std::atomic<bool> is_running = false;
 };
 
 class MS_API PyTaskQueueGroup {
@@ -94,12 +95,13 @@ class MS_API PyTaskQueueGroup {
   void PopPyTask(TaskItem *task_item);
   void TryPopPreprocessTask(TaskItem *task_item);
   void TryPopPostprocessTask(TaskItem *task_item);
+  void Start();
   void Stop();
 
  private:
   std::shared_ptr<std::mutex> lock_ = std::make_shared<std::mutex>();
   std::shared_ptr<std::condition_variable> cond_var_ = std::make_shared<std::condition_variable>();
-  std::atomic<bool> is_stoped_{false};
+  std::atomic<bool> is_running = false;
   std::shared_ptr<TaskQueue> preprocess_task_que_ = std::make_shared<TaskQueue>(lock_, cond_var_);
   std::shared_ptr<TaskQueue> postprocess_task_que_ = std::make_shared<TaskQueue>(lock_, cond_var_);
 };
@@ -115,7 +117,7 @@ class TaskQueueThreadPool {
   std::shared_ptr<TaskQueue> GetTaskQueue() { return task_queue_; }
 
  protected:
-  std::atomic<bool> has_started = false;
+  std::atomic<bool> is_running = false;
   std::vector<std::thread> pool_;
   std::shared_ptr<TaskQueue> task_queue_ = std::make_shared<TaskQueue>();
 

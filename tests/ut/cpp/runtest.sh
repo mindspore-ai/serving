@@ -13,7 +13,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-CURRPATH=$(cd "$(dirname $0)" || exit; pwd)
-echo $CURRPATH
+set -e
+BASEPATH=$(cd "$(dirname "$0")"; pwd)
+PROJECT_PATH=${BASEPATH}/../../..
+if [ $BUILD_PATH ];then
+  echo "BUILD_PATH = $BUILD_PATH"
+else
+  BUILD_PATH=${PROJECT_PATH}/build
+  echo "BUILD_PATH = $BUILD_PATH"
+fi
+cd ${BUILD_PATH}/mindspore_serving/tests/ut/cpp
+
+if [ $# -gt 0 ]; then
+  ./serving_ut --gtest_filter=$1
+else
+  ./serving_ut
+fi
 RET=$?
+cd -
+
 exit ${RET}

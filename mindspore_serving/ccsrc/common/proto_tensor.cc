@@ -235,7 +235,7 @@ Status GrpcTensorHelper::CreateInstanceFromRequest(const proto::PredictRequest &
   auto method_name = request_spec->method_name;
 
   ServableSignature servable_signature;
-  if (!ServableStorage::Instance()->GetServableDef(servable_name, &servable_signature)) {
+  if (!ServableStorage::Instance().GetServableDef(servable_name, &servable_signature)) {
     return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Servable " << servable_name << " is not declared";
   }
   MethodSignature method_signature;
@@ -263,7 +263,7 @@ Status GrpcTensorHelper::CreateReplyFromInstances(const proto::PredictRequest &r
   auto method_name = request.servable_spec().method_name();
   Status status;
   ServableSignature servable_signature;
-  if (!ServableStorage::Instance()->GetServableDef(servable_name, &servable_signature)) {
+  if (!ServableStorage::Instance().GetServableDef(servable_name, &servable_signature)) {
     return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Servable " << servable_name << " is not declared";
   }
   MethodSignature method_signature;
@@ -365,8 +365,8 @@ Status GrpcTensorHelper::CheckRequestTensor(const proto::Tensor &tensor) {
                                                     << " data type " << tensor.dtype() << " invalid";
     }
     if (element_num * tensor_input.itemsize() != tensor_input.data_size()) {
-      return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Tensor check failed: input "
-                                                    << " data size " << tensor.data().size() << " invalid";
+      return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
+             << "Tensor check failed: input data size " << tensor.data().size() << " invalid";
     }
   }
   return SUCCESS;

@@ -19,7 +19,7 @@ from functools import wraps
 from mindspore_serving import log as logger
 from mindspore_serving._mindspore_serving import Worker_
 from . import context
-from .task import _start_py_task
+from .task import _start_py_task, _join_py_task
 from . import check_type
 
 _wait_and_clear_thread = None
@@ -32,6 +32,9 @@ def _start_wait_and_clear():
         logger.info("Serving worker: wait for Ctrl+C to exit ------------------------------------")
         print("Serving worker: wait for Ctrl+C to exit ------------------------------------")
         Worker_.wait_and_clear()
+        _join_py_task()
+        logger.info("Serving worker: exited ------------------------------------")
+        print("Serving worker: exited ------------------------------------")
 
     global _wait_and_clear_thread
     if not _wait_and_clear_thread:
@@ -56,6 +59,7 @@ def stop():
     """
 
     Worker_.stop()
+    _join_py_task()
 
 
 def stop_on_except(func):

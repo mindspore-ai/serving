@@ -32,9 +32,12 @@ TaskQueue::TaskQueue() {}
 TaskQueue::TaskQueue(std::shared_ptr<std::mutex> lock, std::shared_ptr<std::condition_variable> cond_var)
     : lock_(lock), cond_var_(cond_var) {}
 
-TaskQueue::~TaskQueue() { Stop(); }
+TaskQueue::~TaskQueue() = default;
 
 Status TaskQueue::SetWorkerCallback(uint64_t worker_id, TaskCallBack on_task_done) {
+  if (!is_running) {
+    return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Task queue has not been started";
+  }
   callback_map_[worker_id] = on_task_done;
   return SUCCESS;
 }
@@ -111,15 +114,15 @@ Status TaskQueue::PushTaskPyResult(const std::vector<ResultInstance> &outputs) {
 
 void TaskQueue::PopTask(TaskItem *task_item) {
   MSI_EXCEPTION_IF_NULL(task_item);
-  if (is_stoped_) {
+  if (!is_running) {  // before start, or after stop
     task_item->task_type = kTaskTypeStop;
     return;
   }
   std::unique_lock<std::mutex> lock{*lock_};
   while (true) {
     if (task_priority_list_.empty()) {
-      cond_var_->wait(lock, [this] { return is_stoped_.load() || !task_priority_list_.empty(); });
-      if (is_stoped_) {
+      cond_var_->wait(lock, [this] { return !is_running || !task_priority_list_.empty(); });
+      if (!is_running) {
         task_item->task_type = kTaskTypeStop;
         return;
       }
@@ -139,7 +142,7 @@ void TaskQueue::PopTask(TaskItem *task_item) {
 
 void TaskQueue::TryPopTask(TaskItem *task_item) {
   MSI_EXCEPTION_IF_NULL(task_item);
-  if (is_stoped_) {
+  if (!is_running) {  // before start, or after stop
     task_item->task_type = kTaskTypeStop;
     return;
   }
@@ -170,11 +173,22 @@ void TaskQueue::TryPopPyTask(TaskItem *task_item) {
   }
 }
 
-void TaskQueue::Stop() {
-  if (is_stoped_) {
+void TaskQueue::Start() {
+  if (is_running) {
     return;
   }
-  is_stoped_.store(true);
+  is_running = true;
+  task_map_.clear();
+  task_priority_list_ = std::queue<std::string>();
+  task_item_processing_ = TaskItem();
+  callback_map_.clear();
+}
+
+void TaskQueue::Stop() {
+  if (!is_running) {
+    return;
+  }
+  is_running = false;
   cond_var_->notify_all();
 }
 
@@ -196,10 +210,9 @@ void PyTaskQueueGroup::PopPyTask(TaskItem *task_item) {
     {
       std::unique_lock<std::mutex> lock{*lock_};
       if (preprocess_task_que_->Empty() && postprocess_task_que_->Empty()) {
-        cond_var_->wait(lock, [this] {
-          return is_stoped_.load() || !(preprocess_task_que_->Empty() && postprocess_task_que_->Empty());
-        });
-        if (is_stoped_) {
+        cond_var_->wait(
+          lock, [this] { return !is_running || !(preprocess_task_que_->Empty() && postprocess_task_que_->Empty()); });
+        if (!is_running) {
           task_item->task_type = kTaskTypeStop;
           return;
         }
@@ -234,8 +247,17 @@ void PyTaskQueueGroup::TryPopPostprocessTask(TaskItem *task_item) {
   }
 }
 
+void PyTaskQueueGroup::Start() {
+  if (is_running) {
+    return;
+  }
+  is_running = true;
+  preprocess_task_que_->Start();
+  postprocess_task_que_->Start();
+}
+
 void PyTaskQueueGroup::Stop() {
-  is_stoped_ = true;
+  is_running = false;
   preprocess_task_que_->Stop();
   postprocess_task_que_->Stop();
 }
@@ -260,13 +282,14 @@ void TaskQueueThreadPool::ThreadFunc(TaskQueueThreadPool *thread_pool) {
 }
 
 void TaskQueueThreadPool::Start(uint32_t size) {
-  if (has_started) {
+  if (is_running) {
     return;
   }
-  has_started = true;
+  is_running = true;
   for (uint32_t i = 0; i < size; ++i) {
     pool_.emplace_back(ThreadFunc, this);
   }
+  task_queue_->Start();
 }
 
 void TaskQueueThreadPool::Stop() {
@@ -281,6 +304,7 @@ void TaskQueueThreadPool::Stop() {
     }
   }
   pool_.clear();
+  is_running = false;
 }
 
 Status PreprocessThreadPool::HandleTask(const TaskItem &task_item) {

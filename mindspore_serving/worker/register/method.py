@@ -41,16 +41,15 @@ class _ServableStorage:
     def __init__(self):
         self.methods = {}
         self.servable_metas = {}
-        self.storage = ServableStorage_.get_instance()
 
     def declare_servable(self, servable_meta):
         """Declare servable info excluding method, input and output count"""
-        self.storage.declare_servable(servable_meta)
+        ServableStorage_.declare_servable(servable_meta)
         self.servable_metas[servable_meta.servable_name] = servable_meta
 
     def declare_servable_input_output(self, servable_name, inputs_count, outputs_count):
         """Declare input and output count of servable"""
-        self.storage.register_servable_input_output_info(servable_name, inputs_count, outputs_count)
+        ServableStorage_.register_servable_input_output_info(servable_name, inputs_count, outputs_count)
         servable_meta = self.servable_metas[servable_name]
         servable_meta.inputs_count = inputs_count
         servable_meta.outputs_count = outputs_count
@@ -59,7 +58,7 @@ class _ServableStorage:
         """Declare method of servable"""
         if method_signature.method_name in self.methods:
             raise RuntimeError(f"Method {method_signature.method_name} has been registered more than once.")
-        self.storage.register_method(method_signature)
+        ServableStorage_.register_method(method_signature)
         self.methods[method_signature.method_name] = method_signature
 
     def get_method(self, method_name):

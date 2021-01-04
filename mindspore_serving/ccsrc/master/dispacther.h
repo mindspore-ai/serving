@@ -26,16 +26,13 @@
 #include "common/serving_common.h"
 #include "common/instance.h"
 #include "common/servable.h"
-#include "worker/worker.h"
+#include "master/notify_worker/base_notify.h"
 
 namespace mindspore::serving {
 
-using DispatchCallback = std::function<Status(const std::vector<Instance> &outputs)>;
-
 struct DispatcherWorkerContext {
   WorkerSpec worker_spec;
-  std::shared_ptr<proto::MSWorker::Stub> stub_ = nullptr;
-  bool worker_running_in_master = false;
+  std::shared_ptr<BaseNotifyWorker> notify_worker_ = nullptr;
 };
 
 class MS_API Dispatcher {
@@ -59,11 +56,19 @@ class MS_API Dispatcher {
 
  private:
   std::unordered_map<std::string, std::vector<DispatcherWorkerContext>> servable_map_{};
+
   std::shared_mutex servable_shared_lock_;
   // avoid invoke Clear and then UnregisterServable is invoked by Clear in other thread
   std::atomic_bool clearing_flag = false;
 
   DispatcherWorkerContext GetWorkSession(const RequestSpec &request_spec) const;
+
+  using CreateNotifyWorkerFunc = std::function<std::shared_ptr<BaseNotifyWorker>(const WorkerSpec &worker_spec)>;
+
+  Status RegisterServableCommon(const std::vector<WorkerSpec> &worker_specs, CreateNotifyWorkerFunc func);
+  Status UnregisterServableCommon(const std::string &worker_address);
+  Status AddServableCommon(const WorkerSpec &worker_spec, CreateNotifyWorkerFunc func);
+  Status RemoveServableCommon(const WorkerSpec &worker_spec);
 };
 
 }  // namespace mindspore::serving

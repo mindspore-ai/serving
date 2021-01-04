@@ -274,3 +274,11 @@ def _start_py_task(switch_batch):
     if py_task_thread is None:
         py_task_thread = PyTaskThread(switch_batch)
         py_task_thread.start()
+
+
+def _join_py_task():
+    """Join python thread for proprocessing and postprocessing"""
+    global py_task_thread
+    if py_task_thread is not None:
+        py_task_thread.join()
+        py_task_thread = None

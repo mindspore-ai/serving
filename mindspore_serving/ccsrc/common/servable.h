@@ -113,10 +113,11 @@ class MS_API ServableStorage {
 
   void DeclareServable(const ServableMeta &servable);
 
-  void RegisterInputOutputInfo(const std::string &servable_name, size_t inputs_count, size_t outputs_count);
+  Status RegisterInputOutputInfo(const std::string &servable_name, size_t inputs_count, size_t outputs_count);
   std::vector<size_t> GetInputOutputInfo(const std::string &servable_name) const;
+  void Clear();
 
-  static std::shared_ptr<ServableStorage> Instance();
+  static ServableStorage &Instance();
 
  private:
   std::unordered_map<std::string, ServableSignature> servable_signatures_map_;
