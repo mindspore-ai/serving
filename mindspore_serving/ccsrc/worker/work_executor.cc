@@ -60,11 +60,11 @@ Status WorkExecutor::CheckSevableSignature() {
            << "The outputs count " << servable_declare_.servable_meta.outputs_count
            << " registered in method not equal to the count " << output_infos.size() << " defined in servable";
   }
-  MSI_LOG_INFO << "Model input infos:";
+  MSI_LOG_INFO << "Model input infos: count " << input_infos.size();
   for (auto &item : input_infos) {
     MSI_LOG_INFO << item.shape << ", " << item.data_type << ", " << item.size;
   }
-  MSI_LOG_INFO << "Model output infos:";
+  MSI_LOG_INFO << "Model output infos: count " << output_infos.size();
   for (auto &item : output_infos) {
     MSI_LOG_INFO << item.shape << ", " << item.data_type << ", " << item.size;
   }

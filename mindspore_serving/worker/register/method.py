@@ -118,6 +118,14 @@ def _wrap_fun_to_pipeline(fun, input_count):
 def call_preprocess_pipeline(preprocess_fun, *args):
     r"""For method registration, define the preprocessing pipeline function and its' parameters.
 
+    A single request can include multiple instances, and multiple queued requests will also have multiple instances.
+    If you need to process multiple instances through multi thread or other parallel processing capability
+    in `preprocess` or `postprocess`, such as using MindData concurrency ability to process multiple input
+    images in `preprocess`, MindSpore Serving provides 'call_preprocess_pipeline' and 'call_pstprocess_pipeline'
+    to register such preprocessing and postprocessing. For more detail,
+    please refer to [Resnet50 model configuration example]
+    <https://gitee.com/mindspore/serving/blob/master/example/resnet/resnet50/servable_config.py>`_ .
+
     Args:
         preprocess_fun (function): Python pipeline function for preprocess.
         args: Preprocess inputs. The length of 'args' should equal to the input parameters number
@@ -129,14 +137,17 @@ def call_preprocess_pipeline(preprocess_fun, *args):
     Examples:
         >>> from mindspore_serving.worker import register
         >>> import numpy as np
-        >>> def add_trans_datatype(x1, x2):
-        ...     return x1.astype(np.float32), x2.astype(np.float32)
+        >>> def add_trans_datatype(instances):
+        ...     for instance in instances:
+        ...         x1 = instance[0]
+        ...         x2 = instance[0]
+        ...         yield x1.astype(np.float32), x2.astype(np.float32)
         >>>
         >>> register.declare_servable(servable_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=False)
         >>>
         >>> @register.register_method(output_names=["y"]) # register add_cast method in add
         >>> def add_cast(x1, x2):
-        ...     x1, x2 = register.call_preprocess(add_trans_datatype, x1, x2)  # cast input to float32
+        ...     x1, x2 = register.call_preprocess_pipeline(add_trans_datatype, x1, x2)  # cast input to float32
         ...     y = register.call_servable(x1, x2)
         ...     return y
     """
@@ -274,6 +285,14 @@ def call_servable(*args):
 
 def call_postprocess_pipeline(postprocess_fun, *args):
     r"""For method registration, define the postprocessing pipeline function and its' parameters.
+
+    A single request can include multiple instances, and multiple queued requests will also have multiple instances.
+    If you need to process multiple instances through multi thread or other parallel processing capability
+    in `preprocess` or `postprocess`, such as using MindData concurrency ability to process multiple input
+    images in `preprocess`, MindSpore Serving provides 'call_preprocess_pipeline' and 'call_pstprocess_pipeline'
+    to register such preprocessing and postprocessing. For more detail,
+    please refer to [Resnet50 model configuration example]
+    <https://gitee.com/mindspore/serving/blob/master/example/resnet/resnet50/servable_config.py>`_ .
 
     Args:
         postprocess_fun (function): Python pipeline function for postprocess.
@@ -460,7 +479,7 @@ def register_method(output_names):
             output_tensors = (output_tensors,)
         if len(output_tensors) != len(output_names):
             raise RuntimeError(
-                f"Method return output size {len(output_tensors)} not match registed {len(output_names)}")
+                f"Method return output size {len(output_tensors)} not match registered {len(output_names)}")
 
         method_def_context_.returns = [item.as_pair() for item in output_tensors]
         logger.info(f"Register method: method_name {method_def_context_.method_name} "

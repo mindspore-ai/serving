@@ -242,9 +242,8 @@ DataType RestfulService::GetArrayDataType(const json &json_array, HTTP_DATA_TYPE
 
 Status RestfulService::CheckReqJsonValid(const json &js_msg) {
   int count = 0;
-  for (size_t i = 0; i < request_type_list_.size(); i++) {
-    std::string item = request_type_list_.at(i);
-    auto it = js_msg.find(item.c_str());
+  for (auto &item : request_type_list_) {
+    auto it = js_msg.find(item);
     if (it != js_msg.end()) {
       count++;
       auto request_type = GetReqType(item);
@@ -257,7 +256,8 @@ Status RestfulService::CheckReqJsonValid(const json &js_msg) {
   }
 
   if (count != 1) {
-    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "key 'instances' should exit and only exit one time";
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
+           << "key 'instances' expects to exist once, but actually " << count << " times";
   }
   return SUCCESS;
 }

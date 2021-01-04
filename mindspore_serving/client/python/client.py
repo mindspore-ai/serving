@@ -191,24 +191,28 @@ class Client:
 
     def infer(self, instances):
         """
-        Used to create requests, access serving, and parse results.
+        Used to create requests, access serving service, and parse and return results.
 
         Args:
             instances (map, tuple of map): Instance or tuple of instances, every instance item is the inputs map.
-                The map key is the input name, and the value is the input value.
+                The map key is the input name, and the value is the input value, the type of value can be python int,
+                float, bool, str, bytes, numpy number, or numpy array object.
 
         Raises:
             RuntimeError: The type or value of the parameters is invalid, or other errors happened.
-        """
-        if not isinstance(instances, (tuple, list)):
-            instances = (instances,)
-        request = self._create_request()
-        for item in instances:
-            if isinstance(item, dict):
-                request.instances.append(self._create_instance(**item))
-            else:
-                raise RuntimeError("instance should be a map")
 
+        Examples:
+            >>> from mindspore_serving.client import Client
+            >>> import numpy as np
+            >>> client = Client("localhost", 5500, "add", "add_cast")
+            >>> instances = []
+            >>> x1 = np.ones((2, 2), np.int32)
+            >>> x2 = np.ones((2, 2), np.int32)
+            >>> instances.append({"x1": x1, "x2": x2})
+            >>> result = client.infer(instances)
+            >>> print(result)
+        """
+        request = self._create_request(instances)
         try:
             result = self.stub.Predict(request)
             return self._paser_result(result)
@@ -220,15 +224,60 @@ class Client:
             print(status_code.value)
             return {"error": "Grpc Error, " + str(status_code.value)}
 
-    def _create_request(self):
+    def infer_async(self, instances):
+        """
+        Used to create requests, async access serving.
+
+        Args:
+            instances (map, tuple of map): Instance or tuple of instances, every instance item is the inputs map.
+                The map key is the input name, and the value is the input value.
+
+        Raises:
+            RuntimeError: The type or value of the parameters is invalid, or other errors happened.
+
+        Examples:
+            >>> from mindspore_serving.client import Client
+            >>> import numpy as np
+            >>> client = Client("localhost", 5500, "add", "add_cast")
+            >>> instances = []
+            >>> x1 = np.ones((2, 2), np.int32)
+            >>> x2 = np.ones((2, 2), np.int32)
+            >>> instances.append({"x1": x1, "x2": x2})
+            >>> result_future = client.infer_async(instances)
+            >>> result = result_future.result()
+            >>> print(result)
+        """
+        request = self._create_request(instances)
+        try:
+            result_future = self.stub.Predict.future(request)
+            return ClientGrpcAsyncResult(result_future)
+
+        except grpc.RpcError as e:
+            print(e.details())
+            status_code = e.code()
+            print(status_code.name)
+            print(status_code.value)
+            return ClientGrpcAsyncError({"error": "Grpc Error, " + str(status_code.value)})
+
+    def _create_request(self, instances):
         """Used to create request spec."""
+        if not isinstance(instances, (tuple, list)):
+            instances = (instances,)
+
         request = ms_service_pb2.PredictRequest()
         request.servable_spec.name = self.servable_name
         request.servable_spec.method_name = self.method_name
         request.servable_spec.version_number = self.version_number
+
+        for item in instances:
+            if isinstance(item, dict):
+                request.instances.append(self._create_instance(**item))
+            else:
+                raise RuntimeError("instance should be a map")
         return request
 
-    def _create_instance(self, **kwargs):
+    @staticmethod
+    def _create_instance(**kwargs):
         """Used to create gRPC instance."""
         instance = ms_service_pb2.Instance()
         for k, w in kwargs.items():
@@ -245,7 +294,8 @@ class Client:
                 raise RuntimeError("Not support value type " + str(type(w)))
         return instance
 
-    def _paser_result(self, result):
+    @staticmethod
+    def _paser_result(result):
         """Used to parse result."""
         error_msg_len = len(result.error_msg)
         if error_msg_len == 1:
@@ -265,3 +315,47 @@ class Client:
             else:
                 ret_val.append({"error": bytes.decode(result.error_msg[i].error_msg)})
         return ret_val
+
+
+class ClientGrpcAsyncResult:
+    """
+    When Client.infer_async invoke sucessfully, a ClientGrpcAsyncResult object is returned.
+
+    Examples:
+        >>> from mindspore_serving.client import Client
+        >>> import numpy as np
+        >>> client = Client("localhost", 5500, "add", "add_cast")
+        >>> instances = []
+        >>> x1 = np.ones((2, 2), np.int32)
+        >>> x2 = np.ones((2, 2), np.int32)
+        >>> instances.append({"x1": x1, "x2": x2})
+        >>> result_future = client.infer_async(instances)
+        >>> result = result_future.result()
+        >>> print(result)
+    """
+
+    def __init__(self, result_future):
+        self.result_future = result_future
+
+    def result(self):
+        """Wait and get result of inference result, the gRPC message will be parse to tuple of instances result.
+        Every instance result is dict, and value could be numpy array/number, str or bytes according gRPC Tensor
+        data type.
+        """
+        result = self.result_future.result()
+        # pylint: disable=protected-access
+        result = Client._paser_result(result)
+        return result
+
+
+class ClientGrpcAsyncError:
+    """When gRPC failed happened when calling Client.infer_async, a ClientGrpcAsyncError object is returned.
+    """
+
+    def __init__(self, result_error):
+        self.result_error = result_error
+
+    def result(self):
+        """Get gRPC error message.
+        """
+        return self.result_error

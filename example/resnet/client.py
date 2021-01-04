@@ -31,6 +31,7 @@ def read_images():
 
 def run_classify_top1():
     """Client for servable resnet50 and method classify_top1"""
+    print("run_classify_top1-----------")
     client = Client("localhost", 5500, "resnet50", "classify_top1")
     instances = []
     for image in read_images():
@@ -41,6 +42,7 @@ def run_classify_top1():
 
 def run_classify_top1_v1():
     """Client for servable resnet50 and method classify_top1_v1"""
+    print("run_classify_top1_v1-----------")
     client = Client("localhost", 5500, "resnet50", "classify_top1_v1")
     instances = []
     for image in read_images():
@@ -51,21 +53,44 @@ def run_classify_top1_v1():
 
 def run_classify_top5():
     """Client for servable resnet50 and method classify_top5"""
+    print("run_classify_top5-----------")
     client = Client("localhost", 5500, "resnet50", "classify_top5")
     instances = []
     for image in read_images():  # read multi image
         instances.append({"image": image})  # input `image`
+
     result = client.infer(instances)
+
     print(result)
     for result_item in result:  # result for every image
         label = result_item["label"]  # result `label`
         score = result_item["score"]  # result `score`
-        print("label result", label)
-        print("score result", score)
+        print("label result:", label)
+        print("score result:", score)
+
+
+def run_classify_top5_async():
+    """Client for servable resnet50 and method classify_top5"""
+    print("run_classify_top5_async-----------")
+    client = Client("localhost", 5500, "resnet50", "classify_top5")
+    instances = []
+    for image in read_images():  # read multi image
+        instances.append({"image": image})  # input `image`
+
+    result_future = client.infer_async(instances)
+    result = result_future.result()
+
+    print(result)
+    for result_item in result:  # result for every image
+        label = result_item["label"]  # result `label`
+        score = result_item["score"]  # result `score`
+        print("label result:", label)
+        print("score result:", score)
 
 
 def run_restful_classify_top1():
     """RESTful Client for servable resnet50 and method classify_top1"""
+    print("run_restful_classify_top1-----------")
     import base64
     import requests
     import json
@@ -88,3 +113,4 @@ if __name__ == '__main__':
     run_classify_top1_v1()
     run_classify_top5()
     run_restful_classify_top1()
+    run_classify_top5_async()

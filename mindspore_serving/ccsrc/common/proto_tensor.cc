@@ -244,13 +244,14 @@ Status GrpcTensorHelper::CreateInstanceFromRequest(const proto::PredictRequest &
            << "Method " << method_name << " is not registed for servable " << servable_name;
   }
 
-  // instance
-  if (request.instances_size() > 0) {
-    status = CreateInstanceFromRequestInstances(request, method_signature.inputs, results);
-    if (status != SUCCESS) {
-      MSI_LOG_ERROR << "Create instances from request instances failed";
-      return status;
-    }
+  if (request.instances_size() == 0) {
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
+           << "Instances count of request cannot be 0, servable: " << servable_name << ", method: " << method_name;
+  }
+  status = CreateInstanceFromRequestInstances(request, method_signature.inputs, results);
+  if (status != SUCCESS) {
+    MSI_LOG_ERROR << "Create instances from request instances failed";
+    return status;
   }
   return SUCCESS;
 }
@@ -273,12 +274,12 @@ Status GrpcTensorHelper::CreateReplyFromInstances(const proto::PredictRequest &r
   *reply->mutable_servable_spec() = request.servable_spec();
 
   size_t err_cnt = 0;
-  for (auto &output_intance : outputs) {
-    if (output_intance.error_msg != SUCCESS) {
+  for (auto &output_instance : outputs) {
+    if (output_instance.error_msg != SUCCESS) {
       err_cnt++;
-    } else if (output_intance.data.size() != method_signature.outputs.size()) {
+    } else if (output_instance.data.size() != method_signature.outputs.size()) {
       return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
-             << "Result data tensor size " << output_intance.data.size() << " not equal outputs size "
+             << "Result data tensor size " << output_instance.data.size() << " not equal outputs size "
              << method_signature.outputs.size() << "defined in method signature";
     }
   }
@@ -294,19 +295,17 @@ Status GrpcTensorHelper::CreateReplyFromInstances(const proto::PredictRequest &r
     }
   }
   // create instance reply, same with request
-  if (request.instances_size() > 0) {
-    for (auto &output_intance : outputs) {
-      auto proto_instance = reply->add_instances();
-      if (output_intance.data.empty()) {
-        continue;
-      }
-      auto proto_items = proto_instance->mutable_items();
-      for (size_t i = 0; i < method_signature.outputs.size(); i++) {
-        auto &output_tensor = output_intance.data[i];
-        auto &proto_tensor = (*proto_items)[method_signature.outputs[i]];
-        ProtoTensor result_tensor(&proto_tensor);
-        result_tensor.assgin(*output_tensor);
-      }
+  for (auto &output_intance : outputs) {
+    auto proto_instance = reply->add_instances();
+    if (output_intance.data.empty()) {
+      continue;
+    }
+    auto proto_items = proto_instance->mutable_items();
+    for (size_t i = 0; i < method_signature.outputs.size(); i++) {
+      auto &output_tensor = output_intance.data[i];
+      auto &proto_tensor = (*proto_items)[method_signature.outputs[i]];
+      ProtoTensor result_tensor(&proto_tensor);
+      result_tensor.assgin(*output_tensor);
     }
   }
   return SUCCESS;
@@ -328,7 +327,7 @@ Status GrpcTensorHelper::CreateInstanceFromRequestInstances(const proto::Predict
                << "Cannot find input " << input_name << " in instance input , servable " << servable_name << ", method "
                << method_name;
       }
-      status = CheckRequestTensor(it->second, true, 1);
+      status = CheckRequestTensor(it->second);
       if (status != SUCCESS) {
         auto status2 = INFER_STATUS(INVALID_INPUTS) << "Instances input " << input_name << " check failed";
         MSI_LOG_ERROR << status2.StatusMessage();
@@ -342,33 +341,18 @@ Status GrpcTensorHelper::CreateInstanceFromRequestInstances(const proto::Predict
   return SUCCESS;
 }
 
-Status GrpcTensorHelper::CheckRequestTensor(const proto::Tensor &tensor, bool is_instance_tensor, uint32_t batch_size) {
+Status GrpcTensorHelper::CheckRequestTensor(const proto::Tensor &tensor) {
   Status status;
   ProtoTensor tensor_input(const_cast<proto::Tensor *>(&tensor));
   auto shape = tensor_input.shape();
   if (tensor.dtype() == proto::MS_BYTES || tensor.dtype() == proto::MS_STRING) {
-    if (is_instance_tensor) {
-      if (tensor.bytes_val_size() != 1) {
-        return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
-               << "Instance tensor check failed: bytes or string type shape batch size " << batch_size
-               << " not equal to bytes val size " << tensor.bytes_val_size();
-      }
-      if (!(shape.size() == 1 && shape[0] == 1) && !shape.empty()) {
-        return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
-               << "Instance tensor check failed: bytes or string type input "
-               << " shape can only be (1,) or empty, but given shape is " << shape;
-      }
-    } else {
-      if (static_cast<int64_t>(tensor.bytes_val_size()) != batch_size) {
-        return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
-               << "Inputs tensor check failed: bytes or string type shape batch size " << batch_size
-               << " not equal to bytes val size " << tensor.bytes_val_size();
-      }
-      if (shape.size() != 1) {
-        return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
-               << "Inputs Tensor check failed: bytes or string type input "
-               << " shape can only be (batch_size,), but given shape is " << shape;
-      }
+    if (tensor.bytes_val_size() != 1) {
+      return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
+             << "Instance tensor check failed: bytes or string type shape batch size can only be 1";
+    }
+    if (!(shape.size() == 1 && shape[0] == 1) && !shape.empty()) {
+      return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Instance tensor check failed: bytes or string type input "
+                                                    << " shape can only be (1,) or empty, but given shape is " << shape;
     }
   } else {
     size_t element_num = tensor_input.element_cnt();
