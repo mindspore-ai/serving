@@ -73,7 +73,7 @@ class MS_API GrpcTensorHelper {
   static Status CreateInstanceFromRequestInstances(const proto::PredictRequest &request,
                                                    const std::vector<std::string> &input_names,
                                                    std::vector<InstanceData> *results);
-  static Status CheckRequestTensor(const proto::Tensor &tensor, bool is_instance_tensor, uint32_t batch_size);
+  static Status CheckRequestTensor(const proto::Tensor &tensor);
 };
 
 extern MS_API LogStream &operator<<(serving::LogStream &stream, proto::DataType data_type);
