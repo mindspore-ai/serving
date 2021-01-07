@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "system/test_servable_common.h"
+#include "tests/ut/cpp/common/test_servable_common.h"
 
 namespace mindspore {
 namespace serving {

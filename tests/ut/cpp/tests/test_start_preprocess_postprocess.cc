@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "system/test_servable_common.h"
+#include "tests/ut/cpp/common/test_servable_common.h"
 
 namespace mindspore {
 namespace serving {
@@ -60,46 +60,44 @@ TEST_F(TestPreprocessPostprocess, test_master_worker_with_preproces_and_postproc
   // run servable
   proto::PredictRequest request;
   size_t instances_count = 3;
-  auto request_servable_spec = request.mutable_servable_spec();
-  request_servable_spec->set_name(servable_name_);
-  request_servable_spec->set_method_name("add_cast");
-  request_servable_spec->set_version_number(0);
-
-  std::vector<std::vector<int32_t>> y_data_list;
-  for (size_t k = 0; k < instances_count; k++) {
-    std::vector<int32_t> x1_data = {1, 2, 3, 4};
-    std::vector<int32_t> x2_data = {2, 3, 4, 5};
-    std::vector<int32_t> y_data;
-    for (size_t i = 0; i < x1_data.size(); i++) {
-      x1_data[i] *= (k + 1);
-      x2_data[i] *= (k + 1);
-      y_data.push_back(x1_data[i] + x2_data[i]);
-    }
-    y_data_list.push_back(y_data);
-
-    auto instance = request.add_instances();
-    auto &input_map = (*instance->mutable_items());
-    // input x1
-    InitTensor(&input_map["x1"], {2, 2}, proto::MS_INT32, x1_data.data(), x1_data.size() * sizeof(int32_t));
-    // input x2
-    InitTensor(&input_map["x2"], {2, 2}, proto::MS_INT32, x2_data.data(), x2_data.size() * sizeof(int32_t));
-  }
+  // input int32 --> preprocess int32-float32 --> servable float32-float32 --> postprocess int32-int32, shape [2,2]
+  auto y_data_list =
+    InitMultiInstancesRequest<int32_t, int32_t>(&request, servable_name_, "add_cast", 0, instances_count);
 
   proto::PredictReply reply;
   auto grpc_status = Dispatch(request, &reply);
   EXPECT_TRUE(grpc_status.ok());
   // checkout output
-  ASSERT_EQ(reply.instances_size(), instances_count);
-  ASSERT_EQ(reply.error_msg_size(), 0);
-  for (size_t k = 0; k < instances_count; k++) {
-    auto &output_instance = reply.instances(k);
-    ASSERT_EQ(output_instance.items_size(), 1);
-    auto &output_items = output_instance.items();
-    ASSERT_EQ(output_items.begin()->first, "y");
-    auto &output_tensor = output_items.begin()->second;
+  CheckMultiInstanceResult(reply, y_data_list, instances_count);
+}
 
-    CheckTensor(output_tensor, {2, 2}, proto::MS_INT32, y_data_list[k].data(), y_data_list[k].size() * sizeof(int32_t));
-  }
+TEST_F(TestPreprocessPostprocess, test_master_worker_with_preproces_and_postprocess_batching_success) {
+  Init("test_servable_dir", "test_servable", 1, "test_add.mindir");
+  // declare_servable
+  // with_batch_dim = true
+  DeclareServable("test_servable", "test_add.mindir", "mindir", true);
+  // register method
+  ServableStorage::Instance().RegisterInputOutputInfo("test_servable", 2, 1);
+
+  MethodSignature method_signature = InitDefaultMethod();
+  ServableStorage::Instance().RegisterMethod(method_signature);
+
+  // start_servable
+  Status status = StartServable("test_servable_dir", "test_servable", 0);
+  EXPECT_TRUE(status.IsSuccess());
+
+  // run servable
+  proto::PredictRequest request;
+  size_t instances_count = 3;
+  // input int32 --> preprocess int32-float32 --> servable float32-float32 --> postprocess int32-int32, shape [2]
+  auto y_data_list =
+    InitMultiInstancesShape2Request<int32_t, int32_t>(&request, servable_name_, "add_cast", 0, instances_count);
+
+  proto::PredictReply reply;
+  auto grpc_status = Dispatch(request, &reply);
+  EXPECT_TRUE(grpc_status.ok());
+  // checkout output
+  CheckMultiInstanceResult(reply, y_data_list, instances_count);
 }
 
 TEST_F(TestPreprocessPostprocess, test_master_worker_with_only_preproces_success) {
@@ -121,47 +119,46 @@ TEST_F(TestPreprocessPostprocess, test_master_worker_with_only_preproces_success
   // run servable
   proto::PredictRequest request;
   size_t instances_count = 3;
-  // invalid version_number
-  auto request_servable_spec = request.mutable_servable_spec();
-  request_servable_spec->set_name(servable_name_);
-  request_servable_spec->set_method_name("add_cast");
-  request_servable_spec->set_version_number(0);
-
-  std::vector<std::vector<float>> y_data_list;
-  for (size_t k = 0; k < instances_count; k++) {
-    std::vector<int32_t> x1_data = {1, 2, 3, 4};
-    std::vector<int32_t> x2_data = {2, 3, 4, 5};
-    std::vector<float> y_data;
-    for (size_t i = 0; i < x1_data.size(); i++) {
-      x1_data[i] *= (k + 1);
-      x2_data[i] *= (k + 1);
-      y_data.push_back(x1_data[i] + x2_data[i]);
-    }
-    y_data_list.push_back(y_data);
-
-    auto instance = request.add_instances();
-    auto &input_map = (*instance->mutable_items());
-    // input x1
-    InitTensor(&input_map["x1"], {2, 2}, proto::MS_INT32, x1_data.data(), x1_data.size() * sizeof(int32_t));
-    // input x2
-    InitTensor(&input_map["x2"], {2, 2}, proto::MS_INT32, x2_data.data(), x2_data.size() * sizeof(int32_t));
-  }
+  // input int32 --> preprocess int32-float32 --> servable float32-float32, shape [2,2]
+  auto y_data_list =
+    InitMultiInstancesRequest<int32_t, float>(&request, servable_name_, "add_cast", 0, instances_count);
 
   proto::PredictReply reply;
   auto grpc_status = Dispatch(request, &reply);
   EXPECT_TRUE(grpc_status.ok());
   // checkout output
-  ASSERT_EQ(reply.instances_size(), instances_count);
-  ASSERT_EQ(reply.error_msg_size(), 0);
-  for (size_t k = 0; k < instances_count; k++) {
-    auto &output_instance = reply.instances(k);
-    ASSERT_EQ(output_instance.items_size(), 1);
-    auto &output_items = output_instance.items();
-    ASSERT_EQ(output_items.begin()->first, "y");
-    auto &output_tensor = output_items.begin()->second;
+  CheckMultiInstanceResult(reply, y_data_list, instances_count);
+}
 
-    CheckTensor(output_tensor, {2, 2}, proto::MS_FLOAT32, y_data_list[k].data(), y_data_list[k].size() * sizeof(float));
-  }
+TEST_F(TestPreprocessPostprocess, test_master_worker_with_only_preproces_batching_success) {
+  Init("test_servable_dir", "test_servable", 1, "test_add.mindir");
+  // declare_servable
+  // with_batch_dim=true
+  DeclareServable("test_servable", "test_add.mindir", "mindir", true);
+  // register method
+  ServableStorage::Instance().RegisterInputOutputInfo("test_servable", 2, 1);
+  MethodSignature method_signature = InitDefaultMethod();
+  method_signature.postprocess_name.clear();
+  method_signature.postprocess_inputs.clear();
+  method_signature.returns = {{kPredictPhaseTag_Predict, 0}};
+  ServableStorage::Instance().RegisterMethod(method_signature);
+
+  // start_servable
+  Status status = StartServable("test_servable_dir", "test_servable", 0);
+  EXPECT_TRUE(status.IsSuccess());
+
+  // run servable
+  proto::PredictRequest request;
+  size_t instances_count = 3;
+  // input int32 --> preprocess int32-float32 --> servable float32-float32, shape [2]
+  auto y_data_list =
+    InitMultiInstancesShape2Request<int32_t, float>(&request, servable_name_, "add_cast", 0, instances_count);
+
+  proto::PredictReply reply;
+  auto grpc_status = Dispatch(request, &reply);
+  EXPECT_TRUE(grpc_status.ok());
+  // checkout output
+  CheckMultiInstanceResult(reply, y_data_list, instances_count);
 }
 
 TEST_F(TestPreprocessPostprocess, test_master_worker_with_only_postprocess_success) {
@@ -183,47 +180,46 @@ TEST_F(TestPreprocessPostprocess, test_master_worker_with_only_postprocess_succe
   // run servable
   proto::PredictRequest request;
   size_t instances_count = 3;
-  // invalid version_number
-  auto request_servable_spec = request.mutable_servable_spec();
-  request_servable_spec->set_name(servable_name_);
-  request_servable_spec->set_method_name("add_cast");
-  request_servable_spec->set_version_number(0);
-
-  std::vector<std::vector<int32_t>> y_data_list;
-  for (size_t k = 0; k < instances_count; k++) {
-    std::vector<float> x1_data = {1.1, 2.1, 3.1, 4.1};
-    std::vector<float> x2_data = {2.1, 3.2, 4.3, 5.4};
-    std::vector<int32_t> y_data;
-    for (size_t i = 0; i < x1_data.size(); i++) {
-      x1_data[i] *= (k + 1);
-      x2_data[i] *= (k + 1);
-      y_data.push_back(static_cast<int32_t>(x1_data[i] + x2_data[i]));
-    }
-    y_data_list.push_back(y_data);
-
-    auto instance = request.add_instances();
-    auto &input_map = (*instance->mutable_items());
-    // input x1
-    InitTensor(&input_map["x1"], {2, 2}, proto::MS_FLOAT32, x1_data.data(), x1_data.size() * sizeof(int32_t));
-    // input x2
-    InitTensor(&input_map["x2"], {2, 2}, proto::MS_FLOAT32, x2_data.data(), x2_data.size() * sizeof(int32_t));
-  }
+  // input float32 --> servable float32-float32 --> postprocess float32-int32, shape [2,2]
+  auto y_data_list =
+    InitMultiInstancesRequest<float, int32_t>(&request, servable_name_, "add_cast", 0, instances_count);
 
   proto::PredictReply reply;
   auto grpc_status = Dispatch(request, &reply);
   EXPECT_TRUE(grpc_status.ok());
   // checkout output
-  ASSERT_EQ(reply.instances_size(), instances_count);
-  ASSERT_EQ(reply.error_msg_size(), 0);
-  for (size_t k = 0; k < instances_count; k++) {
-    auto &output_instance = reply.instances(k);
-    ASSERT_EQ(output_instance.items_size(), 1);
-    auto &output_items = output_instance.items();
-    ASSERT_EQ(output_items.begin()->first, "y");
-    auto &output_tensor = output_items.begin()->second;
+  CheckMultiInstanceResult(reply, y_data_list, instances_count);
+}
 
-    CheckTensor(output_tensor, {2, 2}, proto::MS_INT32, y_data_list[k].data(), y_data_list[k].size() * sizeof(int32_t));
-  }
+TEST_F(TestPreprocessPostprocess, test_master_worker_with_only_postprocess_batching_success) {
+  Init("test_servable_dir", "test_servable", 1, "test_add.mindir");
+  // declare_servable
+  // with_batch_dim=true
+  DeclareServable("test_servable", "test_add.mindir", "mindir", true);
+  // register method
+  ServableStorage::Instance().RegisterInputOutputInfo("test_servable", 2, 1);
+  MethodSignature method_signature = InitDefaultMethod();
+  method_signature.preprocess_name.clear();
+  method_signature.preprocess_inputs.clear();
+  method_signature.servable_inputs = {{kPredictPhaseTag_Input, 0}, {kPredictPhaseTag_Input, 1}};
+  ServableStorage::Instance().RegisterMethod(method_signature);
+
+  // start_servable
+  Status status = StartServable("test_servable_dir", "test_servable", 0);
+  EXPECT_TRUE(status.IsSuccess());
+
+  // run servable
+  proto::PredictRequest request;
+  size_t instances_count = 3;
+  // input float32 --> servable float32-float32 --> postprocess float32-int32, shape [2]
+  auto y_data_list =
+    InitMultiInstancesShape2Request<float, int32_t>(&request, servable_name_, "add_cast", 0, instances_count);
+
+  proto::PredictReply reply;
+  auto grpc_status = Dispatch(request, &reply);
+  EXPECT_TRUE(grpc_status.ok());
+  // checkout output
+  CheckMultiInstanceResult(reply, y_data_list, instances_count);
 }
 
 // Test data flow in input\preprocess\predict\postprocess
@@ -271,30 +267,8 @@ TEST_F(TestPreprocessPostprocess, test_preproces_process_failed) {
   // run servable
   proto::PredictRequest request;
   size_t instances_count = 3;
-  auto request_servable_spec = request.mutable_servable_spec();
-  request_servable_spec->set_name(servable_name_);
-  request_servable_spec->set_method_name("add_cast");
-  request_servable_spec->set_version_number(0);
-
-  std::vector<std::vector<int32_t>> y_data_list;
-  for (size_t k = 0; k < instances_count; k++) {
-    std::vector<int32_t> x1_data = {1, 2, 3, 4};
-    std::vector<int32_t> x2_data = {2, 3, 4, 5};
-    std::vector<int32_t> y_data;
-    for (size_t i = 0; i < x1_data.size(); i++) {
-      x1_data[i] *= (k + 1);
-      x2_data[i] *= (k + 1);
-      y_data.push_back(x1_data[i] + x2_data[i]);
-    }
-    y_data_list.push_back(y_data);
-
-    auto instance = request.add_instances();
-    auto &input_map = (*instance->mutable_items());
-    // input x1, required int32 input
-    InitTensor(&input_map["x1"], {2, 2}, proto::MS_FLOAT32, x1_data.data(), x1_data.size() * sizeof(int32_t));
-    // input x2, required int32 input
-    InitTensor(&input_map["x2"], {2, 2}, proto::MS_FLOAT32, x2_data.data(), x2_data.size() * sizeof(int32_t));
-  }
+  // input float32, invalid for preprocess, which required int32
+  auto y_data_list = InitMultiInstancesRequest<float, float>(&request, servable_name_, "add_cast", 0, instances_count);
 
   proto::PredictReply reply;
   auto grpc_status = Dispatch(request, &reply);
@@ -333,30 +307,9 @@ TEST_F(TestPreprocessPostprocess, test_postproces_process_failed) {
   // run servable
   proto::PredictRequest request;
   size_t instances_count = 3;
-  auto request_servable_spec = request.mutable_servable_spec();
-  request_servable_spec->set_name(servable_name_);
-  request_servable_spec->set_method_name("add_cast");
-  request_servable_spec->set_version_number(0);
-
-  std::vector<std::vector<int32_t>> y_data_list;
-  for (size_t k = 0; k < instances_count; k++) {
-    std::vector<int32_t> x1_data = {1, 2, 3, 4};
-    std::vector<int32_t> x2_data = {2, 3, 4, 5};
-    std::vector<int32_t> y_data;
-    for (size_t i = 0; i < x1_data.size(); i++) {
-      x1_data[i] *= (k + 1);
-      x2_data[i] *= (k + 1);
-      y_data.push_back(x1_data[i] + x2_data[i]);
-    }
-    y_data_list.push_back(y_data);
-
-    auto instance = request.add_instances();
-    auto &input_map = (*instance->mutable_items());
-    // input x1,
-    InitTensor(&input_map["x1"], {2, 2}, proto::MS_INT32, x1_data.data(), x1_data.size() * sizeof(int32_t));
-    // input x2
-    InitTensor(&input_map["x2"], {2, 2}, proto::MS_INT32, x2_data.data(), x2_data.size() * sizeof(int32_t));
-  }
+  // input int32, invalid for postprocess
+  auto y_data_list =
+    InitMultiInstancesRequest<int32_t, int32_t>(&request, servable_name_, "add_cast", 0, instances_count);
 
   proto::PredictReply reply;
   auto grpc_status = Dispatch(request, &reply);

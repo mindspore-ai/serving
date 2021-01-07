@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "system/test_servable_common.h"
+#include "tests/ut/cpp/common/test_servable_common.h"
 
 #define private public
 #undef private
@@ -91,15 +91,7 @@ TEST_F(TestMasterWorkerClient, test_master_worker_success_version_number_2_reque
   auto grpc_status = Dispatch(request, &reply);
   EXPECT_TRUE(grpc_status.ok());
   // checkout output
-  ASSERT_EQ(reply.instances_size(), 1);
-  ASSERT_EQ(reply.error_msg_size(), 0);
-  auto &output_instance = reply.instances(0);
-  ASSERT_EQ(output_instance.items_size(), 1);
-  auto &output_items = output_instance.items();
-  ASSERT_EQ(output_items.begin()->first, "y");
-  auto &output_tensor = output_items.begin()->second;
-
-  CheckTensor(output_tensor, {2, 2}, proto::MS_FLOAT32, y_data.data(), y_data.size() * sizeof(float));
+  CheckInstanceResult(reply, y_data);
 }
 
 TEST_F(TestMasterWorkerClient, test_master_worker_success_version_number_2_request_lastest) {
@@ -117,15 +109,7 @@ TEST_F(TestMasterWorkerClient, test_master_worker_success_version_number_2_reque
   auto grpc_status = Dispatch(request, &reply);
   EXPECT_TRUE(grpc_status.ok());
   // checkout output
-  ASSERT_EQ(reply.instances_size(), 1);
-  ASSERT_EQ(reply.error_msg_size(), 0);
-  auto &output_instance = reply.instances(0);
-  ASSERT_EQ(output_instance.items_size(), 1);
-  auto &output_items = output_instance.items();
-  ASSERT_EQ(output_items.begin()->first, "y");
-  auto &output_tensor = output_items.begin()->second;
-
-  CheckTensor(output_tensor, {2, 2}, proto::MS_FLOAT32, y_data.data(), y_data.size() * sizeof(float));
+  CheckInstanceResult(reply, y_data);
 }
 
 TEST_F(TestMasterWorkerClient, test_master_worker_success_multi_version_number_1_2_request_lastest) {
@@ -146,15 +130,7 @@ TEST_F(TestMasterWorkerClient, test_master_worker_success_multi_version_number_1
   auto grpc_status = Dispatch(request, &reply);
   EXPECT_TRUE(grpc_status.ok());
   // checkout output
-  ASSERT_EQ(reply.instances_size(), 1);
-  ASSERT_EQ(reply.error_msg_size(), 0);
-  auto &output_instance = reply.instances(0);
-  ASSERT_EQ(output_instance.items_size(), 1);
-  auto &output_items = output_instance.items();
-  ASSERT_EQ(output_items.begin()->first, "y");
-  auto &output_tensor = output_items.begin()->second;
-
-  CheckTensor(output_tensor, {2, 2}, proto::MS_FLOAT32, y_data.data(), y_data.size() * sizeof(float));
+  CheckInstanceResult(reply, y_data);
 }
 
 TEST_F(TestMasterWorkerClient, test_master_worker_success_version_number_1_2_request_2) {
@@ -175,15 +151,7 @@ TEST_F(TestMasterWorkerClient, test_master_worker_success_version_number_1_2_req
   auto grpc_status = Dispatch(request, &reply);
   EXPECT_TRUE(grpc_status.ok());
   // checkout output
-  ASSERT_EQ(reply.instances_size(), 1);
-  ASSERT_EQ(reply.error_msg_size(), 0);
-  auto &output_instance = reply.instances(0);
-  ASSERT_EQ(output_instance.items_size(), 1);
-  auto &output_items = output_instance.items();
-  ASSERT_EQ(output_items.begin()->first, "y");
-  auto &output_tensor = output_items.begin()->second;
-
-  CheckTensor(output_tensor, {2, 2}, proto::MS_FLOAT32, y_data.data(), y_data.size() * sizeof(float));
+  CheckInstanceResult(reply, y_data);
 }
 
 TEST_F(TestMasterWorkerClient, test_master_worker_success_version_number_1_2_request_1_failed) {
@@ -218,23 +186,14 @@ TEST_F(TestMasterWorkerClient, test_master_worker_three_instance_success) {
   // run servable
   proto::PredictRequest request;
   size_t instances_count = 3;
+  // input float32 --> servable float32-float32, shape [2, 2]
   auto y_data_list = InitMultiInstancesRequest(&request, servable_name_, "add_common", 0, instances_count);
 
   proto::PredictReply reply;
   auto grpc_status = Dispatch(request, &reply);
   EXPECT_TRUE(grpc_status.ok());
   // checkout output
-  ASSERT_EQ(reply.instances_size(), instances_count);
-  ASSERT_EQ(reply.error_msg_size(), 0);
-  for (size_t k = 0; k < instances_count; k++) {
-    auto &output_instance = reply.instances(k);
-    ASSERT_EQ(output_instance.items_size(), 1);
-    auto &output_items = output_instance.items();
-    ASSERT_EQ(output_items.begin()->first, "y");
-    auto &output_tensor = output_items.begin()->second;
-
-    CheckTensor(output_tensor, {2, 2}, proto::MS_FLOAT32, y_data_list[k].data(), y_data_list[k].size() * sizeof(float));
-  }
+  CheckMultiInstanceResult(reply, y_data_list, instances_count);
 }
 
 TEST_F(TestMasterWorkerClient, test_master_worker_input_size_not_match_failed) {
@@ -288,47 +247,15 @@ TEST_F(TestMasterWorkerClient, test_master_worker_with_batch_dim_true_success) {
 
   // run servable
   proto::PredictRequest request;
-  auto request_servable_spec = request.mutable_servable_spec();
-  request_servable_spec->set_name(servable_name_);
-  request_servable_spec->set_method_name("add_common");
-  request_servable_spec->set_version_number(0);
-
   size_t instances_count = 3;
-  std::vector<std::vector<float>> y_data_list;
-  for (size_t k = 0; k < instances_count; k++) {
-    std::vector<float> x1_data = {1.1, 2.2};
-    std::vector<float> x2_data = {1.2, 2.3};
-    std::vector<float> y_data;
-    for (size_t i = 0; i < x1_data.size(); i++) {
-      x1_data[i] *= (k + 1);
-      x2_data[i] *= (k + 1);
-      y_data.push_back(x1_data[i] + x2_data[i]);
-    }
-    y_data_list.push_back(y_data);
-
-    auto instance = request.add_instances();
-    auto &input_map = (*instance->mutable_items());
-    // input x1
-    InitTensor(&input_map["x1"], {2}, proto::MS_FLOAT32, x1_data.data(), x1_data.size() * sizeof(float));
-    // input x2
-    InitTensor(&input_map["x2"], {2}, proto::MS_FLOAT32, x2_data.data(), x2_data.size() * sizeof(float));
-  }
+  // input float32 --> servable float32-float32, shape [2]
+  auto y_data_list = InitMultiInstancesShape2Request(&request, servable_name_, "add_common", 0, instances_count);
 
   proto::PredictReply reply;
   auto grpc_status = Dispatch(request, &reply);
   EXPECT_TRUE(grpc_status.ok());
   // checkout output
-  ASSERT_EQ(reply.instances_size(), instances_count);
-  ASSERT_EQ(reply.error_msg_size(), 0);
-  for (size_t k = 0; k < instances_count; k++) {
-    auto &output_instance = reply.instances(k);
-    ASSERT_EQ(output_instance.items_size(), 1);
-    auto &output_items = output_instance.items();
-    ASSERT_EQ(output_items.begin()->first, "y");
-    auto &output_tensor = output_items.begin()->second;
-
-    CheckTensor(output_tensor, {2}, proto::MS_FLOAT32, y_data_list[k].data(), y_data_list[k].size() * sizeof(float));
-  }
+  CheckMultiInstanceResult(reply, y_data_list, instances_count);
 }
 
 TEST_F(TestMasterWorkerClient, test_master_worker_with_batch_dim_true_input_size_not_match_failed) {
@@ -453,6 +380,31 @@ TEST_F(TestMasterWorkerClient, test_master_worker_invalid_input_name) {
   ExpectContainMsg(reply.error_msg(0).error_msg(), "Cannot find input x2 in instance input");
 }
 
+TEST_F(TestMasterWorkerClient, test_master_worker_three_instance_one_input_invalid_failed) {
+  Init("test_servable_dir", "test_servable", 1, "test_add.mindir");
+  RegisterAddServable();
+
+  // start_servable
+  StartAddServable();
+
+  // run servable
+  proto::PredictRequest request;
+  size_t instances_count = 3;
+  // input float32 --> servable float32-float32, shape [2, 2]
+  auto y_data_list = InitMultiInstancesRequest(&request, servable_name_, "add_common", 0, instances_count);
+  auto items = request.mutable_instances(1)->mutable_items();
+  auto it = items->find("x2");
+  ASSERT_TRUE(it != items->end());
+  items->erase(it);  // erase x2 input
+
+  proto::PredictReply reply;
+  auto grpc_status = Dispatch(request, &reply);
+  EXPECT_TRUE(grpc_status.ok());
+  // checkout output
+  ASSERT_EQ(reply.error_msg_size(), 1);
+  ExpectContainMsg(reply.error_msg(0).error_msg(), "Cannot find input x2 in instance input");
+}
+
 TEST_F(TestMasterWorkerClient, test_master_worker_extra_input_success) {
   Init("test_servable_dir", "test_servable", 1, "test_add.mindir");
   RegisterAddServable();
@@ -494,17 +446,7 @@ TEST_F(TestMasterWorkerClient, test_master_worker_extra_input_success) {
   auto grpc_status = Dispatch(request, &reply);
   EXPECT_TRUE(grpc_status.ok());
   // checkout output
-  ASSERT_EQ(reply.instances_size(), 3);
-  ASSERT_EQ(reply.error_msg_size(), 0);
-  for (size_t k = 0; k < instances_count; k++) {
-    auto &output_instance = reply.instances(k);
-    ASSERT_EQ(output_instance.items_size(), 1);
-    auto &output_items = output_instance.items();
-    ASSERT_EQ(output_items.begin()->first, "y");
-    auto &output_tensor = output_items.begin()->second;
-
-    CheckTensor(output_tensor, {2, 2}, proto::MS_FLOAT32, y_data_list[k].data(), y_data_list[k].size() * sizeof(float));
-  }
+  CheckMultiInstanceResult(reply, y_data_list, instances_count);
 }
 
 TEST_F(TestMasterWorkerClient, test_master_worker_invalid_input_datatype_failed) {
