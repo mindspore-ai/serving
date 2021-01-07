@@ -84,14 +84,10 @@ include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 
 # serving_common for c++ server and python interface
 file(GLOB_RECURSE UT_CORE_SRC RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
-        "../../../mindspore_serving/ccsrc/master/*.cc" 
-        "../../../mindspore_serving/ccsrc/common/*.cc" 
+        "../../../mindspore_serving/ccsrc/master/*.cc"
+        "../../../mindspore_serving/ccsrc/common/*.cc"
         "../../../mindspore_serving/ccsrc/worker/*.cc")
 
-file(GLOB_RECURSE UT_RM_SRC RELATIVE  ${CMAKE_CURRENT_SOURCE_DIR}
-        "../../../mindspore_serving/ccsrc/worker/inference/*.cc")
-
-list(REMOVE_ITEM UT_CORE_SRC ${UT_RM_SRC})
 list(APPEND FINAL_SERVING_SRC ${UT_CORE_SRC})
 #add_library(serving_common SHARED ${SERVING_SRC})
 
@@ -101,6 +97,7 @@ check_pie_supported()
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/stub)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/stub/include)
 include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/mindspore_serving/ccsrc)
 link_directories(${CMAKE_BINARY_DIR}/googletest/googlemock/gtest)
@@ -108,7 +105,7 @@ link_directories(${CMKAE_BINARY_DIR}/securec/src)
 
 file(GLOB_RECURSE UT_LIST RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "*.cc")
 
-set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_SOURCE_DIR})
+#set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_SOURCE_DIR})
 add_executable(serving_ut ${UT_LIST} ${FINAL_SERVING_SRC})
 target_link_libraries(serving_ut mindspore_serving::gtest)
 target_link_libraries(serving_ut UT_PROTO_SRC_LIB mindspore_serving::event mindspore_serving::event_pthreads)

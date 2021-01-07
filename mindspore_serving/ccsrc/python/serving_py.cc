@@ -18,11 +18,11 @@
 #include "python/worker/preprocess_py.h"
 #include "python/worker/postprocess_py.h"
 #include "python/worker/worker_py.h"
+#include "python/worker/servable_py.h"
 #include "python/tensor_py.h"
 #include "common/servable.h"
 #include "worker/context.h"
 #include "python/master/master_py.h"
-#include "master/dispacther.h"
 
 namespace mindspore::serving {
 
@@ -81,14 +81,10 @@ PYBIND11_MODULE(_mindspore_serving, m) {
     .def_readwrite("servable_meta", &ServableSignature::servable_meta)
     .def_readwrite("methods", &ServableSignature::methods);
 
-  py::class_<ServableStorage, std::shared_ptr<ServableStorage>>(m, "ServableStorage_")
-    .def(py::init<>())
-    .def_static("get_instance", &ServableStorage::Instance)
-    .def("register_servable", &ServableStorage::Register)
-    .def("register_servable_input_output_info", &ServableStorage::RegisterInputOutputInfo)
-    .def("get_servable_input_output_info", &ServableStorage::GetInputOutputInfo)
-    .def("register_method", &ServableStorage::RegisterMethod)
-    .def("declare_servable", &ServableStorage::DeclareServable);
+  py::class_<PyServableStorage>(m, "ServableStorage_")
+    .def_static("register_servable_input_output_info", &PyServableStorage::RegisterInputOutputInfo)
+    .def_static("register_method", &PyServableStorage::RegisterMethod)
+    .def_static("declare_servable", &PyServableStorage::DeclareServable);
 
   py::class_<TaskContext>(m, "TaskContext_").def(py::init<>());
 

@@ -47,16 +47,10 @@ def export_net():
         os.mkdir(dst_dir)
     except OSError:
         pass
-    try:
-        dst_file = os.path.join(dst_dir, 'tensor_add.mindir')
-        if os.path.exists('tensor_add.mindir'):
-            copyfile('tensor_add.mindir', dst_file)
-            print("copy tensor_add.mindir to "+dst_dir+" success")
-        elif os.path.exists('tensor_add'):
-            copyfile('tensor_add', dst_file)
-            print("copy tensor_add to "+dst_dir+" success")
-    except:
-        print("copy tensor_add.mindir to "+dst_dir+" failed")
+
+    dst_file = os.path.join(dst_dir, 'tensor_add.mindir')
+    copyfile('tensor_add.mindir', dst_file)
+    print("copy tensor_add.mindir to " + dst_dir + " success")
 
     print(x)
     print(y)

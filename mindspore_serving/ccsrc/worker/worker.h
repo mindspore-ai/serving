@@ -61,9 +61,11 @@ struct ServableWorkerContext {
 
 class MS_API Worker {
  public:
-  static Worker &GetInstance();
   Worker();
   ~Worker();
+
+  static Worker &GetInstance();
+  void Clear();
 
   Status Run(const proto::PredictRequest &request, proto::PredictReply *reply);
   Status Run(const RequestSpec &request_spec, const std::vector<InstanceData> &inputs, std::vector<Instance> *outputs);
@@ -76,7 +78,6 @@ class MS_API Worker {
   Status StartServable(const std::string &servable_directory, const std::string &servable_name, uint32_t version_number,
                        std::shared_ptr<BaseNotifyMaster> notify_master);
   void StopServable(bool notify_master = true);
-  void Clear();
   bool HasCleared();
   Status RegisterWorker();
   Status StartGrpcServer(const std::string &ip, uint32_t grpc_port);
@@ -94,7 +95,8 @@ class MS_API Worker {
   ssize_t GetBatchSize() const;
 
  private:
-  ServableWorkerContext GetServableWorker(const RequestSpec &request_spec);
+  static std::shared_ptr<Worker> global_worker_;
+
   std::vector<ServableWorkerContext> work_list_;
   std::shared_ptr<serving::InferSession> session_ = nullptr;
   GrpcServer grpc_server_;
@@ -107,12 +109,12 @@ class MS_API Worker {
   LoadServableSpec base_spec_;
   std::atomic_bool exit_notify_master_ = true;
   std::atomic_bool servable_started_ = false;
-  std::atomic_bool servable_stoppedd_ = false;
   std::atomic_flag clear_flag_ = ATOMIC_FLAG_INIT;
   std::shared_ptr<BaseNotifyMaster> notify_master_ = nullptr;
 
   std::shared_mutex worker_shared_lock_;
 
+  ServableWorkerContext GetServableWorker(const RequestSpec &request_spec);
   Status LoadServableConfig(const LoadServableSpec &servable_spec, const std::string &version_strategy,
                             std::vector<uint64_t> *real_version_number);
   void GetVersions(const LoadServableSpec &servable_spec, std::vector<uint64_t> *real_versions);

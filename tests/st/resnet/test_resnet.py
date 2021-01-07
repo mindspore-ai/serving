@@ -18,6 +18,7 @@ import sys
 import pytest
 import numpy as np
 
+
 @pytest.mark.level0
 @pytest.mark.platform_arm_ascend_training
 @pytest.mark.env_single
@@ -31,10 +32,11 @@ def test_resnet():
     folders = []
     for folder in python_path_folders:
         folders += [os.path.join(folder, x) for x in os.listdir(folder) \
-                if os.path.isdir(os.path.join(folder, x)) and \
-                '/site-packages/mindspore' in os.path.join(folder, x)]
+                    if os.path.isdir(os.path.join(folder, x)) and \
+                    '/site-packages/mindspore' in os.path.join(folder, x)]
     ret = os.system(f"sh {sh_path}/resnet.sh {folders[0].split('mindspore', 1)[0] + 'mindspore'}")
     assert np.allclose(ret, 0)
+
 
 if __name__ == '__main__':
     test_resnet()

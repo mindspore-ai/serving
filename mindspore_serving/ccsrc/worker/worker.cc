@@ -111,9 +111,6 @@ Status Worker::RemoveWorker(const ServableWorkerContext &work) {
 
 Status Worker::Run(const proto::PredictRequest &request, proto::PredictReply *reply) {
   std::shared_lock<std::shared_mutex> lock(worker_shared_lock_);
-  if (servable_stoppedd_) {
-    return INFER_STATUS_LOG_ERROR(FAILED) << "Run worker for inference failed, worker has been stopped";
-  }
   if (!servable_started_) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Run worker for inference failed, worker has not been started";
   }
@@ -223,7 +220,7 @@ Status Worker::LoadModel(LoadServableSpec *servable_spec, uint64_t version_numbe
   MSI_EXCEPTION_IF_NULL(work);
   servable_spec->version_number = version_number;
   ServableSignature signature;
-  if (!ServableStorage::Instance()->GetServableDef(servable_spec->servable_name, &signature)) {
+  if (!ServableStorage::Instance().GetServableDef(servable_spec->servable_name, &signature)) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Servable " << servable_spec->servable_name << " has not been registerd";
   }
   const auto &servable_meta = signature.servable_meta;
@@ -296,6 +293,13 @@ Status Worker::StartServable(const std::string &servable_directory, const std::s
   if (servable_started_) {
     MSI_LOG_EXCEPTION << "A servable has been started, only one servable can run in a process currently.";
   }
+  clear_flag_.clear();
+
+  // start task queue for handle preprocess and postprocess
+  py_task_queue_group_.Start();
+  cpp_preprocess_.Start(2);
+  cpp_postprocess_.Start(2);
+
   notify_master_ = std::move(notify_master);
   base_spec_.servable_directory = servable_directory;
   base_spec_.servable_name = servable_name;
@@ -309,7 +313,7 @@ Status Worker::StartServable(const std::string &servable_directory, const std::s
   }
   Status status;
   ServableSignature signature;
-  if (!ServableStorage::Instance()->GetServableDef(servable_name, &signature)) {
+  if (!ServableStorage::Instance().GetServableDef(servable_name, &signature)) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Servable '" << servable_name << "' has not been registered";
   }
   if (session_ == nullptr) {
@@ -363,7 +367,6 @@ void Worker::Clear() {
   }
   std::unique_lock<std::shared_mutex> lock(worker_shared_lock_);
   MSI_LOG_INFO << "Start clear worker session";
-  servable_stoppedd_ = true;
   version_controller_.StopPollModelPeriodic();
   if (exit_notify_master_ && servable_started_) {
     notify_master_->Unregister();
@@ -381,10 +384,12 @@ void Worker::Clear() {
   cpp_preprocess_.Stop();
   cpp_postprocess_.Stop();
   grpc_server_.Stop();
+  ServableStorage::Instance().Clear();
+  servable_started_ = false;
   MSI_LOG_INFO << "End clear worker session";
 }
 
-bool Worker::HasCleared() { return servable_stoppedd_; }
+bool Worker::HasCleared() { return !servable_started_; }
 
 Worker::~Worker() { Clear(); }
 
@@ -487,10 +492,7 @@ ServableWorkerContext Worker::GetServableWorker(const RequestSpec &request_spec)
   return context;
 }
 
-Worker::Worker() {
-  cpp_preprocess_.Start(2);
-  cpp_postprocess_.Start(2);
-}
+Worker::Worker() {}
 
 ssize_t Worker::GetBatchSize() const {
   ssize_t batch_size_ret = -1;

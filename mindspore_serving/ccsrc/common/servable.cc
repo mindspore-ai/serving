@@ -90,8 +90,8 @@ Status ServableSignature::Check() const {
         auto &input = method.preprocess_inputs[i];
         if (input.first != kPredictPhaseTag_Input) {
           return INFER_STATUS_LOG_ERROR(FAILED)
-                 << "Model " << model_str << " method " << method.method_name << ", the preprocess " << i
-                 << "th input phase tag " << input.first << " invalid";
+                 << "Model " << model_str << " method " << method.method_name << ", the data of preprocess " << i
+                 << "th input cannot not come from '" << input.first << "'";
         }
         if (input.second >= method.inputs.size()) {
           return INFER_STATUS_LOG_ERROR(FAILED)
@@ -120,8 +120,8 @@ Status ServableSignature::Check() const {
         }
       } else {
         return INFER_STATUS_LOG_ERROR(FAILED)
-               << "Model " << model_str << " method " << method.method_name << ", the servable " << i
-               << "th input phase tag " << input.first << " invalid";
+               << "Model " << model_str << " method " << method.method_name << ", the data of servable " << i
+               << "th input cannot not come from '" << input.first << "'";
       }
     }
 
@@ -196,8 +196,8 @@ Status ServableSignature::Check() const {
         }
       } else {
         return INFER_STATUS_LOG_ERROR(FAILED)
-               << "Model " << model_str << " method " << method.method_name << ", the method " << i
-               << "th output phase tag " << input.first << " invalid";
+               << "Model " << model_str << " method " << method.method_name << ", the data of method " << i
+               << "th output cannot not come from '" << input.first << "'";
       }
     }
   }
@@ -233,11 +233,8 @@ bool ServableStorage::GetServableDef(const std::string &model_name, ServableSign
   return true;
 }
 
-std::shared_ptr<ServableStorage> ServableStorage::Instance() {
-  static std::shared_ptr<ServableStorage> storage;
-  if (storage == nullptr) {
-    storage = std::make_shared<ServableStorage>();
-  }
+ServableStorage &ServableStorage::Instance() {
+  static ServableStorage storage;
   return storage;
 }
 
@@ -265,23 +262,26 @@ void ServableStorage::DeclareServable(const mindspore::serving::ServableMeta &se
   it->second.servable_meta = servable;
 }
 
-void ServableStorage::RegisterInputOutputInfo(const std::string &servable_name, size_t inputs_count,
-                                              size_t outputs_count) {
+Status ServableStorage::RegisterInputOutputInfo(const std::string &servable_name, size_t inputs_count,
+                                                size_t outputs_count) {
   auto it = servable_signatures_map_.find(servable_name);
   if (it == servable_signatures_map_.end()) {
-    MSI_LOG_EXCEPTION << "RegisterInputOutputInfo failed, cannot find servable " << servable_name;
+    return INFER_STATUS_LOG_ERROR(FAILED) << "RegisterInputOutputInfo failed, cannot find servable " << servable_name;
   }
   auto &servable_meta = it->second.servable_meta;
   if (servable_meta.inputs_count != 0 && servable_meta.inputs_count != inputs_count) {
-    MSI_LOG_EXCEPTION << "RegisterInputOutputInfo failed, inputs count " << inputs_count << " not match old count "
-                      << servable_meta.inputs_count << ",servable name " << servable_name;
+    return INFER_STATUS_LOG_ERROR(FAILED)
+           << "RegisterInputOutputInfo failed, inputs count " << inputs_count << " not match old count "
+           << servable_meta.inputs_count << ",servable name " << servable_name;
   }
   if (servable_meta.outputs_count != 0 && servable_meta.outputs_count != outputs_count) {
-    MSI_LOG_EXCEPTION << "RegisterInputOutputInfo failed, outputs count " << outputs_count << " not match old count "
-                      << servable_meta.outputs_count << ",servable name " << servable_name;
+    return INFER_STATUS_LOG_ERROR(FAILED)
+           << "RegisterInputOutputInfo failed, outputs count " << outputs_count << " not match old count "
+           << servable_meta.outputs_count << ",servable name " << servable_name;
   }
   servable_meta.inputs_count = inputs_count;
   servable_meta.outputs_count = outputs_count;
+  return SUCCESS;
 }
 
 std::vector<size_t> ServableStorage::GetInputOutputInfo(const std::string &servable_name) const {
@@ -294,5 +294,7 @@ std::vector<size_t> ServableStorage::GetInputOutputInfo(const std::string &serva
   result.push_back(it->second.servable_meta.outputs_count);
   return result;
 }
+
+void ServableStorage::Clear() { servable_signatures_map_.clear(); }
 
 }  // namespace mindspore::serving

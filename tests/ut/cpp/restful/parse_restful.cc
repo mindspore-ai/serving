@@ -323,7 +323,7 @@ TEST_F(TestParseInput, test_key_empty_FAIL) {
   ASSERT_NE(status.StatusCode(), SUCCESS);
 }
 
-TEST_F(TestParseInput, test_value_empty_FAIL) {
+TEST_F(TestParseInput, test_value_empty_SUCCESS) {
   nlohmann::json js = R"(
     {"instances":
         {
@@ -346,7 +346,7 @@ TEST_F(TestParseInput, test_value_empty_FAIL) {
   std::shared_ptr<Dispatcher> dispatcher_ = Server::Instance().GetDispatcher();
   RestfulService restful_service(dispatcher_);
   Status status = restful_service.ParseRequest(restful_request, &predict_request);
-  ASSERT_NE(status.StatusCode(), SUCCESS);
+  ASSERT_EQ(status.StatusCode(), SUCCESS);
 }
 
 TEST_F(TestParseInput, test_obj_unknown_key_FAIL) {
