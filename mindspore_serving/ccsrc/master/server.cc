@@ -30,6 +30,7 @@
 #include "master/grpc/grpc_process.h"
 #include "master/restful/http_process.h"
 #include "worker/context.h"
+#include "master/grpc/grpc_server.h"
 
 namespace mindspore {
 namespace serving {
@@ -40,8 +41,8 @@ Status Server::StartGrpcServer(const std::string &ip, uint32_t grpc_port, int ma
                     << "MB to 512MB";
     max_msg_mb_size = gRpcMaxMBMsgSize;
   }
-  return grpc_server_.Start(std::make_shared<MSServiceImpl>(dispatcher_), ip, grpc_port, max_msg_mb_size,
-                            "Serving gRPC");
+  grpc_async_server_ = std::make_unique<MSServiceServer>(std::make_shared<MSServiceImpl>(dispatcher_), ip, grpc_port);
+  return grpc_async_server_->Init();
 }
 
 Status Server::StartGrpcMasterServer(const std::string &ip, uint32_t grpc_port) {

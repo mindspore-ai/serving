@@ -36,6 +36,7 @@ message ErrorMsg{
 
 message PredictReply {
   ServableSpec servable_spec = 1;
+  bool status = 2;
   repeated Instance instances = 3;
   // size 0: OK, 1: for all batch, >1: for every batch
   repeated ErrorMsg error_msg = 4;

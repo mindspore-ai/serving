@@ -27,6 +27,7 @@
 #include "common/instance.h"
 #include "common/servable.h"
 #include "master/notify_worker/base_notify.h"
+#include "master/grpc/grpc_client.h"
 
 namespace mindspore::serving {
 
