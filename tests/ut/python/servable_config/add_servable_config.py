@@ -14,24 +14,19 @@
 # ============================================================================
 """add model servable config"""
 
-from mindspore_serving.worker import register
 import numpy as np
+from mindspore_serving.worker import register
 
 
-# define preprocess pipeline, the function arg is multi instances, every instance is tuple of inputs
-# this example has one input and one output
-def add_trans_datatype(instances):
-    """preprocess python implement"""
-    for instance in instances:
-        x1 = instance[0]
-        x2 = instance[1]
-        yield x1.astype(np.float32), x2.astype(np.float32)
+def add_trans_datatype(x1, x2):
+    """define preprocess, this example has one input and one output"""
+    return x1.astype(np.float32), x2.astype(np.float32)
 
 
-# when with_batch_dim set to False, only support 2x2 add
-# when with_batch_dim set to True(default), support Nx2 add, while N is view as batch
+# when with_batch_dim is set to False, only 2x2 add is supported
+# when with_batch_dim is set to True(default), Nx2 add is supported, while N is viewed as batch
 # float32 inputs/outputs
-register.declare_servable(servable_file="tensor_add.mindir", model_format="OM", with_batch_dim=False)
+register.declare_servable(servable_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=False)
 
 
 # register add_common method in add

@@ -86,30 +86,43 @@ file(GLOB_RECURSE UT_SERVING_CORE_SRC RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
         "../../../mindspore_serving/ccsrc/common/*.cc"
         "../../../mindspore_serving/ccsrc/worker/*.cc")
 
-file(GLOB_RECURSE UT_SERVING_STUB RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "stub/*.cc")
+file(GLOB_RECURSE UT_SERVING_STUB RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "../cpp/stub/*.cc")
 set(UT_SERVING_COMMON ${UT_SERVING_CORE_SRC} ${UT_SERVING_STUB} ${PROTO_SRC_LIST})
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/stub)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/stub/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../cpp/)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../cpp/stub)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../cpp/stub/include)
 include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/mindspore_serving/ccsrc)
-link_directories(${CMAKE_BINARY_DIR}/googletest/googlemock/gtest)
+
 link_directories(${CMKAE_BINARY_DIR}/securec/src)
 
-file(GLOB_RECURSE UT_LIST RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "common/*.cc" "tests/*.cc")
+# python ut
+add_compile_definitions(ENABLE_PYTHON)
+file(GLOB_RECURSE PY_SRC_LIST RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "../../../mindspore_serving/ccsrc/python/*.cc")
 
-add_executable(serving_ut ${UT_LIST} ${UT_SERVING_COMMON})
-target_link_libraries(serving_ut mindspore_serving::gtest)
-target_link_libraries(serving_ut mindspore_serving::event mindspore_serving::event_pthreads)
-target_link_libraries(serving_ut ${_REFLECTION} ${_GRPC_GRPCPP} ${_PROTOBUF_LIBPROTOBUF} pthread mindspore::glog)
-target_link_libraries(serving_ut ${SECUREC_LIBRARY})
+find_package(Python3 3.7 COMPONENTS Interpreter Development)
+if (Python3_FOUND)
+    set(PYTHON_INCLUDE_DIRS "${Python3_INCLUDE_DIRS}")
+    set(PYTHON_LIBRARIES "${Python3_LIBRARIES}")
+else ()
+    find_python_package(py_inc py_lib)
+    set(PYTHON_INCLUDE_DIRS "${py_inc}")
+    set(PYTHON_LIBRARIES "${py_lib}")
+endif ()
+
+include_directories(${PYTHON_INCLUDE_DIRS})
+set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/mindspore_serving)
+pybind11_add_module(_mindspore_serving ${PY_SRC_LIST}  ${UT_SERVING_COMMON})
+target_link_libraries(_mindspore_serving PRIVATE "${PYTHON_LIBRARIES}")
+target_include_directories(_mindspore_serving PRIVATE ${pybind11_INCLUDE_DIRS})
+
+target_link_libraries(_mindspore_serving PRIVATE mindspore_serving::event mindspore_serving::event_pthreads)
+target_link_libraries(_mindspore_serving PRIVATE ${_REFLECTION} ${_GRPC_GRPCPP} ${_PROTOBUF_LIBPROTOBUF} pthread mindspore::glog)
+target_link_libraries(_mindspore_serving PRIVATE ${SECUREC_LIBRARY})
 
 # disable auto rpath
-set_target_properties(serving_ut PROPERTIES SKIP_BUILD_RPATH TRUE)
-# copy gtest lib
-file(GLOB_RECURSE GTEST_LIB_LIST ${gtest_LIBPATH}/libgtest*)
-file(COPY ${GTEST_LIB_LIST} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+set_target_properties(_mindspore_serving PROPERTIES SKIP_BUILD_RPATH TRUE RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 # copy libevent lib
 file(GLOB_RECURSE LIBEVENT_LIB_LIST ${libevent_LIBPATH}/libevent* libevent_LIBPATH}/libevent_pthreads*)
 file(COPY ${LIBEVENT_LIB_LIST} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

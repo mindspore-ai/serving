@@ -187,24 +187,76 @@ class TestMasterWorkerClient : public TestMasterWorker {
     InitTensor(&input_map["x2"], {2, 2}, proto::MS_FLOAT32, x2_data.data(), x2_data.size() * sizeof(float));
     return y_data;
   }
-  static std::vector<std::vector<float>> InitMultiInstancesRequest(proto::PredictRequest *request,
-                                                                   const std::string &servable_name,
-                                                                   const std::string &method_name, int version_number,
-                                                                   size_t instances_count) {
+  template <class IN_DT = float, class OUT_DT = float>
+  static std::vector<std::vector<OUT_DT>> InitMultiInstancesRequest(proto::PredictRequest *request,
+                                                                    const std::string &servable_name,
+                                                                    const std::string &method_name, int version_number,
+                                                                    size_t instances_count) {
     MSI_EXCEPTION_IF_NULL(request);
     auto request_servable_spec = request->mutable_servable_spec();
     request_servable_spec->set_name(servable_name);
     request_servable_spec->set_method_name(method_name);
     request_servable_spec->set_version_number(version_number);
 
-    std::vector<std::vector<float>> y_data_list;
+    auto data_type = proto::MS_FLOAT32;
+    if (std::string(typeid(IN_DT).name()) == std::string(typeid(int32_t).name())) {
+      data_type = proto::MS_INT32;
+    }
+
+    std::vector<std::vector<OUT_DT>> y_data_list;
     for (size_t k = 0; k < instances_count; k++) {
-      std::vector<float> x1_data = {1.1, 2.2, 3.3, 4.4};
-      std::vector<float> x2_data = {6.6, 7.7, 8.8, 9.9};
-      std::vector<float> y_data;
-      for (size_t i = 0; i < x1_data.size(); i++) {
-        x1_data[i] *= (k + 1);
-        x2_data[i] *= (k + 1);
+      std::vector<float> x1_data_org = {1.1, 2.2, 3.3, 4.4};
+      std::vector<float> x2_data_org = {6.6, 7.7, 8.8, 9.9};
+
+      std::vector<IN_DT> x1_data;
+      std::vector<IN_DT> x2_data;
+
+      std::vector<OUT_DT> y_data;
+      for (size_t i = 0; i < x1_data_org.size(); i++) {
+        x1_data.push_back(static_cast<IN_DT>(x1_data_org[i] * (k + 1)));
+        x2_data.push_back(static_cast<IN_DT>(x2_data_org[i] * (k + 1)));
+        y_data.push_back(static_cast<OUT_DT>(x1_data[i] + x2_data[i]));
+      }
+      y_data_list.push_back(y_data);
+
+      auto instance = request->add_instances();
+      auto &input_map = (*instance->mutable_items());
+      // input x1
+      InitTensor(&input_map["x1"], {2, 2}, data_type, x1_data.data(), x1_data.size() * sizeof(IN_DT));
+      // input x2
+      InitTensor(&input_map["x2"], {2, 2}, data_type, x2_data.data(), x2_data.size() * sizeof(IN_DT));
+    }
+    return y_data_list;
+  }
+
+  template <class IN_DT = float, class OUT_DT = float>
+  static std::vector<std::vector<OUT_DT>> InitMultiInstancesShape2Request(proto::PredictRequest *request,
+                                                                          const std::string &servable_name,
+                                                                          const std::string &method_name,
+                                                                          int version_number, size_t instances_count) {
+    MSI_EXCEPTION_IF_NULL(request);
+    auto request_servable_spec = request->mutable_servable_spec();
+    request_servable_spec->set_name(servable_name);
+    request_servable_spec->set_method_name(method_name);
+    request_servable_spec->set_version_number(version_number);
+
+    auto data_type = proto::MS_FLOAT32;
+    if (std::string(typeid(IN_DT).name()) == std::string(typeid(int32_t).name())) {
+      data_type = proto::MS_INT32;
+    }
+
+    std::vector<std::vector<OUT_DT>> y_data_list;
+    for (size_t k = 0; k < instances_count; k++) {
+      std::vector<float> x1_data_org = {1.1, 2.2};
+      std::vector<float> x2_data_org = {8.8, 9.9};
+
+      std::vector<IN_DT> x1_data;
+      std::vector<IN_DT> x2_data;
+
+      std::vector<OUT_DT> y_data;
+      for (size_t i = 0; i < x1_data_org.size(); i++) {
+        x1_data.push_back(static_cast<IN_DT>(x1_data_org[i] * (k + 1)));
+        x2_data.push_back(static_cast<IN_DT>(x2_data_org[i] * (k + 1)));
         y_data.push_back(x1_data[i] + x2_data[i]);
       }
       y_data_list.push_back(y_data);
@@ -212,11 +264,62 @@ class TestMasterWorkerClient : public TestMasterWorker {
       auto instance = request->add_instances();
       auto &input_map = (*instance->mutable_items());
       // input x1
-      InitTensor(&input_map["x1"], {2, 2}, proto::MS_FLOAT32, x1_data.data(), x1_data.size() * sizeof(float));
+      InitTensor(&input_map["x1"], {2}, data_type, x1_data.data(), x1_data.size() * sizeof(IN_DT));
       // input x2
-      InitTensor(&input_map["x2"], {2, 2}, proto::MS_FLOAT32, x2_data.data(), x2_data.size() * sizeof(float));
+      InitTensor(&input_map["x2"], {2}, data_type, x2_data.data(), x2_data.size() * sizeof(IN_DT));
     }
     return y_data_list;
+  }
+
+  template <class OUT_DT>
+  static void CheckMultiInstanceResult(const proto::PredictReply &reply,
+                                       const std::vector<std::vector<OUT_DT>> &y_data_list,
+                                       size_t instances_count) {  // checkout output
+    ASSERT_EQ(reply.instances_size(), instances_count);
+    ASSERT_EQ(reply.error_msg_size(), 0);
+    auto data_type = proto::MS_FLOAT32;
+    if (std::string(typeid(OUT_DT).name()) == std::string(typeid(int32_t).name())) {
+      data_type = proto::MS_INT32;
+    }
+    std::vector<int64_t> shape;
+    if (y_data_list[0].size() == 4) {
+      shape = {2, 2};
+    } else {
+      shape = {2};
+    }
+    for (size_t k = 0; k < instances_count; k++) {
+      auto &output_instance = reply.instances(k);
+      ASSERT_EQ(output_instance.items_size(), 1);
+      auto &output_items = output_instance.items();
+      ASSERT_EQ(output_items.begin()->first, "y");
+      auto &output_tensor = output_items.begin()->second;
+
+      CheckTensor(output_tensor, shape, data_type, y_data_list[k].data(), y_data_list[k].size() * sizeof(OUT_DT));
+    }
+  }
+
+  template <class OUT_DT>
+  static void CheckInstanceResult(const proto::PredictReply &reply, const std::vector<OUT_DT> &y_data) {
+    // checkout output
+    ASSERT_EQ(reply.instances_size(), 1);
+    ASSERT_EQ(reply.error_msg_size(), 0);
+    auto data_type = proto::MS_FLOAT32;
+    if (std::string(typeid(OUT_DT).name()) == std::string(typeid(int32_t).name())) {
+      data_type = proto::MS_INT32;
+    }
+    std::vector<int64_t> shape;
+    if (y_data.size() == 4) {
+      shape = {2, 2};
+    } else {
+      shape = {2};
+    }
+    auto &output_instance = reply.instances(0);
+    ASSERT_EQ(output_instance.items_size(), 1);
+    auto &output_items = output_instance.items();
+    ASSERT_EQ(output_items.begin()->first, "y");
+    auto &output_tensor = output_items.begin()->second;
+
+    CheckTensor(output_tensor, shape, data_type, y_data.data(), y_data.size() * sizeof(OUT_DT));
   }
 
   static void CheckTensor(const proto::Tensor &output_tensor, const std::vector<int64_t> &shape,

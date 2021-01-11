@@ -13,7 +13,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-CURRPATH=$(cd "$(dirname $0)" || exit; pwd)
-echo $CURRPATH
+set -e
+BASEPATH=$(cd "$(dirname "$0")"; pwd)
+PROJECT_PATH=${BASEPATH}/../../..
+if [ $BUILD_PATH ];then
+  echo "BUILD_PATH = $BUILD_PATH"
+else
+  BUILD_PATH=${PROJECT_PATH}/build
+  echo "BUILD_PATH = $BUILD_PATH"
+fi
+cd ${BUILD_PATH}/mindspore_serving/tests/ut/python
+mkdir -p mindspore_serving
+rm -rf mindspore_serving/master mindspore_serving/worker mindspore_serving/client mindspore_serving/*.py
+cp _mindspore_serving*.so mindspore_serving/
+cp -r ${PROJECT_PATH}/mindspore_serving/master mindspore_serving/
+cp -r ${PROJECT_PATH}/mindspore_serving/worker mindspore_serving/
+cp -r ${PROJECT_PATH}/mindspore_serving/client mindspore_serving/
+cp ${PROJECT_PATH}/mindspore_serving/*.py mindspore_serving/
+
+export PYTHONPATH=${BUILD_PATH}/mindspore_serving/tests/ut/python:${PROJECT_PATH}/tests/ut/python:$PYTHONPATH
+export LD_LIBRARY_PATH=${BUILD_PATH}/mindspore_serving/tests/ut/python:${LD_LIBRARY_PATH}
+
+echo "PYTHONPATH=$PYTHONPATH"
+echo "LD_LIBRARY_PATH=LD_LIBRARY_PATH"
+unset http_proxy
+unset https_proxy
+
+pytest ${PROJECT_PATH}/tests/ut/python/tests
+
 RET=$?
+cd -
+
 exit ${RET}

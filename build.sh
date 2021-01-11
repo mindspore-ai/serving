@@ -146,7 +146,7 @@ build_mindspore_serving()
   fi
   if [[ "X$RUN_TESTCASES" = "Xon" ]]; then
     cmake --build . ${CMAKE_VERBOSE} -j$THREAD_NUM
-  else 
+  else
     cmake --build . --target package ${CMAKE_VERBOSE} -j$THREAD_NUM
   fi
   echo "success building mindspore_serving project!"
