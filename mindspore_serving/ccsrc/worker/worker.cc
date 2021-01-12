@@ -40,7 +40,6 @@ static std::unique_ptr<MSWorkerServer> grpc_async_worker_server_;
 
 Worker &Worker::GetInstance() {
   static Worker instance;
-  ExitHandle::Instance().InitSignalHandle();
   return instance;
 }
 
@@ -293,6 +292,7 @@ void Worker::Update() {
 
 Status Worker::StartServable(const std::string &servable_directory, const std::string &servable_name,
                              uint32_t version_number, std::shared_ptr<BaseNotifyMaster> notify_master) {
+  ExitSignalHandle::Instance().Start();  // handle ctrl+c to exit
   if (servable_started_) {
     MSI_LOG_EXCEPTION << "A servable has been started, only one servable can run in a process currently.";
   }
@@ -361,7 +361,7 @@ Status Worker::StartServable(const std::string &servable_directory, const std::s
 
 void Worker::StopServable(bool notify_master) {
   exit_notify_master_ = notify_master;
-  ExitHandle::Instance().Stop();
+  ExitSignalHandle::Instance().Stop();
 }
 
 void Worker::Clear() {
@@ -528,7 +528,7 @@ Status AsyncResult::GetNext(Instance *instance_result) {
   const int kWaitMaxHundredMs = 100;
   int i;
   for (i = 0; i < kWaitMaxHundredMs; i++) {  //
-    if (ExitHandle::Instance().HasStopped() || Worker::GetInstance().HasCleared()) {
+    if (ExitSignalHandle::Instance().HasStopped() || Worker::GetInstance().HasCleared()) {
       instance_result->error_msg = Status(SYSTEM_ERROR, "Servable stopped");
       return SYSTEM_ERROR;
     }

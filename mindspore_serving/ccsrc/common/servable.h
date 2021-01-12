@@ -107,7 +107,7 @@ struct ServableSignature {
 class MS_API ServableStorage {
  public:
   void Register(const ServableSignature &def);
-  void RegisterMethod(const MethodSignature &method);
+  Status RegisterMethod(const MethodSignature &method);
 
   bool GetServableDef(const std::string &model_name, ServableSignature *def) const;
 

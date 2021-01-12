@@ -36,6 +36,7 @@ namespace mindspore {
 namespace serving {
 
 Status Server::StartGrpcServer(const std::string &ip, uint32_t grpc_port, int max_msg_mb_size) {
+  ExitSignalHandle::Instance().Start();  // handle ctrl+c to exit
   if (max_msg_mb_size > gRpcMaxMBMsgSize) {
     MSI_LOG_WARNING << "The maximum Serving gRPC message size is 512MB and will be updated from " << max_msg_mb_size
                     << "MB to 512MB";
@@ -46,22 +47,28 @@ Status Server::StartGrpcServer(const std::string &ip, uint32_t grpc_port, int ma
 }
 
 Status Server::StartGrpcMasterServer(const std::string &ip, uint32_t grpc_port) {
+  ExitSignalHandle::Instance().Start();  // handle ctrl+c to exit
   return grpc_manager_server_.Start(std::make_shared<MSMasterImpl>(dispatcher_), ip, grpc_port, gRpcMaxMBMsgSize,
                                     "Master");
 }
 
 Status Server::StartRestfulServer(const std::string &ip, uint32_t restful_port, int max_msg_mb_size,
                                   int time_out_second) {
+  ExitSignalHandle::Instance().Start();  // handle ctrl+c to exit
   return restful_server_.Start(ip, restful_port, max_msg_mb_size, time_out_second);
 }
 
-void Server::Clear() { dispatcher_->Clear(); }
+void Server::Clear() {
+  dispatcher_->Clear();
+  restful_server_.Stop();
+  grpc_server_.Stop();
+  grpc_manager_server_.Stop();
+}
 
 Server::Server() = default;
 
 Server &Server::Instance() {
   static Server server;
-  ExitHandle::Instance().InitSignalHandle();
   return server;
 }
 

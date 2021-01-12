@@ -39,42 +39,22 @@ class _ServableStorage:
     """Declare servable info"""
 
     def __init__(self):
-        self.methods = {}
-        self.servable_metas = {}
+        pass
 
-    def declare_servable(self, servable_meta):
+    @staticmethod
+    def declare_servable(servable_meta):
         """Declare servable info excluding method, input and output count"""
         ServableStorage_.declare_servable(servable_meta)
-        self.servable_metas[servable_meta.servable_name] = servable_meta
 
-    def declare_servable_input_output(self, servable_name, inputs_count, outputs_count):
+    @staticmethod
+    def declare_servable_input_output(servable_name, inputs_count, outputs_count):
         """Declare input and output count of servable"""
         ServableStorage_.register_servable_input_output_info(servable_name, inputs_count, outputs_count)
-        servable_meta = self.servable_metas[servable_name]
-        servable_meta.inputs_count = inputs_count
-        servable_meta.outputs_count = outputs_count
 
-    def register_method(self, method_signature):
+    @staticmethod
+    def register_method(method_signature):
         """Declare method of servable"""
-        if method_signature.method_name in self.methods:
-            raise RuntimeError(f"Method {method_signature.method_name} has been registered more than once.")
         ServableStorage_.register_method(method_signature)
-        self.methods[method_signature.method_name] = method_signature
-
-    def get_method(self, method_name):
-        method = self.methods.get(method_name, None)
-        if method is None:
-            raise RuntimeError(f"Method '{method_name}' not found")
-        return method
-
-    def get_servable_meta(self, servable_name):
-        servable = self.servable_metas.get(servable_name, None)
-        if servable is None:
-            raise RuntimeError(f"Servable '{servable_name}' not found")
-        return servable
-
-
-_servable_storage = _ServableStorage()
 
 
 class _TensorDef:
@@ -101,7 +81,7 @@ def _wrap_fun_to_pipeline(fun, input_count):
     argspec_len = len(inspect.signature(fun).parameters)
     if argspec_len != input_count:
         raise RuntimeError(f"function {fun.__name__} input args count {argspec_len} not match "
-                           f"registed in method count {input_count}")
+                           f"registered in method count {input_count}")
 
     @wraps(fun)
     def call_func(instances):
@@ -271,7 +251,7 @@ def call_servable(*args):
 
     servable_name = get_servable_dir()
     inputs_count, outputs_count = method_def_ast_meta_[_call_servable_name]
-    _servable_storage.declare_servable_input_output(servable_name, inputs_count, outputs_count)
+    _ServableStorage.declare_servable_input_output(servable_name, inputs_count, outputs_count)
     if inputs_count != len(args):
         raise RuntimeError(f"Check failed in method '{method_def_context_.method_name}', given servable input "
                            f"size {len(args)} not match '{servable_name}' ast parse size {inputs_count}")
@@ -458,6 +438,8 @@ def register_method(output_names):
                 raise RuntimeError(f"'{name}' input {k} cannot be VAR_POSITIONAL !")
             if v.kind == inspect.Parameter.VAR_KEYWORD:
                 raise RuntimeError(f"'{name}' input {k} cannot be VAR_KEYWORD !")
+            if v.kind == inspect.Parameter.KEYWORD_ONLY:
+                raise RuntimeError(f"'{name}' input {k} cannot be KEYWORD_ONLY !")
             input_names.append(k)
 
         input_tensors = []
@@ -485,8 +467,7 @@ def register_method(output_names):
                     f", servable_name {method_def_context_.servable_name}, inputs: {input_names}, outputs: "
                     f"{output_names}")
 
-        global _servable_storage
-        _servable_storage.register_method(method_def_context_)
+        _ServableStorage.register_method(method_def_context_)
         return func
 
     return register

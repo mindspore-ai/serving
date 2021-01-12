@@ -238,16 +238,24 @@ ServableStorage &ServableStorage::Instance() {
   return storage;
 }
 
-void ServableStorage::RegisterMethod(const MethodSignature &method) {
+Status ServableStorage::RegisterMethod(const MethodSignature &method) {
   MSI_LOG_INFO << "Declare method " << method.method_name << ", servable " << method.servable_name;
   auto it = servable_signatures_map_.find(method.servable_name);
   if (it == servable_signatures_map_.end()) {
     ServableSignature signature;
     signature.methods.push_back(method);
     servable_signatures_map_[method.servable_name] = signature;
-    return;
+    return SUCCESS;
+  }
+  for (auto &item : it->second.methods) {
+    // cppcheck-suppress useStlAlgorithm
+    if (item.method_name == method.method_name) {
+      return INFER_STATUS_LOG_ERROR(FAILED)
+             << "Method " << method.method_name << " has been registered more than once.";
+    }
   }
   it->second.methods.push_back(method);
+  return SUCCESS;
 }
 
 void ServableStorage::DeclareServable(const mindspore::serving::ServableMeta &servable) {

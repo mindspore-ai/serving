@@ -50,7 +50,7 @@ def stop():
         >>> ...
         >>> master.stop()
     """
-    Master_.stop()
+    Master_.stop_and_clear()
 
 
 def stop_on_except(func):

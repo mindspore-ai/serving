@@ -29,7 +29,7 @@ def check_preprocess(preprocess_name, inputs_count, outputs_count):
         raise RuntimeError(f"Preprocess '{preprocess_name}' inputs count {inputs_count} not match "
                            f"last registered count {last_inputs_count}")
     if last_output_count != outputs_count:
-        raise RuntimeError(f"retprocess '{preprocess_name}' outputs count {outputs_count} not match "
+        raise RuntimeError(f"Preprocess '{preprocess_name}' outputs count {outputs_count} not match "
                            f"last registered count {last_output_count}")
 
 
@@ -39,6 +39,9 @@ class PreprocessStorage:
     def __init__(self):
         self.preprocess = {}
         self.storage = PreprocessStorage_.get_instance()
+
+    def clear(self):
+        self.preprocess = {}
 
     def register(self, fun, preprocess_name, inputs_count, outputs_count):
         check_preprocess(preprocess_name, inputs_count, outputs_count)

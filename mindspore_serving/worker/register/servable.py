@@ -18,7 +18,7 @@ from mindspore_serving._mindspore_serving import ServableMeta_
 from mindspore_serving.worker import check_type
 from mindspore_serving.worker.common import get_servable_dir
 from mindspore_serving import log as logger
-from .method import _servable_storage
+from .method import _ServableStorage
 
 
 def declare_servable(servable_file, model_format, with_batch_dim=True, options=None, without_batch_dim_inputs=None):
@@ -65,7 +65,7 @@ def declare_servable(servable_file, model_format, with_batch_dim=True, options=N
                                                                           without_batch_dim_inputs, 0)
         meta.without_batch_dim_inputs = without_batch_dim_inputs
 
-    _servable_storage.declare_servable(meta)
+    _ServableStorage.declare_servable(meta)
     logger.info(f"Declare servable, servable_name: {meta.servable_name} "
                 f", servable_file: {servable_file} , model_format: {model_format},  with_batch_dim: {with_batch_dim} "
                 f", options: {options}, without_batch_dim_inputs: {without_batch_dim_inputs}")

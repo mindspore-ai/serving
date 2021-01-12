@@ -19,7 +19,10 @@
 namespace mindspore::serving {
 
 void PyServableStorage::RegisterMethod(const MethodSignature &method) {
-  ServableStorage::Instance().RegisterMethod(method);
+  auto status = ServableStorage::Instance().RegisterMethod(method);
+  if (status != SUCCESS) {
+    MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
+  }
 }
 void PyServableStorage::DeclareServable(const ServableMeta &servable) {
   ServableStorage::Instance().DeclareServable(servable);

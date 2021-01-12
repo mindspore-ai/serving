@@ -44,12 +44,15 @@ void PyMaster::StartRestfulServer(const std::string &ip, uint32_t grpc_port, int
 void PyMaster::WaitAndClear() {
   {
     py::gil_scoped_release release;
-    ExitHandle::Instance().MasterWait();
+    ExitSignalHandle::Instance().MasterWait();
   }
   Server::Instance().Clear();
   MSI_LOG_INFO << "Python server end wait and clear";
 }
 
-void PyMaster::Stop() { ExitHandle::Instance().Stop(); }
+void PyMaster::StopAndClear() {
+  ExitSignalHandle::Instance().Stop();
+  Server::Instance().Clear();
+}
 
 }  // namespace mindspore::serving

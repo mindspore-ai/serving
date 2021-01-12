@@ -262,7 +262,7 @@ class PyTaskThread(threading.Thread):
                 logging.exception(e)
                 break
         logger.info("end py task for preprocess and postprocess")
-        Worker_.stop()
+        Worker_.stop_and_clear()
 
 
 py_task_thread = None
