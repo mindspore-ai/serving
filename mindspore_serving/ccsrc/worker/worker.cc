@@ -27,6 +27,7 @@
 #include "worker/context.h"
 #include "worker/grpc/worker_process.h"
 #include "worker/task_queue.h"
+#include "worker/grpc/worker_server.h"
 
 namespace py = pybind11;
 
@@ -35,6 +36,7 @@ namespace serving {
 
 static const char *kVersionStrategyLastest = "lastest";
 static const char *kVersionStrategySpecific = "specific";
+static std::unique_ptr<MSWorkerServer> grpc_async_worker_server_;
 
 Worker &Worker::GetInstance() {
   static Worker instance;
@@ -43,7 +45,8 @@ Worker &Worker::GetInstance() {
 }
 
 Status Worker::StartGrpcServer(const std::string &ip, uint32_t grpc_port) {
-  return grpc_server_.Start(std::make_shared<MSWorkerImpl>(), ip, grpc_port, gRpcMaxMBMsgSize, "Worker gRPC");
+  grpc_async_worker_server_ = std::make_unique<MSWorkerServer>(ip, grpc_port);
+  return grpc_async_worker_server_->Init();
 }
 
 Status Worker::RegisterWorker() {
@@ -383,7 +386,6 @@ void Worker::Clear() {
   py_task_queue_group_.Stop();
   cpp_preprocess_.Stop();
   cpp_postprocess_.Stop();
-  grpc_server_.Stop();
   ServableStorage::Instance().Clear();
   servable_started_ = false;
   MSI_LOG_INFO << "End clear worker session";

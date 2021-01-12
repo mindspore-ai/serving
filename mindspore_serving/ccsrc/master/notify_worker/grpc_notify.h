@@ -36,7 +36,7 @@ class MS_API GrpcNotfiyWorker : public BaseNotifyWorker {
 
  private:
   std::string worker_address_;
-  std::unique_ptr<proto::MSWorker::Stub> stub_ = nullptr;
+  std::shared_ptr<proto::MSWorker::Stub> stub_ = nullptr;
 
   std::atomic<bool> is_stoped_{false};
 };

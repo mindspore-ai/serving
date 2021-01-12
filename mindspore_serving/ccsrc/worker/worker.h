@@ -31,6 +31,7 @@
 #include "common/grpc_server.h"
 #include "worker/task_queue.h"
 #include "worker/version_control/version_controller.h"
+#include "common/grpc_async_server.h"
 
 namespace mindspore {
 namespace serving {
@@ -99,7 +100,6 @@ class MS_API Worker {
 
   std::vector<ServableWorkerContext> work_list_;
   std::shared_ptr<serving::InferSession> session_ = nullptr;
-  GrpcServer grpc_server_;
   std::string version_strategy_;
   PyTaskQueueGroup py_task_queue_group_;
   PreprocessThreadPool cpp_preprocess_;

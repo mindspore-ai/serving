@@ -69,6 +69,7 @@ grpc::Status MSServiceImpl::Predict(grpc::ServerContext *context, const proto::P
     } else {
       proto_error_msg->set_error_msg(error_msg);
     }
+    reply->set_status(true);
     return grpc::Status::OK;
   }
   return grpc::Status::OK;

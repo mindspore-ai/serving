@@ -21,6 +21,7 @@ namespace mindspore {
 namespace serving {
 
 Status LocalNotifyWorker::Dispatch(const proto::PredictRequest &request, proto::PredictReply *reply) {
+  reply->set_status(true);
   return Worker::GetInstance().Run(request, reply);
 }
 

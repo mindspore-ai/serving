@@ -20,6 +20,7 @@
 #include <thread>
 #include "common/exit_handle.h"
 #include "common/grpc_server.h"
+#include "master/grpc/grpc_client.h"
 
 namespace mindspore {
 namespace serving {
@@ -38,12 +39,11 @@ Status GrpcNotfiyWorker::Dispatch(const proto::PredictRequest &request, proto::P
            << "Predict failed, worker gRPC has not been inited or has already exited, worker address "
            << worker_address_;
   }
-  grpc::ClientContext context;
-  auto status = stub_->Predict(&context, request, reply);
-  if (!status.ok()) {
-    return INFER_STATUS_LOG_ERROR(FAILED)
-           << "Predict failed, worker gRPC error: " << status.error_code() << ", " << status.error_message();
+  if (!client_) {
+    client_ = std::make_unique<MSServiceClient>();
+    client_->Start();
   }
+  client_->Predict(request, reply, stub_);
   return SUCCESS;
 }
 
