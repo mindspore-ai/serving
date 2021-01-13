@@ -129,7 +129,7 @@ def add_trans_datatype(x1, x2, x3):
         worker.start_servable_in_master(base.servable_dir, base.servable_name)
         assert False
     except RuntimeError as e:
-        assert f"function add_trans_datatype input args count 3 not match registered in method count 2" in str(e)
+        assert "function add_trans_datatype input args count 3 not match registered in method count 2" in str(e)
 
 
 @serving_test
@@ -149,7 +149,7 @@ def add_trans_datatype(x1):
         worker.start_servable_in_master(base.servable_dir, base.servable_name)
         assert False
     except RuntimeError as e:
-        assert f"function add_trans_datatype input args count 1 not match registered in method count 2" in str(e)
+        assert "function add_trans_datatype input args count 1 not match registered in method count 2" in str(e)
 
 
 @serving_test
@@ -174,7 +174,7 @@ def add_cast(x1, x2):
         worker.start_servable_in_master(base.servable_dir, base.servable_name)
         assert False
     except RuntimeError as e:
-        assert f"function add_trans_datatype_back input args count 2 not match registered in method count 1" in str(e)
+        assert "function add_trans_datatype_back input args count 2 not match registered in method count 1" in str(e)
 
 
 # preprocess order error
@@ -196,7 +196,7 @@ def add_cast(x1, x2):
         worker.start_servable_in_master(base.servable_dir, base.servable_name)
         assert False
     except RuntimeError as e:
-        assert f"call_servable should be invoked after call_preprocess" in str(e)
+        assert "call_servable should be invoked after call_preprocess" in str(e)
 
 
 @serving_test
@@ -218,7 +218,7 @@ def add_cast(x1, x2):
         worker.start_servable_in_master(base.servable_dir, base.servable_name)
         assert False
     except RuntimeError as e:
-        assert f"call_postprocess or call_postprocess_pipeline should be invoked after call_preprocess" in str(e)
+        assert "call_postprocess or call_postprocess_pipeline should be invoked after call_preprocess" in str(e)
 
 
 @serving_test
@@ -240,7 +240,7 @@ def add_cast(x1, x2):
         worker.start_servable_in_master(base.servable_dir, base.servable_name)
         assert False
     except RuntimeError as e:
-        assert f"call_postprocess or call_postprocess_pipeline should be invoked after call_preprocess" in str(e)
+        assert "call_postprocess or call_postprocess_pipeline should be invoked after call_preprocess" in str(e)
 
 
 # preprocess_pipeline order error
@@ -262,7 +262,7 @@ def add_cast(x1, x2):
         worker.start_servable_in_master(base.servable_dir, base.servable_name)
         assert False
     except RuntimeError as e:
-        assert f"call_servable should be invoked after call_preprocess_pipeline" in str(e)
+        assert "call_servable should be invoked after call_preprocess_pipeline" in str(e)
 
 
 @serving_test
@@ -284,7 +284,7 @@ def add_cast(x1, x2):
         worker.start_servable_in_master(base.servable_dir, base.servable_name)
         assert False
     except RuntimeError as e:
-        assert f"call_postprocess or call_postprocess_pipeline should be invoked after call_preprocess_pipeline" \
+        assert "call_postprocess or call_postprocess_pipeline should be invoked after call_preprocess_pipeline" \
                in str(e)
 
 
@@ -307,7 +307,7 @@ def add_cast(x1, x2):
         worker.start_servable_in_master(base.servable_dir, base.servable_name)
         assert False
     except RuntimeError as e:
-        assert f"call_postprocess or call_postprocess_pipeline should be invoked after call_preprocess_pipeline" \
+        assert "call_postprocess or call_postprocess_pipeline should be invoked after call_preprocess_pipeline" \
                in str(e)
 
 
@@ -331,7 +331,7 @@ def add_cast(x1, x2):
         worker.start_servable_in_master(base.servable_dir, base.servable_name)
         assert False
     except RuntimeError as e:
-        assert f"call_preprocess or call_preprocess_pipeline should not be invoked more than once" in str(e)
+        assert "call_preprocess or call_preprocess_pipeline should not be invoked more than once" in str(e)
 
 
 @serving_test
@@ -353,7 +353,7 @@ def add_cast(x1, x2):
         worker.start_servable_in_master(base.servable_dir, base.servable_name)
         assert False
     except RuntimeError as e:
-        assert f"call_preprocess or call_preprocess_pipeline should not be invoked more than once" in str(e)
+        assert "call_preprocess or call_preprocess_pipeline should not be invoked more than once" in str(e)
 
 
 @serving_test
@@ -375,7 +375,80 @@ def add_cast(x1, x2):
         worker.start_servable_in_master(base.servable_dir, base.servable_name)
         assert False
     except RuntimeError as e:
-        assert f"call_preprocess or call_preprocess_pipeline should not be invoked more than once" in str(e)
+        assert "call_preprocess or call_preprocess_pipeline should not be invoked more than once" in str(e)
+
+
+# repeat postprocess
+@serving_test
+def test_register_method_postprocess_twice_failed():
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += servable_config_declare_servable
+    servable_content += servable_config_preprocess_cast
+    servable_content += r"""
+def postprocess(y):
+    return y.astype(np.int32)
+@register.register_method(output_names=["y"])
+def add_cast(x1, x2):
+    y = register.call_servable(x1, x2)  
+    y = register.call_postprocess(postprocess, y)
+    y = register.call_postprocess(postprocess, y)  
+    return y
+"""
+    base.init_servable_with_servable_config(1, servable_content)
+    try:
+        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        assert False
+    except RuntimeError as e:
+        assert "call_postprocess or call_postprocess_pipeline should not be invoked more than once" in str(e)
+
+
+@serving_test
+def test_register_method_postprocess_twice2_failed():
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += servable_config_declare_servable
+    servable_content += servable_config_preprocess_cast
+    servable_content += r"""
+def postprocess(y):
+    return y.astype(np.int32)
+@register.register_method(output_names=["y"])
+def add_cast(x1, x2):
+    y = register.call_servable(x1, x2)  
+    y = register.call_postprocess_pipeline(postprocess, y)
+    y = register.call_postprocess(postprocess, y)  
+    return y
+"""
+    base.init_servable_with_servable_config(1, servable_content)
+    try:
+        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        assert False
+    except RuntimeError as e:
+        assert "call_postprocess or call_postprocess_pipeline should not be invoked more than once" in str(e)
+
+
+@serving_test
+def test_register_method_postprocess_pipeline_twice_failed():
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += servable_config_declare_servable
+    servable_content += servable_config_preprocess_cast
+    servable_content += r"""
+def postprocess(y):
+    return y.astype(np.int32)
+@register.register_method(output_names=["y"])
+def add_cast(x1, x2):
+    y = register.call_servable(x1, x2)  
+    y = register.call_postprocess_pipeline(postprocess, y)
+    y = register.call_postprocess_pipeline(postprocess, y)  
+    return y
+"""
+    base.init_servable_with_servable_config(1, servable_content)
+    try:
+        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        assert False
+    except RuntimeError as e:
+        assert "call_postprocess or call_postprocess_pipeline should not be invoked more than once" in str(e)
 
 
 # call servable repeat
@@ -398,7 +471,7 @@ def add_cast(x1, x2):
         worker.start_servable_in_master(base.servable_dir, base.servable_name)
         assert False
     except RuntimeError as e:
-        assert f"call_servable should not be invoked more than once" in str(e)
+        assert "call_servable should not be invoked more than once" in str(e)
 
 
 @serving_test
@@ -419,7 +492,7 @@ def add_cast(x1, x2):
         worker.start_servable_in_master(base.servable_dir, base.servable_name)
         assert False
     except RuntimeError as e:
-        assert f"call_postprocess or call_postprocess_pipeline should be invoked after call_servable" in str(e)
+        assert "call_postprocess or call_postprocess_pipeline should be invoked after call_servable" in str(e)
 
 
 @serving_test
@@ -440,7 +513,7 @@ def add_cast(x1, x2):
         worker.start_servable_in_master(base.servable_dir, base.servable_name)
         assert False
     except RuntimeError as e:
-        assert f"call_postprocess or call_postprocess_pipeline should be invoked after call_servable" in str(e)
+        assert "call_postprocess or call_postprocess_pipeline should be invoked after call_servable" in str(e)
 
 
 @serving_test
@@ -687,7 +760,7 @@ def add_cast(x1, x2):
         worker.start_servable_in_master(base.servable_dir, base.servable_name)
         assert False
     except RuntimeError as e:
-        assert f"Method add_cast has been registered more than once." in str(e)
+        assert "Method add_cast has been registered more than once." in str(e)
 
 
 @serving_test
@@ -728,3 +801,68 @@ def add_cast(x1, *x2):
         assert False
     except RuntimeError as e:
         assert "'add_cast' input x2 cannot be VAR_POSITIONAL !" in str(e)
+
+
+@serving_test
+def test_register_method_call_preprocess_invalid_input_failed():
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += servable_config_declare_servable
+    servable_content += servable_config_preprocess_cast
+    servable_content += r"""
+@register.register_method(output_names=["y"])
+def add_cast(x1, x2):
+    x1, x2 = register.call_preprocess(add_trans_datatype, x1, np.ones([2,2]))
+    y = register.call_servable(x1, x2)
+    return y
+"""
+    base.init_servable_with_servable_config(1, servable_content)
+    try:
+        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        assert False
+    except AttributeError as e:
+        assert "'numpy.ndarray' object has no attribute 'as_pair'" in str(e)
+
+
+@serving_test
+def test_register_method_call_servable_invalid_input_failed():
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += servable_config_declare_servable
+    servable_content += servable_config_preprocess_cast
+    servable_content += r"""
+@register.register_method(output_names=["y"])
+def add_cast(x1, x2):
+    y = register.call_servable(x1, np.ones([2,2]))
+    return y
+"""
+    base.init_servable_with_servable_config(1, servable_content)
+    try:
+        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        assert False
+    except AttributeError as e:
+        assert "'numpy.ndarray' object has no attribute 'as_pair'" in str(e)
+
+
+@serving_test
+def test_register_method_call_postprocess_invalid_input_failed():
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += servable_config_declare_servable
+    servable_content += servable_config_preprocess_cast
+    servable_content += r"""
+def postprocess(y, data):
+    return y.astype(np.int32)
+    
+@register.register_method(output_names=["y"])
+def add_cast(x1, x2):
+    y = register.call_servable(x1, x2)
+    y = register.call_postprocess(postprocess, y, np.ones([2,2]))
+    return y
+"""
+    base.init_servable_with_servable_config(1, servable_content)
+    try:
+        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        assert False
+    except AttributeError as e:
+        assert "'numpy.ndarray' object has no attribute 'as_pair'" in str(e)

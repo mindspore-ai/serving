@@ -118,6 +118,7 @@ class PyTask:
                 raise RuntimeError(
                     f"expecting '{self.task_name}' yield count equal to instance size {self.instances_size}")
             except ServingSystemException as e:
+                self.push_failed(self.instances_size - self.index)
                 raise e
             except Exception as e:  # catch exception and try next
                 logger.warning(f"{self.task_name} get result catch exception: {e}")

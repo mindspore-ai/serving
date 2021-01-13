@@ -259,6 +259,29 @@ class Client:
             print(status_code.value)
             return ClientGrpcAsyncError({"error": "Grpc Error, " + str(status_code.value)})
 
+    def close(self):
+        """
+        Used to release gRPC connection avoiding influence on the connection to the next restarted Serving server.
+
+        Examples:
+            >>> from mindspore_serving.client import Client
+            >>> import numpy as np
+            >>> instance = {"x1": np.ones((2, 2), np.int32), "x2": np.ones((2, 2), np.int32)}
+            >>> client = Client("localhost", 5500, "add", "add_cast")
+            >>> result = client.infer(instance)
+            >>> client.close()
+            >>> print(result)
+        """
+        if self.stub:
+            del self.stub
+            self.stub = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
     def _create_request(self, instances):
         """Used to create request spec."""
         if not isinstance(instances, (tuple, list)):
