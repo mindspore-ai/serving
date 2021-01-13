@@ -120,12 +120,15 @@ void PyWorker::PushPostprocessPyFailed(int count) {
 void PyWorker::WaitAndClear() {
   {
     py::gil_scoped_release release;
-    ExitHandle::Instance().WorkerWait();
+    ExitSignalHandle::Instance().WorkerWait();
   }
   Worker::GetInstance().Clear();
 }
 
-void PyWorker::Stop() { ExitHandle::Instance().Stop(); }
+void PyWorker::StopAndClear() {
+  ExitSignalHandle::Instance().Stop();
+  Worker::GetInstance().Clear();
+}
 
 int PyWorker::GetBatchSize() { return Worker::GetInstance().GetBatchSize(); }
 

@@ -39,7 +39,11 @@ echo "LD_LIBRARY_PATH=LD_LIBRARY_PATH"
 unset http_proxy
 unset https_proxy
 
-pytest ${PROJECT_PATH}/tests/ut/python/tests
+if [ $# -gt 0 ]; then
+  pytest -v ${PROJECT_PATH}/tests/ut/python/tests/$1
+else
+  pytest -v ${PROJECT_PATH}/tests/ut/python/tests
+fi
 
 RET=$?
 cd -

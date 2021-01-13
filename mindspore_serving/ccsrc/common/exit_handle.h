@@ -24,23 +24,27 @@
 namespace mindspore {
 namespace serving {
 
-class MS_API ExitHandle {
+// Handle Ctrl+C signal. When the master or worker is waiting for the Ctrl+C signal,
+// it can continue to perform subsequent operations, such as cleaning.
+class MS_API ExitSignalHandle {
  public:
-  static ExitHandle &Instance();
+  static ExitSignalHandle &Instance();
   void InitSignalHandle();
   void MasterWait();
   void WorkerWait();
+  void Start();
   void Stop();
   bool HasStopped();
 
  private:
   std::promise<void> master_exit_requested_;
   std::promise<void> worker_exit_requested_;
-  std::atomic_flag has_exited_ = ATOMIC_FLAG_INIT;
+  std::atomic_flag has_exited_ = true;
   std::atomic_flag has_inited_ = ATOMIC_FLAG_INIT;
-  std::atomic<bool> is_exit_ = false;
+  std::atomic_bool is_running_ = false;
 
   static void HandleSignal(int sig);
+  void HandleSignalInner();
 };
 
 }  // namespace serving

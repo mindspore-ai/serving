@@ -36,7 +36,7 @@ class MS_API PyWorker {
 
   static int GetBatchSize();
   static void WaitAndClear();
-  static void Stop();
+  static void StopAndClear();
   static TaskItem GetPyTask();
   static TaskItem TryGetPreprocessPyTask();
   static TaskItem TryGetPostprocessPyTask();

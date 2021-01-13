@@ -40,7 +40,7 @@ class MS_API PyMaster {
   static void StartGrpcMasterServer(const std::string &ip, uint32_t grpc_port);
   static void StartRestfulServer(const std::string &ip, uint32_t grpc_port, int max_msg_mb_size = 100);
   static void WaitAndClear();
-  static void Stop();
+  static void StopAndClear();
 };
 
 }  // namespace serving

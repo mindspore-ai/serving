@@ -113,7 +113,7 @@ endif ()
 
 include_directories(${PYTHON_INCLUDE_DIRS})
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/mindspore_serving)
-pybind11_add_module(_mindspore_serving ${PY_SRC_LIST}  ${UT_SERVING_COMMON})
+pybind11_add_module(_mindspore_serving ${PY_SRC_LIST} ${UT_SERVING_COMMON})
 target_link_libraries(_mindspore_serving PRIVATE "${PYTHON_LIBRARIES}")
 target_include_directories(_mindspore_serving PRIVATE ${pybind11_INCLUDE_DIRS})
 

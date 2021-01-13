@@ -107,7 +107,7 @@ PYBIND11_MODULE(_mindspore_serving, m) {
     .def_static("start_servable_in_master", &PyWorker::StartServableInMaster)
     .def_static("get_batch_size", &PyWorker::GetBatchSize)
     .def_static("wait_and_clear", &PyWorker::WaitAndClear)
-    .def_static("stop", PyWorker::Stop)
+    .def_static("stop_and_clear", PyWorker::StopAndClear)
     .def_static("get_py_task", &PyWorker::GetPyTask, py::call_guard<py::gil_scoped_release>())
     .def_static("try_get_preprocess_py_task", &PyWorker::TryGetPreprocessPyTask)
     .def_static("try_get_postprocess_py_task", &PyWorker::TryGetPostprocessPyTask)
@@ -133,7 +133,7 @@ PYBIND11_MODULE(_mindspore_serving, m) {
     .def_static("start_grpc_master_server", &PyMaster::StartGrpcMasterServer)
     .def_static("start_restful_server", &PyMaster::StartRestfulServer)
     .def_static("wait_and_clear", &PyMaster::WaitAndClear)
-    .def_static("stop", &PyMaster::Stop);
+    .def_static("stop_and_clear", &PyMaster::StopAndClear);
 
   (void)py::module::import("atexit").attr("register")(py::cpp_function{[&]() -> void {
     Server::Instance().Clear();

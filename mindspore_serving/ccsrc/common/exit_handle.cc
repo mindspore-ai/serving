@@ -21,40 +21,65 @@
 namespace mindspore {
 namespace serving {
 
-ExitHandle &ExitHandle::Instance() {
-  static ExitHandle instance;
+ExitSignalHandle &ExitSignalHandle::Instance() {
+  static ExitSignalHandle instance;
   return instance;
 }
 
-void ExitHandle::InitSignalHandle() {
+void ExitSignalHandle::InitSignalHandle() {
   if (!has_inited_.test_and_set()) {
     signal(SIGINT, HandleSignal);
     signal(SIGTERM, HandleSignal);
   }
 }
 
-void ExitHandle::MasterWait() {
-  InitSignalHandle();
+// waiting ctrl+c or stop message to exit,
+// if no server is running or server has exited, there is no need to wait
+void ExitSignalHandle::MasterWait() {
+  if (!is_running_) {
+    MSI_LOG_INFO << "Exit Handle has not started or has exited";
+    return;
+  }
   auto exit_future = master_exit_requested_.get_future();
   exit_future.wait();
 }
 
-void ExitHandle::WorkerWait() {
-  InitSignalHandle();
+// waiting ctrl+c or stop message to exit,
+// if no server is running or server has exited, there is no need to wait
+void ExitSignalHandle::WorkerWait() {
+  if (!is_running_) {
+    MSI_LOG_INFO << "Exit Handle has not started or has exited";
+    return;
+  }
   auto exit_future = worker_exit_requested_.get_future();
   exit_future.wait();
 }
 
-void ExitHandle::Stop() { HandleSignal(0); }
+void ExitSignalHandle::Start() {
+  if (is_running_) {
+    return;
+  }
+  is_running_ = true;
+  master_exit_requested_ = std::promise<void>();
+  worker_exit_requested_ = std::promise<void>();
+  has_exited_.clear();
+  InitSignalHandle();
+}
 
-bool ExitHandle::HasStopped() { return is_exit_; }
+void ExitSignalHandle::Stop() { HandleSignal(0); }
 
-void ExitHandle::HandleSignal(int sig) {
+bool ExitSignalHandle::HasStopped() { return !is_running_; }
+
+void ExitSignalHandle::HandleSignal(int sig) {
   auto &instance = Instance();
-  if (!instance.has_exited_.test_and_set()) {
-    instance.master_exit_requested_.set_value();
-    instance.worker_exit_requested_.set_value();
-    instance.is_exit_.store(true);
+  instance.HandleSignalInner();
+}
+
+void ExitSignalHandle::HandleSignalInner() {
+  if (!has_exited_.test_and_set()) {
+    master_exit_requested_.set_value();
+    worker_exit_requested_.set_value();
+    is_running_ = false;
   }
 }
 

@@ -201,6 +201,7 @@ void RestfulServer::Stop() {
     event_base_loopexit(event_base_, nullptr);
     event_thread_.join();
   }
+  in_running_ = false;
   if (event_base_ != nullptr) {
     event_base_free(event_base_);
     event_base_ = nullptr;

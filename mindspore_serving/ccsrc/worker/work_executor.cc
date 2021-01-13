@@ -57,8 +57,8 @@ Status WorkExecutor::CheckSevableSignature() {
   const auto &output_infos = output_infos_;
   if (output_infos.size() != servable_declare_.servable_meta.outputs_count) {
     return INFER_STATUS_LOG_ERROR(FAILED)
-           << "The outputs count " << servable_declare_.servable_meta.outputs_count
-           << " registered in method not equal to the count " << output_infos.size() << " defined in servable";
+           << "The outputs count " << servable_declare_.servable_meta.outputs_count << " registered in method "
+           << "not equal to the count " << output_infos.size() << " defined in servable";
   }
   MSI_LOG_INFO << "Model input infos: count " << input_infos.size();
   for (auto &item : input_infos) {

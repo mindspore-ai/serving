@@ -40,6 +40,9 @@ class PostprocessStorage:
         self.postprocess = {}
         self.storage = PostprocessStorage_.get_instance()
 
+    def clear(self):
+        self.postprocess = {}
+
     def register(self, fun, postprocess_name, inputs_count, outputs_count):
         check_postprocess(postprocess_name, inputs_count, outputs_count)
         self.postprocess[postprocess_name] = {"fun": fun, "inputs_count": inputs_count, "outputs_count": outputs_count}
