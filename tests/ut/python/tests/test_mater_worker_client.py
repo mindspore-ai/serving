@@ -50,9 +50,96 @@ def test_master_worker_client_success():
     instance_count = 3
     instances, y_data_list = create_multi_instances_fp32(instance_count)
     result = client.infer(instances)
+    client.close()  # avoid affecting the next use case
 
     print(result)
     check_result(result, y_data_list)
+
+
+@serving_test
+def test_master_worker_client_multi_times_success():
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    worker.start_servable_in_master(base.servable_dir, base.servable_name, 0)
+    master.start_grpc_server("0.0.0.0", 5500)
+    # Client, use with avoid affecting the next use case
+    with Client("localhost", 5500, base.servable_name, "add_common") as client:
+        for instance_count in range(1, 5):
+            instances, y_data_list = create_multi_instances_fp32(instance_count)
+            result = client.infer(instances)
+            check_result(result, y_data_list)
+
+
+@serving_test
+def test_master_worker_client_async_success():
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    worker.start_servable_in_master(base.servable_dir, base.servable_name, 0)
+    master.start_grpc_server("0.0.0.0", 5500)
+    # Client
+    client = Client("localhost", 5500, base.servable_name, "add_common")
+    instance_count = 3
+    instances, y_data_list = create_multi_instances_fp32(instance_count)
+    result_future = client.infer_async(instances)
+    result = result_future.result()
+    client.close()  # avoid affecting the next use case
+
+    print(result)
+    check_result(result, y_data_list)
+
+
+@serving_test
+def test_master_worker_client_async_multi_times_success():
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    worker.start_servable_in_master(base.servable_dir, base.servable_name, 0)
+    master.start_grpc_server("0.0.0.0", 5500)
+    # Client, use with avoid affecting the next use case
+    with Client("localhost", 5500, base.servable_name, "add_common") as client:
+        for instance_count in range(1, 5):
+            instances, y_data_list = create_multi_instances_fp32(instance_count)
+            result_future = client.infer_async(instances)
+            result = result_future.result()
+            check_result(result, y_data_list)
+
+
+@serving_test
+def test_master_worker_client_start_grpc_twice_failed():
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    worker.start_servable_in_master(base.servable_dir, base.servable_name, 0)
+    master.start_grpc_server("0.0.0.0", 5500)
+    try:
+        master.start_grpc_server("0.0.0.0", 4500)
+        assert False
+    except RuntimeError as e:
+        assert "Serving Error: Serving gRPC server is already running" in str(e)
+
+
+@serving_test
+def test_master_worker_client_start_master_grpc_twice_failed():
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    worker.start_servable_in_master(base.servable_dir, base.servable_name, 0)
+    master.start_master_server("0.0.0.0", 5500)
+    try:
+        master.start_master_server("0.0.0.0", 4500)
+        assert False
+    except RuntimeError as e:
+        assert "Serving Error: Master server is already running" in str(e)
+
+
+@serving_test
+def test_master_worker_client_start_restful_server_twice_failed():
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    worker.start_servable_in_master(base.servable_dir, base.servable_name, 0)
+    master.start_restful_server("0.0.0.0", 5500)
+    try:
+        master.start_restful_server("0.0.0.0", 4500)
+        assert False
+    except RuntimeError as e:
+        assert "Serving Error: RESTful server is already running" in str(e)
 
 
 # test servable_config.py with client
@@ -87,7 +174,7 @@ def add_cast(x1, x2):
 
 
 @serving_test
-def no_test_master_worker_client_servable_content_success():
+def test_master_worker_client_servable_content_success():
     base = ServingTestBase()
     servable_content = servable_config_import
     servable_content += servable_config_declare_servable
@@ -99,22 +186,21 @@ def no_test_master_worker_client_servable_content_success():
     worker.start_servable_in_master(base.servable_dir, base.servable_name)
     master.start_grpc_server("0.0.0.0", 5500)
     # Client
-    client = Client("localhost", 5500, base.servable_name, "add_common")
     instance_count = 3
     instances, y_data_list = create_multi_instances_fp32(instance_count)
-    result = client.infer(instances)
+    with Client("localhost", 5500, base.servable_name, "add_common") as client:
+        result = client.infer(instances)
 
     print(result)
     check_result(result, y_data_list)
 
 
 @serving_test
-def no_test_master_worker_client_preprocess_outputs_count_not_match_failed():
+def test_master_worker_client_preprocess_outputs_count_not_match_failed():
     base = ServingTestBase()
     servable_content = servable_config_import
     servable_content += servable_config_declare_servable
     servable_content += r"""
-
 def add_trans_datatype(x1, x2):
     return x1.astype(np.float32)
 
@@ -124,14 +210,178 @@ def add_cast(x1, x2):
     y = register.call_servable(x1, x2)    
     return y
 """
-
     base.init_servable_with_servable_config(1, servable_content)
     worker.start_servable_in_master(base.servable_dir, base.servable_name)
     master.start_grpc_server("0.0.0.0", 5500)
     # Client
-    client = Client("localhost", 5500, base.servable_name, "add_cast")
     instance_count = 3
     instances, _ = create_multi_instances_fp32(instance_count)
-    result = client.infer(instances)
+    # Client, use with avoid affecting the next use case
+    with Client("localhost", 5500, base.servable_name, "add_cast") as client:
+        result = client.infer(instances)
+
     print(result)
-    assert "Servable stopped" in str(result[0]["error"])
+    assert "Preprocess Failed" in str(result[0]["error"])
+
+
+@serving_test
+def test_master_worker_client_postprocess_outputs_count_not_match_failed():
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += servable_config_declare_servable
+    servable_content += r"""
+def add_trans_datatype(x1, x2):
+    return x1.astype(np.float32)
+
+@register.register_method(output_names=["y"])
+def add_cast(x1, x2):
+    y = register.call_servable(x1, x2)    
+    y, y2 = register.call_postprocess(add_trans_datatype, y, x2)
+    return y
+"""
+    base.init_servable_with_servable_config(1, servable_content)
+    worker.start_servable_in_master(base.servable_dir, base.servable_name)
+    master.start_grpc_server("0.0.0.0", 5500)
+    # Client
+    instance_count = 3
+    instances, _ = create_multi_instances_fp32(instance_count)
+    # Client, use with avoid affecting the next use case
+    with Client("localhost", 5500, base.servable_name, "add_cast") as client:
+        result = client.infer(instances)
+
+    print(result)
+    assert "Postprocess Failed" in str(result[0]["error"])
+
+
+@serving_test
+def test_master_worker_client_str_input_output_success():
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += servable_config_declare_servable
+    servable_content += r"""
+index = 0
+list_str = ["123", "456", "789"]
+def postprocess(y, label):
+    global index
+    text = list_str[index]
+    index = (index + 1) if index + 1 < len(list_str) else 0
+    return y.astype(np.int32), label + text
+
+@register.register_method(output_names=["y", "text"])
+def add_cast(x1, x2, label):
+    y = register.call_servable(x1, x2)    
+    y, text = register.call_postprocess(postprocess, y, label)
+    return y, text
+"""
+    base.init_servable_with_servable_config(1, servable_content)
+    worker.start_servable_in_master(base.servable_dir, base.servable_name)
+    master.start_grpc_server("0.0.0.0", 5500)
+    # Client
+    instance_count = 3
+    instances, _ = create_multi_instances_fp32(instance_count)
+    list_str = ["ABC", "DEF", "HIJ"]
+    for i, instance in enumerate(instances):
+        instance["label"] = list_str[i]
+
+    # Client, use with avoid affecting the next use case
+    with Client("localhost", 5500, base.servable_name, "add_cast") as client:
+        result = client.infer(instances)
+    assert result[0]["text"] == "ABC123"
+    assert result[1]["text"] == "DEF456"
+    assert result[2]["text"] == "HIJ789"
+
+
+@serving_test
+def test_master_worker_client_bool_input_output_success():
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += servable_config_declare_servable
+    servable_content += r"""
+def postprocess(y, bool_val):
+    return y.astype(np.int32), not bool_val
+
+@register.register_method(output_names=["y", "value"])
+def add_cast(x1, x2, bool_val):
+    y = register.call_servable(x1, x2)    
+    y, value = register.call_postprocess(postprocess, y, bool_val)
+    return y, value
+"""
+    base.init_servable_with_servable_config(1, servable_content)
+    worker.start_servable_in_master(base.servable_dir, base.servable_name)
+    master.start_grpc_server("0.0.0.0", 5500)
+    # Client
+    instance_count = 3
+    instances, _ = create_multi_instances_fp32(instance_count)
+    for i, instance in enumerate(instances):
+        instance["bool_val"] = (i % 2 == 0)
+
+    # Client, use with avoid affecting the next use case
+    with Client("localhost", 5500, base.servable_name, "add_cast") as client:
+        result = client.infer(instances)
+    assert not result[0]["value"]
+    assert result[1]["value"]
+    assert not result[2]["value"]
+
+
+@serving_test
+def test_master_worker_client_int_input_output_success():
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += servable_config_declare_servable
+    servable_content += r"""
+def postprocess(y, int_val):
+    return y.astype(np.int32), int_val + 1
+
+@register.register_method(output_names=["y", "value"])
+def add_cast(x1, x2, int_val):
+    y = register.call_servable(x1, x2)    
+    y, value = register.call_postprocess(postprocess, y, int_val)
+    return y, value
+"""
+    base.init_servable_with_servable_config(1, servable_content)
+    worker.start_servable_in_master(base.servable_dir, base.servable_name)
+    master.start_grpc_server("0.0.0.0", 5500)
+    # Client
+    instance_count = 3
+    instances, _ = create_multi_instances_fp32(instance_count)
+    for i, instance in enumerate(instances):
+        instance["int_val"] = i * 2
+
+    # Client, use with avoid affecting the next use case
+    with Client("localhost", 5500, base.servable_name, "add_cast") as client:
+        result = client.infer(instances)
+    assert result[0]["value"] == 1
+    assert result[1]["value"] == 3
+    assert result[2]["value"] == 5
+
+
+@serving_test
+def test_master_worker_client_float_input_output_success():
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += servable_config_declare_servable
+    servable_content += r"""
+def postprocess(y, float_val):
+    return y.astype(np.int32), float_val + 1
+
+@register.register_method(output_names=["y", "value"])
+def add_cast(x1, x2, float_val):
+    y = register.call_servable(x1, x2)    
+    y, value = register.call_postprocess(postprocess, y, float_val)
+    return y, value
+"""
+    base.init_servable_with_servable_config(1, servable_content)
+    worker.start_servable_in_master(base.servable_dir, base.servable_name)
+    master.start_grpc_server("0.0.0.0", 5500)
+    # Client
+    instance_count = 3
+    instances, _ = create_multi_instances_fp32(instance_count)
+    for i, instance in enumerate(instances):
+        instance["float_val"] = i * 2.2
+
+    # Client, use with avoid affecting the next use case
+    with Client("localhost", 5500, base.servable_name, "add_cast") as client:
+        result = client.infer(instances)
+    assert result[0]["value"] == 1
+    assert result[1]["value"] == (2.2 + 1)
+    assert result[2]["value"] == (4.4 + 1)

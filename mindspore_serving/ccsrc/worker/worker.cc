@@ -44,6 +44,9 @@ Worker &Worker::GetInstance() {
 }
 
 Status Worker::StartGrpcServer(const std::string &ip, uint32_t grpc_port) {
+  if (grpc_async_worker_server_ != nullptr) {
+    return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Serving Error: Worker gRPC server is already running";
+  }
   grpc_async_worker_server_ = std::make_unique<MSWorkerServer>(ip, grpc_port);
   return grpc_async_worker_server_->Init();
 }
@@ -387,6 +390,7 @@ void Worker::Clear() {
   cpp_preprocess_.Stop();
   cpp_postprocess_.Stop();
   ServableStorage::Instance().Clear();
+  grpc_async_worker_server_ = nullptr;
   servable_started_ = false;
   MSI_LOG_INFO << "End clear worker session";
 }

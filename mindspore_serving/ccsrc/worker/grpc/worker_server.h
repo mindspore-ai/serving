@@ -54,7 +54,7 @@ class UntypedCall {
  public:
   virtual ~UntypedCall() {}
 
-  virtual Status operator()() = 0;
+  virtual Status process() = 0;
 
   virtual bool JudgeFinish() = 0;
 };
@@ -84,12 +84,12 @@ class CallData : public UntypedCall {
                                EnqueueFunction enqueue_function, HandleRequestFunction handle_request_function) {
     auto call = new CallData<ServiceImpl, AsyncService, RequestMessage, ResponseMessage>(
       service_impl, async_service, cq, enqueue_function, handle_request_function);
-    Status status = (*call)();
+    Status status = call->process();
     if (status != SUCCESS) return status;
     return SUCCESS;
   }
 
-  Status operator()() override {
+  Status process() override {
     if (status_ == STATE::CREATE) {
       status_ = STATE::PROCESS;
       (async_service_->*enqueue_function_)(&ctx_, &request_, &responder_, cq_, cq_, this);
@@ -155,7 +155,7 @@ class WorkerGrpcServer : public GrpcAsyncServer {
     if (rq->JudgeFinish()) {
       delete rq;
     } else {
-      Status status = (*rq)();
+      Status status = rq->process();
       if (status != SUCCESS) return status;
     }
     return SUCCESS;

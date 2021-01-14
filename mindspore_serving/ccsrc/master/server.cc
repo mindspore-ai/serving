@@ -36,6 +36,9 @@ namespace mindspore {
 namespace serving {
 
 Status Server::StartGrpcServer(const std::string &ip, uint32_t grpc_port, int max_msg_mb_size) {
+  if (grpc_async_server_ != nullptr) {
+    return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Serving Error: Serving gRPC server is already running";
+  }
   ExitSignalHandle::Instance().Start();  // handle ctrl+c to exit
   if (max_msg_mb_size > gRpcMaxMBMsgSize) {
     MSI_LOG_WARNING << "The maximum Serving gRPC message size is 512MB and will be updated from " << max_msg_mb_size
@@ -63,6 +66,7 @@ void Server::Clear() {
   restful_server_.Stop();
   grpc_server_.Stop();
   grpc_manager_server_.Stop();
+  grpc_async_server_ = nullptr;
 }
 
 Server::Server() = default;
