@@ -34,7 +34,7 @@ class GrpcAsyncServer {
   virtual ~GrpcAsyncServer();
   /// \brief Brings up gRPC server
   /// \return none
-  Status Run();
+  Status Run(const std::string &server_tag, int max_msg_mb_size);
   /// \brief Entry function to handle async server request
   Status HandleRequest();
 
@@ -45,8 +45,6 @@ class GrpcAsyncServer {
   virtual Status EnqueueRequest() = 0;
 
   virtual Status ProcessRequest(void *tag) = 0;
-
-  virtual Status SendFinish() = 0;
 
  protected:
   std::string host_;

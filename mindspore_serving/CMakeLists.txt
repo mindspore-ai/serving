@@ -9,19 +9,19 @@ add_library(protobuf::libprotobuf ALIAS protobuf::protobuf)
 add_executable(protobuf::libprotoc ALIAS protobuf::protoc)
 
 set(_PROTOBUF_LIBPROTOBUF protobuf::libprotobuf)
-if (CMAKE_CROSSCOMPILING)
+if(CMAKE_CROSSCOMPILING)
     find_program(_PROTOBUF_PROTOC protoc)
-else ()
+else()
     set(_PROTOBUF_PROTOC $<TARGET_FILE:protobuf::protoc>)
-endif ()
+endif()
 
 # Find gRPC installation
 # Looks for gRPCConfig.cmake file installed by gRPC's cmake installation.
-if (EXISTS ${grpc_ROOT}/lib64)
+if(EXISTS ${grpc_ROOT}/lib64)
     set(gRPC_DIR "${grpc_ROOT}/lib64/cmake/grpc")
-else ()
+else()
     set(gRPC_DIR "${grpc_ROOT}/lib/cmake/grpc")
-endif ()
+endif()
 message("serving using grpc_DIR : " ${gPRC_DIR})
 
 find_package(gRPC CONFIG REQUIRED)
@@ -30,20 +30,20 @@ message(STATUS "Using gRPC ${gRPC_VERSION}")
 set(_GRPC_GRPCPP gRPC::grpc++)
 set(_REFLECTION gRPC::grpc++_reflection)
 
-if (CMAKE_CROSSCOMPILING)
+if(CMAKE_CROSSCOMPILING)
     find_program(_GRPC_CPP_PLUGIN_EXECUTABLE grpc_cpp_plugin)
     find_program(_GRPC_PYTHON_PLUGIN_EXECUTABLE grpc_python_plugin)
-else ()
+else()
     set(_GRPC_CPP_PLUGIN_EXECUTABLE $<TARGET_FILE:gRPC::grpc_cpp_plugin>)
     set(_GRPC_PYTHON_PLUGIN_EXECUTABLE $<TARGET_FILE:gRPC::grpc_python_plugin>)
-endif ()
+endif()
 
 # Proto file
 
 # Generated sources
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/proto/")
 file(GLOB_RECURSE PROTO_FILE_LIST RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}/proto/ *.proto)
-foreach (proto_file ${PROTO_FILE_LIST})
+foreach(proto_file ${PROTO_FILE_LIST})
     message(------proto file: ${proto_file})
     get_filename_component(proto_I_DIR "../" ABSOLUTE)
     get_filename_component(proto_file_absolute "proto/${proto_file}" ABSOLUTE)
@@ -58,7 +58,7 @@ foreach (proto_file ${PROTO_FILE_LIST})
     set(hw_py_pb2 "${protoc_output_prefix}/${proto_file_prefix}_pb2.py")
     set(hw_py_pb2_grpc "${protoc_output_prefix}/${proto_file_prefix}_pb2_grpc.py")
     add_custom_command(
-            OUTPUT "${hw_proto_srcs}" "${hw_proto_hdrs}" "${hw_grpc_srcs}" "${hw_grpc_hdrs}" "${hw_py_pb2}" "${hw_py_pb2_grpc}"
+            OUTPUT ${hw_proto_srcs} ${hw_proto_hdrs} ${hw_grpc_srcs} ${hw_grpc_hdrs} ${hw_py_pb2} ${hw_py_pb2_grpc}
             WORKING_DIRECTORY ${proto_I_DIR}
             COMMAND ${_PROTOBUF_PROTOC}
             ARGS --grpc_out "${CMAKE_CURRENT_BINARY_DIR}"
@@ -75,7 +75,7 @@ foreach (proto_file ${PROTO_FILE_LIST})
             DEPENDS "${proto_file_absolute}")
 
     list(APPEND PROTO_SRC_LIST ${hw_proto_srcs} ${hw_grpc_srcs})
-endforeach (proto_file)
+endforeach()
 
 add_library(PROTO_SRC_LIB STATIC ${PROTO_SRC_LIST})
 
@@ -100,14 +100,14 @@ add_compile_definitions(ENABLE_PYTHON)
 file(GLOB_RECURSE PY_SRC_LIST RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "ccsrc/python/*.cc")
 
 find_package(Python3 3.7 COMPONENTS Interpreter Development)
-if (Python3_FOUND)
+if(Python3_FOUND)
     set(PYTHON_INCLUDE_DIRS "${Python3_INCLUDE_DIRS}")
     set(PYTHON_LIBRARIES "${Python3_LIBRARIES}")
-else ()
+else()
     find_python_package(py_inc py_lib)
     set(PYTHON_INCLUDE_DIRS "${py_inc}")
     set(PYTHON_LIBRARIES "${py_lib}")
-endif ()
+endif()
 
 include_directories(${PYTHON_INCLUDE_DIRS})
 pybind11_add_module(_mindspore_serving ${PY_SRC_LIST})
@@ -120,14 +120,14 @@ target_link_options(serving_common PRIVATE -Wl,-init,mindspore_serving_log_init)
 
 # user set path
 
-if (MS_WHL_LIB_PATH)
+if(MS_WHL_LIB_PATH)
     include_directories(${MS_WHL_LIB_PATH}/../include)
     include_directories(${MS_WHL_LIB_PATH}/../)
     target_link_libraries(serving_common PRIVATE ${MS_WHL_LIB_PATH}/libmindspore.so)
-elseif (MS_BACKEND)
+elseif(MS_BACKEND)
     include_directories(${MS_SOURCE_DIR}/build/package/mindspore)
     include_directories(${MS_SOURCE_DIR}/build/package/mindspore/include)
     target_link_libraries(serving_common PRIVATE ${MS_SOURCE_DIR}/build/package/mindspore/lib/libmindspore.so)
-else ()
+else()
     message(FATAL_ERROR "Please check MindSpore path.")
-endif ()
+endif()

@@ -15,6 +15,8 @@
  */
 
 #include "master/dispacther.h"
+
+#include <utility>
 #include "common/proto_tensor.h"
 #include "master/notify_worker/grpc_notify.h"
 #include "master/notify_worker/local_notify.h"
@@ -55,6 +57,24 @@ DispatcherWorkerContext Dispatcher::GetWorkSession(const RequestSpec &request_sp
 
 Status Dispatcher::Dispatch(const proto::PredictRequest &request, proto::PredictReply *reply) {
   MSI_EXCEPTION_IF_NULL(reply);
+  auto promise = std::make_shared<std::pair<std::promise<void>, Status>>(std::make_pair(std::promise<void>(), FAILED));
+  auto future = promise->first.get_future();
+  DispatchCallback callback = [promise](Status status) {
+    promise->second = status;
+    promise->first.set_value();
+  };
+  auto status = DispatchAsync(request, reply, callback);
+  if (status != SUCCESS) {
+    MSI_LOG_ERROR << "DispatchAsync failed";
+    return status;
+  }
+  future.get();  // wait callback finish
+  return promise->second;
+}
+
+Status Dispatcher::DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
+                                 DispatchCallback callback) {
+  MSI_EXCEPTION_IF_NULL(reply);
   std::shared_lock<std::shared_mutex> lock(servable_shared_lock_);
   RequestSpec request_spec;
   GrpcTensorHelper::GetRequestSpec(request, &request_spec);
@@ -68,13 +88,7 @@ Status Dispatcher::Dispatch(const proto::PredictRequest &request, proto::Predict
   if (!find_method) {
     return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Request " << request_spec.Repr() << ", method is not available";
   }
-  /// TODO spec request version_number
-  auto status = worker.notify_worker_->Dispatch(request, reply);
-  if (status != SUCCESS) {
-    MSI_LOG_ERROR << "Predict failed, error msg: " << status.StatusMessage();
-    return status;
-  }
-  return SUCCESS;
+  return worker.notify_worker_->DispatchAsync(request, reply, std::move(callback));
 }
 
 Status Dispatcher::RegisterServableCommon(const std::vector<WorkerSpec> &worker_specs, CreateNotifyWorkerFunc func) {

@@ -71,6 +71,36 @@ def test_master_worker_client_multi_times_success():
 
 
 @serving_test
+def test_master_worker_client_alone_success():
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    master.start_master_server(master_port=7600)
+    master.start_grpc_server("0.0.0.0", 5500)
+    worker.start_servable(base.servable_dir, base.servable_name, master_port=7600, worker_port=6600)
+    # Client
+    with Client("localhost", 5500, base.servable_name, "add_common") as client:
+        instance_count = 3
+        instances, y_data_list = create_multi_instances_fp32(instance_count)
+        result = client.infer(instances)
+    check_result(result, y_data_list)
+
+
+@serving_test
+def test_master_worker_client_alone_multi_times_success():
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    master.start_master_server(master_port=7600)
+    master.start_grpc_server("0.0.0.0", 5500)
+    worker.start_servable(base.servable_dir, base.servable_name, master_port=7600, worker_port=6600)
+    # Client, use with avoid affecting the next use case
+    with Client("localhost", 5500, base.servable_name, "add_common") as client:
+        for instance_count in range(1, 5):
+            instances, y_data_list = create_multi_instances_fp32(instance_count)
+            result = client.infer(instances)
+            check_result(result, y_data_list)
+
+
+@serving_test
 def test_master_worker_client_async_success():
     base = ServingTestBase()
     base.init_servable(1, "add_servable_config.py")
@@ -140,6 +170,80 @@ def test_master_worker_client_start_restful_server_twice_failed():
         assert False
     except RuntimeError as e:
         assert "Serving Error: RESTful server is already running" in str(e)
+
+
+@serving_test
+def test_master_worker_client_alone_repeat_master_and_woker_port_failed():
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    master.start_master_server(master_port=7600)
+    master.start_grpc_server("0.0.0.0", 5500)
+    try:
+        worker.start_servable(base.servable_dir, base.servable_name, master_port=7600, worker_port=7600)
+        assert False
+    except RuntimeError as e:
+        assert "Serving Error: Worker gRPC server start failed, create server failed, address" in str(e)
+
+
+@serving_test
+def test_master_worker_client_alone_repeat_grpc_and_worker_port_failed():
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    master.start_master_server(master_port=7600)
+    master.start_grpc_server("0.0.0.0", 5500)
+    try:
+        worker.start_servable(base.servable_dir, base.servable_name, master_port=7600, worker_port=5500)
+        assert False
+    except RuntimeError as e:
+        assert "Serving Error: Worker gRPC server start failed, create server failed, address" in str(e)
+
+
+@serving_test
+def test_master_worker_client_alone_repeat_grpc_and_master_port_failed():
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    master.start_master_server(master_port=7600)
+    try:
+        master.start_grpc_server("0.0.0.0", 7600)
+        assert False
+    except RuntimeError as e:
+        assert "Serving Error: Serving gRPC server start failed, create server failed, address" in str(e)
+
+
+@serving_test
+def test_master_worker_client_alone_repeat_grpc_and_master_port2_failed():
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    master.start_grpc_server("0.0.0.0", 7600)
+    try:
+        master.start_master_server(master_port=7600)
+        assert False
+    except RuntimeError as e:
+        assert "Serving Error: Master server start failed, create server failed, address" in str(e)
+
+
+@serving_test
+def test_master_worker_client_alone_repeat_grpc_and_restful_port_failed():
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    master.start_grpc_server("0.0.0.0", 7600)
+    try:
+        master.start_restful_server("0.0.0.0", 7600)
+        assert False
+    except RuntimeError as e:
+        assert "Serving Error: RESTful server start failed, create http listener faild, port" in str(e)
+
+
+@serving_test
+def test_master_worker_client_alone_repeat_grpc_and_restful_port2_failed():
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    master.start_restful_server("0.0.0.0", 7600)
+    try:
+        master.start_grpc_server("0.0.0.0", 7600)
+        assert False
+    except RuntimeError as e:
+        assert "Serving Error: Serving gRPC server start failed, create server failed, address" in str(e)
 
 
 # test servable_config.py with client
@@ -289,6 +393,45 @@ def add_cast(x1, x2, label):
     assert result[0]["text"] == "ABC123"
     assert result[1]["text"] == "DEF456"
     assert result[2]["text"] == "HIJ789"
+
+
+@serving_test
+def test_master_worker_client_bytes_input_output_success():
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += servable_config_declare_servable
+    servable_content += r"""
+index = 0
+list_str = ["123", "456", "789"]
+def postprocess(y, label):
+    global index
+    label = bytes.decode(label.tobytes()) # bytes decode to str
+    text = list_str[index]
+    index = (index + 1) if index + 1 < len(list_str) else 0
+    return y.astype(np.int32), str.encode(label + text) # str encode to bytes
+
+@register.register_method(output_names=["y", "text"])
+def add_cast(x1, x2, label):
+    y = register.call_servable(x1, x2)    
+    y, text = register.call_postprocess(postprocess, y, label)
+    return y, text
+"""
+    base.init_servable_with_servable_config(1, servable_content)
+    worker.start_servable_in_master(base.servable_dir, base.servable_name)
+    master.start_grpc_server("0.0.0.0", 5500)
+    # Client
+    instance_count = 3
+    instances, _ = create_multi_instances_fp32(instance_count)
+    list_str = ["ABC", "DEF", "HIJ"]
+    for i, instance in enumerate(instances):
+        instance["label"] = str.encode(list_str[i])
+
+    # Client, use with avoid affecting the next use case
+    with Client("localhost", 5500, base.servable_name, "add_cast") as client:
+        result = client.infer(instances)
+    assert bytes.decode(result[0]["text"]) == "ABC123"
+    assert bytes.decode(result[1]["text"]) == "DEF456"
+    assert bytes.decode(result[2]["text"]) == "HIJ789"
 
 
 @serving_test

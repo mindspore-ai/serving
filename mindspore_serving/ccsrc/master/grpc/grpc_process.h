@@ -32,13 +32,12 @@ namespace mindspore {
 namespace serving {
 
 // Service Implement
-class MSServiceImpl final : public proto::MSService::Service {
+class MSServiceImpl {
  public:
   explicit MSServiceImpl(std::shared_ptr<Dispatcher> dispatcher) : dispatcher_(dispatcher) {}
   ~MSServiceImpl() = default;
 
-  grpc::Status Predict(grpc::ServerContext *context, const proto::PredictRequest *request,
-                       proto::PredictReply *reply) override;
+  Status PredictAsync(const proto::PredictRequest *request, proto::PredictReply *reply, DispatchCallback callback);
 
  private:
   std::shared_ptr<Dispatcher> dispatcher_;

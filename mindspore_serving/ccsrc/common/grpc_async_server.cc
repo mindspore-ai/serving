@@ -22,11 +22,13 @@ GrpcAsyncServer::GrpcAsyncServer(const std::string &host, uint32_t port) : host_
 
 GrpcAsyncServer::~GrpcAsyncServer() { Stop(); }
 
-Status GrpcAsyncServer::Run() {
+Status GrpcAsyncServer::Run(const std::string &server_tag, int max_msg_mb_size) {
   std::string server_address = host_ + ":" + std::to_string(port_);
   grpc::ServerBuilder builder;
-  // Default message size for gRPC is 4MB. Increase it to 2g-1
-  builder.SetMaxReceiveMessageSize(std::numeric_limits<int32_t>::max());
+  if (max_msg_mb_size > 0) {
+    builder.SetMaxSendMessageSize(static_cast<int>(max_msg_mb_size * (1u << 20)));
+    builder.SetMaxReceiveMessageSize(static_cast<int>(max_msg_mb_size * (1u << 20)));
+  }
   builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
   int port_tcpip = 0;
   builder.AddListeningPort(server_address, grpc::InsecureServerCredentials(), &port_tcpip);
@@ -37,7 +39,8 @@ Status GrpcAsyncServer::Run() {
   if (server_) {
     MSI_LOG(INFO) << "Serving gRPC server start success, listening on " << server_address;
   } else {
-    MSI_LOG(INFO) << "Fail to start server." << server_address;
+    return INFER_STATUS_LOG_ERROR(FAILED) << "Serving Error: " << server_tag
+                                          << " server start failed, create server failed, address " << server_address;
   }
   return SUCCESS;
 }

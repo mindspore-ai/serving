@@ -20,13 +20,15 @@
 namespace mindspore {
 namespace serving {
 
-Status LocalNotifyWorker::Dispatch(const proto::PredictRequest &request, proto::PredictReply *reply) {
-  reply->set_status(true);
-  return Worker::GetInstance().Run(request, reply);
-}
-
 Status LocalNotifyWorker::Exit() {
   Worker::GetInstance().Clear();
+  return SUCCESS;
+}
+
+Status LocalNotifyWorker::DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
+                                        DispatchCallback callback) {
+  auto status = Worker::GetInstance().Run(request, reply);
+  callback(status);
   return SUCCESS;
 }
 

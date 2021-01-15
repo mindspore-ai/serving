@@ -33,20 +33,6 @@ GrpcNotfiyWorker::GrpcNotfiyWorker(const std::string &worker_address) {
 
 GrpcNotfiyWorker::~GrpcNotfiyWorker() = default;
 
-Status GrpcNotfiyWorker::Dispatch(const proto::PredictRequest &request, proto::PredictReply *reply) {
-  if (!stub_) {
-    return INFER_STATUS_LOG_ERROR(FAILED)
-           << "Predict failed, worker gRPC has not been inited or has already exited, worker address "
-           << worker_address_;
-  }
-  if (!client_) {
-    client_ = std::make_unique<MSServiceClient>();
-    client_->Start();
-  }
-  client_->Predict(request, reply, stub_);
-  return SUCCESS;
-}
-
 Status GrpcNotfiyWorker::Exit() {
   if (stub_) {
     proto::ExitRequest request;
@@ -59,6 +45,21 @@ Status GrpcNotfiyWorker::Exit() {
 
     (void)stub_->Exit(&context, request, &reply);
   }
+  return SUCCESS;
+}
+
+Status GrpcNotfiyWorker::DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
+                                       DispatchCallback callback) {
+  if (!stub_) {
+    return INFER_STATUS_LOG_ERROR(FAILED)
+           << "Predict failed, worker gRPC has not been inited or has already exited, worker address "
+           << worker_address_;
+  }
+  if (!client_) {
+    client_ = std::make_unique<MSServiceClient>();
+    client_->Start();
+  }
+  client_->PredictAsync(request, reply, stub_, callback);
   return SUCCESS;
 }
 

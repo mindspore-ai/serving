@@ -16,6 +16,7 @@
 
 #include "master/grpc/grpc_client.h"
 #include <string>
+#include <utility>
 #include "master/grpc/grpc_server.h"
 
 namespace mindspore {
@@ -35,15 +36,18 @@ MSServiceClient::~MSServiceClient() {
   }
   in_running_ = false;
 }
-void MSServiceClient::Predict(const proto::PredictRequest &request, proto::PredictReply *reply,
-                              std::shared_ptr<proto::MSWorker::Stub> stub) {
+
+void MSServiceClient::PredictAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
+                                   std::shared_ptr<proto::MSWorker::Stub> stub, DispatchCallback callback) {
   AsyncClientCall *call = new AsyncClientCall;
   call->reply = reply;
+  call->callback = std::move(callback);
   call->response_reader = stub->PrepareAsyncPredict(&call->context, request, &cq_);
   call->response_reader->StartCall();
   call->response_reader->Finish(call->reply, &call->status, call);
   MSI_LOG(INFO) << "Finish send Predict";
 }
+
 void MSServiceClient::AsyncCompleteRpc() {
   void *got_tag;
   bool ok = false;
@@ -51,12 +55,10 @@ void MSServiceClient::AsyncCompleteRpc() {
   while (cq_.Next(&got_tag, &ok)) {
     AsyncClientCall *call = static_cast<AsyncClientCall *>(got_tag);
     if (call->status.ok()) {
-      call->reply->set_status(true);
-      if (grpc_async_server_) {
-        grpc_async_server_->SendFinish();
-      }
+      call->callback(SUCCESS);
     } else {
-      MSI_LOG(INFO) << "RPC failed";
+      MSI_LOG_ERROR << "RPC failed: " << call->status.error_code() << ", " << call->status.error_message();
+      call->callback(Status(FAILED, call->status.error_message()));
     }
     delete call;
   }
