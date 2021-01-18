@@ -148,8 +148,9 @@ bool RestfulService::JsonMatchDataType(const json &js, DataType type) {
       flag = true;
     }
   } else if (js.is_string()) {
-    // string value can express all kinds type
-    flag = true;
+    if (type == kMSI_String) {
+      flag = true;
+    }
   } else if (js.is_boolean()) {
     if (type == kMSI_Bool) {
       flag = true;
@@ -162,12 +163,9 @@ bool RestfulService::JsonMatchDataType(const json &js, DataType type) {
 std::vector<int64_t> RestfulService::GetObjShape(const json &js) {
   std::vector<int64_t> shape;
   auto it = js.find(kShape);
-  if (it == js.end()) {
-    shape.push_back(1);
-  } else {
+  if (it != js.end()) {
     shape = GetSpecifiedShape(it.value());
   }
-
   return shape;
 }
 
@@ -330,17 +328,24 @@ Status RestfulService::CheckObj(const json &js) {
       if (!value.is_array()) {
         return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "json object, key is 'shape', value should be array type";
       }
-      if (value.empty()) {
-        return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "json object, key is 'shape', array value should no be empty";
-      }
+      bool zero_dims_before = false;
       for (auto it = value.begin(); it != value.end(); ++it) {
-        if (!(it->is_number())) {
-          return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "json object, key is 'shape', array value should be number";
+        if (zero_dims_before) {
+          return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
+                 << "json object, key is 'shape', invalid shape value " << value.dump();
+        }
+        if (!(it->is_number_unsigned())) {
+          return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
+                 << "json object, key is 'shape', array value should be unsigned integer";
         }
         auto number = it->get<int32_t>();
-        if (number <= 0) {
+        if (number < 0) {
           return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
-                 << "json object, key is 'shape', number value should be positive number";
+                 << "json object, key is 'shape', number value should not be negative number, shape value: "
+                 << value.dump();
+        }
+        if (number == 0) {
+          zero_dims_before = true;
         }
       }
       shape_count++;
@@ -365,28 +370,29 @@ Status RestfulService::CheckObj(const json &js) {
 // 1. parse request common func
 Status RestfulService::ParseItem(const json &value, ProtoTensor *const pb_tensor) {
   Status status(SUCCESS);
+  std::vector<int64_t> scalar_shape = {};
   if (value.is_number_integer()) {
     DataType type = kMSI_Int32;
     pb_tensor->set_data_type(type);
-    pb_tensor->set_shape({1});
+    pb_tensor->set_shape(scalar_shape);
     pb_tensor->resize_data(pb_tensor->GetTypeSize(type));
     status = GetScalarByType(type, value, 0, pb_tensor);
   } else if (value.is_number_float()) {
     DataType type = kMSI_Float32;
     pb_tensor->set_data_type(type);
-    pb_tensor->set_shape({1});
+    pb_tensor->set_shape(scalar_shape);
     pb_tensor->resize_data(pb_tensor->GetTypeSize(type));
     status = GetScalarByType(type, value, 0, pb_tensor);
   } else if (value.is_boolean()) {
     DataType type = kMSI_Bool;
     pb_tensor->set_data_type(type);
-    pb_tensor->set_shape({1});
+    pb_tensor->set_shape(scalar_shape);
     pb_tensor->resize_data(pb_tensor->GetTypeSize(type));
     status = GetScalarByType(type, value, 0, pb_tensor);
   } else if (value.is_string()) {
     DataType type = kMSI_String;
     pb_tensor->set_data_type(type);
-    pb_tensor->set_shape({1});
+    pb_tensor->set_shape(scalar_shape);
     status = GetScalarByType(type, value, 0, pb_tensor);
   } else if (value.is_object()) {
     status = CheckObj(value);
@@ -400,10 +406,6 @@ Status RestfulService::ParseItem(const json &value, ProtoTensor *const pb_tensor
     }
 
     std::vector<int64_t> shape = GetObjShape(value);
-    if (shape.empty()) {
-      return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "object json, shape is empty";
-    }
-
     bool is_tensor = false;
     if (type != kMSI_String && type != kMSI_Bytes) {
       is_tensor = true;
@@ -437,7 +439,7 @@ Status RestfulService::ParseItem(const json &value, ProtoTensor *const pb_tensor
       is_tensor = true;
     }
 
-    // intances mode:only support one item
+    // instances mode:only support one item
     if (request_type_ == kInstanceType) {
       if (!is_tensor) {
         size_t elements_nums = std::accumulate(shape.begin(), shape.end(), 1LL, std::multiplies<size_t>());
@@ -481,15 +483,15 @@ Status RestfulService::RecursiveGetArray(const json &json_data, size_t depth, si
   std::vector<int64_t> required_shape = request_tensor->shape();
   if (depth >= required_shape.size()) {
     return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
-           << "current depth:" << depth << " is more than shape dims:" << required_shape.size();
+           << "invalid json array: current depth " << depth << " is more than shape dims " << required_shape.size();
   }
   if (!json_data.is_array()) {
-    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "json type is not array";
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "invalid json array: json type is not array";
   }
   if (json_data.size() != static_cast<size_t>(required_shape[depth])) {
     return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
-           << "json size is:" << json_data.size() << "; the " << depth << " dim need"
-           << " shape size:" << required_shape[depth];
+           << "invalid json array: json size is " << json_data.size() << ", the dim " << depth << " expected to be "
+           << required_shape[depth];
   }
   if (depth + 1 < required_shape.size()) {
     size_t sub_element_cnt =
@@ -618,9 +620,7 @@ Status RestfulService::GetScalarData(const json &js, size_t index, bool is_bytes
 
     auto value = js.get<std::string>();
     if (is_bytes) {
-      if (value.empty()) {
-        return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "string value is empty";
-      }
+      DataType real_type = request_tensor->data_type();
       auto tail_equal_size = GetTailEqualSize(value);
       if (tail_equal_size == UINT32_MAX) {
         return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "'" << value << "' is illegal b64 encode string";
@@ -631,7 +631,6 @@ Status RestfulService::GetScalarData(const json &js, size_t index, bool is_bytes
       if (target_size != origin_size) {
         return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "decode base64 failed, size is not matched.";
       }
-      DataType real_type = request_tensor->data_type();
       if (real_type == kMSI_Bytes || real_type == kMSI_String) {
         request_tensor->add_bytes_data(buffer.data(), origin_size);
       } else {
@@ -643,9 +642,10 @@ Status RestfulService::GetScalarData(const json &js, size_t index, bool is_bytes
                  << "; Given info: type:" << GetStringByDataType(real_type) << "; type size:" << type_size
                  << "; element nums:" << element_cnt;
         }
-
-        auto data = reinterpret_cast<T *>(request_tensor->mutable_data()) + index;
-        memcpy_s(data, origin_size, buffer.data(), buffer.size());
+        if (origin_size > 0) {
+          auto data = reinterpret_cast<T *>(request_tensor->mutable_data()) + index;
+          memcpy_s(data, origin_size, buffer.data(), buffer.size());
+        }
       }
     } else {
       request_tensor->add_bytes_data(reinterpret_cast<uint8_t *>(value.data()), value.length());
@@ -680,7 +680,7 @@ Status RestfulService::RunRestful(const std::shared_ptr<RestfulRequest> &restful
   MSI_TIME_STAMP_END(ParseRequest)
   if (status != SUCCESS) {
     std::string error_msg = status.StatusMessage();
-    std::string msg = "Parser reqeust failed, " + error_msg;
+    std::string msg = "Parser request failed, " + error_msg;
     status = msg;
     return status;
   }
@@ -730,7 +730,7 @@ Status RestfulService::ParseRequest(const std::shared_ptr<RestfulRequest> &restf
       status = ParseInstancesMsg(js_msg, request);
       break;
     default:
-      return INFER_STATUS_LOG_ERROR(FAILED) << "restful reqeust only support instances mode";
+      return INFER_STATUS_LOG_ERROR(FAILED) << "restful request only support instances mode";
   }
 
   return status;
@@ -741,8 +741,7 @@ Status RestfulService::ParseReqCommonMsg(const std::shared_ptr<RestfulRequest> &
   Status status(SUCCESS);
   auto request_ptr = restful_request->decompose_event_request();
   if (request_ptr == nullptr) {
-    ERROR_INFER_STATUS(status, INVALID_INPUTS, "Decompose event request is nullptr");
-    return status;
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Decompose event request is nullptr";
   }
   request->mutable_servable_spec()->set_name(request_ptr->model_name_);
   request->mutable_servable_spec()->set_version_number(request_ptr->version_);
@@ -755,8 +754,7 @@ Status RestfulService::ParseInstancesMsg(const json &js_msg, PredictRequest *con
   auto type = GetReqTypeStr(request_type_);
   auto instances = js_msg.find(type);
   if (instances == js_msg.end()) {
-    ERROR_INFER_STATUS(status, FAILED, "instances request json should have instances key word");
-    return status;
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "instances request json should have instances key word";
   }
 
   // get instances way:{key, value} or {value}
@@ -845,9 +843,7 @@ Status RestfulService::ParseReplyDetail(const proto::Tensor &tensor, json *const
   Status status(SUCCESS);
   const ProtoTensor pb_tensor(const_cast<proto::Tensor *>(&tensor));
   auto shape = pb_tensor.shape();
-  size_t shape_size = std::accumulate(shape.begin(), shape.end(), 1LL, std::multiplies<size_t>());
-
-  if (shape_size == 1) {
+  if (shape.empty()) {
     status = ParseScalar(pb_tensor, 0, js);
     if (status != SUCCESS) {
       return status;
@@ -900,7 +896,7 @@ Status RestfulService::ParseScalar(const ProtoTensor &pb_tensor, size_t index, j
       status = ParseScalarData<uint64_t>(pb_tensor, false, index, js);
       break;
     case kMSI_Float16:
-      ERROR_INFER_STATUS(status, FAILED, "fp16 reply is not supported");
+      status = INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "fp16 reply is not supported";
       break;
     case kMSI_Float32:
       status = ParseScalarData<float>(pb_tensor, false, index, js);
@@ -915,7 +911,7 @@ Status RestfulService::ParseScalar(const ProtoTensor &pb_tensor, size_t index, j
       status = ParseScalarData<std::string>(pb_tensor, true, index, js);
       break;
     default:
-      ERROR_INFER_STATUS(status, FAILED, "reply data type is not supported");
+      status = INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "reply data type is not supported";
       break;
   }
   return status;
@@ -981,10 +977,15 @@ Status RestfulService::RecursiveParseArray(const ProtoTensor &pb_tensor, size_t 
                                            json *const out_json) {
   Status status(SUCCESS);
   std::vector<int64_t> required_shape = pb_tensor.shape();
-  if (depth >= 10) {
-    return INFER_STATUS_LOG_ERROR(FAILED) << "result shape dims is larger than 10";
+  if (depth >= required_shape.size()) {
+    return INFER_STATUS_LOG_ERROR(FAILED)
+           << "result shape dims is larger than result shape size " << required_shape.size();
   }
   if (depth == required_shape.size() - 1) {
+    if (required_shape[depth] == 0) {  // make empty array
+      out_json->push_back(json());
+      out_json->clear();
+    }
     for (int i = 0; i < required_shape[depth]; i++) {
       out_json->push_back(json());
       json &scalar_json = out_json->back();

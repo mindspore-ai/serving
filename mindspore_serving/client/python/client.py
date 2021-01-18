@@ -126,17 +126,17 @@ def _check_str(arg_name, str_val):
         raise RuntimeError(f"Parameter '{arg_name}' should not be empty str")
 
 
-def _check_int(arg_name, int_val, mininum=None, maximum=None):
+def _check_int(arg_name, int_val, minimum=None, maximum=None):
     """Check whether the input parameters are reasonable int input"""
     if not isinstance(int_val, int):
         raise RuntimeError(f"Parameter '{arg_name}' should be int, but actually {type(int_val)}")
-    if mininum is not None and int_val < mininum:
+    if minimum is not None and int_val < minimum:
         if maximum is not None:
-            raise RuntimeError(f"Parameter '{arg_name}' should be in range [{mininum},{maximum}]")
-        raise RuntimeError(f"Parameter '{arg_name}' should be >= {mininum}")
+            raise RuntimeError(f"Parameter '{arg_name}' should be in range [{minimum},{maximum}]")
+        raise RuntimeError(f"Parameter '{arg_name}' should be >= {minimum}")
     if maximum is not None and int_val > maximum:
-        if mininum is not None:
-            raise RuntimeError(f"Parameter '{arg_name}' should be in range [{mininum},{maximum}]")
+        if minimum is not None:
+            raise RuntimeError(f"Parameter '{arg_name}' should be in range [{minimum},{maximum}]")
         raise RuntimeError(f"Parameter '{arg_name}' should be <= {maximum}")
 
 
@@ -259,29 +259,6 @@ class Client:
             print(status_code.value)
             return ClientGrpcAsyncError({"error": "Grpc Error, " + str(status_code.value)})
 
-    def close(self):
-        """
-        Used to release gRPC connection avoiding influence on the connection to the next restarted Serving server.
-
-        Examples:
-            >>> from mindspore_serving.client import Client
-            >>> import numpy as np
-            >>> instance = {"x1": np.ones((2, 2), np.int32), "x2": np.ones((2, 2), np.int32)}
-            >>> client = Client("localhost", 5500, "add", "add_cast")
-            >>> result = client.infer(instance)
-            >>> client.close()
-            >>> print(result)
-        """
-        if self.stub:
-            del self.stub
-            self.stub = None
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
-
     def _create_request(self, instances):
         """Used to create request spec."""
         if not isinstance(instances, (tuple, list)):
@@ -342,7 +319,7 @@ class Client:
 
 class ClientGrpcAsyncResult:
     """
-    When Client.infer_async invoke sucessfully, a ClientGrpcAsyncResult object is returned.
+    When Client.infer_async invoke successfully, a ClientGrpcAsyncResult object is returned.
 
     Examples:
         >>> from mindspore_serving.client import Client

@@ -3,11 +3,7 @@ add_library(protobuf::libprotobuf ALIAS protobuf::protobuf)
 add_executable(protobuf::libprotoc ALIAS protobuf::protoc)
 
 set(_PROTOBUF_LIBPROTOBUF protobuf::libprotobuf)
-if(CMAKE_CROSSCOMPILING)
-    find_program(_PROTOBUF_PROTOC protoc)
-else()
-    set(_PROTOBUF_PROTOC $<TARGET_FILE:protobuf::protoc>)
-endif()
+set(_PROTOBUF_PROTOC $<TARGET_FILE:protobuf::protoc>)
 
 # Find gRPC installation
 # Looks for gRPCConfig.cmake file installed by gRPC's cmake installation.
@@ -24,13 +20,8 @@ message(STATUS "Using gRPC ${gRPC_VERSION}")
 set(_GRPC_GRPCPP gRPC::grpc++)
 set(_REFLECTION gRPC::grpc++_reflection)
 
-if(CMAKE_CROSSCOMPILING)
-    find_program(_GRPC_CPP_PLUGIN_EXECUTABLE grpc_cpp_plugin)
-    find_program(_GRPC_PYTHON_PLUGIN_EXECUTABLE grpc_python_plugin)
-else()
-    set(_GRPC_CPP_PLUGIN_EXECUTABLE $<TARGET_FILE:gRPC::grpc_cpp_plugin>)
-    set(_GRPC_PYTHON_PLUGIN_EXECUTABLE $<TARGET_FILE:gRPC::grpc_python_plugin>)
-endif()
+set(_GRPC_CPP_PLUGIN_EXECUTABLE $<TARGET_FILE:gRPC::grpc_cpp_plugin>)
+set(_GRPC_PYTHON_PLUGIN_EXECUTABLE $<TARGET_FILE:gRPC::grpc_python_plugin>)
 
 # Proto file
 # Generated sources
@@ -96,7 +87,7 @@ add_library(serving_ut_common STATIC ${UT_SERVING_COMMON})
 
 target_link_libraries(serving_ut_common PRIVATE ${_REFLECTION} ${_GRPC_GRPCPP} ${_PROTOBUF_LIBPROTOBUF})
 target_link_libraries(serving_ut_common PRIVATE mindspore_serving::event mindspore_serving::event_pthreads)
-target_link_libraries(serving_ut_common PRIVATE pthread mindspore::glog)
+target_link_libraries(serving_ut_common PRIVATE pthread mindspore_serving::glog)
 target_link_libraries(serving_ut_common PRIVATE ${SECUREC_LIBRARY})
 
 # copy libevent lib

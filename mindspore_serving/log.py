@@ -91,7 +91,7 @@ class _MultiCompatibleRotatingFileHandler(RotatingFileHandler):
             self.stream.close()
             self.stream = None
 
-        # Attain an exclusive lock with bloking mode by `fcntl` module.
+        # Attain an exclusive lock with blocking mode by `fcntl` module.
         with open(self.baseFilename, 'a') as file_pointer:
             if platform.system() != "Windows":
                 fcntl.lockf(file_pointer.fileno(), fcntl.LOCK_EX)
@@ -396,7 +396,7 @@ def _clear_handler(logger):
         logger.removeHandler(handler)
 
 
-def _find_caller(stack_info=False):
+def _find_caller(stack_info=False, _=1):
     """
     Find the stack frame of the caller.
 
@@ -432,13 +432,13 @@ def _find_caller(stack_info=False):
 
 def _get_stack_info(frame):
     """
-    Get the stack informations.
+    Get the stack information.
 
     Args:
-        frame(frame): the frame requiring informations.
+        frame(frame): the frame requiring information.
 
     Returns:
-        str, the string of the stack informations.
+        str, the string of the stack information.
     """
     sinfo = None
     stack_prefix = 'Stack (most recent call last):\n'

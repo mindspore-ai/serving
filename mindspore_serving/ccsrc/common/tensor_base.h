@@ -51,7 +51,7 @@ enum DataType {
 class TensorBase;
 using TensorBasePtr = std::shared_ptr<TensorBase>;
 
-class MS_API TensorBase {
+class MS_API TensorBase : public std::enable_shared_from_this<TensorBase> {
  public:
   TensorBase() = default;
   virtual ~TensorBase() = default;
@@ -84,7 +84,7 @@ class MS_API TensorBase {
 
   // TensorBase(const TensorBase& other) = delete;
   // TensorBase& operator=(const TensorBase& other) = delete;
-  void assgin(const TensorBase &other);
+  void assign(const TensorBase &other);
   Status concat(const std::vector<TensorBasePtr> &inputs);
   bool is_bytes_val_data() const { return data_type() == kMSI_Bytes || data_type() == kMSI_String; }
 };

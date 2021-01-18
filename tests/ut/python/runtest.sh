@@ -44,10 +44,12 @@ echo "LD_LIBRARY_PATH=LD_LIBRARY_PATH"
 unset http_proxy
 unset https_proxy
 
+cd -
+cd ${PROJECT_PATH}/tests/ut/python/tests/
 if [ $# -gt 0 ]; then
-  pytest -v ${PROJECT_PATH}/tests/ut/python/tests/ -k $1
+  pytest -v . -k "$1"
 else
-  pytest -v ${PROJECT_PATH}/tests/ut/python/tests
+  pytest -v .
 fi
 
 RET=$?

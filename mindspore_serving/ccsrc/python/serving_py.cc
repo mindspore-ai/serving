@@ -27,6 +27,9 @@
 namespace mindspore::serving {
 
 PYBIND11_MODULE(_mindspore_serving, m) {
+  // avoid as numpy object memory copy in PyTensor::AsPythonData
+  py::class_<TensorBase, TensorBasePtr>(m, "Tensor_");
+
   py::class_<PyPreprocessStorage, std::shared_ptr<PyPreprocessStorage>>(m, "PreprocessStorage_")
     .def(py::init<>())
     .def_static("get_instance", &PyPreprocessStorage::Instance)

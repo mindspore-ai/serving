@@ -120,18 +120,16 @@ size_t GetB64OriginSize(size_t target_len, size_t tail_size) {
 
 size_t GetTailEqualSize(const std::string &str) {
   size_t length = str.size();
-  if (length == 0 || length % 4 != 0) {
+  if (length % 4 != 0) {
     return UINT32_MAX;
   }
   size_t count = 0;
-  if (str.at(str.size() - 1) == '=') {
+  if (length >= 1 && str[length - 1] == '=') {
     count++;
   }
-
-  if (str.at(str.size() - 2) == '=') {
+  if (length >= 2 && str[length - 2] == '=') {
     count++;
   }
-
   return count;
 }
 

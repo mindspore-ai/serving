@@ -18,7 +18,9 @@ import numpy as np
 from mindspore_serving import master
 from mindspore_serving import worker
 from mindspore_serving.client import Client
-from common import ServingTestBase, serving_test
+from common import ServingTestBase, serving_test, release_client
+from common import servable_config_import, servable_config_declare_servable, servable_config_preprocess_cast
+from common import servable_config_method_add_common, servable_config_method_add_cast
 
 
 def create_multi_instances_fp32(instance_count):
@@ -50,7 +52,7 @@ def test_master_worker_client_success():
     instance_count = 3
     instances, y_data_list = create_multi_instances_fp32(instance_count)
     result = client.infer(instances)
-    client.close()  # avoid affecting the next use case
+    release_client(client)
 
     print(result)
     check_result(result, y_data_list)
@@ -63,11 +65,12 @@ def test_master_worker_client_multi_times_success():
     worker.start_servable_in_master(base.servable_dir, base.servable_name, 0)
     master.start_grpc_server("0.0.0.0", 5500)
     # Client, use with avoid affecting the next use case
-    with Client("localhost", 5500, base.servable_name, "add_common") as client:
-        for instance_count in range(1, 5):
-            instances, y_data_list = create_multi_instances_fp32(instance_count)
-            result = client.infer(instances)
-            check_result(result, y_data_list)
+    client = Client("localhost", 5500, base.servable_name, "add_common")
+    for instance_count in range(1, 5):
+        instances, y_data_list = create_multi_instances_fp32(instance_count)
+        result = client.infer(instances)
+        check_result(result, y_data_list)
+    release_client(client)
 
 
 @serving_test
@@ -78,10 +81,11 @@ def test_master_worker_client_alone_success():
     master.start_grpc_server("0.0.0.0", 5500)
     worker.start_servable(base.servable_dir, base.servable_name, master_port=7600, worker_port=6600)
     # Client
-    with Client("localhost", 5500, base.servable_name, "add_common") as client:
-        instance_count = 3
-        instances, y_data_list = create_multi_instances_fp32(instance_count)
-        result = client.infer(instances)
+    client = Client("localhost", 5500, base.servable_name, "add_common")
+    instance_count = 3
+    instances, y_data_list = create_multi_instances_fp32(instance_count)
+    result = client.infer(instances)
+    release_client(client)
     check_result(result, y_data_list)
 
 
@@ -93,11 +97,12 @@ def test_master_worker_client_alone_multi_times_success():
     master.start_grpc_server("0.0.0.0", 5500)
     worker.start_servable(base.servable_dir, base.servable_name, master_port=7600, worker_port=6600)
     # Client, use with avoid affecting the next use case
-    with Client("localhost", 5500, base.servable_name, "add_common") as client:
-        for instance_count in range(1, 5):
-            instances, y_data_list = create_multi_instances_fp32(instance_count)
-            result = client.infer(instances)
-            check_result(result, y_data_list)
+    client = Client("localhost", 5500, base.servable_name, "add_common")
+    for instance_count in range(1, 5):
+        instances, y_data_list = create_multi_instances_fp32(instance_count)
+        result = client.infer(instances)
+        check_result(result, y_data_list)
+    release_client(client)
 
 
 @serving_test
@@ -112,7 +117,7 @@ def test_master_worker_client_async_success():
     instances, y_data_list = create_multi_instances_fp32(instance_count)
     result_future = client.infer_async(instances)
     result = result_future.result()
-    client.close()  # avoid affecting the next use case
+    release_client(client)  # avoid affecting the next use case
 
     print(result)
     check_result(result, y_data_list)
@@ -125,12 +130,13 @@ def test_master_worker_client_async_multi_times_success():
     worker.start_servable_in_master(base.servable_dir, base.servable_name, 0)
     master.start_grpc_server("0.0.0.0", 5500)
     # Client, use with avoid affecting the next use case
-    with Client("localhost", 5500, base.servable_name, "add_common") as client:
-        for instance_count in range(1, 5):
-            instances, y_data_list = create_multi_instances_fp32(instance_count)
-            result_future = client.infer_async(instances)
-            result = result_future.result()
-            check_result(result, y_data_list)
+    client = Client("localhost", 5500, base.servable_name, "add_common")
+    for instance_count in range(1, 5):
+        instances, y_data_list = create_multi_instances_fp32(instance_count)
+        result_future = client.infer_async(instances)
+        result = result_future.result()
+        check_result(result, y_data_list)
+    release_client(client)
 
 
 @serving_test
@@ -231,7 +237,7 @@ def test_master_worker_client_alone_repeat_grpc_and_restful_port_failed():
         master.start_restful_server("0.0.0.0", 7600)
         assert False
     except RuntimeError as e:
-        assert "Serving Error: RESTful server start failed, create http listener faild, port" in str(e)
+        assert "Serving Error: RESTful server start failed, create http listener failed, port" in str(e)
 
 
 @serving_test
@@ -244,37 +250,6 @@ def test_master_worker_client_alone_repeat_grpc_and_restful_port2_failed():
         assert False
     except RuntimeError as e:
         assert "Serving Error: Serving gRPC server start failed, create server failed, address" in str(e)
-
-
-# test servable_config.py with client
-servable_config_import = r"""
-import numpy as np
-from mindspore_serving.worker import register
-"""
-
-servable_config_declare_servable = r"""
-register.declare_servable(servable_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=False)
-"""
-
-servable_config_preprocess_cast = r"""
-def add_trans_datatype(x1, x2):
-    return x1.astype(np.float32), x2.astype(np.float32)
-"""
-
-servable_config_method_add_common = r"""
-@register.register_method(output_names=["y"])
-def add_common(x1, x2):  # only support float32 inputs
-    y = register.call_servable(x1, x2)
-    return y
-"""
-
-servable_config_method_add_cast = r"""
-@register.register_method(output_names=["y"])
-def add_cast(x1, x2):
-    x1, x2 = register.call_preprocess(add_trans_datatype, x1, x2)  # cast input to float32
-    y = register.call_servable(x1, x2)
-    return y
-"""
 
 
 @serving_test
@@ -292,8 +267,9 @@ def test_master_worker_client_servable_content_success():
     # Client
     instance_count = 3
     instances, y_data_list = create_multi_instances_fp32(instance_count)
-    with Client("localhost", 5500, base.servable_name, "add_common") as client:
-        result = client.infer(instances)
+    client = Client("localhost", 5500, base.servable_name, "add_common")
+    result = client.infer(instances)
+    release_client(client)
 
     print(result)
     check_result(result, y_data_list)
@@ -320,9 +296,9 @@ def add_cast(x1, x2):
     # Client
     instance_count = 3
     instances, _ = create_multi_instances_fp32(instance_count)
-    # Client, use with avoid affecting the next use case
-    with Client("localhost", 5500, base.servable_name, "add_cast") as client:
-        result = client.infer(instances)
+    client = Client("localhost", 5500, base.servable_name, "add_cast")
+    result = client.infer(instances)
+    release_client(client)
 
     print(result)
     assert "Preprocess Failed" in str(result[0]["error"])
@@ -349,9 +325,9 @@ def add_cast(x1, x2):
     # Client
     instance_count = 3
     instances, _ = create_multi_instances_fp32(instance_count)
-    # Client, use with avoid affecting the next use case
-    with Client("localhost", 5500, base.servable_name, "add_cast") as client:
-        result = client.infer(instances)
+    client = Client("localhost", 5500, base.servable_name, "add_cast")
+    result = client.infer(instances)
+    release_client(client)
 
     print(result)
     assert "Postprocess Failed" in str(result[0]["error"])
@@ -387,9 +363,9 @@ def add_cast(x1, x2, label):
     for i, instance in enumerate(instances):
         instance["label"] = list_str[i]
 
-    # Client, use with avoid affecting the next use case
-    with Client("localhost", 5500, base.servable_name, "add_cast") as client:
-        result = client.infer(instances)
+    client = Client("localhost", 5500, base.servable_name, "add_cast")
+    result = client.infer(instances)
+    release_client(client)
     assert result[0]["text"] == "ABC123"
     assert result[1]["text"] == "DEF456"
     assert result[2]["text"] == "HIJ789"
@@ -426,9 +402,9 @@ def add_cast(x1, x2, label):
     for i, instance in enumerate(instances):
         instance["label"] = str.encode(list_str[i])
 
-    # Client, use with avoid affecting the next use case
-    with Client("localhost", 5500, base.servable_name, "add_cast") as client:
-        result = client.infer(instances)
+    client = Client("localhost", 5500, base.servable_name, "add_cast")
+    result = client.infer(instances)
+    release_client(client)
     assert bytes.decode(result[0]["text"]) == "ABC123"
     assert bytes.decode(result[1]["text"]) == "DEF456"
     assert bytes.decode(result[2]["text"]) == "HIJ789"
@@ -458,9 +434,9 @@ def add_cast(x1, x2, bool_val):
     for i, instance in enumerate(instances):
         instance["bool_val"] = (i % 2 == 0)
 
-    # Client, use with avoid affecting the next use case
-    with Client("localhost", 5500, base.servable_name, "add_cast") as client:
-        result = client.infer(instances)
+    client = Client("localhost", 5500, base.servable_name, "add_cast")
+    result = client.infer(instances)
+    release_client(client)
     assert not result[0]["value"]
     assert result[1]["value"]
     assert not result[2]["value"]
@@ -490,9 +466,9 @@ def add_cast(x1, x2, int_val):
     for i, instance in enumerate(instances):
         instance["int_val"] = i * 2
 
-    # Client, use with avoid affecting the next use case
-    with Client("localhost", 5500, base.servable_name, "add_cast") as client:
-        result = client.infer(instances)
+    client = Client("localhost", 5500, base.servable_name, "add_cast")
+    result = client.infer(instances)
+    release_client(client)
     assert result[0]["value"] == 1
     assert result[1]["value"] == 3
     assert result[2]["value"] == 5
@@ -522,9 +498,53 @@ def add_cast(x1, x2, float_val):
     for i, instance in enumerate(instances):
         instance["float_val"] = i * 2.2
 
-    # Client, use with avoid affecting the next use case
-    with Client("localhost", 5500, base.servable_name, "add_cast") as client:
-        result = client.infer(instances)
+    client = Client("localhost", 5500, base.servable_name, "add_cast")
+    result = client.infer(instances)
+    release_client(client)
     assert result[0]["value"] == 1
     assert result[1]["value"] == (2.2 + 1)
     assert result[2]["value"] == (4.4 + 1)
+
+
+@serving_test
+def test_master_worker_client_preprocess_update_numpy_success():
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += servable_config_declare_servable
+    servable_content += r"""
+def preprocess(x3):
+    x3[0] = 123
+    return x3    
+    
+def postprocess(x3, x4):
+    return x3 + 1, x4 + 2
+
+@register.register_method(output_names=["x3", "x4"])
+def add_cast(x1, x2, x3):
+    x4 = register.call_preprocess(preprocess, x3) # [123, 1, 1], expect x3 is x4, same as python function call
+    y = register.call_servable(x1, x2)    
+    x3, x4 = register.call_postprocess(postprocess, x3, x4)
+    return x3, x4 
+"""
+    base.init_servable_with_servable_config(1, servable_content)
+    worker.start_servable_in_master(base.servable_dir, base.servable_name)
+    master.start_grpc_server("0.0.0.0", 5500)
+    # Client
+    instance_count = 3
+    instances, _ = create_multi_instances_fp32(instance_count)
+    for instance in instances:
+        instance["x3"] = np.ones([3])
+
+    # Client, use with avoid affecting the next use case
+    client = Client("localhost", 5500, base.servable_name, "add_cast")
+    result = client.infer(instances)
+    release_client(client)
+    x3 = np.array([123, 1, 1]) + 1
+    x4 = np.array([123, 1, 1]) + 2
+
+    assert (result[0]["x3"] == x3).all()
+    assert (result[1]["x3"] == x3).all()
+    assert (result[2]["x3"] == x3).all()
+    assert (result[0]["x4"] == x4).all()
+    assert (result[1]["x4"] == x4).all()
+    assert (result[2]["x4"] == x4).all()

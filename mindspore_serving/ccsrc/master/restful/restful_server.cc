@@ -46,16 +46,8 @@ void RestfulServer::DispatchEvHttpRequest(evhttp_request *request) {
   Status status(SUCCESS);
 
   auto de_request = std::make_unique<DecomposeEvRequest>(request, max_msg_size_);
-  if (de_request == nullptr) {
-    ERROR_INFER_STATUS(status, INVALID_INPUTS, "de_request is nullptr.");
-    return;
-  }
   Status de_status = de_request->Decompose();
   auto restful_request = std::make_shared<RestfulRequest>(std::move(de_request));
-  if (restful_request == nullptr) {
-    ERROR_INFER_STATUS(status, INVALID_INPUTS, "restful_request is nullptr.");
-    return;
-  }
   status = restful_request->RestfulReplayBufferInit();
   if (status != SUCCESS) {
     if ((status = restful_request->ErrorMessage(status)) != SUCCESS) {
@@ -129,7 +121,7 @@ Status RestfulServer::StartRestfulServer() {
 
   if (listener == nullptr) {
     status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
-             << "Serving Error: RESTful server start failed, create http listener faild, port " << restful_port_;
+             << "Serving Error: RESTful server start failed, create http listener failed, port " << restful_port_;
     free_event_base();
     free_evhttp();
     return status;
@@ -137,7 +129,7 @@ Status RestfulServer::StartRestfulServer() {
   auto bound = evhttp_bind_listener(event_http_, listener);
   if (bound == nullptr) {
     status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
-             << "Serving Error: RESTful server start failed, bind http listener to server faild, port "
+             << "Serving Error: RESTful server start failed, bind http listener to server failed, port "
              << restful_port_;
     evconnlistener_free(listener);
     free_event_base();
