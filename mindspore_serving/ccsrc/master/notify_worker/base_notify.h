@@ -17,6 +17,8 @@
 #ifndef MINDSPORE_SERVING_MASTER_BASE_NOTIFY_H
 #define MINDSPORE_SERVING_MASTER_BASE_NOTIFY_H
 #include <vector>
+#include <functional>
+#include <future>
 #include "common/serving_common.h"
 #include "common/servable.h"
 #include "proto/ms_service.pb.h"
@@ -24,12 +26,15 @@
 namespace mindspore {
 namespace serving {
 
+using DispatchCallback = std::function<void(Status status)>;
+
 class MS_API BaseNotifyWorker {
  public:
   BaseNotifyWorker() = default;
   virtual ~BaseNotifyWorker() = default;
-  virtual Status Dispatch(const proto::PredictRequest &request, proto::PredictReply *reply) = 0;
   virtual Status Exit() = 0;
+  virtual Status DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
+                               DispatchCallback callback) = 0;
 };
 
 }  // namespace serving

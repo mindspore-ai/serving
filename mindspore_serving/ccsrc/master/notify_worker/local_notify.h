@@ -27,8 +27,10 @@ class MS_API LocalNotifyWorker : public BaseNotifyWorker {
   LocalNotifyWorker() = default;
   ~LocalNotifyWorker() override = default;
 
-  Status Dispatch(const proto::PredictRequest &request, proto::PredictReply *reply) override;
   Status Exit() override;
+
+  Status DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
+                       DispatchCallback callback) override;
 };
 
 }  // namespace serving

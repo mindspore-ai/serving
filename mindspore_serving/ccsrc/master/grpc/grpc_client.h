@@ -21,8 +21,10 @@
 #include <grpcpp/health_check_service_interface.h>
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
 #include <memory>
+#include <functional>
 #include <thread>
 #include "common/serving_common.h"
+#include "master/notify_worker/base_notify.h"
 #include "proto/ms_service.pb.h"
 #include "proto/ms_service.grpc.pb.h"
 #include "proto/ms_master.pb.h"
@@ -34,20 +36,24 @@ namespace serving {
 class MSServiceClient;
 extern std::unique_ptr<MSServiceClient> client_;
 
+using PredictOnFinish = std::function<void()>;
+
 class MSServiceClient {
  public:
   MSServiceClient() = default;
   ~MSServiceClient();
   void AsyncCompleteRpc();
   void Start();
-  void Predict(const proto::PredictRequest &request, proto::PredictReply *reply,
-               std::shared_ptr<proto::MSWorker::Stub> stub);
+
+  void PredictAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
+                    std::shared_ptr<proto::MSWorker::Stub> stub, DispatchCallback callback);
 
  private:
   struct AsyncClientCall {
     grpc::ClientContext context;
     grpc::Status status;
     proto::PredictReply *reply;
+    DispatchCallback callback;
     std::shared_ptr<grpc::ClientAsyncResponseReader<proto::PredictReply>> response_reader;
   };
 

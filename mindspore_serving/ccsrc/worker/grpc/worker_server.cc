@@ -17,6 +17,7 @@
 #include "worker/grpc/worker_server.h"
 #include <string>
 #include <memory>
+#include "common/grpc_server.h"
 
 namespace mindspore {
 namespace serving {
@@ -27,7 +28,7 @@ MSWorkerServer::MSWorkerServer(const std::string &hostname, int32_t port) {
   async_server_ = std::make_unique<WorkerGrpcServer>(hostname, port, service_impl_.get());
 }
 Status MSWorkerServer::Init() {
-  Status status = async_server_->Run();
+  Status status = async_server_->Run("Worker gRPC", gRpcMaxMBMsgSize);
   if (status != SUCCESS) return status;
   auto grpc_server_run = [this]() { StartAsyncRpcService(); };
   grpc_thread_ = std::thread(grpc_server_run);

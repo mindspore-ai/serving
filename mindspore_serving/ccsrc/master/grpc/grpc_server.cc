@@ -29,8 +29,8 @@ MSServiceServer::MSServiceServer(std::shared_ptr<MSServiceImpl> service, const s
   service_impl_ = service;
   async_server_ = std::make_unique<MasterGrpcServer>(hostname, port, service_impl_.get());
 }
-Status MSServiceServer::Init() {
-  Status status = async_server_->Run();
+Status MSServiceServer::Init(int max_msg_mb_size) {
+  Status status = async_server_->Run("Serving gRPC", max_msg_mb_size);
   if (status != SUCCESS) return status;
   auto grpc_server_run = [this]() { StartAsyncRpcService(); };
   grpc_thread_ = std::thread(grpc_server_run);
@@ -39,11 +39,6 @@ Status MSServiceServer::Init() {
 }
 Status MSServiceServer::StartAsyncRpcService() {
   Status status = async_server_->HandleRequest();
-  return status;
-}
-
-Status MSServiceServer::SendFinish() {
-  Status status = async_server_->SendFinish();
   return status;
 }
 

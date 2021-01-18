@@ -19,6 +19,7 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <atomic>
 #include "master/notify_worker/base_notify.h"
 #include "proto/ms_worker.pb.h"
 #include "proto/ms_worker.grpc.pb.h"
@@ -31,14 +32,14 @@ class MS_API GrpcNotfiyWorker : public BaseNotifyWorker {
   explicit GrpcNotfiyWorker(const std::string &worker_address);
   ~GrpcNotfiyWorker() override;
 
-  Status Dispatch(const proto::PredictRequest &request, proto::PredictReply *reply) override;
   Status Exit() override;
+
+  Status DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
+                       DispatchCallback callback) override;
 
  private:
   std::string worker_address_;
   std::shared_ptr<proto::MSWorker::Stub> stub_ = nullptr;
-
-  std::atomic<bool> is_stoped_{false};
 };
 
 }  // namespace serving

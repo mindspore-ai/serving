@@ -41,6 +41,7 @@ class MS_API Dispatcher {
   Dispatcher();
   ~Dispatcher();
   Status Dispatch(const proto::PredictRequest &request, proto::PredictReply *reply);
+  Status DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply, DispatchCallback callback);
 
   Status RegisterServable(const proto::RegisterRequest &request, proto::RegisterReply *reply);
   Status UnregisterServable(const proto::ExitRequest &request, proto::ExitReply *reply);

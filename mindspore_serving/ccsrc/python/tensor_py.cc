@@ -230,25 +230,25 @@ InstanceData PyTensor::AsInstanceData(const py::tuple &tuple) {
   InstanceData instance_data;
   for (auto &item : tuple) {
     TensorBasePtr tensor = nullptr;
-    if (py::isinstance<py::str>(item)) {
-      tensor = std::make_shared<Tensor>();
-      tensor->set_data_type(serving::kMSI_String);
-      auto val = item.cast<std::string>();
-      tensor->add_bytes_data(reinterpret_cast<const uint8_t *>(val.data()), val.length());
-    } else if (py::isinstance<py::bytes>(item)) {
+    if (py::isinstance<py::bytes>(item)) {  // bytes can be seen as str, so check bytes first
       tensor = std::make_shared<Tensor>();
       tensor->set_data_type(serving::kMSI_Bytes);
       auto val = std::string(item.cast<py::bytes>());
+      tensor->add_bytes_data(reinterpret_cast<const uint8_t *>(val.data()), val.length());
+    } else if (py::isinstance<py::str>(item)) {
+      tensor = std::make_shared<Tensor>();
+      tensor->set_data_type(serving::kMSI_String);
+      auto val = item.cast<std::string>();
       tensor->add_bytes_data(reinterpret_cast<const uint8_t *>(val.data()), val.length());
     } else if (py::isinstance<py::bool_>(item)) {
       auto val = item.cast<bool>();
       tensor = std::make_shared<Tensor>(serving::kMSI_Bool, std::vector<int64_t>(), &val, sizeof(val));
     } else if (py::isinstance<py::int_>(item)) {
-      auto val = item.cast<int32_t>();
-      tensor = std::make_shared<Tensor>(serving::kMSI_Int32, std::vector<int64_t>(), &val, sizeof(val));
+      auto val = item.cast<int64_t>();
+      tensor = std::make_shared<Tensor>(serving::kMSI_Int64, std::vector<int64_t>(), &val, sizeof(val));
     } else if (py::isinstance<py::float_>(item)) {
-      auto val = item.cast<float>();
-      tensor = std::make_shared<Tensor>(serving::kMSI_Float32, std::vector<int64_t>(), &val, sizeof(val));
+      auto val = item.cast<double>();
+      tensor = std::make_shared<Tensor>(serving::kMSI_Float64, std::vector<int64_t>(), &val, sizeof(val));
     } else {
       try {
         tensor = PyTensor::MakeTensorNoCopy(py::cast<py::array>(item));

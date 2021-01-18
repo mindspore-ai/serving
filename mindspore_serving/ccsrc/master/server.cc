@@ -46,7 +46,7 @@ Status Server::StartGrpcServer(const std::string &ip, uint32_t grpc_port, int ma
     max_msg_mb_size = gRpcMaxMBMsgSize;
   }
   grpc_async_server_ = std::make_unique<MSServiceServer>(std::make_shared<MSServiceImpl>(dispatcher_), ip, grpc_port);
-  return grpc_async_server_->Init();
+  return grpc_async_server_->Init(max_msg_mb_size);
 }
 
 Status Server::StartGrpcMasterServer(const std::string &ip, uint32_t grpc_port) {

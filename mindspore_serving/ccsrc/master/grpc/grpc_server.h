@@ -42,7 +42,7 @@ class MSServiceServer {
   MSServiceServer(std::shared_ptr<MSServiceImpl> service, const std::string &hostname, int32_t port);
   ~MSServiceServer();
 
-  Status Init();
+  Status Init(int max_msg_mb_size);
 
   Status Stop();
 
@@ -55,111 +55,63 @@ class MSServiceServer {
   std::unique_ptr<GrpcAsyncServer> async_server_;
 };
 
-class UntypedCall {
+class MasterServiceContext {
  public:
-  virtual ~UntypedCall() {}
+  enum class STATE : int8_t { CREATE = 1, PROCESS = 2, FINISH = 3 };
 
-  virtual Status process() = 0;
+  virtual ~MasterServiceContext() {}
+
+  virtual void StartEnqueueRequest() = 0;
+  virtual void HandleRequest() = 0;
 
   virtual bool JudgeFinish() = 0;
 
-  virtual bool JudgeStatus() = 0;
-
-  virtual bool SendFinish() = 0;
+ public:
+  STATE state_;
 };
 
-template <class ServiceImpl, class AsyncService, class RequestMessage, class ResponseMessage>
-class CallData : public UntypedCall {
+class MasterPredictContext : public MasterServiceContext {
  public:
-  enum class STATE : int8_t { CREATE = 1, PROCESS = 2, FINISH = 3 };
-  using EnqueueFunction = void (AsyncService::*)(grpc::ServerContext *, RequestMessage *,
-                                                 grpc::ServerAsyncResponseWriter<ResponseMessage> *,
-                                                 grpc::CompletionQueue *, grpc::ServerCompletionQueue *, void *);
-  using HandleRequestFunction = grpc::Status (ServiceImpl::*)(grpc::ServerContext *, const RequestMessage *,
-                                                              ResponseMessage *);
-  CallData(ServiceImpl *service_impl, AsyncService *async_service, grpc::ServerCompletionQueue *cq,
-           EnqueueFunction enqueue_function, HandleRequestFunction handle_request_function)
-      : status_(STATE::CREATE),
-        service_impl_(service_impl),
-        async_service_(async_service),
-        cq_(cq),
-        enqueue_function_(enqueue_function),
-        handle_request_function_(handle_request_function),
-        responder_(&ctx_) {}
-
-  ~CallData() = default;
-
-  static Status EnqueueRequest(ServiceImpl *service_impl, AsyncService *async_service, grpc::ServerCompletionQueue *cq,
-                               EnqueueFunction enqueue_function, HandleRequestFunction handle_request_function) {
-    auto call = new CallData<ServiceImpl, AsyncService, RequestMessage, ResponseMessage>(
-      service_impl, async_service, cq, enqueue_function, handle_request_function);
-    Status status = call->process();
-    if (status != SUCCESS) return status;
-    return SUCCESS;
+  MasterPredictContext(MSServiceImpl *service_impl, proto::MSService::AsyncService *async_service,
+                       grpc::ServerCompletionQueue *cq)
+      : service_impl_(service_impl), async_service_(async_service), cq_(cq), responder_(&ctx_) {
+    state_ = STATE::CREATE;
   }
 
-  Status process() override {
-    if (status_ == STATE::CREATE) {
-      status_ = STATE::PROCESS;
-      (async_service_->*enqueue_function_)(&ctx_, &request_, &responder_, cq_, cq_, this);
-    } else if (status_ == STATE::PROCESS) {
-      EnqueueRequest(service_impl_, async_service_, cq_, enqueue_function_, handle_request_function_);
-      status_ = STATE::FINISH;
-      response_.set_status(false);
-      grpc::Status s = (service_impl_->*handle_request_function_)(&ctx_, &request_, &response_);
-      if (!s.ok() || response_.status() == true) {
-        responder_.Finish(response_, s, this);
-        response_.set_status(true);
-      }
-    } else {
-      MSI_LOG(INFO) << "The CallData status is finish and the pointer needs to be released.";
-    }
-    return SUCCESS;
+  ~MasterPredictContext() = default;
+
+  static void EnqueueRequest(MSServiceImpl *service_impl, proto::MSService::AsyncService *async_service,
+                             grpc::ServerCompletionQueue *cq) {
+    auto call = new MasterPredictContext(service_impl, async_service, cq);
+    call->StartEnqueueRequest();
   }
 
-  bool JudgeFinish() override {
-    if (status_ == STATE::FINISH) {
-      return true;
-    } else {
-      return false;
-    }
-  }
-  bool JudgeStatus() override {
-    if (status_ == STATE::FINISH && response_.status() == false) {
-      return true;
-    } else {
-      return false;
-    }
+  void StartEnqueueRequest() override {
+    state_ = STATE::PROCESS;
+    async_service_->RequestPredict(&ctx_, &request_, &responder_, cq_, cq_, this);
   }
 
-  bool SendFinish() override {
-    if (status_ == STATE::FINISH && response_.status() == true) {
+  void HandleRequest() override {
+    EnqueueRequest(service_impl_, async_service_, cq_);
+    state_ = STATE::FINISH;
+    DispatchCallback callback = [this](Status status) { responder_.Finish(response_, grpc::Status::OK, this); };
+    Status status = service_impl_->PredictAsync(&request_, &response_, callback);
+    if (!status.IsSuccess()) {
       responder_.Finish(response_, grpc::Status::OK, this);
-      return true;
-    } else {
-      return false;
     }
   }
+
+  bool JudgeFinish() override { return state_ == STATE::FINISH; }
 
  private:
-  STATE status_;
-  ServiceImpl *service_impl_;
-  AsyncService *async_service_;
+  MSServiceImpl *service_impl_;
+  proto::MSService::AsyncService *async_service_;
   grpc::ServerCompletionQueue *cq_;
-  EnqueueFunction enqueue_function_;
-  HandleRequestFunction handle_request_function_;
   grpc::ServerContext ctx_;
-  grpc::ServerAsyncResponseWriter<ResponseMessage> responder_;
-  RequestMessage request_;
-  ResponseMessage response_;
+  grpc::ServerAsyncResponseWriter<proto::PredictReply> responder_;
+  proto::PredictRequest request_;
+  proto::PredictReply response_;
 };
-
-#define ENQUEUE_REQUEST(service_impl, async_service, cq, method, request_msg, response_msg)                        \
-  do {                                                                                                             \
-    Status s = CallData<MSServiceImpl, proto::MSService::AsyncService, request_msg, response_msg>::EnqueueRequest( \
-      service_impl, async_service, cq, &proto::MSService::AsyncService::Request##method, &MSServiceImpl::method);  \
-    if (s != SUCCESS) return s;                                                                                    \
-  } while (0)
 
 class MasterGrpcServer : public GrpcAsyncServer {
  public:
@@ -174,44 +126,16 @@ class MasterGrpcServer : public GrpcAsyncServer {
   }
 
   Status EnqueueRequest() {
-    ENQUEUE_REQUEST(service_impl_, &svc_, cq_.get(), Predict, proto::PredictRequest, proto::PredictReply);
+    MasterPredictContext::EnqueueRequest(service_impl_, &svc_, cq_.get());
     return SUCCESS;
   }
 
   Status ProcessRequest(void *tag) {
-    std::unique_lock<std::shared_mutex> lock(lock_);
-    auto rq = static_cast<UntypedCall *>(tag);
-    if (rq->JudgeFinish()) {
-      DelRequest();
-    } else {
-      Status status = rq->process();
-      if (status != SUCCESS) {
-        return status;
-      }
-      if (rq->JudgeStatus()) {
-        req_.push_back(rq);
-      }
-    }
-    return SUCCESS;
-  }
-
-  Status DelRequest() {
-    for (auto rq = del_.begin(); rq != del_.end();) {
-      delete (*rq);
-      rq = del_.erase(rq);
-    }
-    return SUCCESS;
-  }
-
-  Status SendFinish() {
-    std::unique_lock<std::shared_mutex> lock(lock_);
-    for (auto rq = req_.begin(); rq != req_.end();) {
-      if ((*rq)->SendFinish()) {
-        del_.push_back(*rq);
-        rq = req_.erase(rq);
-      } else {
-        ++rq;
-      }
+    auto rq = static_cast<MasterServiceContext *>(tag);
+    if (rq->JudgeFinish()) {  // End Finish
+      delete rq;
+    } else {  // Get new Request
+      rq->HandleRequest();
     }
     return SUCCESS;
   }
@@ -219,9 +143,6 @@ class MasterGrpcServer : public GrpcAsyncServer {
  private:
   MSServiceImpl *service_impl_;
   proto::MSService::AsyncService svc_;
-  std::vector<UntypedCall *> req_;
-  std::vector<UntypedCall *> del_;
-  std::shared_mutex lock_;
 };
 
 }  // namespace serving

@@ -50,87 +50,101 @@ class MSWorkerServer {
   std::unique_ptr<GrpcAsyncServer> async_server_;
 };
 
-class UntypedCall {
- public:
-  virtual ~UntypedCall() {}
-
-  virtual Status process() = 0;
-
-  virtual bool JudgeFinish() = 0;
-};
-
-template <class ServiceImpl, class AsyncService, class RequestMessage, class ResponseMessage>
-class CallData : public UntypedCall {
+class WorkerServiceContext {
  public:
   enum class STATE : int8_t { CREATE = 1, PROCESS = 2, FINISH = 3 };
-  using EnqueueFunction = void (AsyncService::*)(grpc::ServerContext *, RequestMessage *,
-                                                 grpc::ServerAsyncResponseWriter<ResponseMessage> *,
-                                                 grpc::CompletionQueue *, grpc::ServerCompletionQueue *, void *);
-  using HandleRequestFunction = grpc::Status (ServiceImpl::*)(grpc::ServerContext *, const RequestMessage *,
-                                                              ResponseMessage *);
-  CallData(ServiceImpl *service_impl, AsyncService *async_service, grpc::ServerCompletionQueue *cq,
-           EnqueueFunction enqueue_function, HandleRequestFunction handle_request_function)
-      : status_(STATE::CREATE),
-        service_impl_(service_impl),
-        async_service_(async_service),
-        cq_(cq),
-        enqueue_function_(enqueue_function),
-        handle_request_function_(handle_request_function),
-        responder_(&ctx_) {}
+  virtual ~WorkerServiceContext() {}
 
-  ~CallData() = default;
+  virtual void StartEnqueueRequest() = 0;
+  virtual void HandleRequest() = 0;
 
-  static Status EnqueueRequest(ServiceImpl *service_impl, AsyncService *async_service, grpc::ServerCompletionQueue *cq,
-                               EnqueueFunction enqueue_function, HandleRequestFunction handle_request_function) {
-    auto call = new CallData<ServiceImpl, AsyncService, RequestMessage, ResponseMessage>(
-      service_impl, async_service, cq, enqueue_function, handle_request_function);
-    Status status = call->process();
-    if (status != SUCCESS) return status;
-    return SUCCESS;
-  }
+  virtual bool JudgeFinish() = 0;
 
-  Status process() override {
-    if (status_ == STATE::CREATE) {
-      status_ = STATE::PROCESS;
-      (async_service_->*enqueue_function_)(&ctx_, &request_, &responder_, cq_, cq_, this);
-    } else if (status_ == STATE::PROCESS) {
-      EnqueueRequest(service_impl_, async_service_, cq_, enqueue_function_, handle_request_function_);
-      status_ = STATE::FINISH;
-      grpc::Status s = (service_impl_->*handle_request_function_)(&ctx_, &request_, &response_);
-      responder_.Finish(response_, s, this);
-    } else {
-      MSI_LOG(INFO) << "The CallData status is finish and the pointer needs to be released.";
-    }
-    return SUCCESS;
-  }
-
-  bool JudgeFinish() override {
-    if (status_ == STATE::FINISH) {
-      return true;
-    } else {
-      return false;
-    }
-  }
-
- private:
-  STATE status_;
-  ServiceImpl *service_impl_;
-  AsyncService *async_service_;
-  grpc::ServerCompletionQueue *cq_;
-  EnqueueFunction enqueue_function_;
-  HandleRequestFunction handle_request_function_;
-  grpc::ServerContext ctx_;
-  grpc::ServerAsyncResponseWriter<ResponseMessage> responder_;
-  RequestMessage request_;
-  ResponseMessage response_;
+ public:
+  STATE state_;
 };
 
-#define ENQUEUE_REQUEST(service_impl, async_service, cq, method, request_msg, response_msg)                      \
-  do {                                                                                                           \
-    Status s = CallData<MSWorkerImpl, proto::MSWorker::AsyncService, request_msg, response_msg>::EnqueueRequest( \
-      service_impl, async_service, cq, &proto::MSWorker::AsyncService::Request##method, &MSWorkerImpl::method);  \
-    if (s != SUCCESS) return s;                                                                                  \
-  } while (0)
+class WorkerPredictContext : public WorkerServiceContext {
+ public:
+  WorkerPredictContext(MSWorkerImpl *service_impl, proto::MSWorker::AsyncService *async_service,
+                       grpc::ServerCompletionQueue *cq)
+      : service_impl_(service_impl), async_service_(async_service), cq_(cq), responder_(&ctx_) {
+    state_ = STATE::CREATE;
+  }
+
+  ~WorkerPredictContext() = default;
+
+  static Status EnqueueRequest(MSWorkerImpl *service_impl, proto::MSWorker::AsyncService *async_service,
+                               grpc::ServerCompletionQueue *cq) {
+    auto call = new WorkerPredictContext(service_impl, async_service, cq);
+    call->StartEnqueueRequest();
+    return SUCCESS;
+  }
+
+  void StartEnqueueRequest() override {
+    state_ = STATE::PROCESS;
+    async_service_->RequestPredict(&ctx_, &request_, &responder_, cq_, cq_, this);
+  }
+
+  void HandleRequest() override {
+    EnqueueRequest(service_impl_, async_service_, cq_);
+    state_ = STATE::FINISH;
+    grpc::Status status = service_impl_->Predict(&ctx_, &request_, &response_);
+    responder_.Finish(response_, status, this);
+  }
+
+  bool JudgeFinish() override { return state_ == STATE::FINISH; }
+
+ private:
+  MSWorkerImpl *service_impl_;
+  proto::MSWorker::AsyncService *async_service_;
+  grpc::ServerCompletionQueue *cq_;
+  grpc::ServerContext ctx_;
+  grpc::ServerAsyncResponseWriter<proto::PredictReply> responder_;
+  proto::PredictRequest request_;
+  proto::PredictReply response_;
+};
+
+class WorkerExitContext : public WorkerServiceContext {
+ public:
+  WorkerExitContext(MSWorkerImpl *service_impl, proto::MSWorker::AsyncService *async_service,
+                    grpc::ServerCompletionQueue *cq)
+      : service_impl_(service_impl), async_service_(async_service), cq_(cq), responder_(&ctx_) {
+    state_ = STATE::CREATE;
+  }
+
+  ~WorkerExitContext() = default;
+
+  static Status EnqueueRequest(MSWorkerImpl *service_impl, proto::MSWorker::AsyncService *async_service,
+                               grpc::ServerCompletionQueue *cq) {
+    auto call = new WorkerExitContext(service_impl, async_service, cq);
+    call->StartEnqueueRequest();
+    return SUCCESS;
+  }
+
+  void StartEnqueueRequest() override {
+    state_ = STATE::PROCESS;
+    async_service_->RequestExit(&ctx_, &request_, &responder_, cq_, cq_, this);
+  }
+
+  void HandleRequest() override {
+    EnqueueRequest(service_impl_, async_service_, cq_);
+    state_ = STATE::FINISH;
+    grpc::Status status = service_impl_->Exit(&ctx_, &request_, &response_);
+    responder_.Finish(response_, status, this);
+  }
+
+  bool JudgeFinish() override { return state_ == STATE::FINISH; }
+
+ private:
+  MSWorkerImpl *service_impl_;
+  proto::MSWorker::AsyncService *async_service_;
+  grpc::ServerCompletionQueue *cq_;
+  grpc::ServerContext ctx_;
+  grpc::ServerAsyncResponseWriter<proto::ExitReply> responder_;
+  proto::ExitRequest request_;
+  proto::ExitReply response_;
+};
 
 class WorkerGrpcServer : public GrpcAsyncServer {
  public:
@@ -145,23 +159,20 @@ class WorkerGrpcServer : public GrpcAsyncServer {
   }
 
   Status EnqueueRequest() {
-    ENQUEUE_REQUEST(service_impl_, &svc_, cq_.get(), Predict, proto::PredictRequest, proto::PredictReply);
-    ENQUEUE_REQUEST(service_impl_, &svc_, cq_.get(), Exit, proto::ExitRequest, proto::ExitReply);
+    WorkerPredictContext::EnqueueRequest(service_impl_, &svc_, cq_.get());
+    WorkerExitContext::EnqueueRequest(service_impl_, &svc_, cq_.get());
     return SUCCESS;
   }
 
   Status ProcessRequest(void *tag) {
-    auto rq = static_cast<UntypedCall *>(tag);
+    auto rq = static_cast<WorkerServiceContext *>(tag);
     if (rq->JudgeFinish()) {
       delete rq;
     } else {
-      Status status = rq->process();
-      if (status != SUCCESS) return status;
+      rq->HandleRequest();
     }
     return SUCCESS;
   }
-
-  Status SendFinish() { return SUCCESS; }
 
  private:
   MSWorkerImpl *service_impl_;

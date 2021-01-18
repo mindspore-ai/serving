@@ -368,7 +368,15 @@ class TestMasterWorkerClient : public TestMasterWorker {
   static grpc::Status Dispatch(const proto::PredictRequest &request, proto::PredictReply *reply) {
     MSServiceImpl impl(Server::Instance().GetDispatcher());
     grpc::ServerContext context;
-    return impl.Predict(&context, &request, reply);
+    auto promise = std::make_shared<std::promise<void>>();
+    auto future = promise->get_future();
+    DispatchCallback callback = [promise](Status status) { promise->set_value(); };
+    auto status = impl.PredictAsync(&request, reply, callback);
+    if (!status.IsSuccess()) {
+      return grpc::Status::OK;
+    }
+    future.get();
+    return grpc::Status::OK;
   }
 };
 

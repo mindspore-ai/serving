@@ -36,14 +36,31 @@ std::string GetProtorWorkerSpecRepr(const proto::WorkerSpec &worker_spec) {
 }
 }  // namespace
 
-grpc::Status MSServiceImpl::Predict(grpc::ServerContext *context, const proto::PredictRequest *request,
-                                    proto::PredictReply *reply) {
+Status MSServiceImpl::PredictAsync(const proto::PredictRequest *request, proto::PredictReply *reply,
+                                   DispatchCallback callback) {
   MSI_EXCEPTION_IF_NULL(request);
   MSI_EXCEPTION_IF_NULL(reply);
   Status status(FAILED);
+  auto on_status = [reply](Status status) {
+    if (status != SUCCESS) {
+      reply->clear_error_msg();
+      auto proto_error_msg = reply->add_error_msg();
+      proto_error_msg->set_error_code(FAILED);
+      std::string error_msg = status.StatusMessage();
+      if (error_msg.empty()) {
+        proto_error_msg->set_error_msg("Predict failed");
+      } else {
+        proto_error_msg->set_error_msg(error_msg);
+      }
+    }
+  };
+  DispatchCallback callback_with_status_handle = [callback, on_status](Status status) {
+    on_status(status);
+    callback(status);
+  };
   try {
     MSI_TIME_STAMP_START(Predict)
-    status = dispatcher_->Dispatch(*request, reply);
+    status = dispatcher_->DispatchAsync(*request, reply, callback_with_status_handle);
     MSI_TIME_STAMP_END(Predict)
   } catch (const std::bad_alloc &ex) {
     MSI_LOG(ERROR) << "Serving Error: malloc memory failed";
@@ -61,18 +78,10 @@ grpc::Status MSServiceImpl::Predict(grpc::ServerContext *context, const proto::P
   MSI_LOG(INFO) << "Finish call service Eval";
 
   if (status != SUCCESS) {
-    auto proto_error_msg = reply->add_error_msg();
-    proto_error_msg->set_error_code(FAILED);
-    std::string error_msg = status.StatusMessage();
-    if (error_msg.empty()) {
-      proto_error_msg->set_error_msg("Predict failed");
-    } else {
-      proto_error_msg->set_error_msg(error_msg);
-    }
-    reply->set_status(true);
-    return grpc::Status::OK;
+    on_status(status);
+    return status;
   }
-  return grpc::Status::OK;
+  return SUCCESS;
 }
 
 grpc::Status MSMasterImpl::Register(grpc::ServerContext *context, const proto::RegisterRequest *request,

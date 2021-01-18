@@ -21,27 +21,8 @@
 #include "master/restful/http_handle.h"
 namespace mindspore::serving {
 
-int id = 0;
 Status RestfulServer::Run(const std::shared_ptr<RestfulRequest> &restful_request) {
   Status status(SUCCESS);
-  // MSI_TIME_STAMP_START(DoSometing)
-  // // ke cai start --- sync
-  // ++id;
-  // for (int i = 0; i < 10; ++i) {
-  //   MSI_LOG_INFO << "id:" << id << "--" << i << " ";
-  //   usleep(600);
-  // }
-  // MSI_TIME_STAMP_END(DoSometing)
-  // // -----------------
-
-  // // st error
-  // if (id == 5) {
-  //   ERROR_INFER_STATUS(status, INVALID_INPUTS, "id == 5");
-  //   if ((status = restful_request->ErrorMessage(status)) != SUCCESS) {
-  //     return status;
-  //   }
-  //   return status;
-  // }
   nlohmann::json predict_json;
   std::string predict_str;
   status = HandleRestfulRequest(restful_request, &predict_json);
@@ -114,7 +95,7 @@ Status RestfulServer::CreatRestfulServer(int time_out_second) {
   event_http_ = evhttp_new(event_base_);
   if (event_http_ == nullptr) {
     status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
-             << "Serving Error: RESTful server start failed, create http server faild";
+             << "Serving Error: RESTful server start failed, create http server failed";
     free_event_base();
     return status;
   }
