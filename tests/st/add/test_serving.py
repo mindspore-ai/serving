@@ -36,6 +36,8 @@ def test_serving():
                     '/site-packages/mindspore' in os.path.join(folder, x)]
     ret = os.system(f"sh {sh_path}/add.sh {folders[0].split('mindspore', 1)[0] + 'mindspore'}")
     assert np.allclose(ret, 0)
+    ret = os.system(f"sh {sh_path}/add_mul_process.sh {folders[0].split('mindspore', 1)[0] + 'mindspore'}")
+    assert np.allclose(ret, 0)
 
 
 if __name__ == '__main__':
