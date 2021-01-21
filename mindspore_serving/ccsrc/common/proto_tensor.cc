@@ -241,7 +241,7 @@ Status GrpcTensorHelper::CreateInstanceFromRequest(const proto::PredictRequest &
   MethodSignature method_signature;
   if (!servable_signature.GetMethodDeclare(request_spec->method_name, &method_signature)) {
     return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
-           << "Method " << method_name << " is not registed for servable " << servable_name;
+           << "Method " << method_name << " is not registered for servable " << servable_name;
   }
 
   if (request.instances_size() == 0) {
@@ -269,7 +269,7 @@ Status GrpcTensorHelper::CreateReplyFromInstances(const proto::PredictRequest &r
   MethodSignature method_signature;
   if (!servable_signature.GetMethodDeclare(method_name, &method_signature)) {
     return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
-           << "Method " << method_name << " is not registed for servable " << servable_name;
+           << "Method " << method_name << " is not registered for servable " << servable_name;
   }
   *reply->mutable_servable_spec() = request.servable_spec();
 
@@ -305,7 +305,7 @@ Status GrpcTensorHelper::CreateReplyFromInstances(const proto::PredictRequest &r
       auto &output_tensor = output_intance.data[i];
       auto &proto_tensor = (*proto_items)[method_signature.outputs[i]];
       ProtoTensor result_tensor(&proto_tensor);
-      result_tensor.assgin(*output_tensor);
+      result_tensor.assign(*output_tensor);
     }
   }
   return SUCCESS;
@@ -356,9 +356,15 @@ Status GrpcTensorHelper::CheckRequestTensor(const proto::Tensor &tensor) {
     }
   } else {
     size_t element_num = tensor_input.element_cnt();
-    if (element_num == 0) {  // shape dim invalid or element count > max element num
-      return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Tensor check failed: input "
-                                                    << " shape " << tensor_input.shape() << " invalid";
+    bool zero_dim = false;
+    for (auto &shape_item : tensor_input.shape()) {
+      if (shape_item < 0 || zero_dim) {
+        return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Tensor check failed: input "
+                                                      << " shape " << tensor_input.shape() << " invalid";
+      }
+      if (shape_item == 0) {
+        zero_dim = true;
+      }
     }
     if (tensor_input.data_type() == kMSI_Unknown || tensor_input.itemsize() == 0) {
       return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Tensor check failed: input "

@@ -196,7 +196,7 @@ py::object PyTensor::AsPythonData(TensorBasePtr tensor, bool copy) {
     py::buffer_info info(reinterpret_cast<void *>(const_cast<uint8_t *>(data)), sizeof(uint8_t),
                          py::format_descriptor<uint8_t>::format(), 1, shape, strides);
     if (!copy) {
-      py::array self;
+      py::object self = py::cast(tensor.get());
       return py::array(py::dtype(info), info.shape, info.strides, info.ptr, self);
     } else {
       return py::array(py::dtype(info), info.shape, info.strides, info.ptr);
@@ -210,7 +210,7 @@ py::object PyTensor::AsPythonData(TensorBasePtr tensor, bool copy) {
                          static_cast<ssize_t>(tensor_shape.size()), shape, strides);
 
     if (!copy) {
-      py::array self;
+      py::object self = py::cast(tensor.get());
       return py::array(py::dtype(info), info.shape, info.strides, info.ptr, self);
     } else {
       return py::array(py::dtype(info), info.shape, info.strides, info.ptr);
@@ -221,7 +221,7 @@ py::object PyTensor::AsPythonData(TensorBasePtr tensor, bool copy) {
 py::tuple PyTensor::AsNumpyTuple(const InstanceData &instance_data) {
   py::tuple numpy_inputs_tuple(instance_data.size());
   for (size_t i = 0; i < instance_data.size(); i++) {  // inputs
-    numpy_inputs_tuple[i] = PyTensor::AsPythonData(instance_data[i]);
+    numpy_inputs_tuple[i] = PyTensor::AsPythonData(instance_data[i], false);
   }
   return numpy_inputs_tuple;
 }

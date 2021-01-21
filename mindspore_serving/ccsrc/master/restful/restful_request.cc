@@ -21,10 +21,12 @@
 #include <algorithm>
 #include <utility>
 
-static const char UrlKeyModel[] = "model";
-static const char UrlKeyVersion[] = "version";
-static const char UrlSplit[] = "/";
-static const char UrlKeyEnd[] = ":";
+namespace {
+const char kUrlKeyModel[] = "model";
+const char kUrlKeyVersion[] = "version";
+const char kUrlSplit[] = "/";
+const char kUrlKeyEnd[] = ":";
+}  // namespace
 
 namespace mindspore {
 namespace serving {
@@ -40,8 +42,8 @@ DecomposeEvRequest::~DecomposeEvRequest() {
 
 std::string DecomposeEvRequest::UrlQuery(const std::string &url, const std::string &key) {
   std::string::size_type start_pos(0);
-  if (key == UrlKeyEnd) {
-    if ((start_pos = url_.find(UrlKeyEnd)) != std::string::npos) {
+  if (key == kUrlKeyEnd) {
+    if ((start_pos = url_.find(kUrlKeyEnd)) != std::string::npos) {
       return url_.substr(start_pos + 1, url_.size());
     }
   }
@@ -49,10 +51,11 @@ std::string DecomposeEvRequest::UrlQuery(const std::string &url, const std::stri
   int key_size = key.size() + 1;
   std::string::size_type end_pos(0);
   if ((start_pos = url.find(key)) != std::string::npos) {
-    end_pos = std::min(url.find(UrlSplit, start_pos + key_size), url.find(UrlKeyEnd, start_pos + key_size));
-    if (end_pos != std::string::npos) {
-      return url.substr(start_pos + key_size, end_pos - start_pos - key_size);
+    end_pos = std::min(url.find(kUrlSplit, start_pos + key_size), url.find(kUrlKeyEnd, start_pos + key_size));
+    if (end_pos == std::string::npos) {
+      return url.substr(start_pos + key_size);
     }
+    return url.substr(start_pos + key_size, end_pos - start_pos - key_size);
   }
   return "";
 }
@@ -62,21 +65,17 @@ Status DecomposeEvRequest::GetPostMessageToJson() {
   std::string message;
   size_t input_size = evbuffer_get_length(event_request_->input_buffer);
   if (input_size == 0) {
-    ERROR_INFER_STATUS(status, INVALID_INPUTS, "http message invalid");
-    return status;
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "http message invalid";
   } else if (input_size > max_msg_size_) {
-    ERROR_INFER_STATUS(status, INVALID_INPUTS, "http message is bigger than " + std::to_string(max_msg_size_));
-    return status;
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "http message is bigger than " << max_msg_size_;
   } else {
     message.resize(input_size);
     auto src_data = evbuffer_pullup(event_request_->input_buffer, -1);
     if (src_data == nullptr) {
-      ERROR_INFER_STATUS(status, FAILED, "get http message failed.");
-      return status;
+      return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "get http message failed.";
     }
     if (memcpy_s(message.data(), input_size, src_data, input_size) != EOK) {
-      ERROR_INFER_STATUS(status, FAILED, "copy http message failed.");
-      return status;
+      return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "copy http message failed.";
     }
   }
   MSI_TIME_STAMP_START(ParseJson)
@@ -84,9 +83,7 @@ Status DecomposeEvRequest::GetPostMessageToJson() {
     request_message_ = nlohmann::json::parse(message);
   } catch (nlohmann::json::exception &e) {
     std::string json_exception = e.what();
-    std::string error_message = "Illegal JSON format." + json_exception;
-    ERROR_INFER_STATUS(status, INVALID_INPUTS, error_message);
-    return status;
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Illegal JSON format." + json_exception;
   }
   MSI_TIME_STAMP_END(ParseJson)
 
@@ -100,8 +97,7 @@ Status DecomposeEvRequest::CheckRequestMethodValid() {
       request_method_ = "POST";
       return status;
     default:
-      ERROR_INFER_STATUS(status, INVALID_INPUTS, "http message only support POST right now");
-      return status;
+      return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "http message only support POST right now";
   }
 }
 
@@ -120,35 +116,37 @@ Status DecomposeEvRequest::Decompose() {
   // eg: /model/resnet/version/1:predict
   url_ = evhttp_request_get_uri(event_request_);
   if (url_.empty()) {
-    ERROR_INFER_STATUS(status, INVALID_INPUTS, "evhttp url is empty.");
-    return status;
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "evhttp url is empty.";
   }
   MSI_LOG_INFO << "url_: " << url_;
 
-  model_name_ = UrlQuery(url_, UrlKeyModel);
+  model_name_ = UrlQuery(url_, kUrlKeyModel);
   if (model_name_.empty()) {
-    ERROR_INFER_STATUS(status, INVALID_INPUTS, "please check url, the keyword:[model] must contain.");
-    return status;
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "please check url, the keyword:[model] must contain.";
   }
   MSI_LOG_INFO << "model_name_: " << model_name_;
-  if (url_.find(UrlKeyVersion) != std::string::npos) {
-    auto version_str = UrlQuery(url_, UrlKeyVersion);
+  if (url_.find(kUrlKeyVersion) != std::string::npos) {
+    auto version_str = UrlQuery(url_, kUrlKeyVersion);
     try {
-      version_ = std::stol(version_str);
+      auto version = std::stol(version_str);
+      if (version < 0 || version >= UINT32_MAX) {
+        return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
+               << "please check url, version number range failed, request version number " << version_str;
+      }
+      version_ = static_cast<uint32_t>(version);
     } catch (const std::invalid_argument &) {
-      ERROR_INFER_STATUS(status, INVALID_INPUTS, "please check url, the keyword:[version] must contain.");
-      return status;
+      return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
+             << "please check url, the keyword:[version] value invalid, request version number " << version_str;
     } catch (const std::out_of_range &) {
-      ERROR_INFER_STATUS(status, INVALID_INPUTS, "please check url, the keyword:[version] out of range.");
-      return status;
+      return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
+             << "please check url, version number range failed, request version number " << version_str;
     }
     MSI_LOG_INFO << "version_: " << version_;
   }
 
-  service_method_ = UrlQuery(url_, UrlKeyEnd);
+  service_method_ = UrlQuery(url_, kUrlKeyEnd);
   if (service_method_.empty()) {
-    ERROR_INFER_STATUS(status, INVALID_INPUTS, "please check url, the keyword:[service method] must contain.");
-    return status;
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "please check url, the keyword:[service method] must contain.";
   }
   MSI_LOG_INFO << "service_method_: " << service_method_;
   return status;
@@ -164,37 +162,31 @@ RestfulRequest::~RestfulRequest() {
 }
 
 Status RestfulRequest::RestfulReplayBufferInit() {
-  Status status(SUCCESS);
   replay_buffer_ = evbuffer_new();
   if (replay_buffer_ == nullptr) {
-    ERROR_INFER_STATUS(status, INVALID_INPUTS, "creat restful replay buffer fail");
-    return status;
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "create restful replay buffer fail";
   }
-  return status;
+  return SUCCESS;
 }
 
 Status RestfulRequest::RestfulReplay(const std::string &replay) {
-  Status status(SUCCESS);
   if (replay_buffer_ == nullptr) {
-    ERROR_INFER_STATUS(status, INVALID_INPUTS, "replay_buffer_ is nullptr");
-    return status;
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "replay_buffer_ is nullptr";
   }
   if (decompose_event_request_ == nullptr) {
-    ERROR_INFER_STATUS(status, INVALID_INPUTS, "replay_buffer_ is nullptr");
-    return status;
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "replay_buffer_ is nullptr";
   }
   if (decompose_event_request_->event_request_ == nullptr) {
-    ERROR_INFER_STATUS(status, INVALID_INPUTS, "replay_buffer_ is nullptr");
-    return status;
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "replay_buffer_ is nullptr";
   }
   evbuffer_add(replay_buffer_, replay.data(), replay.size());
   evhttp_send_reply(decompose_event_request_->event_request_, HTTP_OK, "Client", replay_buffer_);
-  return status;
+  return SUCCESS;
 }
 
 Status RestfulRequest::ErrorMessage(Status status) {
   Status error_status(SUCCESS);
-  nlohmann::json error_json = {{"error_message", status.StatusMessage()}};
+  nlohmann::json error_json = {{"error_msg", status.StatusMessage()}};
   std::string out_error_str = error_json.dump();
   if ((error_status = RestfulReplay(out_error_str)) != SUCCESS) {
     return error_status;

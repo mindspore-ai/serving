@@ -63,9 +63,6 @@ class Status {
   }
 
 #define INFER_STATUS(code) mindspore::serving::Status(code) < mindspore::serving::LogStream()
-#define ERROR_INFER_STATUS(status, type, msg) \
-  MSI_LOG_ERROR << msg;                       \
-  status = mindspore::serving::Status(type, msg)
 
 #define INFER_STATUS_LOG_ERROR(code) mindspore::serving::Status(code) = MSILOG_NOIF(ERROR)
 #define INFER_STATUS_LOG_WARNING(code) mindspore::serving::Status(code) = MSILOG_NOIF(WARNING)

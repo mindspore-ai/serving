@@ -68,7 +68,7 @@ size_t TensorBase::GetTypeSize(DataType type) {
   return 0;
 }
 
-void TensorBase::assgin(const TensorBase &other) {
+void TensorBase::assign(const TensorBase &other) {
   if (is_bytes_val_data()) {
     clear_bytes_data();
   }

@@ -859,15 +859,26 @@ TEST_F(TestParseReply, test_reply_SUCCESS) {
         std::cout << "===start====" << std::endl;
         for (auto &it : element.items()) {
           if (it.key() == "key_int") {
-            ASSERT_EQ(it.value(), 1);
+            ASSERT_TRUE(it.value().is_array());
+            ASSERT_EQ(it.value().size(), 1);
+            auto array_items = it.value().items();
+            auto int_val = *(array_items.begin());
+            ASSERT_TRUE(int_val.value().is_number_integer());
+            ASSERT_EQ(int_val.value(), 1);
             count++;
           } else if (it.key() == "key_bool") {
+            ASSERT_TRUE(it.value().is_boolean());
             ASSERT_EQ(it.value(), false);
             count++;
           } else if (it.key() == "key_float") {
-            ASSERT_FLOAT_EQ(it.value(), 2.3);
+            ASSERT_TRUE(it.value().is_array());
+            ASSERT_EQ(it.value().size(), 1);
+            auto array_items = it.value().items();
+            auto float_val = *(array_items.begin());
+            ASSERT_FLOAT_EQ(float_val.value(), 2.3);
             count++;
           } else if (it.key() == "key_str") {
+            ASSERT_TRUE(it.value().is_string());
             ASSERT_EQ(it.value(), "ut_test");
             count++;
           } else if (it.key() == "key_bytes") {

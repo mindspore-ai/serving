@@ -79,5 +79,43 @@ def serving_test(func):
         finally:
             master.stop()
             worker.stop()
+            servable_dir = os.path.join(os.getcwd(), "serving_python_ut_servables")
+            rmtree(servable_dir, True)
 
     return wrap_test
+
+
+def release_client(client):
+    del client.stub
+    client.stub = None
+
+
+# test servable_config.py with client
+servable_config_import = r"""
+import numpy as np
+from mindspore_serving.worker import register
+"""
+
+servable_config_declare_servable = r"""
+register.declare_servable(servable_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=False)
+"""
+
+servable_config_preprocess_cast = r"""
+def add_trans_datatype(x1, x2):
+    return x1.astype(np.float32), x2.astype(np.float32)
+"""
+
+servable_config_method_add_common = r"""
+@register.register_method(output_names=["y"])
+def add_common(x1, x2):  # only support float32 inputs
+    y = register.call_servable(x1, x2)
+    return y
+"""
+
+servable_config_method_add_cast = r"""
+@register.register_method(output_names=["y"])
+def add_cast(x1, x2):
+    x1, x2 = register.call_preprocess(add_trans_datatype, x1, x2)  # cast input to float32
+    y = register.call_servable(x1, x2)
+    return y
+"""

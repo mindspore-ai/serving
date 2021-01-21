@@ -14,9 +14,12 @@
 # limitations under the License.
 # ============================================================================
 set -e
-BASEPATH=$(cd "$(dirname "$0")"; pwd)
+BASEPATH=$(
+  cd "$(dirname "$0")"
+  pwd
+)
 PROJECT_PATH=${BASEPATH}/../../..
-if [ $BUILD_PATH ];then
+if [ $BUILD_PATH ]; then
   echo "BUILD_PATH = $BUILD_PATH"
 else
   BUILD_PATH=${PROJECT_PATH}/build
