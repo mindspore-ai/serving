@@ -104,32 +104,28 @@ class AscendEnvChecker:
                 else:
                     os.environ['LD_LIBRARY_PATH'] = self.tbe_path
             else:
-                raise EnvironmentError(
-                    f"No such directory: {self.tbe_path}, Please check if Ascend 910 AI software package is "
-                    "installed correctly.")
+                logger.warning(f"No such directory: {self.tbe_path}, Please check if Ascend 910 AI software package is "
+                               f"installed correctly.")
 
         if Path(self.op_impl_path).is_dir():
             sys.path.append(self.op_impl_path)
         else:
-            raise EnvironmentError(
-                f"No such directory: {self.op_impl_path}, Please check if Ascend 910 AI software package is "
-                "installed correctly.")
+            logger.warning(f"No such directory: {self.op_impl_path}, Please check if Ascend 910 AI software package is "
+                           f"installed correctly.")
 
         if Path(self.cce_path).is_dir():
             os.environ['PATH'] = self.cce_path + ":" + os.environ['PATH']
         else:
-            raise EnvironmentError(
-                f"No such directory: {self.cce_path}, Please check if Ascend 910 AI software package is "
-                "installed correctly.")
+            logger.warning(f"No such directory: {self.cce_path}, Please check if Ascend 910 AI software package is "
+                           f"installed correctly.")
 
         if self.op_path is None:
             pass
         elif Path(self.op_path).is_dir():
             os.environ['ASCEND_OPP_PATH'] = self.op_path
         else:
-            raise EnvironmentError(
-                f"No such directory: {self.op_path}, Please check if Ascend 910 AI software package is "
-                "installed correctly.")
+            logger.warning(f"No such directory: {self.op_path}, Please check if Ascend 910 AI software package is "
+                           f"installed correctly.")
 
     def _check_env(self):
         """ascend dependence path check"""

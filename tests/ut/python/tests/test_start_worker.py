@@ -14,9 +14,9 @@
 # ============================================================================
 """test Serving with master, worker and client"""
 
+from common import ServingTestBase, serving_test
 from mindspore_serving import master
 from mindspore_serving import worker
-from common import ServingTestBase, serving_test
 
 
 # start_servable_in_master
@@ -184,7 +184,7 @@ def test_start_servable_in_master_device_type_value_invalid_failed():
         worker.start_servable_in_master(base.servable_dir, base.servable_name, device_type="InvalidDeviceType")
         assert False
     except RuntimeError as e:
-        assert "Unsupport device type 'InvalidDeviceType'" in str(e)
+        assert "Unsupported device type 'InvalidDeviceType'" in str(e)
 
 
 @serving_test
@@ -330,7 +330,7 @@ def test_start_worker_device_type_value_invalid_failed():
         worker.start_servable(base.servable_dir, base.servable_name, device_type="InvalidDeviceType")
         assert False
     except RuntimeError as e:
-        assert "Unsupport device type 'InvalidDeviceType'" in str(e)
+        assert "Unsupported device type 'InvalidDeviceType'" in str(e)
 
 
 @serving_test

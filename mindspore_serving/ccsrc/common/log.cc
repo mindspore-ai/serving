@@ -108,7 +108,7 @@ static int GetGlogLevel(MsLogLevel level) {
   }
 }
 
-void LogWriter::OutputLog(const std::ostringstream &msg) const {
+void LogWriter::OutputLog(const std::string &msg_str) const {
   if (log_level_ < g_ms_serving_log_level) {
     return;
   }
@@ -116,7 +116,7 @@ void LogWriter::OutputLog(const std::ostringstream &msg) const {
   google::LogMessage("", 0, GetGlogLevel(log_level_)).stream()
     << "[" << GetLogLevel(log_level_) << "] " << submodule_name << "(" << getpid() << "," << GetProcName()
     << "):" << GetTime() << " "
-    << "[" << file_ << ":" << line_ << "] " << func_ << "] " << msg.str() << std::endl;
+    << "[" << file_ << ":" << line_ << "] " << func_ << "] " << msg_str << std::endl;
 }
 
 static MsLogLevel GetGlobalLogLevel() { return static_cast<MsLogLevel>(FLAGS_v); }
@@ -302,7 +302,7 @@ class LogConfigParser {
 bool ParseLogLevel(const std::string &str_level, MsLogLevel *ptr_level) {
   if (str_level.size() == 1) {
     int ch = str_level.c_str()[0];
-    ch = ch - '0';  // substract ASCII code of '0', which is 48
+    ch = ch - '0';  // subtract ASCII code of '0', which is 48
     if (ch >= LOG_DEBUG && ch <= LOG_ERROR) {
       if (ptr_level != nullptr) {
         *ptr_level = static_cast<MsLogLevel>(ch);

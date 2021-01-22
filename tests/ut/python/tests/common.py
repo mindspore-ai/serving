@@ -17,8 +17,10 @@
 import os
 from functools import wraps
 from shutil import rmtree
-from mindspore_serving import worker
+
 from mindspore_serving import master
+from mindspore_serving import worker
+from mindspore_serving.client import Client
 
 servable_index = 0
 
@@ -71,6 +73,9 @@ class ServingTestBase:
                 fp.write(servable_config_content)
 
 
+client_create_list = []
+
+
 def serving_test(func):
     @wraps(func)
     def wrap_test(*args, **kwargs):
@@ -81,8 +86,19 @@ def serving_test(func):
             worker.stop()
             servable_dir = os.path.join(os.getcwd(), "serving_python_ut_servables")
             rmtree(servable_dir, True)
+            global client_create_list
+            for client in client_create_list:
+                del client.stub
+                client.stub = None
+            client_create_list = []
 
     return wrap_test
+
+
+def create_client(ip, port, servable_name, method_name, version_number=0):
+    client = Client(ip, port, servable_name, method_name, version_number)
+    client_create_list.append(client)
+    return client
 
 
 def release_client(client):
@@ -119,3 +135,135 @@ def add_cast(x1, x2):
     y = register.call_servable(x1, x2)
     return y
 """
+
+
+def init_add_servable():
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += servable_config_declare_servable
+    servable_content += servable_config_preprocess_cast
+    servable_content += servable_config_method_add_common
+    servable_content += servable_config_method_add_cast
+    base.init_servable_with_servable_config(1, servable_content)
+    return base
+
+
+def init_str_servable():
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += servable_config_declare_servable
+    servable_content += r"""
+def preprocess(other):
+    return np.ones([2,2], np.float32), np.ones([2,2], np.float32)
+    
+def str_concat_postprocess(text1, text2):
+    return text1 + text2
+
+@register.register_method(output_names=["text"])
+def str_concat(text1, text2):
+    x1, x2 = register.call_preprocess(preprocess, text1)
+    y = register.call_servable(x1, x2)    
+    text = register.call_postprocess(str_concat_postprocess, text1, text2)
+    return text
+    
+def str_empty_postprocess(text1, text2):
+    if len(text1) == 0:
+        text = text2
+    else:
+        text = ""
+    return text
+
+@register.register_method(output_names=["text"])
+def str_empty(text1, text2):
+    x1, x2 = register.call_preprocess(preprocess, text1)
+    y = register.call_servable(x1, x2)    
+    text = register.call_postprocess(str_empty_postprocess, text1, text2)
+    return text
+"""
+    base.init_servable_with_servable_config(1, servable_content)
+    return base
+
+
+def init_bytes_servable():
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += servable_config_declare_servable
+    servable_content += r"""
+def preprocess(other):
+    return np.ones([2,2], np.float32), np.ones([2,2], np.float32)
+
+def bytes_concat_postprocess(text1, text2):
+    text1 = bytes.decode(text1.tobytes()) # bytes decode to str
+    text2 = bytes.decode(text2.tobytes()) # bytes decode to str
+    return str.encode(text1 + text2) # str encode to bytes
+
+@register.register_method(output_names=["text"])
+def bytes_concat(text1, text2):
+    x1, x2 = register.call_preprocess(preprocess, text1)
+    y = register.call_servable(x1, x2)    
+    text = register.call_postprocess(bytes_concat_postprocess, text1, text2)
+    return text
+
+def bytes_empty_postprocess(text1, text2):   
+    text1 = bytes.decode(text1.tobytes()) # bytes decode to str
+    text2 = bytes.decode(text2.tobytes()) # bytes decode to str
+    if len(text1) == 0:
+        text = text2
+    else:
+        text = ""
+    return str.encode(text) # str encode to bytes
+
+@register.register_method(output_names=["text"])
+def bytes_empty(text1, text2):
+    x1, x2 = register.call_preprocess(preprocess, text1)
+    y = register.call_servable(x1, x2)    
+    text = register.call_postprocess(bytes_empty_postprocess, text1, text2)
+    return text
+"""
+    base.init_servable_with_servable_config(1, servable_content)
+    return base
+
+
+def init_bool_int_float_servable():
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += servable_config_declare_servable
+    servable_content += r"""
+def preprocess(other):
+    return np.ones([2,2], np.float32), np.ones([2,2], np.float32)
+
+def bool_postprocess(bool_val):
+    return  ~bool_val
+
+@register.register_method(output_names=["value"])
+def bool_not(bool_val):
+    x1, x2 = register.call_preprocess(preprocess, bool_val)
+    y = register.call_servable(x1, x2)    
+    value = register.call_postprocess(bool_postprocess, bool_val)
+    return value
+
+def int_postprocess(int_val):
+    return int_val + 1
+
+@register.register_method(output_names=["value"])
+def int_plus_1(int_val):
+    x1, x2 = register.call_preprocess(preprocess, int_val)
+    y = register.call_servable(x1, x2)    
+    value = register.call_postprocess(int_postprocess, int_val)
+    return value
+    
+def float_postprocess(float_val):
+    value = float_val + 1
+    if value.dtype == np.float16:
+        value = value.astype(np.float32)
+    return value   
+    
+@register.register_method(output_names=["value"])
+def float_plus_1(float_val):
+    x1, x2 = register.call_preprocess(preprocess, float_val)
+    y = register.call_servable(x1, x2)    
+    value = register.call_postprocess(float_postprocess, float_val)
+    return value
+"""
+    base.init_servable_with_servable_config(1, servable_content)
+    return base

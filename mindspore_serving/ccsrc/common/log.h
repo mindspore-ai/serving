@@ -115,19 +115,31 @@ class MS_API LogWriter {
   std::string operator<(const LogStream &stream) const noexcept __attribute__((visibility("default"))) {
     std::ostringstream msg;
     msg << stream.sstream_->rdbuf();
-    OutputLog(msg);
-    return msg.str();
+    auto msg_str = GetOutputMsg(msg);
+    OutputLog(msg_str);
+    return msg_str;
   }
 
   void operator^(const LogStream &stream) const __attribute__((noreturn, visibility("default"))) {
     std::ostringstream msg;
     msg << stream.sstream_->rdbuf();
-    OutputLog(msg);
-    throw std::runtime_error(msg.str());
+    auto msg_str = GetOutputMsg(msg);
+    OutputLog(msg_str);
+    throw std::runtime_error(msg_str);
+  }
+
+  std::string GetOutputMsg(const std::ostringstream &msg) const {
+    std::string msg_str = msg.str();
+    constexpr int max_log_size = 256;
+    constexpr int msg_log_start_size = 128;
+    if (msg_str.length() > max_log_size) {
+      msg_str = msg_str.substr(0, msg_log_start_size) + "..." + msg_str.substr(msg_str.length() - msg_log_start_size);
+    }
+    return msg_str;
   }
 
  private:
-  void OutputLog(const std::ostringstream &msg) const;
+  void OutputLog(const std::string &msg_str) const;
 
   const char *file_;
   int line_;
