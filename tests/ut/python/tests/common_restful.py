@@ -18,8 +18,15 @@ import json
 import requests
 import numpy as np
 
+from common import init_str_servable, init_bytes_servable, init_bool_int_float_servable
+from mindspore_serving import master, worker
 
-def compare_float_value(expect, result):
+
+def compare_float_value(result, expect):
+    if isinstance(expect, (float, int)):
+        assert isinstance(result, float)
+        assert abs(expect - result) < 0.001
+        return
     expect = np.array(expect)
     result = np.array(result)
     assert (np.abs(expect - result) < 0.001).all()
@@ -37,19 +44,7 @@ def create_multi_instances_fp32(instance_count):
     return instances, y_data_list
 
 
-def create_multi_instances_int32_input_fp32_output(instance_count):
-    instances = []
-    # instance 1
-    y_data_list = []
-    for i in range(instance_count):
-        x1 = np.asarray([[1.1, 2.2], [3.3, 4.4]]).astype(np.int32) * (i + 1)
-        x2 = np.asarray([[5.5, 6.6], [7.7, 8.8]]).astype(np.int32) * (i + 1)
-        y_data_list.append((x1 + x2).astype(np.float32))
-        instances.append({"x1": x1.tolist(), "x2": x2.tolist()})
-    return instances, y_data_list
-
-
-def check_result(result, y_data_list, output_name="y"):
+def check_number_result(result, y_data_list, output_name="y"):
     result = result["instances"]
     assert len(result) == len(y_data_list)
     for result_item, expected_item in zip(result, y_data_list):
@@ -63,13 +58,34 @@ def check_result(result, y_data_list, output_name="y"):
 def post_restful(ip, restful_port, servable_name, method_name, json_instances, version_number=None):
     instances_map = {"instances": json_instances}
     post_payload = json.dumps(instances_map)
-    print("request:", post_payload)
+    print("request:", post_payload[:200])
     if version_number is not None:
         request_url = f"http://{ip}:{restful_port}/model/{servable_name}/version/{version_number}:{method_name}"
         result = requests.post(request_url, data=post_payload)
     else:
         request_url = f"http://{ip}:{restful_port}/model/{servable_name}:{method_name}"
         result = requests.post(request_url, data=post_payload)
-    print("result", result.text)
+    print("result", result.text[:200])
     result = json.loads(result.text)
     return result
+
+
+def start_str_restful_server():
+    base = init_str_servable()
+    worker.start_servable_in_master(base.servable_dir, base.servable_name)
+    master.start_restful_server("0.0.0.0", 5500)
+    return base
+
+
+def start_bytes_restful_server():
+    base = init_bytes_servable()
+    worker.start_servable_in_master(base.servable_dir, base.servable_name)
+    master.start_restful_server("0.0.0.0", 5500)
+    return base
+
+
+def start_bool_int_float_restful_server():
+    base = init_bool_int_float_servable()
+    worker.start_servable_in_master(base.servable_dir, base.servable_name)
+    master.start_restful_server("0.0.0.0", 5500)
+    return base

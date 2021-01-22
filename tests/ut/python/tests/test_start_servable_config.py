@@ -14,8 +14,8 @@
 # ============================================================================
 """test Serving: test servable_config"""
 
-from mindspore_serving import worker
 from common import ServingTestBase, serving_test
+from mindspore_serving import worker
 
 # test servable_config.py
 servable_config_import = r"""

@@ -42,11 +42,12 @@ static const std::map<HTTP_DATA_TYPE, DataType> http_type2_infer_type{{HTTP_DATA
                                                                       {HTTP_DATA_OBJ, DataType::kMSI_Bytes}};
 
 static const std::map<std::string, DataType> str2_infer_type{
-  {"int8", DataType::kMSI_Int8},     {"int16", DataType::kMSI_Int16},   {"int32", DataType::kMSI_Int32},
-  {"int64", DataType::kMSI_Int64},   {"uint8", DataType::kMSI_Uint8},   {"uint16", DataType::kMSI_Uint16},
-  {"uint32", DataType::kMSI_Uint32}, {"uint64", DataType::kMSI_Uint64}, {"fp16", DataType::kMSI_Float16},
-  {"fp32", DataType::kMSI_Float32},  {"fp64", DataType::kMSI_Float64},  {"bool", DataType::kMSI_Bool},
-  {"str", DataType::kMSI_String},    {"bytes", DataType::kMSI_Bytes}};
+  {"int8", DataType::kMSI_Int8},       {"int16", DataType::kMSI_Int16},     {"int32", DataType::kMSI_Int32},
+  {"int64", DataType::kMSI_Int64},     {"uint8", DataType::kMSI_Uint8},     {"uint16", DataType::kMSI_Uint16},
+  {"uint32", DataType::kMSI_Uint32},   {"uint64", DataType::kMSI_Uint64},   {"fp16", DataType::kMSI_Float16},
+  {"fp32", DataType::kMSI_Float32},    {"fp64", DataType::kMSI_Float64},    {"float16", DataType::kMSI_Float16},
+  {"float32", DataType::kMSI_Float32}, {"float64", DataType::kMSI_Float64}, {"bool", DataType::kMSI_Bool},
+  {"str", DataType::kMSI_String},      {"bytes", DataType::kMSI_Bytes}};
 
 template <typename T>
 bool RestfulService::IsString() {
@@ -98,12 +99,9 @@ std::string RestfulService::GetReqTypeStr(RequestType req_type) {
 Status RestfulService::CheckObjType(const string &type) {
   Status status(SUCCESS);
   auto it = str2_infer_type.find(type);
-
   if (it == str2_infer_type.end()) {
-    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "json object, specified type:"
-                                                  << "'" << type << "' is illegal";
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "json object, specified type:'" << type << "' is illegal";
   }
-
   return status;
 }
 
@@ -133,7 +131,6 @@ std::string RestfulService::GetStringByDataType(DataType type) {
       return item.first;
     }
   }
-
   return "";
 }
 
@@ -896,7 +893,7 @@ Status RestfulService::ParseScalar(const ProtoTensor &pb_tensor, size_t index, j
       status = ParseScalarData<uint64_t>(pb_tensor, false, index, js);
       break;
     case kMSI_Float16:
-      status = INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "fp16 reply is not supported";
+      status = INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "float16 reply is not supported";
       break;
     case kMSI_Float32:
       status = ParseScalarData<float>(pb_tensor, false, index, js);
