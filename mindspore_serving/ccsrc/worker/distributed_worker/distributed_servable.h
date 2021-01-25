@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright 2021 Huawei Technologies Co., Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@
 #include <vector>
 #include <string>
 #include <map>
-#include "worker/model.h"
+#include "worker/sevable_base.h"
 #include "worker/distributed_worker/common.h"
 
 namespace mindspore {

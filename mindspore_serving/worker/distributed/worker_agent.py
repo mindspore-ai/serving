@@ -1,4 +1,4 @@
-# Copyright 2020 Huawei Technologies Co., Ltd
+# Copyright 2021 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,11 +13,22 @@
 # limitations under the License.
 # ============================================================================
 """Serving, distributed worker agent"""
+from mindspore_serving.worker import check_type
 
 
-def _start_worker_agent(agent_ip, agent_start_port, worker_ip, worker_port,
+def _start_worker_agent(agent_ip, agent_port, worker_ip, worker_port,
                         rank_id, device_id, model_file, group_config_file, rank_table_file,
                         with_bach_dim, without_batch_dim_inputs):
     """Start up one worker agent on one device id, invoke by agent_startup.startup_worker_agents
     """
-    pass
+    check_type.check_str("agent_ip", agent_ip)
+    check_type.check_ip_port("agent_port", agent_port)
+    check_type.check_str("worker_ip", worker_ip)
+    check_type.check_ip_port("worker_port", worker_port)
+    check_type.check_int("rank_id", rank_id, 0)
+    check_type.check_int("device_id", device_id, 0)
+    check_type.check_str("model_file", model_file)
+    check_type.check_str("group_config_file", group_config_file)
+    check_type.check_str("rank_table_file", rank_table_file)
+    check_type.check_bool("with_bach_dim", with_bach_dim)
+    check_type.check_and_as_int_tuple_list("without_batch_dim_inputs", without_batch_dim_inputs, 0)

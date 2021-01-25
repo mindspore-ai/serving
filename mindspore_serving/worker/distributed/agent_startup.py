@@ -1,4 +1,4 @@
-# Copyright 2020 Huawei Technologies Co., Ltd
+# Copyright 2021 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,10 +13,31 @@
 # limitations under the License.
 # ============================================================================
 """Serving, distributed worker agent startup"""
+import inspect
+
+from mindspore_serving.worker import check_type
 
 
-def startup_worker_agents(agent_ip, agent_start_port, worker_ip, worker_port,
-                          model_dir, model_file_prefix, group_config_dir, group_file_prefix):
+def startup_worker_agents(worker_ip, worker_port,
+                          get_model_files_fun, get_group_configs_fun,
+                          rank_start, agent_start_port=7000):
     """Start up all needed worker agents on one machine
     """
-    pass
+    check_type.check_str("worker_ip", worker_ip)
+    check_type.check_ip_port("worker_port", worker_port)
+    check_type.check_int("agent_start_port", agent_start_port, 1, 65535 - 7)
+    if inspect.isfunction(get_model_files_fun):
+        pass
+    else:
+        if not isinstance(get_model_files_fun, [list, tuple]):
+            raise RuntimeError(f"Check failed, get_model_files_fun first must be function or tuple/list of str, "
+                               f"now is {type(get_model_files_fun)}")
+    if inspect.isfunction(get_group_configs_fun):
+        pass
+    else:
+        if not isinstance(get_group_configs_fun, [list, tuple]):
+            raise RuntimeError(f"Check failed, get_group_configs_fun first must be function or tuple/list of str, "
+                               f"now is {type(get_group_configs_fun)}")
+    check_type.check_int("rank_start", rank_start, 0)
+    if rank_start % 8 != 0:
+        raise RuntimeError(f"Parameter 'rank_start' must be mulfiply of 8, now is {rank_start}")

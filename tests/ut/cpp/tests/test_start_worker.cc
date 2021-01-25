@@ -30,10 +30,7 @@ TEST_F(TestStartWorker, test_worker_start_success) {
   DeclareServable("test_servable", "test_add.mindir", "mindir", true);
   RegisterMethod("test_servable", "add_common", {"x1", "x2"}, {"y"}, 2, 1);
   // start_servable
-  auto notify_master = std::make_shared<LocalNotifyMaster>();
-  ServableContext::Instance()->SetDeviceId(0);
-  ServableContext::Instance()->SetDeviceTypeStr("Ascend");
-  Status status = Worker::GetInstance().StartServable("test_servable_dir", "test_servable", 0, notify_master);
+  Status status = StartServable("test_servable_dir", "test_servable", 0);
   EXPECT_TRUE(status.IsSuccess());
 }
 
@@ -43,10 +40,7 @@ TEST_F(TestStartWorker, test_worker_start_error_model_file_name) {
   RegisterMethod("test_servable", "add_common", {"x1", "x2"}, {"y"}, 2, 1);
 
   // start_servable
-  auto notify_master = std::make_shared<LocalNotifyMaster>();
-  ServableContext::Instance()->SetDeviceId(0);
-  ServableContext::Instance()->SetDeviceTypeStr("Ascend");
-  Status status = Worker::GetInstance().StartServable("test_servable_dir", "test_servable", 0, notify_master);
+  auto status = StartServable("test_servable_dir", "test_servable", 0);
   EXPECT_FALSE(status.IsSuccess());
   ExpectContainMsg(status.StatusMessage(), "Load model failed, servable directory: ");
 }
@@ -57,12 +51,8 @@ TEST_F(TestStartWorker, test_worker_start_error_version_number) {
   RegisterMethod("test_servable", "add_common", {"x1", "x2"}, {"y"}, 2, 1);
 
   // start_servable
-  auto notify_master = std::make_shared<LocalNotifyMaster>();
-  ServableContext::Instance()->SetDeviceId(0);
-  ServableContext::Instance()->SetDeviceTypeStr("Ascend");
   int error_version_number = 2;
-  Status status =
-    Worker::GetInstance().StartServable("test_servable_dir", "test_servable", error_version_number, notify_master);
+  auto status = StartServable("test_servable_dir", "test_servable", error_version_number);
   EXPECT_FALSE(status.IsSuccess());
   ExpectContainMsg(status.StatusMessage(),
                    "Start servable failed, there is no servable of"
@@ -78,11 +68,8 @@ TEST_F(TestStartWorker, test_worker_start_multi_version_number) {
   RegisterMethod("test_servable", "add_common", {"x1", "x2"}, {"y"}, 2, 1);
 
   // start_servable
-  auto notify_master = std::make_shared<LocalNotifyMaster>();
-  ServableContext::Instance()->SetDeviceId(0);
-  ServableContext::Instance()->SetDeviceTypeStr("Ascend");
   int version_number = 0;
-  Status status = Worker::GetInstance().StartServable(servable_dir, "test_servable", version_number, notify_master);
+  Status status = StartServable(servable_dir, "test_servable", version_number);
   EXPECT_TRUE(status.IsSuccess());
 }
 
@@ -96,10 +83,7 @@ TEST_F(TestStartWorker, test_worker_start_version_number_no_valid) {
   RegisterMethod("test_servable", "add_common", {"x1", "x2"}, {"y"}, 2, 1);
 
   // start_servable
-  auto notify_master = std::make_shared<LocalNotifyMaster>();
-  ServableContext::Instance()->SetDeviceId(0);
-  ServableContext::Instance()->SetDeviceTypeStr("Ascend");
-  Status status = Worker::GetInstance().StartServable(servable_dir, "test_servable", 0, notify_master);
+  Status status = StartServable(servable_dir, "test_servable", 0);
   EXPECT_FALSE(status.IsSuccess());
   ExpectContainMsg(status.StatusMessage(),
                    "Start servable failed, there is no servable of"
@@ -112,11 +96,8 @@ TEST_F(TestStartWorker, test_worker_start_error_servable_dir) {
   RegisterMethod("test_servable", "add_common", {"x1", "x2"}, {"y"}, 2, 1);
 
   // start_servable
-  auto notify_master = std::make_shared<LocalNotifyMaster>();
-  ServableContext::Instance()->SetDeviceId(0);
-  ServableContext::Instance()->SetDeviceTypeStr("Ascend");
   std::string error_servable_dir = "test_servable_dir_error";
-  Status status = Worker::GetInstance().StartServable(error_servable_dir, "test_servable", 0, notify_master);
+  Status status = StartServable(error_servable_dir, "test_servable", 0);
   EXPECT_FALSE(status.IsSuccess());
   ExpectContainMsg(status.StatusMessage(),
                    "Start servable failed, there is no servable of"
@@ -129,11 +110,8 @@ TEST_F(TestStartWorker, test_worker_start_error_servable_name) {
   RegisterMethod("test_servable", "add_common", {"x1", "x2"}, {"y"}, 2, 1);
 
   // start_servable
-  auto notify_master = std::make_shared<LocalNotifyMaster>();
-  ServableContext::Instance()->SetDeviceId(0);
-  ServableContext::Instance()->SetDeviceTypeStr("Ascend");
   std::string error_servable_name = "test_servable_error";
-  Status status = Worker::GetInstance().StartServable("test_servable_dir", error_servable_name, 0, notify_master);
+  Status status = StartServable("test_servable_dir", error_servable_name, 0);
   EXPECT_FALSE(status.IsSuccess());
   ExpectContainMsg(status.StatusMessage(), "'test_servable_error' has not been registered");
 }
@@ -144,24 +122,18 @@ TEST_F(TestStartWorker, test_worker_start_error_servable_format) {
   RegisterMethod("test_servable", "add_common", {"x1", "x2"}, {"y"}, 2, 1);
 
   // start_servable
-  auto notify_master = std::make_shared<LocalNotifyMaster>();
-  ServableContext::Instance()->SetDeviceId(0);
-  ServableContext::Instance()->SetDeviceTypeStr("Ascend");
-  Status status = Worker::GetInstance().StartServable("test_servable_dir", "test_servable", 0, notify_master);
+  Status status = StartServable("test_servable_dir", "test_servable", 0);
   EXPECT_FALSE(status.IsSuccess());
-  ExpectContainMsg(status.StatusMessage(), "Cannot find session registered for device type Ascend and model type OM");
+  ExpectContainMsg(status.StatusMessage(), "Not support device type Ascend and model type OM. ");
 }
 
 TEST_F(TestStartWorker, test_worker_start_no_registered_method) {
-  Init("test_servable_dir", "test_servable", 1, "test_add.mindir");
+  Init("test_servable_dir", "test_servable", 2, "test_add.mindir");
   DeclareServable("test_servable", "test_add.mindir", "mindir", true);
   // no registered method
   // RegisterMethod("test_servable", "add_common", {"x1", "x2"}, {"y"}, 2, 1);
   // start_servable
-  auto notify_master = std::make_shared<LocalNotifyMaster>();
-  ServableContext::Instance()->SetDeviceId(0);
-  ServableContext::Instance()->SetDeviceTypeStr("Ascend");
-  Status status = Worker::GetInstance().StartServable("test_servable_dir", "test_servable", 0, notify_master);
+  Status status = StartServable("test_servable_dir", "test_servable", 2);
   EXPECT_FALSE(status.IsSuccess());
   ExpectContainMsg(status.StatusMessage(), "There is no method registered for servable");
 }
@@ -181,10 +153,7 @@ TEST_F(TestStartWorker, test_worker_start_multi_method) {
   RegisterMethod("test_servable", "add_common", {"x1", "x2"}, {"y"}, 2, 1);
   RegisterMethod("test_servable", "add_common2", {"x1", "x2"}, {"y"}, 2, 1);
   // start_servable
-  auto notify_master = std::make_shared<LocalNotifyMaster>();
-  ServableContext::Instance()->SetDeviceId(0);
-  ServableContext::Instance()->SetDeviceTypeStr("Ascend");
-  Status status = Worker::GetInstance().StartServable("test_servable_dir", "test_servable", 0, notify_master);
+  Status status = StartServable("test_servable_dir", "test_servable", 0);
   EXPECT_TRUE(status.IsSuccess());
 }
 
@@ -194,10 +163,7 @@ TEST_F(TestStartWorker, test_worker_start_method_servable_input_count_not_match)
   size_t servable_input_count = 1;
   RegisterMethod("test_servable", "add_common", {"x1", "x2"}, {"y"}, servable_input_count, 1);
   // start_servable
-  auto notify_master = std::make_shared<LocalNotifyMaster>();
-  ServableContext::Instance()->SetDeviceId(0);
-  ServableContext::Instance()->SetDeviceTypeStr("Ascend");
-  Status status = Worker::GetInstance().StartServable("test_servable_dir", "test_servable", 0, notify_master);
+  Status status = StartServable("test_servable_dir", "test_servable", 0);
   EXPECT_FALSE(status.IsSuccess());
   ExpectContainMsg(status.StatusMessage(),
                    "The inputs count 1 registered in method not equal to "
@@ -210,10 +176,7 @@ TEST_F(TestStartWorker, test_worker_start_method_servable_output_count_not_match
   size_t servable_output_count = 2;
   RegisterMethod("test_servable", "add_common", {"x1", "x2"}, {"y"}, 2, servable_output_count);
   // start_servable
-  auto notify_master = std::make_shared<LocalNotifyMaster>();
-  ServableContext::Instance()->SetDeviceId(0);
-  ServableContext::Instance()->SetDeviceTypeStr("Ascend");
-  Status status = Worker::GetInstance().StartServable("test_servable_dir", "test_servable", 0, notify_master);
+  Status status = StartServable("test_servable_dir", "test_servable", 0);
   EXPECT_FALSE(status.IsSuccess());
   ExpectContainMsg(status.StatusMessage(),
                    "The outputs count 2 registered in method not equal to "
@@ -241,10 +204,7 @@ TEST_F(TestStartWorker, test_worker_start_preprocess_not_found) {
   ServableStorage::Instance().RegisterMethod(method_signature);
 
   // start_servable
-  auto notify_master = std::make_shared<LocalNotifyMaster>();
-  ServableContext::Instance()->SetDeviceId(0);
-  ServableContext::Instance()->SetDeviceTypeStr("Ascend");
-  Status status = Worker::GetInstance().StartServable("test_servable_dir", "test_servable", 0, notify_master);
+  Status status = StartServable("test_servable_dir", "test_servable", 0);
   EXPECT_FALSE(status.IsSuccess());
   ExpectContainMsg(status.StatusMessage(), " preprocess preprocess_fake_fun not defined")
 }
@@ -269,10 +229,7 @@ TEST_F(TestStartWorker, test_worker_start_postprocess_not_found) {
   ServableStorage::Instance().RegisterMethod(method_signature);
 
   // start_servable
-  auto notify_master = std::make_shared<LocalNotifyMaster>();
-  ServableContext::Instance()->SetDeviceId(0);
-  ServableContext::Instance()->SetDeviceTypeStr("Ascend");
-  Status status = Worker::GetInstance().StartServable("test_servable_dir", "test_servable", 0, notify_master);
+  Status status = StartServable("test_servable_dir", "test_servable", 0);
   EXPECT_FALSE(status.IsSuccess());
   ExpectContainMsg(status.StatusMessage(), " postprocess postprocess_fake_fun not defined")
 }
@@ -300,10 +257,7 @@ TEST_F(TestStartWorker, test_worker_start_with_preproces_and_postprocess_success
   ServableStorage::Instance().RegisterMethod(method_signature);
 
   // start_servable
-  auto notify_master = std::make_shared<LocalNotifyMaster>();
-  ServableContext::Instance()->SetDeviceId(0);
-  ServableContext::Instance()->SetDeviceTypeStr("Ascend");
-  Status status = Worker::GetInstance().StartServable("test_servable_dir", "test_servable", 0, notify_master);
+  Status status = StartServable("test_servable_dir", "test_servable", 0);
   EXPECT_TRUE(status.IsSuccess());
 }
 

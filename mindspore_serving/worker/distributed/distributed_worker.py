@@ -1,4 +1,4 @@
-# Copyright 2020 Huawei Technologies Co., Ltd
+# Copyright 2021 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,13 +13,13 @@
 # limitations under the License.
 # ============================================================================
 """Serving, distributed worker startup"""
-from .._worker import stop_on_except, _load_servable_config
-from .. import check_type
+from mindspore_serving.worker._worker import stop_on_except, _load_servable_config
+from mindspore_serving.worker import check_type
 
 
 @stop_on_except
-def start_distributed_servable(servable_directory, servable_name, rank_table_json_file, version_number=0,
-                               master_ip="0.0.0.0", master_port=6100, worker_ip="0.0.0.0", worker_port=6200):
+def start_distributed_servable(servable_directory, servable_name, rank_table_json_file, version_number=1,
+                               worker_ip="0.0.0.0", worker_port=6200, master_ip="0.0.0.0", master_port=6100):
     r"""
     Start up the servable named 'servable_name' defined in 'servable_directory', and link the worker to the master
     through gRPC (master_ip, master_port).
@@ -39,15 +39,11 @@ def start_distributed_servable(servable_directory, servable_name, rank_table_jso
         servable_name (str): The servable name.
         version_number (int): Servable version number to be loaded. The version number should be a positive integer,
             starting from 1, and 0 means to load the latest version. Default: 0.
-        device_type (str): Currently only supports "Ascend", "Davinci" and None, Default: None.
-            "Ascend" means the device type can be Ascend910 or Ascend310, etc.
-            "Davinci" has the same meaning as "Ascend".
-            None means the device type is determined by the MindSpore environment.
-        device_id (int): The id of the device the model loads into and runs in.
+        rank_table_json_file (str): The ranke table json file name.
         master_ip (str): The master ip the worker linked to.
         master_port (int): The master port the worker linked to.
-        worker_ip (str): The worker ip the master linked to.
-        worker_port (int): The worker port the master linked to.
+        worker_ip (str): The worker ip the master and agents linked to.
+        worker_port (int): The worker port the master and agents linked to.
 
     Examples:
         >>> import os
@@ -61,6 +57,8 @@ def start_distributed_servable(servable_directory, servable_name, rank_table_jso
     check_type.check_str('servable_directory', servable_directory)
     check_type.check_str('servable_name', servable_name)
     check_type.check_int('version_number', version_number, 0)
+    if version_number == 0:
+        version_number = 1
     check_type.check_str('rank_table_json_file', rank_table_json_file)
 
     check_type.check_str('master_ip', master_ip)
@@ -73,7 +71,8 @@ def start_distributed_servable(servable_directory, servable_name, rank_table_jso
 
 
 @stop_on_except
-def start_distributed_servable_in_master(servable_directory, servable_name, rank_table_json_file, version_number=0):
+def start_distributed_servable_in_master(servable_directory, servable_name, rank_table_json_file, version_number=1,
+                                         worker_ip="0.0.0.0", worker_port=6200):
     r"""
     Start up the servable named 'servable_name' defined in 'svable_directory', and the worker will run in
     the process of the master.
@@ -89,10 +88,9 @@ def start_distributed_servable_in_master(servable_directory, servable_name, rank
         servable_name (str): The servable name.
         version_number (int): Servable version number to be loaded. The version number should be a positive integer,
             starting from 1, and 0 means to load the latest version. Default: 0.
-        device_type (str): Currently only supports "Ascend", "Davinci" and None, Default: None.
-            "Ascend" means the device type can be Ascend910 or Ascend310, etc.
-            "Davinci" has the same meaning as "Ascend".
-            None means the device type is determined by the MindSpore environment.
+        rank_table_json_file (str): The ranke table json file name.
+        worker_ip (str): The worker ip the agents linked to.
+        worker_port (int): The worker port the agents linked to.
 
     Examples:
         >>> import os
@@ -108,6 +106,12 @@ def start_distributed_servable_in_master(servable_directory, servable_name, rank
     check_type.check_str('servable_directory', servable_directory)
     check_type.check_str('servable_name', servable_name)
     check_type.check_int('version_number', version_number, 0)
+    if version_number == 0:
+        version_number = 1
+
     check_type.check_str('rank_table_json_file', rank_table_json_file)
+
+    check_type.check_str('worker_ip', worker_ip)
+    check_type.check_ip_port('worker_port', worker_port)
 
     _load_servable_config(servable_directory, servable_name)

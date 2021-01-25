@@ -28,7 +28,7 @@
 #include "common/serving_common.h"
 #include "common/instance.h"
 #include "common/servable.h"
-#include "worker/model.h"
+#include "worker/sevable_base.h"
 #include "worker/predict_thread.h"
 #include "worker/task_queue.h"
 

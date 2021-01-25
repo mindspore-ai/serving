@@ -27,6 +27,7 @@
 #include "worker/worker.h"
 #include "worker/notfiy_master/local_notify.h"
 #include "worker/context.h"
+#include "worker/ascend_servable/ascend_sevable.h"
 #include "master/grpc/grpc_process.h"
 #include "mindspore_serving/proto/ms_service.pb.h"
 
@@ -102,7 +103,12 @@ class TestMasterWorker : public UT::Common {
     auto notify_master = std::make_shared<LocalNotifyMaster>();
     ServableContext::Instance()->SetDeviceId(0);
     ServableContext::Instance()->SetDeviceTypeStr("Ascend");
-    Status status = Worker::GetInstance().StartServable(servable_dir, servable_name, version_number, notify_master);
+    auto servable = std::make_shared<AscendModelServable>();
+    auto status = servable->StartServable(servable_dir, servable_name, version_number);
+    if (status != SUCCESS) {
+      return status;
+    }
+    status = Worker::GetInstance().StartServable(servable, notify_master);
     return status;
   }
   static void DeclareServable(const std::string &servable_name, const std::string &servable_file,

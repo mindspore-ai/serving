@@ -1,4 +1,4 @@
-# Copyright 2020 Huawei Technologies Co., Ltd
+# Copyright 2021 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,8 +13,12 @@
 # limitations under the License.
 # ============================================================================
 """Serving, distributed worker register"""
+from mindspore_serving.worker import check_type
 
 
 def declare_distributed_servable(rank_size, stage_size, with_bach_dim, without_batch_dim_inputs):
     """declare distributed servable in servable_config.py"""
-    pass
+    check_type.check_int("rank_size", rank_size, 0)
+    check_type.check_int("stage_size", stage_size, 0)
+    check_type.check_bool("with_bach_dim", with_bach_dim)
+    check_type.check_and_as_int_tuple_list("without_batch_dim_inputs", without_batch_dim_inputs, 0)
