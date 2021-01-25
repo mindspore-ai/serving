@@ -48,7 +48,7 @@ void PredictThread::Predict() {
     std::vector<Instance> instances;
     {
       std::unique_lock<std::mutex> lock{m_lock_};
-      if (!is_running_) {
+      if (!is_running_) {  // before start, after stop
         break;
       }
       if (predict_buffer_.empty()) {
@@ -92,8 +92,8 @@ void PredictThread::Start(PredictFun predict_fun, uint32_t batch_size) {
   }
   predict_fun_ = std::move(predict_fun);
   batch_size_ = batch_size;
+  is_running_ = true;  // set true before predict_thread_ start
   predict_thread_ = std::thread(ThreadFunc, this);
-  is_running_ = true;
 }
 
 }  // namespace mindspore::serving
