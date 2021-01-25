@@ -56,7 +56,6 @@ TEST_F(TestPreprocessPostprocess, test_master_worker_with_preproces_and_postproc
   // start_servable
   Status status = StartServable("test_servable_dir", "test_servable", 0);
   EXPECT_TRUE(status.IsSuccess());
-
   // run servable
   proto::PredictRequest request;
   size_t instances_count = 3;

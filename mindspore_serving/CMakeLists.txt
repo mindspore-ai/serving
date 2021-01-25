@@ -94,6 +94,7 @@ set_property(TARGET serving_common PROPERTY POSITION_INDEPENDENT_CODE TRUE)
 
 target_link_libraries(serving_common PRIVATE PROTO_SRC_LIB mindspore_serving::event mindspore_serving::event_pthreads)
 target_link_libraries(serving_common PRIVATE ${_REFLECTION} ${_GRPC_GRPCPP} ${_PROTOBUF_LIBPROTOBUF} pthread)
+target_link_libraries(serving_common PRIVATE mindspore_serving::eigen)
 
 # python
 add_compile_definitions(ENABLE_PYTHON)

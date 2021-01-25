@@ -7,7 +7,7 @@ export BUILD_PATH="${PROJECTPATH}/build/"
 usage()
 {
   echo "Usage:"
-  echo "bash build.sh [-d] [-v] [-c] [-a on|off] [-j[n]] [-p]"
+  echo "bash build.sh [-d] [-v] [-c on|off] [-a on|off] [-j[n]] [-p]"
   echo ""
   echo "Options:"
   echo "    -d Debug model"
@@ -47,7 +47,7 @@ checkopts()
   RUN_TESTCASES="off"
 
   # Process the options
-  while getopts 'dvcj:a:p:e:V:t:' opt
+  while getopts 'dvc:j:a:p:e:V:t:' opt
   do
     LOW_OPTARG=$(echo ${OPTARG} | tr '[A-Z]' '[a-z]')
 

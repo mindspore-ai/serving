@@ -31,8 +31,11 @@ ThreadPool::ThreadPool(uint32_t size) : is_stoped_(false), idle_thrd_num_(size <
 }
 
 ThreadPool::~ThreadPool() {
-  is_stoped_.store(true);
-  cond_var_.notify_all();
+  {
+    std::unique_lock<std::mutex> lock{m_lock_};
+    is_stoped_.store(true);
+    cond_var_.notify_all();
+  }
 
   for (std::thread &thd : pool_) {
     if (thd.joinable()) {

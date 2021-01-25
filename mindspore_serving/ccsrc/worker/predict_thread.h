@@ -44,8 +44,7 @@ class MS_API PredictThread {
 
   std::mutex m_lock_;
   std::condition_variable cond_var_;
-  std::atomic<bool> is_stoped_{false};
-  std::atomic<bool> has_started = false;
+  std::atomic<bool> is_running_ = false;
 
   static void ThreadFunc(PredictThread *queue);
   void Predict();

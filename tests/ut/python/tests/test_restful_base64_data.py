@@ -580,48 +580,6 @@ def mix_all_type(bool_val, int_val, float_val, str_val, bytes_val):
 
 
 @serving_test
-def test_restful_base64_float16_2d_array_not_support_fp16_output_failed():
-    base = ServingTestBase()
-    servable_content = servable_config_import
-    servable_content += servable_config_declare_servable
-    servable_content += r"""
-def preprocess(float_val):
-    return np.ones([2,2], np.float32), np.ones([2,2], np.float32)  
-    
-def postprocess(float_val):
-    return float_val + 1    
-
-@register.register_method(output_names=["value"])
-def float_plus_1(float_val):
-    x1, x2 = register.call_preprocess(preprocess, float_val)
-    y = register.call_servable(x1, x2)    
-    value = register.call_postprocess(postprocess, float_val)
-    return value
-"""
-    base.init_servable_with_servable_config(1, servable_content)
-    worker.start_servable_in_master(base.servable_dir, base.servable_name)
-    master.start_restful_server("0.0.0.0", 5500)
-    # Client
-    instances = [{}, {}, {}]
-
-    dtype = np.float16
-    dtype_str_map = {np.float16: "fp16", np.float32: "fp32", np.float64: "fp64"}
-    assert dtype in dtype_str_map
-
-    y_data_list = []
-    for i, instance in enumerate(instances):
-        val = i * 2.2 * (-1 if i % 2 == 0 else 1)  # 0, 2.2 ,-4.4
-        val = [[val] * (i + 1)] * (i + 1)
-        val = np.array(val).astype(dtype)
-        y_data_list.append(val + 1)
-        instance["float_val"] = {"b64": base64.b64encode(val.tobytes()).decode(), 'type': dtype_str_map[dtype],
-                                 'shape': [i + 1, i + 1]}
-
-    result = post_restful("localhost", 5500, base.servable_name, "float_plus_1", instances)
-    assert "float16 reply is not supported" in result["error_msg"]
-
-
-@serving_test
 def test_restful_base64_without_b64_key_failed():
     base = start_bool_int_float_restful_server()
     # Client

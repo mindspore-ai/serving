@@ -88,6 +88,7 @@ add_library(serving_ut_common STATIC ${UT_SERVING_COMMON})
 target_link_libraries(serving_ut_common PRIVATE ${_REFLECTION} ${_GRPC_GRPCPP} ${_PROTOBUF_LIBPROTOBUF})
 target_link_libraries(serving_ut_common PRIVATE mindspore_serving::event mindspore_serving::event_pthreads)
 target_link_libraries(serving_ut_common PRIVATE pthread mindspore_serving::glog)
+target_link_libraries(serving_ut_common PRIVATE mindspore_serving::eigen)
 target_link_libraries(serving_ut_common PRIVATE ${SECUREC_LIBRARY})
 
 # copy libevent lib

@@ -510,6 +510,9 @@ def common_test_grpc_request_np_float_type_scalar_input_output_success(dtype):
 
     client = create_client("localhost", 5500, base.servable_name, "float_plus_1")
     result = client.infer(instances)
+    assert result[0]["value"].dtype == dtype
+    assert result[1]["value"].dtype == dtype
+    assert result[2]["value"].dtype == dtype
     assert result[0]["value"].tolist() == y_data_list[0]
     assert result[1]["value"].tolist() == y_data_list[1]
     assert result[2]["value"].tolist() == y_data_list[2]
@@ -544,6 +547,9 @@ def common_test_grpc_request_np_float_type_1d_array_input_output_success(dtype):
 
     client = create_client("localhost", 5500, base.servable_name, "float_plus_1")
     result = client.infer(instances)
+    assert result[0]["value"].dtype == dtype
+    assert result[1]["value"].dtype == dtype
+    assert result[2]["value"].dtype == dtype
     assert result[0]["value"].tolist() == y_data_list[0]
     assert result[1]["value"].tolist() == y_data_list[1]
     assert result[2]["value"].tolist() == y_data_list[2]
@@ -580,6 +586,9 @@ def common_test_grpc_request_np_float_type_2d_array_input_output_success(dtype):
 
     client = create_client("localhost", 5500, base.servable_name, "float_plus_1")
     result = client.infer(instances)
+    assert result[0]["value"].dtype == dtype
+    assert result[1]["value"].dtype == dtype
+    assert result[2]["value"].dtype == dtype
     assert result[0]["value"].tolist() == y_data_list[0]
     assert result[1]["value"].tolist() == y_data_list[1]
     assert result[2]["value"].tolist() == y_data_list[2]
