@@ -117,7 +117,7 @@ class TaskQueueThreadPool {
   std::shared_ptr<TaskQueue> GetTaskQueue() { return task_queue_; }
 
  protected:
-  std::atomic<bool> is_running = false;
+  std::atomic<bool> is_running_ = false;
   std::vector<std::thread> pool_;
   std::shared_ptr<TaskQueue> task_queue_ = std::make_shared<TaskQueue>();
 

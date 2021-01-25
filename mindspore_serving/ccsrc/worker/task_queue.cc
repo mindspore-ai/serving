@@ -288,11 +288,11 @@ void TaskQueueThreadPool::ThreadFunc(TaskQueueThreadPool *thread_pool) {
 }
 
 void TaskQueueThreadPool::Start(uint32_t size) {
-  if (is_running) {
+  if (is_running_) {
     return;
   }
-  is_running = true;
-  task_queue_->Start();
+  is_running_ = true;    // start before ThreadFunc thread pool start
+  task_queue_->Start();  // start before ThreadFunc thread pool start
   for (uint32_t i = 0; i < size; ++i) {
     pool_.emplace_back(ThreadFunc, this);
   }
@@ -310,7 +310,7 @@ void TaskQueueThreadPool::Stop() {
     }
   }
   pool_.clear();
-  is_running = false;
+  is_running_ = false;
 }
 
 Status PreprocessThreadPool::HandleTask(const TaskItem &task_item) {
