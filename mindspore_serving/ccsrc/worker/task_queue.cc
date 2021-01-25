@@ -67,11 +67,11 @@ void TaskQueue::PushTask(const std::string &task_name, uint64_t worker_id, const
 void TaskQueue::PushTaskResult(uint64_t worker_id, const Instance &input, const ResultInstance &output) {
   auto it = callback_map_.find(worker_id);
   if (it == callback_map_.end()) {
-    MSI_LOG_ERROR << "Worker serivce " << worker_id << " has not specificated callback";
+    MSI_LOG_ERROR << "Worker service " << worker_id << " has not specified callback";
     return;
   }
   if (it->second == nullptr) {
-    MSI_LOG_ERROR << "Worker serivce " << worker_id << " has not specify callback preprocess";
+    MSI_LOG_ERROR << "Worker service " << worker_id << " has not specify callback preprocess";
     return;
   }
   it->second({input}, {output});
@@ -81,11 +81,11 @@ void TaskQueue::PushTaskResult(uint64_t worker_id, const std::vector<Instance> &
                                const std::vector<ResultInstance> &outputs) {
   auto it = callback_map_.find(worker_id);
   if (it == callback_map_.end()) {
-    MSI_LOG_ERROR << "Worker serivce " << worker_id << " has not specificated callback";
+    MSI_LOG_ERROR << "Worker service " << worker_id << " has not specified callback";
     return;
   }
   if (it->second == nullptr) {
-    MSI_LOG_ERROR << "Worker serivce " << worker_id << " has not specify callback preprocess";
+    MSI_LOG_ERROR << "Worker service " << worker_id << " has not specify callback preprocess";
     return;
   }
   it->second(inputs, outputs);
@@ -114,11 +114,11 @@ Status TaskQueue::PushTaskPyResult(const std::vector<ResultInstance> &outputs) {
 
 void TaskQueue::PopTask(TaskItem *task_item) {
   MSI_EXCEPTION_IF_NULL(task_item);
+  std::unique_lock<std::mutex> lock{*lock_};
   if (!is_running) {  // before start, or after stop
     task_item->task_type = kTaskTypeStop;
     return;
   }
-  std::unique_lock<std::mutex> lock{*lock_};
   while (true) {
     if (task_priority_list_.empty()) {
       cond_var_->wait(lock, [this] { return !is_running || !task_priority_list_.empty(); });
@@ -126,6 +126,10 @@ void TaskQueue::PopTask(TaskItem *task_item) {
         task_item->task_type = kTaskTypeStop;
         return;
       }
+    }
+    if (task_priority_list_.empty()) {
+      MSI_LOG_EXCEPTION << "task_priority_list_.empty(), is_running " << is_running << ", task_priority_list_ size "
+                        << task_priority_list_.size();
     }
     auto task_item_info = task_priority_list_.front();
     task_priority_list_.pop();
@@ -142,11 +146,11 @@ void TaskQueue::PopTask(TaskItem *task_item) {
 
 void TaskQueue::TryPopTask(TaskItem *task_item) {
   MSI_EXCEPTION_IF_NULL(task_item);
+  std::unique_lock<std::mutex> lock{*lock_};
   if (!is_running) {  // before start, or after stop
     task_item->task_type = kTaskTypeStop;
     return;
   }
-  std::unique_lock<std::mutex> lock{*lock_};
   while (true) {
     if (task_priority_list_.empty()) {
       task_item->task_type = kTaskTypeEmpty;
@@ -174,6 +178,7 @@ void TaskQueue::TryPopPyTask(TaskItem *task_item) {
 }
 
 void TaskQueue::Start() {
+  std::unique_lock<std::mutex> lock{*lock_};
   if (is_running) {
     return;
   }
@@ -185,6 +190,7 @@ void TaskQueue::Start() {
 }
 
 void TaskQueue::Stop() {
+  std::unique_lock<std::mutex> lock{*lock_};
   if (!is_running) {
     return;
   }
@@ -286,10 +292,10 @@ void TaskQueueThreadPool::Start(uint32_t size) {
     return;
   }
   is_running = true;
+  task_queue_->Start();
   for (uint32_t i = 0; i < size; ++i) {
     pool_.emplace_back(ThreadFunc, this);
   }
-  task_queue_->Start();
 }
 
 void TaskQueueThreadPool::Stop() {

@@ -23,6 +23,7 @@
 #include <algorithm>
 #include "common/serving_common.h"
 #include "master/restful/http_handle.h"
+#include "common/float16.h"
 
 using mindspore::serving::proto::Instance;
 using mindspore::serving::proto::PredictReply;
@@ -304,12 +305,8 @@ Status RestfulService::CheckObj(const json &js) {
   int shape_count = 0;
   int type_count = 0;
   for (auto item = js.begin(); item != js.end(); ++item) {
-    auto key = item.key();
+    const auto &key = item.key();
     auto value = item.value();
-    if (key != kB64 && key != kType && key != kShape) {
-      return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
-             << "json object, key is not ['b64', 'type', 'shape'], fail key:" << key;
-    }
     if (key == kB64) {
       b64_count++;
     } else if (key == kType) {
@@ -346,6 +343,9 @@ Status RestfulService::CheckObj(const json &js) {
         }
       }
       shape_count++;
+    } else {
+      return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
+             << "json object, key is not ['b64', 'type', 'shape'], fail key:" << key;
     }
   }
 
@@ -364,8 +364,7 @@ Status RestfulService::CheckObj(const json &js) {
   return SUCCESS;
 }
 
-// 1. parse request common func
-Status RestfulService::ParseItem(const json &value, ProtoTensor *const pb_tensor) {
+Status RestfulService::ParseItemScalar(const json &value, ProtoTensor *const pb_tensor) {
   Status status(SUCCESS);
   std::vector<int64_t> scalar_shape = {};
   if (value.is_number_integer()) {
@@ -391,87 +390,98 @@ Status RestfulService::ParseItem(const json &value, ProtoTensor *const pb_tensor
     pb_tensor->set_data_type(type);
     pb_tensor->set_shape(scalar_shape);
     status = GetScalarByType(type, value, 0, pb_tensor);
-  } else if (value.is_object()) {
-    status = CheckObj(value);
-    if (status != SUCCESS) {
-      return status;
-    }
-
-    DataType type = GetObjDataType(value);
-    if (type == kMSI_Unknown) {
-      return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "json object, type is unknown";
-    }
-
-    std::vector<int64_t> shape = GetObjShape(value);
-    bool is_tensor = false;
-    if (type != kMSI_String && type != kMSI_Bytes) {
-      is_tensor = true;
-    }
-    if (is_tensor) {
-      size_t shape_size = std::accumulate(shape.begin(), shape.end(), 1LL, std::multiplies<size_t>());
-      size_t type_size = pb_tensor->GetTypeSize(type);
-      pb_tensor->resize_data(shape_size * type_size);
-    }
-
-    status = CheckObjTypeMatchShape(type, shape);
-    if (status != SUCCESS) {
-      return status;
-    }
-    pb_tensor->set_data_type(type);
-    pb_tensor->set_shape(shape);
-    status = GetScalarByType(serving::kMSI_Bytes, value[kB64], 0, pb_tensor);
-  } else if (value.is_array()) {
-    HTTP_DATA_TYPE type_format = HTTP_DATA_NONE;
-    auto shape = GetArrayShape(value);
-    if (shape.empty()) {
-      return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "json array, shape is empty";
-    }
-    DataType data_type = GetArrayDataType(value, &type_format);
-    if (data_type == kMSI_Unknown) {
-      return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "json array, data type is unknown";
-    }
-
-    bool is_tensor = false;
-    if (data_type != kMSI_String && data_type != kMSI_Bytes) {
-      is_tensor = true;
-    }
-
-    // instances mode:only support one item
-    if (request_type_ == kInstanceType) {
-      if (!is_tensor) {
-        size_t elements_nums = std::accumulate(shape.begin(), shape.end(), 1LL, std::multiplies<size_t>());
-        if (elements_nums != 1) {
-          return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "json array, string or bytes type only support one item";
-        }
-      }
-    }
-
-    // set real data type
-    pb_tensor->set_data_type(data_type);
-    pb_tensor->set_shape(shape);
-
-    if (is_tensor) {
-      size_t shape_size = std::accumulate(shape.begin(), shape.end(), 1LL, std::multiplies<size_t>());
-      size_t type_size = pb_tensor->GetTypeSize(data_type);
-      pb_tensor->resize_data(shape_size * type_size);
-    }
-
-    if (type_format == HTTP_DATA_OBJ) {
-      if (data_type != kMSI_Bytes && data_type != kMSI_String) {
-        return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
-               << "json array, item is object type, object only support string or bytes type";
-      }
-    }
-    status = RecursiveGetArray(value, 0, 0, type_format, pb_tensor);
-    if (status != SUCCESS) {
-      return status;
-    }
   } else if (value.is_null()) {
     return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "json value is null, it is not supported";
   } else if (value.is_discarded()) {
     return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "json value is discarded type, it is not supported";
+  } else {
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "json value type is unregistered";
   }
   return status;
+}
+
+Status RestfulService::ParseItemObject(const json &value, ProtoTensor *const pb_tensor) {
+  auto status = CheckObj(value);
+  if (status != SUCCESS) {
+    return status;
+  }
+
+  DataType type = GetObjDataType(value);
+  if (type == kMSI_Unknown) {
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "json object, type is unknown";
+  }
+
+  std::vector<int64_t> shape = GetObjShape(value);
+  bool is_tensor = false;
+  if (type != kMSI_String && type != kMSI_Bytes) {
+    is_tensor = true;
+  }
+  if (is_tensor) {
+    size_t shape_size = std::accumulate(shape.begin(), shape.end(), 1LL, std::multiplies<size_t>());
+    size_t type_size = pb_tensor->GetTypeSize(type);
+    pb_tensor->resize_data(shape_size * type_size);
+  }
+  status = CheckObjTypeMatchShape(type, shape);
+  if (status != SUCCESS) {
+    return status;
+  }
+  pb_tensor->set_data_type(type);
+  pb_tensor->set_shape(shape);
+  status = GetScalarByType(serving::kMSI_Bytes, value[kB64], 0, pb_tensor);
+  return status;
+}
+
+Status RestfulService::ParseItemArray(const json &value, ProtoTensor *const pb_tensor) {
+  HTTP_DATA_TYPE type_format = HTTP_DATA_NONE;
+  auto shape = GetArrayShape(value);
+  if (shape.empty()) {
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "json array, shape is empty";
+  }
+  DataType data_type = GetArrayDataType(value, &type_format);
+  if (data_type == kMSI_Unknown) {
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "json array, data type is unknown";
+  }
+  bool is_tensor = false;
+  if (data_type != kMSI_String && data_type != kMSI_Bytes) {
+    is_tensor = true;
+  }
+  // instances mode:only support one item
+  if (request_type_ == kInstanceType) {
+    if (!is_tensor) {
+      size_t elements_nums = std::accumulate(shape.begin(), shape.end(), 1LL, std::multiplies<size_t>());
+      if (elements_nums != 1) {
+        return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "json array, string or bytes type only support one item";
+      }
+    }
+  }
+  // set real data type
+  pb_tensor->set_data_type(data_type);
+  pb_tensor->set_shape(shape);
+
+  if (is_tensor) {
+    size_t shape_size = std::accumulate(shape.begin(), shape.end(), 1LL, std::multiplies<size_t>());
+    size_t type_size = pb_tensor->GetTypeSize(data_type);
+    pb_tensor->resize_data(shape_size * type_size);
+  }
+
+  if (type_format == HTTP_DATA_OBJ) {
+    if (data_type != kMSI_Bytes && data_type != kMSI_String) {
+      return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
+             << "json array, item is object type, object only support string or bytes type";
+    }
+  }
+  return RecursiveGetArray(value, 0, 0, type_format, pb_tensor);
+}
+
+// 1. parse request common func
+Status RestfulService::ParseItem(const json &value, ProtoTensor *const pb_tensor) {
+  if (value.is_object()) {
+    return ParseItemObject(value, pb_tensor);
+  } else if (value.is_array()) {
+    return ParseItemArray(value, pb_tensor);
+  } else {
+    return ParseItemScalar(value, pb_tensor);
+  }
 }
 
 Status RestfulService::RecursiveGetArray(const json &json_data, size_t depth, size_t data_index,
@@ -892,9 +902,12 @@ Status RestfulService::ParseScalar(const ProtoTensor &pb_tensor, size_t index, j
     case kMSI_Uint64:
       status = ParseScalarData<uint64_t>(pb_tensor, false, index, js);
       break;
-    case kMSI_Float16:
-      status = INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "float16 reply is not supported";
+    case kMSI_Float16: {
+      const float16 *data = reinterpret_cast<const float16 *>(pb_tensor.data()) + index;
+      float value = half_to_float(*data);
+      *js = value;
       break;
+    }
     case kMSI_Float32:
       status = ParseScalarData<float>(pb_tensor, false, index, js);
       break;

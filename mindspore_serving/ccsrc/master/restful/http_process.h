@@ -76,6 +76,10 @@ class RestfulService {
   Status GetInstancesType(const json &instances);
   Status ParseKeyInstances(const json &instances, proto::PredictRequest *const request);
   Status PaserKeyOneInstance(const json &instance_msg, proto::PredictRequest *const request);
+
+  Status ParseItemScalar(const json &value, ProtoTensor *const pb_tensor);
+  Status ParseItemArray(const json &value, ProtoTensor *const pb_tensor);
+  Status ParseItemObject(const json &value, ProtoTensor *const pb_tensor);
   Status ParseItem(const json &value, ProtoTensor *const pb_tensor);
 
   Status ParseRequest(const std::shared_ptr<RestfulRequest> &restful_request, proto::PredictRequest *const request);

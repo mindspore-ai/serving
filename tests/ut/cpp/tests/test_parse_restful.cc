@@ -65,7 +65,8 @@ TEST_F(TestParseInput, test_parse_SUCCESS) {
     }
   )"_json;
 
-  struct evhttp_request *request = new evhttp_request();
+  struct evhttp_request request_local = {};
+  struct evhttp_request *request = &request_local;
   int size = 100;
   std::shared_ptr<DecomposeEvRequest> request_msg = std::make_shared<DecomposeEvRequest>(request, size);
   request_msg->request_message_ = js;
@@ -76,10 +77,10 @@ TEST_F(TestParseInput, test_parse_SUCCESS) {
   Status status = restful_service.ParseRequest(restful_request, &predict_request);
   ASSERT_EQ(status.StatusCode(), SUCCESS);
   ASSERT_EQ(predict_request.instances().size(), 3);
-  for (int32_t i = 0; i < predict_request.instances().size(); i++) {
-    auto &cur_instance = predict_request.instances(i);
+  for (int32_t k = 0; k < predict_request.instances().size(); k++) {
+    auto &cur_instance = predict_request.instances(k);
     auto &items = cur_instance.items();
-    if (i == 0) {
+    if (k == 0) {
       ASSERT_EQ(items.size(), 6);
       for (const auto &item : items) {
         ProtoTensor pb_tensor(const_cast<proto::Tensor *>(&item.second));
@@ -119,7 +120,7 @@ TEST_F(TestParseInput, test_parse_SUCCESS) {
           ASSERT_EQ(value, "ut_test");
         }
       }
-    } else if (i == 1) {
+    } else if (k == 1) {
       ASSERT_EQ(items.size(), 6);
       for (const auto &item : items) {
         ProtoTensor pb_tensor(const_cast<proto::Tensor *>(&item.second));
@@ -183,7 +184,7 @@ TEST_F(TestParseInput, test_parse_SUCCESS) {
           ASSERT_EQ(value, "ut_test");
         }
       }
-    } else if (i == 2) {
+    } else if (k == 2) {
       ASSERT_EQ(items.size(), 6);
       for (const auto &item : items) {
         ProtoTensor pb_tensor(const_cast<proto::Tensor *>(&item.second));
@@ -259,7 +260,8 @@ TEST_F(TestParseInput, test_instances_empty_FAIL) {
     }
   )"_json;
 
-  struct evhttp_request *request = new evhttp_request();
+  struct evhttp_request request_local = {};
+  struct evhttp_request *request = &request_local;
   int size = 100;
   std::shared_ptr<DecomposeEvRequest> request_msg = std::make_shared<DecomposeEvRequest>(request, size);
   request_msg->request_message_ = js;
@@ -285,7 +287,8 @@ TEST_F(TestParseInput, test_instances_incorrect_FAIL) {
     }
   )"_json;
 
-  struct evhttp_request *request = new evhttp_request();
+  struct evhttp_request request_local = {};
+  struct evhttp_request *request = &request_local;
   int size = 100;
   std::shared_ptr<DecomposeEvRequest> request_msg = std::make_shared<DecomposeEvRequest>(request, size);
   request_msg->request_message_ = js;
@@ -311,7 +314,8 @@ TEST_F(TestParseInput, test_key_empty_FAIL) {
     }
   )"_json;
 
-  struct evhttp_request *request = new evhttp_request();
+  struct evhttp_request request_local = {};
+  struct evhttp_request *request = &request_local;
   int size = 100;
   std::shared_ptr<DecomposeEvRequest> request_msg = std::make_shared<DecomposeEvRequest>(request, size);
   request_msg->request_message_ = js;
@@ -337,7 +341,8 @@ TEST_F(TestParseInput, test_value_empty_SUCCESS) {
     }
   )"_json;
 
-  struct evhttp_request *request = new evhttp_request();
+  struct evhttp_request request_local = {};
+  struct evhttp_request *request = &request_local;
   int size = 100;
   std::shared_ptr<DecomposeEvRequest> request_msg = std::make_shared<DecomposeEvRequest>(request, size);
   request_msg->request_message_ = js;
@@ -363,7 +368,8 @@ TEST_F(TestParseInput, test_obj_unknown_key_FAIL) {
     }
   )"_json;
 
-  struct evhttp_request *request = new evhttp_request();
+  struct evhttp_request request_local = {};
+  struct evhttp_request *request = &request_local;
   int size = 100;
   std::shared_ptr<DecomposeEvRequest> request_msg = std::make_shared<DecomposeEvRequest>(request, size);
   request_msg->request_message_ = js;
@@ -389,7 +395,8 @@ TEST_F(TestParseInput, test_obj_nob64_key_FAIL) {
     }
   )"_json;
 
-  struct evhttp_request *request = new evhttp_request();
+  struct evhttp_request request_local = {};
+  struct evhttp_request *request = &request_local;
   int size = 100;
   std::shared_ptr<DecomposeEvRequest> request_msg = std::make_shared<DecomposeEvRequest>(request, size);
   request_msg->request_message_ = js;
@@ -415,7 +422,8 @@ TEST_F(TestParseInput, test_obj_illegal_b64value_FAIL) {
     }
   )"_json;
 
-  struct evhttp_request *request = new evhttp_request();
+  struct evhttp_request request_local = {};
+  struct evhttp_request *request = &request_local;
   int size = 100;
   std::shared_ptr<DecomposeEvRequest> request_msg = std::make_shared<DecomposeEvRequest>(request, size);
   request_msg->request_message_ = js;
@@ -441,7 +449,8 @@ TEST_F(TestParseInput, test_obj_unknown_type_FAIL) {
     }
   )"_json;
 
-  struct evhttp_request *request = new evhttp_request();
+  struct evhttp_request request_local = {};
+  struct evhttp_request *request = &request_local;
   int size = 100;
   std::shared_ptr<DecomposeEvRequest> request_msg = std::make_shared<DecomposeEvRequest>(request, size);
   request_msg->request_message_ = js;
@@ -467,7 +476,8 @@ TEST_F(TestParseInput, test_obj_error_shape_format_FAIL) {
     }
   )"_json;
 
-  struct evhttp_request *request = new evhttp_request();
+  struct evhttp_request request_local = {};
+  struct evhttp_request *request = &request_local;
   int size = 100;
   std::shared_ptr<DecomposeEvRequest> request_msg = std::make_shared<DecomposeEvRequest>(request, size);
   request_msg->request_message_ = js;
@@ -493,7 +503,8 @@ TEST_F(TestParseInput, test_obj_error_shape_format2_FAIL) {
     }
   )"_json;
 
-  struct evhttp_request *request = new evhttp_request();
+  struct evhttp_request request_local = {};
+  struct evhttp_request *request = &request_local;
   int size = 100;
   std::shared_ptr<DecomposeEvRequest> request_msg = std::make_shared<DecomposeEvRequest>(request, size);
   request_msg->request_message_ = js;
@@ -519,7 +530,8 @@ TEST_F(TestParseInput, test_obj_error_shape_value_FAIL) {
     }
   )"_json;
 
-  struct evhttp_request *request = new evhttp_request();
+  struct evhttp_request request_local = {};
+  struct evhttp_request *request = &request_local;
   int size = 100;
   std::shared_ptr<DecomposeEvRequest> request_msg = std::make_shared<DecomposeEvRequest>(request, size);
   request_msg->request_message_ = js;
@@ -545,7 +557,8 @@ TEST_F(TestParseInput, test_obj_error_shape_value2_FAIL) {
     }
   )"_json;
 
-  struct evhttp_request *request = new evhttp_request();
+  struct evhttp_request request_local = {};
+  struct evhttp_request *request = &request_local;
   int size = 100;
   std::shared_ptr<DecomposeEvRequest> request_msg = std::make_shared<DecomposeEvRequest>(request, size);
   request_msg->request_message_ = js;
@@ -571,7 +584,8 @@ TEST_F(TestParseInput, test_obj_error_shape_value3_FAIL) {
     }
   )"_json;
 
-  struct evhttp_request *request = new evhttp_request();
+  struct evhttp_request request_local = {};
+  struct evhttp_request *request = &request_local;
   int size = 100;
   std::shared_ptr<DecomposeEvRequest> request_msg = std::make_shared<DecomposeEvRequest>(request, size);
   request_msg->request_message_ = js;
@@ -597,7 +611,8 @@ TEST_F(TestParseInput, test_tensor_value_empty_FAIL) {
     }
   )"_json;
 
-  struct evhttp_request *request = new evhttp_request();
+  struct evhttp_request request_local = {};
+  struct evhttp_request *request = &request_local;
   int size = 100;
   std::shared_ptr<DecomposeEvRequest> request_msg = std::make_shared<DecomposeEvRequest>(request, size);
   request_msg->request_message_ = js;
@@ -623,7 +638,8 @@ TEST_F(TestParseInput, test_tensor_value_diff_type_FAIL) {
     }
   )"_json;
 
-  struct evhttp_request *request = new evhttp_request();
+  struct evhttp_request request_local = {};
+  struct evhttp_request *request = &request_local;
   int size = 100;
   std::shared_ptr<DecomposeEvRequest> request_msg = std::make_shared<DecomposeEvRequest>(request, size);
   request_msg->request_message_ = js;
@@ -649,7 +665,8 @@ TEST_F(TestParseInput, test_tensor_value_diff_dimention_FAIL) {
     }
   )"_json;
 
-  struct evhttp_request *request = new evhttp_request();
+  struct evhttp_request request_local = {};
+  struct evhttp_request *request = &request_local;
   int size = 100;
   std::shared_ptr<DecomposeEvRequest> request_msg = std::make_shared<DecomposeEvRequest>(request, size);
   request_msg->request_message_ = js;
@@ -675,7 +692,8 @@ TEST_F(TestParseInput, test_tensor_multi_object_FAIL) {
     }
   )"_json;
 
-  struct evhttp_request *request = new evhttp_request();
+  struct evhttp_request request_local = {};
+  struct evhttp_request *request = &request_local;
   int size = 100;
   std::shared_ptr<DecomposeEvRequest> request_msg = std::make_shared<DecomposeEvRequest>(request, size);
   request_msg->request_message_ = js;
@@ -709,7 +727,8 @@ TEST_F(TestParseReply, test_reply_SUCCESS) {
     }
   )"_json;
 
-  struct evhttp_request *request = new evhttp_request();
+  struct evhttp_request request_local = {};
+  struct evhttp_request *request = &request_local;
   int size = 100;
   std::shared_ptr<DecomposeEvRequest> request_msg = std::make_shared<DecomposeEvRequest>(request, size);
   request_msg->request_message_ = js;
@@ -950,7 +969,8 @@ TEST_F(TestParseReply, test_reply_instances_num_not_match_FAIL) {
     }
   )"_json;
 
-  struct evhttp_request *request = new evhttp_request();
+  struct evhttp_request request_local = {};
+  struct evhttp_request *request = &request_local;
   int size = 100;
   std::shared_ptr<DecomposeEvRequest> request_msg = std::make_shared<DecomposeEvRequest>(request, size);
   request_msg->request_message_ = js;
@@ -1099,7 +1119,8 @@ TEST_F(TestParseReply, test_reply_error_num_not_match_FAIL) {
     }
   )"_json;
 
-  struct evhttp_request *request = new evhttp_request();
+  struct evhttp_request request_local = {};
+  struct evhttp_request *request = &request_local;
   int size = 100;
   std::shared_ptr<DecomposeEvRequest> request_msg = std::make_shared<DecomposeEvRequest>(request, size);
   request_msg->request_message_ = js;
@@ -1138,7 +1159,8 @@ TEST_F(TestParseReply, test_reply_type_not_set_FAIL) {
     }
   )"_json;
 
-  struct evhttp_request *request = new evhttp_request();
+  struct evhttp_request request_local = {};
+  struct evhttp_request *request = &request_local;
   int size = 100;
   std::shared_ptr<DecomposeEvRequest> request_msg = std::make_shared<DecomposeEvRequest>(request, size);
   request_msg->request_message_ = js;
@@ -1168,7 +1190,7 @@ TEST_F(TestParseReply, test_reply_type_not_set_FAIL) {
   ASSERT_NE(status2.StatusCode(), SUCCESS);
 }
 
-TEST_F(TestParseReply, test_reply_type_fp16_FAIL) {
+TEST_F(TestParseReply, test_reply_type_fp16_SUCCESS) {
   nlohmann::json js = R"(
     {"instances":[
         {
@@ -1183,7 +1205,8 @@ TEST_F(TestParseReply, test_reply_type_fp16_FAIL) {
     }
   )"_json;
 
-  struct evhttp_request *request = new evhttp_request();
+  struct evhttp_request request_local = {};
+  struct evhttp_request *request = &request_local;
   int size = 100;
   std::shared_ptr<DecomposeEvRequest> request_msg = std::make_shared<DecomposeEvRequest>(request, size);
   request_msg->request_message_ = js;
@@ -1210,7 +1233,7 @@ TEST_F(TestParseReply, test_reply_type_fp16_FAIL) {
   map_item["key_float16"] = tensor_float;
 
   Status status2 = restful_service.ParseReply(reply, &out_js);
-  ASSERT_NE(status2.StatusCode(), SUCCESS);
+  ASSERT_EQ(status2.StatusCode(), SUCCESS);
 }
 }  // namespace serving
 }  // namespace mindspore

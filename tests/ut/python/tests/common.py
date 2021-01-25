@@ -253,9 +253,7 @@ def int_plus_1(int_val):
     return value
     
 def float_postprocess(float_val):
-    value = float_val + 1
-    if value.dtype == np.float16:
-        value = value.astype(np.float32)
+    value = (float_val + 1).astype(float_val.dtype) # also support float16 input and output
     return value   
     
 @register.register_method(output_names=["value"])

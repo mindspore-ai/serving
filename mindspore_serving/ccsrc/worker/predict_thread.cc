@@ -27,7 +27,7 @@ serving::PredictThread::PredictThread() {}
 PredictThread::~PredictThread() { Stop(); }
 
 Status PredictThread::PushPredictTask(const std::vector<Instance> &inputs) {
-  if (!has_started) {
+  if (!is_running_) {
     MSI_LOG_EXCEPTION << "Predict task thread has not been started";
   }
   std::unique_lock<std::mutex> lock{m_lock_};
@@ -44,33 +44,39 @@ Status PredictThread::PushPredictTask(const std::vector<Instance> &inputs) {
 void PredictThread::ThreadFunc(PredictThread *queue) { queue->Predict(); }
 
 void PredictThread::Predict() {
-  while (!is_stoped_) {
-    std::vector<Instance> intances;
+  while (true) {
+    std::vector<Instance> instances;
     {
       std::unique_lock<std::mutex> lock{m_lock_};
+      if (!is_running_) {
+        break;
+      }
       if (predict_buffer_.empty()) {
-        cond_var_.wait(lock, [this] { return is_stoped_.load() || !predict_buffer_.empty(); });
-        if (is_stoped_) {
+        cond_var_.wait(lock, [this] { return !is_running_ || !predict_buffer_.empty(); });
+        if (!is_running_) {
           return;
         }
       }
       for (uint32_t i = 0; i < batch_size_ && !predict_buffer_.empty(); i++) {
-        intances.push_back(predict_buffer_.front());
+        instances.push_back(predict_buffer_.front());
         predict_buffer_.pop();
       }
     }
     MSI_TIME_STAMP_START(InvokePredict)
-    predict_fun_(intances);
+    predict_fun_(instances);
     MSI_TIME_STAMP_END(InvokePredict)
   }
 }
 
 void PredictThread::Stop() {
-  if (is_stoped_) {
-    return;
+  {
+    std::unique_lock<std::mutex> lock{m_lock_};
+    if (!is_running_) {
+      return;
+    }
+    is_running_ = false;
+    cond_var_.notify_all();
   }
-  is_stoped_.store(true);
-  cond_var_.notify_all();
   if (predict_thread_.joinable()) {
     try {
       predict_thread_.join();
@@ -81,13 +87,13 @@ void PredictThread::Stop() {
 }
 
 void PredictThread::Start(PredictFun predict_fun, uint32_t batch_size) {
-  if (has_started) {
+  if (is_running_) {
     return;
   }
   predict_fun_ = std::move(predict_fun);
   batch_size_ = batch_size;
   predict_thread_ = std::thread(ThreadFunc, this);
-  has_started = true;
+  is_running_ = true;
 }
 
 }  // namespace mindspore::serving
