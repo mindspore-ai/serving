@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright 2021 Huawei Technologies Co., Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,6 @@
 #include <functional>
 #include <thread>
 #include "common/serving_common.h"
-#include "master/notify_worker/base_notify.h"
 #include "proto/ms_service.pb.h"
 #include "proto/ms_service.grpc.pb.h"
 #include "proto/ms_master.pb.h"
@@ -37,6 +36,8 @@ class MSServiceClient;
 extern std::unique_ptr<MSServiceClient> client_;
 
 using PredictOnFinish = std::function<void()>;
+
+using DispatchCallback = std::function<void(Status status)>;
 
 class MSServiceClient {
  public:

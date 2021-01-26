@@ -20,7 +20,6 @@
 #include <thread>
 #include "common/exit_handle.h"
 #include "common/grpc_server.h"
-#include "master/grpc/grpc_client.h"
 
 namespace mindspore {
 namespace serving {

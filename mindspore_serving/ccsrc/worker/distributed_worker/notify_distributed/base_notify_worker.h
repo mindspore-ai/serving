@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright 2021 Huawei Technologies Co., Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,29 +14,25 @@
  * limitations under the License.
  */
 
-#ifndef MINDSPORE_SERVING_MASTER_BASE_NOTIFY_H
-#define MINDSPORE_SERVING_MASTER_BASE_NOTIFY_H
+#ifndef MINDSPORE_SERVING_WORKER_BASE_NOTIFY_WORKER_H
+#define MINDSPORE_SERVING_WORKER_BASE_NOTIFY_WORKER_H
 #include <vector>
-#include <functional>
-#include <future>
 #include "common/serving_common.h"
 #include "common/servable.h"
-#include "proto/ms_service.pb.h"
-#include "common/grpc_client.h"
+#include "worker/distributed_worker/common.h"
 
 namespace mindspore {
 namespace serving {
 
-class MS_API BaseNotifyWorker {
+class MS_API BaseNotifyDistributeWorker {
  public:
-  BaseNotifyWorker() = default;
-  virtual ~BaseNotifyWorker() = default;
-  virtual Status Exit() = 0;
-  virtual Status DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
-                               DispatchCallback callback) = 0;
+  BaseNotifyDistributeWorker() = default;
+  virtual ~BaseNotifyDistributeWorker() = default;
+  virtual Status Register(const std::vector<WorkerAgentSpec> &worker_specs) = 0;
+  virtual Status Unregister() = 0;
 };
 
 }  // namespace serving
 }  // namespace mindspore
 
-#endif  // MINDSPORE_SERVING_MASTER_BASE_NOTIFY_H
+#endif  // MINDSPORE_SERVING_WORKER_BASE_NOTIFY_WORKER_H

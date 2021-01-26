@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright 2021 Huawei Technologies Co., Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-#include "master/grpc/grpc_client.h"
+#include "common/grpc_client.h"
 #include <string>
 #include <utility>
-#include "master/grpc/grpc_server.h"
 
 namespace mindspore {
 namespace serving {
