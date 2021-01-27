@@ -38,7 +38,7 @@ class MS_API GrpcNotfiyAgent : public BaseNotifyAgent {
                        DistributeCallback callback) override;
 
  private:
-  std::string worker_address_;
+  std::string agent_address_;
   std::shared_ptr<proto::MSAgent::Stub> stub_ = nullptr;
 };
 

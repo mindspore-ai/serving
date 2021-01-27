@@ -28,8 +28,20 @@ std::vector<TensorInfo> DistributedServable::GetInputInfos() const { return std:
 std::vector<TensorInfo> DistributedServable::GetOutputInfos() const { return std::vector<TensorInfo>(); }
 uint64_t DistributedServable::GetBatchSize() const { return 0; }
 Status DistributedServable::GetDistributedServableConfig(DistributedServableConfig *config) { return Status(); }
-Status DistributedServable::RegisterAgent(const WorkerAgentSpec &agent_spec) { return Status(); }
-Status DistributedServable::UnregisterAgent(const WorkerAgentSpec &agent_spec) { return Status(); }
+Status DistributedServable::RegisterAgent(const WorkerAgentSpec &agent_spec) {
+  agent_spec_list_[agent_spec.rank_id] = agent_spec;
+  return Status();
+}
+Status DistributedServable::UnregisterAgent(const WorkerAgentSpec &agent_spec) {
+  for (auto iter = agent_spec_list_.begin(); iter != agent_spec_list_.end();) {
+    if (agent_spec.rank_id == iter->second.rank_id) {
+      iter = agent_spec_list_.erase(iter);
+    } else {
+      ++iter;
+    }
+  }
+  return Status();
+}
 Status DistributedServable::SetProperty(uint32_t rank_size, uint32_t stage_size, bool with_bach_dim,
                                         const std::vector<int> &without_batch_dim_inputs) {
   return Status();

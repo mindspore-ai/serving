@@ -19,9 +19,36 @@ syntax = "proto3";
 
 package mindspore.serving.proto;
 import "mindspore_serving/proto/ms_service.proto";
-import "mindspore_serving/proto/ms_master.proto";
+
+message DistributedServableSpec {
+  // servable name
+  string name = 1;
+
+  // optional. If unspecified, the latest version servable will be used.
+  int64 version_number = 3;
+
+  // Specifies the method name in the servable.
+  string method_name = 2;
+}
+
+message DistributedPredictRequest {
+  DistributedServableSpec servable_spec = 1;
+}
+
+message DistributedPredictReply {
+  DistributedServableSpec servable_spec = 1;
+  repeated ErrorMsg error_msg = 2;
+}
+
+message DistributedExitRequest {
+  string address = 1;
+}
+
+message DistributedExitReply {
+  ErrorMsg error_msg = 1;
+}
 
 service MSAgent {
-  rpc Predict(PredictRequest) returns (PredictReply) {}
-  rpc Exit(ExitRequest) returns (ExitReply) {}
+  rpc DistributedPredict(DistributedPredictRequest) returns (DistributedPredictReply) {}
+  rpc DistributedExit(DistributedExitRequest) returns (DistributedExitReply) {}
 }

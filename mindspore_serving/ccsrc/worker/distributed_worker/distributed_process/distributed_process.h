@@ -20,27 +20,29 @@
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
+#include <memory>
 #include "common/serving_common.h"
-#include "proto/ms_worker.pb.h"
-#include "proto/ms_worker.grpc.pb.h"
 #include "proto/ms_service.pb.h"
 #include "proto/ms_service.grpc.pb.h"
-#include "proto/ms_master.pb.h"
-#include "proto/ms_master.grpc.pb.h"
+#include "proto/ms_distributed.pb.h"
+#include "proto/ms_distributed.grpc.pb.h"
+#include "worker/distributed_worker/distributed_servable.h"
 
 namespace mindspore {
 namespace serving {
 
 // Service Implement
-class MSDistributedImpl final : public proto::MSMaster::Service, public proto::MSWorker::Service {
+class MSDistributedImpl final : public proto::MSDistributedWorker::Service {
  public:
-  MSDistributedImpl() {}
+  explicit MSDistributedImpl(std::shared_ptr<DistributedServable> servable) : servable_(servable) {}
   ~MSDistributedImpl() = default;
-  grpc::Status Register(grpc::ServerContext *context, const proto::RegisterRequest *request,
-                        proto::RegisterReply *reply) override;
-  grpc::Status Predict(grpc::ServerContext *context, const proto::PredictRequest *request,
-                       proto::PredictReply *reply) override;
-  grpc::Status Exit(grpc::ServerContext *context, const proto::ExitRequest *request, proto::ExitReply *reply) override;
+  grpc::Status AgentRegister(grpc::ServerContext *context, const proto::AgentRegisterRequest *request,
+                             proto::AgentRegisterReply *reply) override;
+  grpc::Status AgentExit(grpc::ServerContext *context, const proto::AgentExitRequest *request,
+                         proto::AgentExitReply *reply) override;
+
+ private:
+  std::shared_ptr<DistributedServable> servable_;
 };
 
 }  // namespace serving

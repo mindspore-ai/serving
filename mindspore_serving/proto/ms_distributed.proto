@@ -19,10 +19,29 @@ syntax = "proto3";
 
 package mindspore.serving.proto;
 import "mindspore_serving/proto/ms_service.proto";
-import "mindspore_serving/proto/ms_master.proto";
 
+message AgentSpec {
+  string name = 1;
+  int64 version_number = 2;
+}
+
+message AgentRegisterRequest {
+  repeated AgentSpec worker_spec = 1;
+  string address = 2;
+}
+
+message AgentRegisterReply {
+  ErrorMsg error_msg = 1;
+}
+
+message AgentExitRequest {
+  string address = 1;
+}
+
+message AgentExitReply {
+  ErrorMsg error_msg = 1;
+}
 service MSDistributedWorker {
-  rpc Predict(PredictRequest) returns (PredictReply) {}
-  rpc Exit(ExitRequest) returns (ExitReply) {}
-  rpc Register(RegisterRequest) returns (RegisterReply) {}
+  rpc AgentExit(AgentExitRequest) returns (AgentExitReply) {}
+  rpc AgentRegister(AgentRegisterRequest) returns (AgentRegisterReply) {}
 }

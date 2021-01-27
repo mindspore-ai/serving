@@ -18,17 +18,18 @@
 
 namespace mindspore {
 namespace serving {
-grpc::Status MSAgentImpl::Exit(grpc::ServerContext *context, const proto::ExitRequest *request,
-                               proto::ExitReply *reply) {
+grpc::Status MSAgentImpl::DistributedExit(grpc::ServerContext *context, const proto::DistributedExitRequest *request,
+                                          proto::DistributedExitReply *reply) {
   MSI_LOG(INFO) << "Distributed Worker Exit";
-  // to do : need WorkerAgent support stop funcition
+  // WorkerAgent::GetInstance().StopServable(false);
   return grpc::Status::OK;
 }
 
-grpc::Status MSAgentImpl::Predict(grpc::ServerContext *context, const proto::PredictRequest *request,
-                                  proto::PredictReply *reply) {
+grpc::Status MSAgentImpl::DistributedPredict(grpc::ServerContext *context,
+                                             const proto::DistributedPredictRequest *request,
+                                             proto::DistributedPredictReply *reply) {
   MSI_LOG(INFO) << "Begin call service Eval";
-  // to do : need WorkerAgent support run funcition
+  // WorkerAgent::GetInstance().Run(*request, reply);
   return grpc::Status::OK;
 }
 

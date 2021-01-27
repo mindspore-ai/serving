@@ -19,18 +19,31 @@
 namespace mindspore {
 namespace serving {
 
-grpc::Status MSDistributedImpl::Register(grpc::ServerContext *context, const proto::RegisterRequest *request,
-                                         proto::RegisterReply *reply) {
+grpc::Status MSDistributedImpl::AgentRegister(grpc::ServerContext *context, const proto::AgentRegisterRequest *request,
+                                              proto::AgentRegisterReply *reply) {
+  MSI_EXCEPTION_IF_NULL(request);
+  MSI_EXCEPTION_IF_NULL(reply);
+  WorkerAgentSpec agent_spec;
+  // todo request->agent_spec
+  Status status(FAILED);
+  status = servable_->RegisterAgent(agent_spec);
+  if (status != SUCCESS) {
+    MSI_LOG(ERROR) << "Agent Register FAILED";
+  }
   return grpc::Status::OK;
 }
 
-grpc::Status MSDistributedImpl::Predict(grpc::ServerContext *context, const proto::PredictRequest *request,
-                                        proto::PredictReply *reply) {
-  return grpc::Status::OK;
-}
-
-grpc::Status MSDistributedImpl::Exit(grpc::ServerContext *context, const proto::ExitRequest *request,
-                                     proto::ExitReply *reply) {
+grpc::Status MSDistributedImpl::AgentExit(grpc::ServerContext *context, const proto::AgentExitRequest *request,
+                                          proto::AgentExitReply *reply) {
+  MSI_EXCEPTION_IF_NULL(request);
+  MSI_EXCEPTION_IF_NULL(reply);
+  WorkerAgentSpec agent_spec;
+  // todo request->agent_spec
+  Status status(FAILED);
+  status = servable_->UnregisterAgent(agent_spec);
+  if (status != SUCCESS) {
+    MSI_LOG(ERROR) << "Agent Exit FAILED";
+  }
   return grpc::Status::OK;
 }
 }  // namespace serving

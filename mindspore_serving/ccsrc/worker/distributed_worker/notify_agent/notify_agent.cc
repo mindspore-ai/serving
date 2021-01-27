@@ -24,14 +24,36 @@
 namespace mindspore {
 namespace serving {
 
-GrpcNotfiyAgent::GrpcNotfiyAgent(const std::string &worker_address) {}
+GrpcNotfiyAgent::GrpcNotfiyAgent(const std::string &agent_address) {
+  agent_address_ = agent_address;
+  std::shared_ptr<grpc::Channel> channel = GrpcServer::CreateChannel(agent_address_);
+  stub_ = proto::MSAgent::NewStub(channel);
+}
 
 GrpcNotfiyAgent::~GrpcNotfiyAgent() = default;
 
-Status GrpcNotfiyAgent::Exit() { return SUCCESS; }
+Status GrpcNotfiyAgent::Exit() {
+  if (stub_) {
+    proto::DistributedExitRequest request;
+    request.set_address(agent_address_);
+    proto::DistributedExitReply reply;
+    grpc::ClientContext context;
+    const int32_t TIME_OUT = 1;
+    std::chrono::system_clock::time_point deadline = std::chrono::system_clock::now() + std::chrono::seconds(TIME_OUT);
+    context.set_deadline(deadline);
+
+    (void)stub_->DistributedExit(&context, request, &reply);
+  }
+  return SUCCESS;
+}
 
 Status GrpcNotfiyAgent::DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
                                       DistributeCallback callback) {
+  if (!stub_) {
+    return INFER_STATUS_LOG_ERROR(FAILED)
+           << "Predict failed, agent gRPC has not been inited or has already exited, agent address " << agent_address_;
+  }
+  // todo send async message
   return SUCCESS;
 }
 

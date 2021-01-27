@@ -21,18 +21,19 @@
 #include <grpcpp/health_check_service_interface.h>
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
 #include "common/serving_common.h"
-#include "proto/ms_worker.pb.h"
-#include "proto/ms_worker.grpc.pb.h"
+#include "proto/ms_agent.pb.h"
+#include "proto/ms_agent.grpc.pb.h"
 
 namespace mindspore {
 namespace serving {
 
 // Service Implement
-class MSAgentImpl final : public proto::MSWorker::Service {
+class MSAgentImpl final : public proto::MSAgent::Service {
  public:
-  grpc::Status Predict(grpc::ServerContext *context, const proto::PredictRequest *request,
-                       proto::PredictReply *reply) override;
-  grpc::Status Exit(grpc::ServerContext *context, const proto::ExitRequest *request, proto::ExitReply *reply) override;
+  grpc::Status DistributedPredict(grpc::ServerContext *context, const proto::DistributedPredictRequest *request,
+                                  proto::DistributedPredictReply *reply) override;
+  grpc::Status DistributedExit(grpc::ServerContext *context, const proto::DistributedExitRequest *request,
+                               proto::DistributedExitReply *reply) override;
 };
 
 }  // namespace serving

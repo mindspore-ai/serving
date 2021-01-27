@@ -45,15 +45,15 @@ Status GrpcNotfiyDistributeWorker::Register(const std::vector<WorkerAgentSpec> &
   auto loop = REGISTER_TIME_OUT;
   while (loop-- && !ExitSignalHandle::Instance().HasStopped()) {
     MSI_LOG(INFO) << "Register to " << distributed_worker_address_;
-    proto::RegisterRequest request;
+    proto::AgentRegisterRequest request;
     request.set_address(agent_address_);
     // to do set RegisterRequest message
-    proto::RegisterReply reply;
+    proto::AgentRegisterReply reply;
     grpc::ClientContext context;
     std::chrono::system_clock::time_point deadline =
       std::chrono::system_clock::now() + std::chrono::seconds(REGISTER_INTERVAL);
     context.set_deadline(deadline);
-    grpc::Status status = stub_->Register(&context, request, &reply);
+    grpc::Status status = stub_->AgentRegister(&context, request, &reply);
     if (status.ok()) {
       MSI_LOG(INFO) << "Register SUCCESS ";
       return SUCCESS;
@@ -72,14 +72,14 @@ Status GrpcNotfiyDistributeWorker::Unregister() {
     return SUCCESS;
   }
   is_stoped_ = true;
-  proto::ExitRequest request;
+  proto::AgentExitRequest request;
   request.set_address(agent_address_);
-  proto::ExitReply reply;
+  proto::AgentExitReply reply;
   grpc::ClientContext context;
   const int32_t TIME_OUT = 1;
   std::chrono::system_clock::time_point deadline = std::chrono::system_clock::now() + std::chrono::seconds(TIME_OUT);
   context.set_deadline(deadline);
-  grpc::Status status = stub_->Exit(&context, request, &reply);
+  grpc::Status status = stub_->AgentExit(&context, request, &reply);
   if (status.ok()) {
     MSI_LOG(INFO) << "Exit SUCCESS ";
     return SUCCESS;
