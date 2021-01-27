@@ -36,36 +36,44 @@ Status MindSporeModelWrap::FinalizeEnv() {
   return SUCCESS;
 }
 
-api::DataType TransInferDataType2ApiTypeId(DataType data_type) {
-  const std::map<DataType, api::DataType> type2id_map{
-    {serving::kMSI_Unknown, api::kMsUnknown}, {serving::kMSI_Bool, api::kMsBool},
-    {serving::kMSI_Int8, api::kMsInt8},       {serving::kMSI_Uint8, api::kMsUint8},
-    {serving::kMSI_Int16, api::kMsInt16},     {serving::kMSI_Uint16, api::kMsUint16},
-    {serving::kMSI_Int32, api::kMsInt32},     {serving::kMSI_Uint32, api::kMsUint32},
-    {serving::kMSI_Int64, api::kMsInt64},     {serving::kMSI_Uint64, api::kMsUint64},
-    {serving::kMSI_Float16, api::kMsFloat16}, {serving::kMSI_Float32, api::kMsFloat32},
-    {serving::kMSI_Float64, api::kMsFloat64},
+mindspore::DataType TransInferDataType2ApiTypeId(DataType data_type) {
+  const std::map<DataType, mindspore::DataType> type2id_map{
+    {serving::kMSI_Unknown, mindspore::DataType::kTypeUnknown},
+    {serving::kMSI_Bool, mindspore::DataType::kNumberTypeBool},
+    {serving::kMSI_Int8, mindspore::DataType::kNumberTypeInt8},
+    {serving::kMSI_Uint8, mindspore::DataType::kNumberTypeUInt8},
+    {serving::kMSI_Int16, mindspore::DataType::kNumberTypeInt16},
+    {serving::kMSI_Uint16, mindspore::DataType::kNumberTypeUInt16},
+    {serving::kMSI_Int32, mindspore::DataType::kNumberTypeInt32},
+    {serving::kMSI_Uint32, mindspore::DataType::kNumberTypeUInt32},
+    {serving::kMSI_Int64, mindspore::DataType::kNumberTypeInt64},
+    {serving::kMSI_Uint64, mindspore::DataType::kNumberTypeUInt64},
+    {serving::kMSI_Float16, mindspore::DataType::kNumberTypeFloat16},
+    {serving::kMSI_Float32, mindspore::DataType::kNumberTypeFloat32},
+    {serving::kMSI_Float64, mindspore::DataType::kNumberTypeFloat64},
   };
   auto it = type2id_map.find(data_type);
   if (it == type2id_map.end()) {
     MSI_LOG_WARNING << "Unsupported MSI data type " << data_type;
-    return api::kMsUnknown;
+    return mindspore::DataType::kTypeUnknown;
   } else {
     return it->second;
   }
 }
 
-DataType TransTypeId2InferDataType(api::DataType type_id) {
-  const std::map<api::DataType, DataType> id2type_map{
-    {api::kMsUnknown, kMSI_Unknown}, {api::kMsBool, kMSI_Bool},     {api::kMsFloat64, kMSI_Float64},
-    {api::kMsInt8, kMSI_Int8},       {api::kMsUint8, kMSI_Uint8},   {api::kMsInt16, kMSI_Int16},
-    {api::kMsUint16, kMSI_Uint16},   {api::kMsInt32, kMSI_Int32},   {api::kMsUint32, kMSI_Uint32},
-    {api::kMsInt64, kMSI_Int64},     {api::kMsUint64, kMSI_Uint64}, {api::kMsFloat16, kMSI_Float16},
-    {api::kMsFloat32, kMSI_Float32},
+DataType TransTypeId2InferDataType(mindspore::DataType type_id) {
+  const std::map<mindspore::DataType, DataType> id2type_map{
+    {mindspore::DataType::kTypeUnknown, kMSI_Unknown},       {mindspore::DataType::kNumberTypeBool, kMSI_Bool},
+    {mindspore::DataType::kNumberTypeFloat64, kMSI_Float64}, {mindspore::DataType::kNumberTypeInt8, kMSI_Int8},
+    {mindspore::DataType::kNumberTypeUInt8, kMSI_Uint8},     {mindspore::DataType::kNumberTypeInt16, kMSI_Int16},
+    {mindspore::DataType::kNumberTypeUInt16, kMSI_Uint16},   {mindspore::DataType::kNumberTypeInt32, kMSI_Int32},
+    {mindspore::DataType::kNumberTypeUInt32, kMSI_Uint32},   {mindspore::DataType::kNumberTypeInt64, kMSI_Int64},
+    {mindspore::DataType::kNumberTypeUInt64, kMSI_Uint64},   {mindspore::DataType::kNumberTypeFloat16, kMSI_Float16},
+    {mindspore::DataType::kNumberTypeFloat32, kMSI_Float32},
   };
   auto it = id2type_map.find(type_id);
   if (it == id2type_map.end()) {
-    MSI_LOG_WARNING << "Unsupported data id " << type_id;
+    MSI_LOG_WARNING << "Unsupported data id " << static_cast<int>(type_id);
     return kMSI_Unknown;
   } else {
     return it->second;
@@ -80,28 +88,30 @@ Status MindSporeModelWrap::LoadModelFromFile(serving::DeviceType device_type, ui
   MSI_EXCEPTION_IF_NULL(model_id);
   std::string device_type_str;
   if (device_type == kDeviceTypeAscendMS) {
-    device_type_str = api::kDeviceTypeAscend910;
+    device_type_str = mindspore::kDeviceTypeAscend910;
   } else if (device_type == kDeviceTypeAscendCL) {
-    device_type_str = api::kDeviceTypeAscend310;
+    device_type_str = mindspore::kDeviceTypeAscend310;
   } else {
     MSI_LOG_EXCEPTION << "Only support Ascend310 or Ascend910 in MindSporeModelWrap";
   }
 
-  std::shared_ptr<api::Model> model = nullptr;
+  std::shared_ptr<mindspore::Model> model = nullptr;
   try {
-    api::Context::Instance().SetDeviceTarget(device_type_str).SetDeviceID(device_id);
-    auto graph = api::Serialization::LoadModel(file_name, model_type);
-    model = std::make_shared<api::Model>(api::GraphCell(graph));
+    mindspore::GlobalContext::SetGlobalDeviceTarget(device_type_str);
+    mindspore::GlobalContext::SetGlobalDeviceID(device_id);
+    auto graph = mindspore::Serialization::LoadModel(file_name, model_type);
+    auto context = TransformModelContext(other_options);
+    model = std::make_shared<mindspore::Model>(mindspore::GraphCell(graph), context);
   } catch (std::runtime_error &ex) {
     MSI_LOG_ERROR << "Load model from file failed, model file: " << file_name << ", device_type: '" << device_type_str
                   << "', device_id: " << device_id << ", model type: " << model_type << ", options: " << other_options;
     return FAILED;
   }
-  api::Status status = model->Build(other_options);
-  if (!status.IsSuccess()) {
+  mindspore::Status status = model->Build();
+  if (!status.IsOk()) {
     MSI_LOG_ERROR << "Load model from file failed, model file: " << file_name << ", device_type: '" << device_type_str
                   << "', device_id: " << device_id << ", model type: " << model_type << ", options: " << other_options;
-    return Status(FAILED, status.StatusMessage());
+    return Status(FAILED, status.ToString());
   }
   model_index_++;
   *model_id = model_index_;
@@ -118,6 +128,41 @@ Status MindSporeModelWrap::LoadModelFromFile(serving::DeviceType device_type, ui
   MSI_LOG_INFO << "Load model from file success, model file: " << file_name << ", device_type: '" << device_type_str
                << "', device_id: " << device_id << ", model type: " << model_type << ", options: " << other_options;
   return SUCCESS;
+}
+
+std::shared_ptr<Context> MindSporeModelWrap::TransformModelContext(const std::map<std::string, std::string> &options) {
+  using ContextStrFun = std::function<void(const std::shared_ptr<Context> &, const std::string &)>;
+  ContextStrFun set_output_type = [](const std::shared_ptr<Context> &context, const std::string &val) {
+    // "FP32", "FP16", "UINT8"
+    if (val == "FP32") {
+      mindspore::ModelContext::SetOutputType(context, mindspore::DataType::kNumberTypeFloat32);
+    } else if (val == "FP16") {
+      mindspore::ModelContext::SetOutputType(context, mindspore::DataType::kNumberTypeFloat16);
+    } else if (val == "UINT8") {
+      mindspore::ModelContext::SetOutputType(context, mindspore::DataType::kNumberTypeUInt8);
+    } else {
+      MSI_LOG_ERROR << "Set model context output type failed, unknown data type " << val;
+    }
+  };
+  std::map<std::string, ContextStrFun> option_map = {
+    {"acl_option.insert_op_config_file_path", mindspore::ModelContext::SetInsertOpConfigPath},
+    {"acl_option.input_format", mindspore::ModelContext::SetInputFormat},
+    {"acl_option.input_shape", mindspore::ModelContext::SetInputShape},
+    {"acl_option.output_type", set_output_type},
+    {"acl_option.precision_mode", mindspore::ModelContext::SetPrecisionMode},
+    {"acl_option.op_select_impl_mode", mindspore::ModelContext::SetOpSelectImplMode},
+  };
+  auto context = std::make_shared<mindspore::ModelContext>();
+  for (auto &item : options) {
+    const auto &key = item.first;
+    const auto &value = item.second;
+    auto it = option_map.find(key);
+    if (it != option_map.end()) {
+      MSI_LOG_INFO << "Set context options, key: " << key << ", value: " << value;
+      it->second(context, value);
+    }
+  }
+  return context;
 }
 
 Status MindSporeModelWrap::GetModelInfos(ApiModelInfo *api_model_info) {
@@ -138,70 +183,46 @@ Status MindSporeModelWrap::GetModelInfos(ApiModelInfo *api_model_info) {
       }
     }
   };
-  auto shape_element_num = [](const std::vector<int64_t> &shape) -> size_t {
-    size_t elements_nums = std::accumulate(shape.begin(), shape.end(), 1LL, std::multiplies<size_t>());
-    return elements_nums;
-  };
-  auto get_tensor_info_from_tensor = [find_batch_size, shape_element_num, api_model_info](
-                                       const std::vector<int64_t> &shape, const api::DataType &data_type,
-                                       const size_t mem_size, int input_index = -1) {
+  auto get_tensor_info_from_tensor = [](const mindspore::MSTensor &ms_tensor) {
     serving::TensorInfo tensor_info;
-    tensor_info.shape = shape;
-    tensor_info.data_type = TransTypeId2InferDataType(data_type);
-    tensor_info.size = mem_size;
+    tensor_info.shape = ms_tensor.Shape();
+    tensor_info.data_type = TransTypeId2InferDataType(ms_tensor.DataType());
+    tensor_info.size = ms_tensor.DataSize();
     if (tensor_info.size == 0) {
-      tensor_info.size = TensorBase::GetTypeSize(tensor_info.data_type) * shape_element_num(tensor_info.shape);
-    }
-    auto list = api_model_info->without_batch_dim_inputs;
-    if (std::find(list.begin(), list.end(), input_index) == list.end()) {
-      find_batch_size(tensor_info.shape);
+      auto &shape = tensor_info.shape;
+      size_t elements_nums = std::accumulate(shape.begin(), shape.end(), 1LL, std::multiplies<size_t>());
+      tensor_info.size = TensorBase::GetTypeSize(tensor_info.data_type) * elements_nums;
     }
     return tensor_info;
   };
   {  // input infos
-    std::vector<std::string> names;
-    std::vector<std::vector<int64_t>> shapes;
-    std::vector<api::DataType> data_types;
-    std::vector<size_t> mem_sizes;
-    api::Status status = model->GetInputsInfo(&names, &shapes, &data_types, &mem_sizes);
-    if (!status.IsSuccess()) {
-      return Status(FAILED, status.StatusMessage());
-    }
-    if (names.size() != shapes.size() || names.size() != data_types.size() || names.size() != mem_sizes.size()) {
-      return INFER_STATUS_LOG_ERROR(FAILED)
-             << "Get input infos failed, names size: " << names.size() << ", shapes size: " << shapes.size()
-             << ", data_types size: " << data_types.size() << ", mem_sizes: " << mem_sizes.size();
-    }
-    for (size_t i = 0; i < names.size(); i++) {
-      api_model_info->input_names.push_back(names[i]);
-      auto tensor_info = get_tensor_info_from_tensor(shapes[i], data_types[i], mem_sizes[i], i);
+    auto input_infos = model->GetInputs();
+    for (size_t i = 0; i < input_infos.size(); i++) {
+      auto &info = input_infos[i];
+      auto tensor_info = get_tensor_info_from_tensor(info);
       if (tensor_info.data_type == kMSI_Unknown) {
-        return INFER_STATUS_LOG_ERROR(FAILED) << "Unknown input api data type " << data_types[i];
+        return INFER_STATUS_LOG_ERROR(FAILED)
+               << "Unknown input mindspore data type " << static_cast<int>(info.DataType());
+      }
+      const auto &list = api_model_info->without_batch_dim_inputs;
+      if (std::find(list.begin(), list.end(), i) == list.end()) {
+        find_batch_size(tensor_info.shape);
       }
       api_model_info->input_tensor_infos.push_back(tensor_info);
+      api_model_info->input_names.push_back(info.Name());
     }
   }
   {  // output infos
-    std::vector<std::string> names;
-    std::vector<std::vector<int64_t>> shapes;
-    std::vector<api::DataType> data_types;
-    std::vector<size_t> mem_sizes;
-    api::Status status = model->GetOutputsInfo(&names, &shapes, &data_types, &mem_sizes);
-    if (!status.IsSuccess()) {
-      return Status(FAILED, status.StatusMessage());
-    }
-    if (names.size() != shapes.size() || names.size() != data_types.size() || names.size() != mem_sizes.size()) {
-      return INFER_STATUS_LOG_ERROR(FAILED)
-             << "Get output infos failed, names size: " << names.size() << ", shapes size: " << shapes.size()
-             << ", data_types size: " << data_types.size() << ", mem_sizes: " << mem_sizes.size();
-    }
-    for (size_t i = 0; i < names.size(); i++) {
-      api_model_info->output_names.push_back(names[i]);
-      auto tensor_info = get_tensor_info_from_tensor(shapes[i], data_types[i], mem_sizes[i]);
+    auto output_infos = model->GetOutputs();
+    for (auto &info : output_infos) {
+      auto tensor_info = get_tensor_info_from_tensor(info);
       if (tensor_info.data_type == kMSI_Unknown) {
-        return INFER_STATUS_LOG_ERROR(FAILED) << "Unknown output api data type " << data_types[i];
+        return INFER_STATUS_LOG_ERROR(FAILED)
+               << "Unknown output mindspore data type " << static_cast<int>(info.DataType());
       }
+      find_batch_size(tensor_info.shape);
       api_model_info->output_tensor_infos.push_back(tensor_info);
+      api_model_info->output_names.push_back(info.Name());
     }
   }
   if (!first_dim_same) {
@@ -221,16 +242,21 @@ Status MindSporeModelWrap::UnloadModel(uint32_t model_id) {
 
 Status MindSporeModelWrap::ExecuteModel(uint32_t model_id, const RequestBase &request, serving::ReplyBase *reply) {
   MSI_EXCEPTION_IF_NULL(reply);
-  FuncMakeInBuffer func_in = [&request](size_t index) {
+  FuncMakeInBuffer func_in = [&request](size_t index, const std::string &name) {
     auto input_tensor = request[index];
-    return api::Buffer(input_tensor->data(), input_tensor->data_size());
+    return mindspore::MSTensor::CreateRefTensor(name, TransInferDataType2ApiTypeId(input_tensor->data_type()),
+                                                input_tensor->shape(), const_cast<uint8_t *>(input_tensor->data()),
+                                                input_tensor->data_size());
   };
 
-  FuncMakeOutTensor func_out = [&reply](const api::Buffer &result_tensor, DataType data_type,
+  FuncMakeOutTensor func_out = [&reply](const mindspore::MSTensor &result_tensor, DataType data_type,
                                         const std::vector<int64_t> &shape) {
+    if (result_tensor.IsDevice()) {
+      MSI_LOG_EXCEPTION << "Can not support device type tensor";
+    }
     auto tensor = reply->add();
     MSI_EXCEPTION_IF_NULL(tensor);
-    tensor->set_data(result_tensor.Data(), result_tensor.DataSize());
+    tensor->set_data(result_tensor.Data().get(), result_tensor.DataSize());
     tensor->set_data_type(data_type);
     tensor->set_shape(shape);
   };
@@ -240,17 +266,17 @@ Status MindSporeModelWrap::ExecuteModel(uint32_t model_id, const RequestBase &re
 Status MindSporeModelWrap::ExecuteModel(uint32_t model_id, const std::vector<TensorBasePtr> &request,
                                         std::vector<TensorBasePtr> *reply) {
   MSI_EXCEPTION_IF_NULL(reply);
-  FuncMakeInBuffer func_in = [&request](size_t index) {
+  FuncMakeInBuffer func_in = [&request](size_t index, const std::string &name) {
     auto &input_tensor = request[index];
-    auto api_buffer_wrap = std::dynamic_pointer_cast<ApiBufferTensorWrap>(input_tensor);
-    if (api_buffer_wrap) {
-      return api_buffer_wrap->GetBuffer();
-    } else {
-      return api::Buffer(input_tensor->data(), input_tensor->data_size());
-    }
+    return mindspore::MSTensor::CreateRefTensor(name, TransInferDataType2ApiTypeId(input_tensor->data_type()),
+                                                input_tensor->shape(), const_cast<uint8_t *>(input_tensor->data()),
+                                                input_tensor->data_size());
   };
-  FuncMakeOutTensor func_out = [&reply](const api::Buffer &result_tensor, DataType data_type,
+  FuncMakeOutTensor func_out = [&reply](const mindspore::MSTensor &result_tensor, DataType data_type,
                                         const std::vector<int64_t> &shape) {
+    if (result_tensor.IsDevice()) {
+      MSI_LOG_EXCEPTION << "Can not support device type tensor";
+    }
     auto tensor = std::make_shared<ApiBufferTensorWrap>(result_tensor);
     tensor->set_data_type(data_type);
     tensor->set_shape(shape);
@@ -273,14 +299,14 @@ Status MindSporeModelWrap::ExecuteModelCommon(uint32_t model_id, size_t request_
     return INFER_STATUS_LOG_ERROR(FAILED) << "Inputs size not match, request inputs size " << request_size
                                           << ", model inputs size " << input_names.size();
   }
-  std::vector<api::Buffer> inputs;
+  std::vector<mindspore::MSTensor> inputs;
   for (size_t i = 0; i < input_names.size(); i++) {
-    inputs.push_back(in_func(i));
+    inputs.push_back(in_func(i, input_names[i]));
   }
-  std::vector<api::Buffer> outputs;
-  api::Status status = model->Predict(inputs, &outputs);
-  if (!status.IsSuccess()) {
-    MSI_LOG_ERROR << "Predict failed: " << status.StatusMessage();
+  std::vector<mindspore::MSTensor> outputs;
+  mindspore::Status status = model->Predict(inputs, &outputs);
+  if (!status.IsOk()) {
+    MSI_LOG_ERROR << "Predict failed: " << status.ToString();
     return FAILED;
   }
   if (outputs.size() != output_names.size()) {
@@ -331,34 +357,24 @@ ssize_t MindSporeModelWrap::GetBatchSize(uint32_t model_id) const {
   return model_info.batch_size;
 }
 
-TensorBasePtr MindSporeModelWrap::MakeInferenceTensor(DataType data_type, const std::vector<int64_t> &shape) const {
-  return std::make_shared<ApiBufferTensorWrap>(data_type, shape);
-}
-
 bool MindSporeModelWrap::CheckModelSupport(DeviceType device_type, ModelType model_type) const {
   std::string device_type_str;
   switch (device_type) {
     case kDeviceTypeAscendMS:
-      device_type_str = api::kDeviceTypeAscend910;
+      device_type_str = mindspore::kDeviceTypeAscend910;
       break;
     case kDeviceTypeAscendCL:
-      device_type_str = api::kDeviceTypeAscend310;
+      device_type_str = mindspore::kDeviceTypeAscend310;
       break;
     default:
       return false;
   }
-  return api::Model::CheckModelSupport(device_type_str, model_type);
+  return mindspore::Model::CheckModelSupport(device_type_str, model_type);
 }
 
 ApiBufferTensorWrap::ApiBufferTensorWrap() = default;
 
-ApiBufferTensorWrap::ApiBufferTensorWrap(DataType type, const std::vector<int64_t> &shape)
-    : type_(type), shape_(shape) {
-  size_t data_len = itemsize() * TensorBase::element_cnt();
-  buffer_.ResizeData(data_len);
-}
-
-ApiBufferTensorWrap::ApiBufferTensorWrap(const api::Buffer &buffer) : buffer_(buffer) {}
+ApiBufferTensorWrap::ApiBufferTensorWrap(const mindspore::MSTensor &tensor) : tensor_(tensor) {}
 
 ApiBufferTensorWrap::~ApiBufferTensorWrap() = default;
 

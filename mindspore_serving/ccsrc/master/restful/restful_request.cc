@@ -53,6 +53,7 @@ std::string DecomposeEvRequest::UrlQuery(const std::string &url, const std::stri
     if (end_pos != std::string::npos) {
       return url.substr(start_pos + key_size, end_pos - start_pos - key_size);
     }
+    return url.substr(start_pos + key_size);
   }
   return "";
 }
@@ -134,7 +135,12 @@ Status DecomposeEvRequest::Decompose() {
   if (url_.find(UrlKeyVersion) != std::string::npos) {
     auto version_str = UrlQuery(url_, UrlKeyVersion);
     try {
-      version_ = std::stol(version_str);
+      auto version = std::stol(version_str);
+      if (version < 0 || version >= UINT32_MAX) {
+        return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
+               << "please check url, version number range failed, request version number " << version_str;
+      }
+      version_ = static_cast<uint32_t>(version);
     } catch (const std::invalid_argument &) {
       ERROR_INFER_STATUS(status, INVALID_INPUTS, "please check url, the keyword:[version] must contain.");
       return status;
@@ -194,7 +200,7 @@ Status RestfulRequest::RestfulReplay(const std::string &replay) {
 
 Status RestfulRequest::ErrorMessage(Status status) {
   Status error_status(SUCCESS);
-  nlohmann::json error_json = {{"error_message", status.StatusMessage()}};
+  nlohmann::json error_json = {{"error_msg", status.StatusMessage()}};
   std::string out_error_str = error_json.dump();
   if ((error_status = RestfulReplay(out_error_str)) != SUCCESS) {
     return error_status;

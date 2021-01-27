@@ -14,7 +14,6 @@
 # ============================================================================
 """MindSpore Serving Master"""
 
-from mindspore_serving.worker import _check_version
 from ._master import start_grpc_server, start_restful_server, start_master_server, stop
 
 __all__ = []
