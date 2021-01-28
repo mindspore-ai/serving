@@ -197,10 +197,10 @@ Status Worker::StartServable(std::shared_ptr<ServableBase> servable, std::shared
   cpp_postprocess_.Start(2);
 
   notify_master_ = std::move(notify_master);
-  auto worker_spec = servable->GetWorkerSpec();
+  auto servable_name = servable->GetServableName();
   ServableSignature signature;
-  if (!ServableStorage::Instance().GetServableDef(worker_spec.servable_name, &signature)) {
-    return INFER_STATUS_LOG_ERROR(FAILED) << "Servable " << worker_spec.servable_name << " has not been registered";
+  if (!ServableStorage::Instance().GetServableDef(servable_name, &signature)) {
+    return INFER_STATUS_LOG_ERROR(FAILED) << "Servable " << servable_name << " has not been registered";
   }
   auto service = std::make_shared<WorkExecutor>(GetPyTaskQueuePreprocess(), GetPyTaskQueuePostprocess(),
                                                 GetCppTaskQueuePreprocess(), GetCppTaskQueuePostprocess());
@@ -209,6 +209,17 @@ Status Worker::StartServable(std::shared_ptr<ServableBase> servable, std::shared
     return status;
   }
   ServableWorkerContext work;
+  WorkerSpec worker_spec;
+  worker_spec.servable_name = servable_name;
+  worker_spec.version_number = servable->GetServableVersion();
+  for (auto &method : signature.methods) {
+    WorkerMethodInfo worker_method_info;
+    worker_method_info.name = method.method_name;
+    for (auto &name : method.inputs) {
+      worker_method_info.input_names.push_back(name);
+    }
+    worker_spec.methods.push_back(worker_method_info);
+  }
   work.worker_spec = worker_spec;
   work.servable_signature = signature;
   work.worker_service = service;

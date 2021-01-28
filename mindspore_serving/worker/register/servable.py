@@ -14,11 +14,10 @@
 # ============================================================================
 """Servable declaration interface"""
 
-from mindspore_serving._mindspore_serving import ServableMeta_
+from mindspore_serving._mindspore_serving import ServableMeta_, ServableStorage_
 from mindspore_serving.worker import check_type
 from mindspore_serving.worker.common import get_servable_dir
 from mindspore_serving import log as logger
-from .method import _ServableStorage
 
 
 def declare_servable(servable_file, model_format, with_batch_dim=True, options=None, without_batch_dim_inputs=None):
@@ -37,19 +36,25 @@ def declare_servable(servable_file, model_format, with_batch_dim=True, options=N
         RuntimeError: The type or value of the parameters is invalid.
     """
 
-    check_type.check_str('servable_file', servable_file)
-    check_type.check_str('model_format', model_format)
     check_type.check_bool('with_batch_dim', with_batch_dim)
 
+    meta = ServableMeta_()
+    meta.common_meta.servable_name = get_servable_dir()
+    meta.common_meta.with_batch_dim = with_batch_dim
+    if without_batch_dim_inputs:
+        without_batch_dim_inputs = check_type.check_and_as_int_tuple_list('without_batch_dim_inputs',
+                                                                          without_batch_dim_inputs, 0)
+        meta.common_meta.without_batch_dim_inputs = without_batch_dim_inputs
+
+    # init local servable meta info
+    check_type.check_str('servable_file', servable_file)
+    check_type.check_str('model_format', model_format)
     model_format = model_format.lower()
     if model_format not in ("om", "mindir"):
         raise RuntimeError("model format can only be OM or MindIR")
 
-    meta = ServableMeta_()
-    meta.servable_name = get_servable_dir()
-    meta.servable_file = servable_file
-    meta.set_model_format(model_format)
-    meta.with_batch_dim = with_batch_dim
+    meta.local_meta.servable_file = servable_file
+    meta.local_meta.set_model_format(model_format)
     if isinstance(options, dict):
         for k, w in options.items():
             check_type.check_str("options key", k)
@@ -61,14 +66,10 @@ def declare_servable(servable_file, model_format, with_batch_dim=True, options=N
         raise RuntimeError(f"Parameter 'options' should be None, dict of <str,str> or AclOptions, but "
                            f"gotten {type(options)}")
     if options:
-        meta.options = options
-    if without_batch_dim_inputs:
-        without_batch_dim_inputs = check_type.check_and_as_int_tuple_list('without_batch_dim_inputs',
-                                                                          without_batch_dim_inputs, 0)
-        meta.without_batch_dim_inputs = without_batch_dim_inputs
+        meta.local_meta.options = options
 
-    _ServableStorage.declare_servable(meta)
-    logger.info(f"Declare servable, servable_name: {meta.servable_name} "
+    ServableStorage_.declare_servable(meta)
+    logger.info(f"Declare servable, servable_name: {meta.common_meta.servable_name} "
                 f", servable_file: {servable_file} , model_format: {model_format},  with_batch_dim: {with_batch_dim} "
                 f", options: {options}, without_batch_dim_inputs: {without_batch_dim_inputs}")
 

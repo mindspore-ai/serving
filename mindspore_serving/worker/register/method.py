@@ -35,28 +35,6 @@ method_tag_predict = PredictPhaseTag_.kPredictPhaseTag_Predict
 method_tag_postprocess = PredictPhaseTag_.kPredictPhaseTag_Postprocess
 
 
-class _ServableStorage:
-    """Declare servable info"""
-
-    def __init__(self):
-        pass
-
-    @staticmethod
-    def declare_servable(servable_meta):
-        """Declare servable info excluding method, input and output count"""
-        ServableStorage_.declare_servable(servable_meta)
-
-    @staticmethod
-    def declare_servable_input_output(servable_name, inputs_count, outputs_count):
-        """Declare input and output count of servable"""
-        ServableStorage_.register_servable_input_output_info(servable_name, inputs_count, outputs_count)
-
-    @staticmethod
-    def register_method(method_signature):
-        """Declare method of servable"""
-        ServableStorage_.register_method(method_signature)
-
-
 class _TensorDef:
     """Data flow item, for definitions of data flow in a method"""
 
@@ -251,7 +229,7 @@ def call_servable(*args):
 
     servable_name = get_servable_dir()
     inputs_count, outputs_count = method_def_ast_meta_[_call_servable_name]
-    _ServableStorage.declare_servable_input_output(servable_name, inputs_count, outputs_count)
+    ServableStorage_.register_servable_input_output_info(servable_name, inputs_count, outputs_count)
     if inputs_count != len(args):
         raise RuntimeError(f"Check failed in method '{method_def_context_.method_name}', given servable input "
                            f"size {len(args)} not match '{servable_name}' ast parse size {inputs_count}")
@@ -467,7 +445,7 @@ def register_method(output_names):
                     f", servable_name {method_def_context_.servable_name}, inputs: {input_names}, outputs: "
                     f"{output_names}")
 
-        _ServableStorage.register_method(method_def_context_)
+        ServableStorage_.register_method(method_def_context_)
         return func
 
     return register

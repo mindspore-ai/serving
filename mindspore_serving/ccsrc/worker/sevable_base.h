@@ -39,7 +39,8 @@ class ServableBase {
   virtual std::vector<TensorInfo> GetInputInfos() const = 0;
   virtual std::vector<TensorInfo> GetOutputInfos() const = 0;
   virtual uint64_t GetBatchSize() const = 0;
-  virtual WorkerSpec GetWorkerSpec() const = 0;
+  virtual std::string GetServableName() const = 0;
+  virtual uint64_t GetServableVersion() const = 0;
 };
 
 }  // namespace mindspore::serving

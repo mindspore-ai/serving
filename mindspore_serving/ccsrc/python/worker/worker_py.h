@@ -34,6 +34,15 @@ class MS_API PyWorker {
   static void StartServableInMaster(const std::string &model_directory, const std::string &model_name,
                                     uint32_t version_number);
 
+  static void StartDistributedServable(const std::string &servable_directory, const std::string &servable_name,
+                                       const std::string &rank_table_json_file, uint32_t version_number,
+                                       const std::string &worker_ip, uint32_t worker_port, const std::string &master_ip,
+                                       uint32_t master_port);
+
+  static void StartDistributedServableInMaster(const std::string &servable_directory, const std::string &servable_name,
+                                               const std::string &rank_table_json_file, uint32_t version_number,
+                                               const std::string &worker_ip, uint32_t worker_port);
+
   static int GetBatchSize();
   static void WaitAndClear();
   static void StopAndClear();

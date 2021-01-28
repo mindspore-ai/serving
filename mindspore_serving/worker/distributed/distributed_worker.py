@@ -14,7 +14,9 @@
 # ============================================================================
 """Serving, distributed worker startup"""
 from mindspore_serving.worker._worker import stop_on_except, _load_servable_config
+from mindspore_serving.worker._worker import _start_py_task, _start_wait_and_clear
 from mindspore_serving.worker import check_type
+from mindspore_serving._mindspore_serving import Worker_
 
 
 @stop_on_except
@@ -68,6 +70,10 @@ def start_distributed_servable(servable_directory, servable_name, rank_table_jso
     check_type.check_ip_port('worker_port', worker_port)
 
     _load_servable_config(servable_directory, servable_name)
+    _start_wait_and_clear()
+    Worker_.start_distributed_servable(servable_directory, servable_name, rank_table_json_file, version_number,
+                                       master_ip, master_port, worker_ip, worker_port)
+    _start_py_task(Worker_.get_batch_size())
 
 
 @stop_on_except
@@ -115,3 +121,7 @@ def start_distributed_servable_in_master(servable_directory, servable_name, rank
     check_type.check_ip_port('worker_port', worker_port)
 
     _load_servable_config(servable_directory, servable_name)
+    _start_wait_and_clear()
+    Worker_.start_distributed_servable_in_master(servable_directory, servable_name, rank_table_json_file,
+                                                 version_number, worker_ip, worker_port)
+    _start_py_task(Worker_.get_batch_size())

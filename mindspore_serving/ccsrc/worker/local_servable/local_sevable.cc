@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "worker/ascend_servable/ascend_sevable.h"
+#include "worker/local_servable/local_sevable.h"
 #include <algorithm>
 #include <set>
 #include <map>
@@ -31,42 +31,46 @@ static const char *kVersionStrategySpecific = "specific";
 
 namespace mindspore::serving {
 
-AscendModelServable::~AscendModelServable() { session_.UnloadModel(); }
+LocalModelServable::~LocalModelServable() { session_.UnloadModel(); }
 
-Status AscendModelServable::Predict(const std::vector<TensorBasePtr> &input, std::vector<TensorBasePtr> *output) {
+std::string LocalModelServable::GetServableName() const { return servable_name_; }
+
+uint64_t LocalModelServable::GetServableVersion() const { return version_number_; }
+
+Status LocalModelServable::Predict(const std::vector<TensorBasePtr> &input, std::vector<TensorBasePtr> *output) {
   if (!model_loaded_) {
     MSI_LOG_EXCEPTION << "Model has not been loaded";
   }
   return session_.ExecuteModel(input, output);
 }
 
-std::vector<TensorInfo> AscendModelServable::GetInputInfos() const {
+std::vector<TensorInfo> LocalModelServable::GetInputInfos() const {
   if (!model_loaded_) {
     MSI_LOG_EXCEPTION << "Model has not been loaded";
   }
   return session_.GetInputInfos();
 }
 
-std::vector<TensorInfo> AscendModelServable::GetOutputInfos() const {
+std::vector<TensorInfo> LocalModelServable::GetOutputInfos() const {
   if (!model_loaded_) {
     MSI_LOG_EXCEPTION << "Model has not been loaded";
   }
   return session_.GetOutputInfos();
 }
 
-uint64_t AscendModelServable::GetBatchSize() const {
+uint64_t LocalModelServable::GetBatchSize() const {
   if (!model_loaded_) {
     MSI_LOG_EXCEPTION << "Model has not been loaded";
   }
   return session_.GetBatchSize();
 }
 
-TensorBasePtr AscendModelServable::MakeInferenceTensor(DataType data_type, const std::vector<int64_t> &shape) const {
+TensorBasePtr LocalModelServable::MakeInferenceTensor(DataType data_type, const std::vector<int64_t> &shape) const {
   return std::make_shared<ApiBufferTensorWrap>(data_type, shape);
 }
 
-Status AscendModelServable::StartServable(const std::string &servable_directory, const std::string &servable_name,
-                                          uint32_t version_number) {
+Status LocalModelServable::StartServable(const std::string &servable_directory, const std::string &servable_name,
+                                         uint64_t version_number) {
   if (model_loaded_) {
     MSI_LOG_EXCEPTION << "Model has loaded";
   }
@@ -85,7 +89,7 @@ Status AscendModelServable::StartServable(const std::string &servable_directory,
   if (!ServableStorage::Instance().GetServableDef(servable_name, &signature)) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Servable '" << servable_name << "' has not been registered";
   }
-  status = InitDevice(signature.servable_meta.model_format, {});
+  status = InitDevice(signature.servable_meta.local_meta.model_format, {});
   if (status != SUCCESS) {
     MSI_LOG_ERROR << "Init env failed";
     return status;
@@ -105,23 +109,15 @@ Status AscendModelServable::StartServable(const std::string &servable_directory,
   if (status != SUCCESS) {
     return status;
   }
-  worker_spec_.servable_name = base_spec_.servable_name;
-  worker_spec_.version_number = real_version_number;
-  for (auto &method : signature.methods) {
-    WorkerMethodInfo worker_method_info;
-    worker_method_info.name = method.method_name;
-    for (auto &name : method.inputs) {
-      worker_method_info.input_names.push_back(name);
-    }
-    worker_spec_.methods.push_back(worker_method_info);
-  }
+  servable_name_ = base_spec_.servable_name;
+  version_number_ = real_version_number;
   model_loaded_ = true;
   MSI_LOG_INFO << status.StatusMessage();
   std::cout << status.StatusMessage() << std::endl;
   return SUCCESS;
 }
 
-void AscendModelServable::GetVersions(const LoadServableSpec &servable_spec, std::vector<uint64_t> *real_versions) {
+void LocalModelServable::GetVersions(const LoadServableSpec &servable_spec, std::vector<uint64_t> *real_versions) {
   MSI_EXCEPTION_IF_NULL(real_versions);
   // define version_strategy:"specific","latest","multi"
   if (version_strategy_ == kVersionStrategySpecific) {
@@ -168,9 +164,9 @@ void AscendModelServable::GetVersions(const LoadServableSpec &servable_spec, std
   }
 }
 
-Status AscendModelServable::LoadServableConfig(const LoadServableSpec &servable_spec,
-                                               const std::string &version_strategy,
-                                               std::vector<uint64_t> *real_versions) {
+Status LocalModelServable::LoadServableConfig(const LoadServableSpec &servable_spec,
+                                              const std::string &version_strategy,
+                                              std::vector<uint64_t> *real_versions) {
   MSI_EXCEPTION_IF_NULL(real_versions);
   auto model_directory = servable_spec.servable_directory;
   auto model_name = servable_spec.servable_name;
@@ -199,7 +195,7 @@ Status AscendModelServable::LoadServableConfig(const LoadServableSpec &servable_
   return SUCCESS;
 }
 
-Status AscendModelServable::InitDevice(ModelType model_type, const std::map<std::string, std::string> &other_options) {
+Status LocalModelServable::InitDevice(ModelType model_type, const std::map<std::string, std::string> &other_options) {
   Status status;
   auto context = ServableContext::Instance();
   DeviceType device_type = ServableContext::Instance()->GetDeviceType();
@@ -229,23 +225,25 @@ Status AscendModelServable::InitDevice(ModelType model_type, const std::map<std:
   return SUCCESS;
 }
 
-Status AscendModelServable::LoadModel(uint64_t version_number) {
+Status LocalModelServable::LoadModel(uint64_t version_number) {
   ServableSignature signature;
   if (!ServableStorage::Instance().GetServableDef(base_spec_.servable_name, &signature)) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Servable " << base_spec_.servable_name << " has not been registered";
   }
   const auto &servable_meta = signature.servable_meta;
+  const auto &common_meta = servable_meta.common_meta;
+  const auto &local_meta = servable_meta.local_meta;
   std::string model_file_name = base_spec_.servable_directory + "/" + base_spec_.servable_name + "/" +
-                                std::to_string(version_number) + "/" + servable_meta.servable_file;
+                                std::to_string(version_number) + "/" + local_meta.servable_file;
   auto context = ServableContext::Instance();
   Status status = session_.LoadModelFromFile(context->GetDeviceType(), context->GetDeviceId(), model_file_name,
-                                             servable_meta.model_format, servable_meta.with_batch_dim,
-                                             servable_meta.without_batch_dim_inputs, servable_meta.load_options);
+                                             local_meta.model_format, common_meta.with_batch_dim,
+                                             common_meta.without_batch_dim_inputs, local_meta.load_options);
   if (status != SUCCESS) {
     return INFER_STATUS_LOG_ERROR(FAILED)
            << "Load model failed, servable directory: '" << base_spec_.servable_directory << "', servable name: '"
-           << base_spec_.servable_name << "', servable file: '" << servable_meta.servable_file << "', version number "
-           << version_number << ", options " << servable_meta.load_options;
+           << base_spec_.servable_name << "', servable file: '" << local_meta.servable_file << "', version number "
+           << version_number << ", options " << local_meta.load_options;
   }
   return SUCCESS;
 }

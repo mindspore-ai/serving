@@ -27,6 +27,7 @@ class MS_API PyServableStorage {
   static void RegisterMethod(const MethodSignature &method);
 
   static void DeclareServable(const ServableMeta &servable);
+  static void DeclareDistributedServable(const ServableMeta &servable);
 
   static void RegisterInputOutputInfo(const std::string &servable_name, size_t inputs_count, size_t outputs_count);
   static void Clear();

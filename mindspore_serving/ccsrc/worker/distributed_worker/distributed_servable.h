@@ -35,13 +35,12 @@ struct DistributedAgentContext {
 
 class MS_API DistributedServable : public ServableBase {
  public:
-  // from python, servable_config.py
-  Status SetProperty(uint32_t rank_size, uint32_t stage_size, bool with_bach_dim,
-                     const std::vector<int> &without_batch_dim_inputs);
   // from python, worker.py
-  Status InitConfigOnStartup(const std::string &rank_table_json_file);
+  Status StartServable(const std::string &servable_directory, const std::string &servable_name,
+                       const std::string &rank_table_json_file, uint64_t version_number);
+
   // invoke from agent
-  Status GetDistributedServableConfig(DistributedServableConfig *config);
+  Status GetDistributedServableConfig(DistributedServableConfig *config) const;
   // send model and group
 
   // register and unregister agent, agent_spec_list_
@@ -54,11 +53,29 @@ class MS_API DistributedServable : public ServableBase {
   std::vector<TensorInfo> GetInputInfos() const override;
   std::vector<TensorInfo> GetOutputInfos() const override;
   uint64_t GetBatchSize() const override;
+  std::string GetServableName() const override;
+  uint64_t GetServableVersion() const override;
   void Clear();
 
  private:
   DistributedServableConfig config_;
-  std::map<uint32_t, DistributedAgentContext> agent_spec_list_;
+  std::string servable_name_;
+  uint64_t version_number_ = 0;
+  bool model_loaded_ = false;
+
+  std::map<uint32_t, DistributedAgentContext> agent_spec_map_;
+  std::string rank_table_json_file_;
+
+  std::vector<TensorInfo> input_infos_;
+  std::vector<TensorInfo> output_infos_;
+  uint64_t batch_size_ = 0;
+  std::promise<void> agents_promise_;
+
+  Status InitConfigOnStartup(const std::string &rank_table_json_file);
+  Status WaitAgentsReady();
+  Status CheckAgentsInfosAndInitTensorInfos();
+  Status CompareTensorInfos(const std::vector<TensorInfo> &lefts, const std::vector<TensorInfo> &rights);
+  Status CheckRankConfig();
   // agent stubs
 };
 

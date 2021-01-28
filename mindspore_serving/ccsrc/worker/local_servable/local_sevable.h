@@ -31,10 +31,10 @@
 
 namespace mindspore::serving {
 
-class MS_API AscendModelServable : public ServableBase {
+class MS_API LocalModelServable : public ServableBase {
  public:
-  AscendModelServable() = default;
-  ~AscendModelServable() override;
+  LocalModelServable() = default;
+  ~LocalModelServable() override;
 
   Status Predict(const std::vector<TensorBasePtr> &input, std::vector<TensorBasePtr> *output) override;
 
@@ -44,13 +44,16 @@ class MS_API AscendModelServable : public ServableBase {
   TensorBasePtr MakeInferenceTensor(DataType data_type, const std::vector<int64_t> &shape) const override;
 
   Status StartServable(const std::string &servable_directory, const std::string &servable_name,
-                       uint32_t version_number);
+                       uint64_t version_number);
   Status InitDevice(ModelType model_type, const std::map<std::string, std::string> &other_options);
-  WorkerSpec GetWorkerSpec() const override { return worker_spec_; }
+  std::string GetServableName() const override;
+  uint64_t GetServableVersion() const override;
 
  private:
   LoadServableSpec base_spec_;
-  WorkerSpec worker_spec_;
+  std::string servable_name_;
+  uint64_t version_number_ = 0;
+
   MindSporeModelWrap session_;
   std::string version_strategy_;
   bool model_loaded_ = false;

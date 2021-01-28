@@ -22,6 +22,7 @@
 #include <map>
 #include "common/serving_common.h"
 #include "worker/inference/inference.h"
+#include "common/servable.h"
 
 namespace mindspore {
 namespace serving {
@@ -31,19 +32,12 @@ struct OneRankConfig {
   uint32_t device_id = 0;
 };
 
-struct DistributedServableCommonConfig {
-  bool with_batch_dim;
-  std::vector<int> without_batch_dim_inputs;
-};
-
 struct DistributedServableConfig {
-  uint32_t rank_size = 0;
-  uint32_t stage_size = 0;
-  const std::string models_dir;
-  const std::string groups_dir;
   std::string rank_table_content;
   std::vector<OneRankConfig> rank_list;
-  DistributedServableCommonConfig common_config;
+
+  CommonServableMeta common_meta;
+  DistributedServableMeta distributed_meta;
 };
 
 struct AgentStartUpConfig {
@@ -58,8 +52,7 @@ struct AgentStartUpConfig {
   std::string worker_ip;
   uint32_t worker_port;
 
-  DistributedServableCommonConfig common_config;
-  std::map<std::string, std::string> other_options;
+  CommonServableMeta common_meta;
 };
 
 }  // namespace serving

@@ -25,7 +25,16 @@ void PyServableStorage::RegisterMethod(const MethodSignature &method) {
   }
 }
 void PyServableStorage::DeclareServable(const ServableMeta &servable) {
-  ServableStorage::Instance().DeclareServable(servable);
+  auto status = ServableStorage::Instance().DeclareServable(servable);
+  if (status != SUCCESS) {
+    MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
+  }
+}
+void PyServableStorage::DeclareDistributedServable(const ServableMeta &servable) {
+  auto status = ServableStorage::Instance().DeclareDistributedServable(servable);
+  if (status != SUCCESS) {
+    MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
+  }
 }
 void PyServableStorage::RegisterInputOutputInfo(const std::string &servable_name, size_t inputs_count,
                                                 size_t outputs_count) {

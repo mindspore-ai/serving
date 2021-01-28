@@ -49,15 +49,15 @@ Status WorkExecutor::CheckSevableSignature() {
   if (servable_declare_.methods.empty()) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "There is no method registered for servable";
   }
-  if (input_infos.size() != servable_declare_.servable_meta.inputs_count) {
-    return INFER_STATUS_LOG_ERROR(FAILED)
-           << "The inputs count " << servable_declare_.servable_meta.inputs_count << " registered in method "
-           << "not equal to the count " << input_infos.size() << " defined in servable";
+  const auto &common_meta = servable_declare_.servable_meta.common_meta;
+  if (input_infos.size() != common_meta.inputs_count) {
+    return INFER_STATUS_LOG_ERROR(FAILED) << "The inputs count " << common_meta.inputs_count << " registered in method "
+                                          << "not equal to the count " << input_infos.size() << " defined in servable";
   }
   const auto &output_infos = output_infos_;
-  if (output_infos.size() != servable_declare_.servable_meta.outputs_count) {
+  if (output_infos.size() != common_meta.outputs_count) {
     return INFER_STATUS_LOG_ERROR(FAILED)
-           << "The outputs count " << servable_declare_.servable_meta.outputs_count << " registered in method "
+           << "The outputs count " << common_meta.outputs_count << " registered in method "
            << "not equal to the count " << output_infos.size() << " defined in servable";
   }
   MSI_LOG_INFO << "Model input infos: count " << input_infos.size();
@@ -68,7 +68,7 @@ Status WorkExecutor::CheckSevableSignature() {
   for (auto &item : output_infos) {
     MSI_LOG_INFO << item.shape << ", " << item.data_type << ", " << item.size;
   }
-  if (servable_declare_.servable_meta.with_batch_dim) {
+  if (common_meta.with_batch_dim) {
     if (model_batch_size_ == 0) {
       return INFER_STATUS_LOG_ERROR(FAILED) << "Servable batch size cannot be " << model_batch_size_;
     }
@@ -104,7 +104,7 @@ Status WorkExecutor::Init(const ServableSignature &servable_declare, const std::
   servable_ = servable;
   input_infos_ = servable_->GetInputInfos();
   output_infos_ = servable_->GetOutputInfos();
-  if (servable_declare_.servable_meta.with_batch_dim) {
+  if (servable_declare_.servable_meta.common_meta.with_batch_dim) {
     model_batch_size_ = servable_->GetBatchSize();
   } else {
     model_batch_size_ = 1;
@@ -389,7 +389,7 @@ Status WorkExecutor::PostPredict(const std::vector<Instance> &inputs, const std:
       MSI_LOG_EXCEPTION << "Output result data size cannot be 0";
     }
     auto shape = item->shape();
-    if (servable_declare_.servable_meta.with_batch_dim) {
+    if (servable_declare_.servable_meta.common_meta.with_batch_dim) {
       if (shape.empty() || shape[0] != model_batch_size) {
         MSI_LOG_EXCEPTION << "Output shape " << shape << " not match batch size " << model_batch_size;
       }
@@ -429,9 +429,9 @@ Status WorkExecutor::Predict(const std::vector<Instance> &inputs, std::vector<In
 }
 
 bool WorkExecutor::IsNoBatchDimInput(int input_index) const {
-  auto without_batch_dim_inputs = servable_declare_.servable_meta.without_batch_dim_inputs;
+  auto without_batch_dim_inputs = servable_declare_.servable_meta.common_meta.without_batch_dim_inputs;
   bool no_batch_dim = true;
-  if (servable_declare_.servable_meta.with_batch_dim) {
+  if (servable_declare_.servable_meta.common_meta.with_batch_dim) {
     no_batch_dim = std::find(without_batch_dim_inputs.begin(), without_batch_dim_inputs.end(), input_index) !=
                    without_batch_dim_inputs.end();
   }

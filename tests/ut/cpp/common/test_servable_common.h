@@ -27,7 +27,7 @@
 #include "worker/worker.h"
 #include "worker/notfiy_master/local_notify.h"
 #include "worker/context.h"
-#include "worker/ascend_servable/ascend_sevable.h"
+#include "worker/local_servable/local_sevable.h"
 #include "master/grpc/grpc_process.h"
 #include "mindspore_serving/proto/ms_service.pb.h"
 
@@ -103,7 +103,7 @@ class TestMasterWorker : public UT::Common {
     auto notify_master = std::make_shared<LocalNotifyMaster>();
     ServableContext::Instance()->SetDeviceId(0);
     ServableContext::Instance()->SetDeviceTypeStr("Ascend");
-    auto servable = std::make_shared<AscendModelServable>();
+    auto servable = std::make_shared<LocalModelServable>();
     auto status = servable->StartServable(servable_dir, servable_name, version_number);
     if (status != SUCCESS) {
       return status;
@@ -114,10 +114,10 @@ class TestMasterWorker : public UT::Common {
   static void DeclareServable(const std::string &servable_name, const std::string &servable_file,
                               const std::string &model_type, bool with_batch_dim = false) {
     ServableMeta servable_meta;
-    servable_meta.servable_name = servable_name;
-    servable_meta.servable_file = servable_file;
-    servable_meta.SetModelFormat(model_type);
-    servable_meta.with_batch_dim = with_batch_dim;
+    servable_meta.common_meta.servable_name = servable_name;
+    servable_meta.common_meta.with_batch_dim = with_batch_dim;
+    servable_meta.local_meta.servable_file = servable_file;
+    servable_meta.local_meta.SetModelFormat(model_type);
     // declare_servable
     ServableStorage::Instance().DeclareServable(servable_meta);
   }
