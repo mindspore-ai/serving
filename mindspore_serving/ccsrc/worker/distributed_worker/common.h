@@ -46,15 +46,6 @@ struct DistributedServableConfig {
   DistributedServableCommonConfig common_config;
 };
 
-struct WorkerAgentSpec {
-  std::string ip;
-  uint32_t port = 0;
-  uint32_t rank_id = 0;
-  std::vector<TensorInfo> input_infos;
-  std::vector<TensorInfo> output_infos;
-  uint32_t batch_size = 0;
-};
-
 struct AgentStartUpConfig {
   uint32_t rank_id;
   uint32_t device_id;

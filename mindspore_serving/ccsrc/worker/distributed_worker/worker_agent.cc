@@ -34,5 +34,10 @@ Status WorkerAgent::ExecuteModel(const std::vector<TensorBasePtr> &request, std:
   return executor_.ExecuteModel(request, reply);
 }
 
+Status WorkerAgent::Run(const proto::DistributedPredictRequest &request, proto::DistributedPredictReply *reply) {
+  // todo :call ExecuteModel
+  return SUCCESS;
+}
+
 }  // namespace serving
 }  // namespace mindspore

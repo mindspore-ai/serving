@@ -144,6 +144,15 @@ static inline LogStream &operator<<(LogStream &stream, PredictPhaseTag data_type
   return stream;
 }
 
+struct WorkerAgentSpec {
+  std::string agent_address;
+  uint32_t rank_id = 0;
+  std::vector<TensorInfo> input_infos;
+  std::vector<TensorInfo> output_infos;
+  uint32_t batch_size = 0;
+  uint32_t input_size = 0;
+};
+
 }  // namespace mindspore::serving
 
 #endif  // MINDSPORE_SERVING_SERVABLE_H

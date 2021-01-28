@@ -15,6 +15,7 @@
  */
 
 #include "worker/distributed_worker/distributed_process/distributed_process.h"
+#include "common/proto_tensor.h"
 
 namespace mindspore {
 namespace serving {
@@ -23,12 +24,15 @@ grpc::Status MSDistributedImpl::AgentRegister(grpc::ServerContext *context, cons
                                               proto::AgentRegisterReply *reply) {
   MSI_EXCEPTION_IF_NULL(request);
   MSI_EXCEPTION_IF_NULL(reply);
-  WorkerAgentSpec agent_spec;
-  // todo request->agent_spec
-  Status status(FAILED);
-  status = servable_->RegisterAgent(agent_spec);
-  if (status != SUCCESS) {
-    MSI_LOG(ERROR) << "Agent Register FAILED";
+  for (auto &spec : request->agent_spec()) {
+    WorkerAgentSpec agent_spec;
+    agent_spec.agent_address = request->address();
+    GrpcTensorHelper::CopyFromAgentSpec(spec, &agent_spec);
+    Status status(FAILED);
+    status = servable_->RegisterAgent(agent_spec);
+    if (status != SUCCESS) {
+      MSI_LOG(ERROR) << "Agent Register FAILED";
+    }
   }
   return grpc::Status::OK;
 }
@@ -37,12 +41,15 @@ grpc::Status MSDistributedImpl::AgentExit(grpc::ServerContext *context, const pr
                                           proto::AgentExitReply *reply) {
   MSI_EXCEPTION_IF_NULL(request);
   MSI_EXCEPTION_IF_NULL(reply);
-  WorkerAgentSpec agent_spec;
-  // todo request->agent_spec
-  Status status(FAILED);
-  status = servable_->UnregisterAgent(agent_spec);
-  if (status != SUCCESS) {
-    MSI_LOG(ERROR) << "Agent Exit FAILED";
+  for (auto &spec : request->agent_spec()) {
+    WorkerAgentSpec agent_spec;
+    agent_spec.agent_address = request->address();
+    GrpcTensorHelper::CopyFromAgentSpec(spec, &agent_spec);
+    Status status(FAILED);
+    status = servable_->UnregisterAgent(agent_spec);
+    if (status != SUCCESS) {
+      MSI_LOG(ERROR) << "Agent Exit FAILED";
+    }
   }
   return grpc::Status::OK;
 }

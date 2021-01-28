@@ -23,12 +23,10 @@ import "mindspore_serving/proto/ms_service.proto";
 message DistributedServableSpec {
   // servable name
   string name = 1;
-
   // optional. If unspecified, the latest version servable will be used.
-  int64 version_number = 3;
-
+  int64 version_number = 2;
   // Specifies the method name in the servable.
-  string method_name = 2;
+  string method_name = 3;
 }
 
 message DistributedPredictRequest {

@@ -24,6 +24,7 @@
 #include "common/serving_common.h"
 #include "proto/ms_service.pb.h"
 #include "proto/ms_master.pb.h"
+#include "proto/ms_distributed.pb.h"
 #include "common/instance.h"
 #include "common/servable.h"
 
@@ -68,6 +69,9 @@ class MS_API GrpcTensorHelper {
                                           std::vector<InstanceData> *results);
   static Status CreateReplyFromInstances(const proto::PredictRequest &request, const std::vector<Instance> &inputs,
                                          proto::PredictReply *reply);
+  static void CopyFromAgentSpec(const proto::AgentSpec &request, WorkerAgentSpec *worker_specs);
+  static void CopyFromWorkerAgentSpec(const std::vector<WorkerAgentSpec> &worker_specs,
+                                      proto::AgentRegisterRequest *request);
 
  private:
   static Status CreateInstanceFromRequestInstances(const proto::PredictRequest &request,

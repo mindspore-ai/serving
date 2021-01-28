@@ -15,13 +15,14 @@
  */
 
 #include "worker/distributed_worker/agent_process/agent_process.h"
+#include "worker/distributed_worker/worker_agent.h"
 
 namespace mindspore {
 namespace serving {
 grpc::Status MSAgentImpl::DistributedExit(grpc::ServerContext *context, const proto::DistributedExitRequest *request,
                                           proto::DistributedExitReply *reply) {
   MSI_LOG(INFO) << "Distributed Worker Exit";
-  // WorkerAgent::GetInstance().StopServable(false);
+  WorkerAgent::Instance().Clear();
   return grpc::Status::OK;
 }
 
@@ -29,7 +30,7 @@ grpc::Status MSAgentImpl::DistributedPredict(grpc::ServerContext *context,
                                              const proto::DistributedPredictRequest *request,
                                              proto::DistributedPredictReply *reply) {
   MSI_LOG(INFO) << "Begin call service Eval";
-  // WorkerAgent::GetInstance().Run(*request, reply);
+  WorkerAgent::Instance().Run(*request, reply);
   return grpc::Status::OK;
 }
 

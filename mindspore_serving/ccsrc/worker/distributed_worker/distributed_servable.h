@@ -20,11 +20,18 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <memory>
 #include "worker/sevable_base.h"
 #include "worker/distributed_worker/common.h"
+#include "worker/distributed_worker/notify_agent/base_notify_agent.h"
 
 namespace mindspore {
 namespace serving {
+
+struct DistributedAgentContext {
+  WorkerAgentSpec agent_spec_;
+  std::shared_ptr<BaseNotifyAgent> notify_agent_ = nullptr;
+};
 
 class MS_API DistributedServable : public ServableBase {
  public:
@@ -47,10 +54,11 @@ class MS_API DistributedServable : public ServableBase {
   std::vector<TensorInfo> GetInputInfos() const override;
   std::vector<TensorInfo> GetOutputInfos() const override;
   uint64_t GetBatchSize() const override;
+  void Clear();
 
  private:
   DistributedServableConfig config_;
-  std::map<uint32_t, WorkerAgentSpec> agent_spec_list_;
+  std::map<uint32_t, DistributedAgentContext> agent_spec_list_;
   // agent stubs
 };
 

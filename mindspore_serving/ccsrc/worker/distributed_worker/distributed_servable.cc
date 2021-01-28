@@ -17,7 +17,8 @@
 #include "worker/distributed_worker/distributed_servable.h"
 #include <vector>
 #include <string>
-
+#include "worker/worker.h"
+#include "worker/distributed_worker/notify_agent/notify_agent.h"
 namespace mindspore {
 namespace serving {
 
@@ -29,19 +30,46 @@ std::vector<TensorInfo> DistributedServable::GetOutputInfos() const { return std
 uint64_t DistributedServable::GetBatchSize() const { return 0; }
 Status DistributedServable::GetDistributedServableConfig(DistributedServableConfig *config) { return Status(); }
 Status DistributedServable::RegisterAgent(const WorkerAgentSpec &agent_spec) {
-  agent_spec_list_[agent_spec.rank_id] = agent_spec;
-  return Status();
+  DistributedAgentContext context;
+  auto it = agent_spec_list_.find(agent_spec.rank_id);
+  if (it != agent_spec_list_.end()) {
+    MSI_LOG_WARNING << "rank_id " << agent_spec.rank_id << " has been registered";
+    return SUCCESS;
+  }
+  context.agent_spec_ = agent_spec;
+  std::shared_ptr<BaseNotifyAgent> notify_agent = std::make_shared<GrpcNotfiyAgent>(agent_spec.agent_address);
+  context.notify_agent_ = notify_agent;
+  agent_spec_list_[agent_spec.rank_id] = context;
+  if (config_.rank_size == agent_spec_list_.size()) {
+    Status status = Worker::GetInstance().RegisterWorker();
+    if (status != SUCCESS) {
+      Clear();
+      return FAILED;
+    }
+  }
+  return SUCCESS;
 }
+
+void DistributedServable::Clear() {
+  for (auto agent : agent_spec_list_) {
+    agent.second.notify_agent_->Exit();
+  }
+  Worker::GetInstance().StopServable(false);
+}
+
 Status DistributedServable::UnregisterAgent(const WorkerAgentSpec &agent_spec) {
   for (auto iter = agent_spec_list_.begin(); iter != agent_spec_list_.end();) {
-    if (agent_spec.rank_id == iter->second.rank_id) {
+    if (agent_spec.rank_id == iter->second.agent_spec_.rank_id) {
       iter = agent_spec_list_.erase(iter);
     } else {
       ++iter;
     }
   }
+  // todo: send exit message to agent, and then exit if split with master
+  Clear();
   return Status();
 }
+
 Status DistributedServable::SetProperty(uint32_t rank_size, uint32_t stage_size, bool with_bach_dim,
                                         const std::vector<int> &without_batch_dim_inputs) {
   return Status();

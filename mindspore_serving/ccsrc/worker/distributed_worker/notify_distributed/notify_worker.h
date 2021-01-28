@@ -42,7 +42,6 @@ class MS_API GrpcNotfiyDistributeWorker : public BaseNotifyDistributeWorker {
   uint32_t host_port_;
   std::string agent_address_;
   std::string distributed_worker_address_;
-
   std::unique_ptr<proto::MSDistributedWorker::Stub> stub_;
   std::atomic<bool> is_stoped_{false};
 };

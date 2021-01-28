@@ -20,6 +20,7 @@
 #include <thread>
 #include "common/exit_handle.h"
 #include "common/grpc_server.h"
+#include "common/proto_tensor.h"
 
 namespace mindspore {
 namespace serving {
@@ -46,8 +47,7 @@ Status GrpcNotfiyDistributeWorker::Register(const std::vector<WorkerAgentSpec> &
   while (loop-- && !ExitSignalHandle::Instance().HasStopped()) {
     MSI_LOG(INFO) << "Register to " << distributed_worker_address_;
     proto::AgentRegisterRequest request;
-    request.set_address(agent_address_);
-    // to do set RegisterRequest message
+    GrpcTensorHelper::CopyFromWorkerAgentSpec(worker_specs, &request);
     proto::AgentRegisterReply reply;
     grpc::ClientContext context;
     std::chrono::system_clock::time_point deadline =

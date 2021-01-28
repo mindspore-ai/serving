@@ -18,6 +18,8 @@
 #define MINDSPORE_SERVING_WORKER_AGENT_H
 #include <vector>
 #include "worker/distributed_worker/agent_executor.h"
+#include "proto/ms_agent.pb.h"
+#include "proto/ms_agent.grpc.pb.h"
 
 namespace mindspore {
 namespace serving {
@@ -28,6 +30,7 @@ class MS_API WorkerAgent {
   Status Clear();
 
   Status ExecuteModel(const std::vector<TensorBasePtr> &request, std::vector<TensorBasePtr> *reply);
+  Status Run(const proto::DistributedPredictRequest &request, proto::DistributedPredictReply *reply);
 
  private:
   AgentStartUpConfig config_;
