@@ -20,18 +20,18 @@
 #include <string>
 #include <memory>
 #include "worker/distributed_worker/notify_distributed/base_notify_worker.h"
-#include "proto/ms_master.pb.h"
-#include "proto/ms_master.grpc.pb.h"
 #include "proto/ms_distributed.pb.h"
 #include "proto/ms_distributed.grpc.pb.h"
+#include "proto/ms_worker.pb.h"
+#include "proto/ms_worker.grpc.pb.h"
 namespace mindspore {
 namespace serving {
 
-class MS_API GrpcNotfiyDistributeWorker : public BaseNotifyDistributeWorker {
+class MS_API GrpcNotifyDistributeWorker : public BaseNotifyDistributeWorker {
  public:
-  GrpcNotfiyDistributeWorker(const std::string &master_ip, uint32_t master_port, const std::string &host_ip,
+  GrpcNotifyDistributeWorker(const std::string &master_ip, uint32_t master_port, const std::string &host_ip,
                              uint32_t host_port);
-  ~GrpcNotfiyDistributeWorker() override;
+  ~GrpcNotifyDistributeWorker() override;
   Status Register(const std::vector<WorkerAgentSpec> &worker_specs) override;
   Status Unregister() override;
 
@@ -42,7 +42,7 @@ class MS_API GrpcNotfiyDistributeWorker : public BaseNotifyDistributeWorker {
   uint32_t host_port_;
   std::string agent_address_;
   std::string distributed_worker_address_;
-  std::unique_ptr<proto::MSDistributedWorker::Stub> stub_;
+  std::unique_ptr<proto::MSWorker::Stub> stub_;
   std::atomic<bool> is_stoped_{false};
 };
 

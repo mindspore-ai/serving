@@ -33,6 +33,7 @@
 #include "worker/version_control/version_controller.h"
 #include "common/grpc_async_server.h"
 #include "worker/sevable_base.h"
+#include "worker/grpc/worker_server.h"
 
 namespace mindspore {
 namespace serving {
@@ -74,10 +75,11 @@ class MS_API Worker {
                                                            const std::vector<InstanceData> &inputs);
   Status StartServable(std::shared_ptr<ServableBase> servable, std::shared_ptr<BaseNotifyMaster> notify_master);
 
+  Status AfterStartGrpcServer(const std::shared_ptr<MSWorkerServer> &grpc_server);
+
   void StopServable(bool notify_master = true);
   bool HasCleared();
   Status RegisterWorker();
-  Status StartGrpcServer(const std::string &ip, uint32_t grpc_port);
   void Update();
   Status StartVersionController();
   Status AddWorker(const ServableWorkerContext &work);
@@ -101,6 +103,7 @@ class MS_API Worker {
   std::atomic_bool servable_started_ = false;
   std::atomic_flag clear_flag_ = ATOMIC_FLAG_INIT;
   std::shared_ptr<BaseNotifyMaster> notify_master_ = nullptr;
+  std::shared_ptr<MSWorkerServer> worker_grpc_server_ = nullptr;
 
   std::shared_mutex worker_shared_lock_;
 

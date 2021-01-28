@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "worker/distributed_worker/distributed_process/distributed_process.h"
+#include "worker/distributed_worker/grpc/distributed_process.h"
 #include "common/proto_tensor.h"
 
 namespace mindspore {

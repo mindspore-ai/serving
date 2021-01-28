@@ -27,12 +27,13 @@
 #include "proto/ms_distributed.pb.h"
 #include "proto/ms_distributed.grpc.pb.h"
 #include "worker/distributed_worker/distributed_servable.h"
+#include "worker/grpc/worker_process.h"
 
 namespace mindspore {
 namespace serving {
 
 // Service Implement
-class MSDistributedImpl final : public proto::MSDistributedWorker::Service {
+class MSDistributedImpl final : public MSWorkerImpl {
  public:
   explicit MSDistributedImpl(std::shared_ptr<DistributedServable> servable) : servable_(servable) {}
   ~MSDistributedImpl() = default;

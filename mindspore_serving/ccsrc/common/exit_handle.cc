@@ -55,6 +55,17 @@ void ExitSignalHandle::WorkerWait() {
   exit_future.wait();
 }
 
+// waiting ctrl+c or stop message to exit,
+// if no server is running or server has exited, there is no need to wait
+void ExitSignalHandle::AgentWait() {
+  if (!is_running_) {
+    MSI_LOG_INFO << "Exit Handle has not started or has exited";
+    return;
+  }
+  auto exit_future = agent_exit_requested_.get_future();
+  exit_future.wait();
+}
+
 void ExitSignalHandle::Start() {
   if (is_running_) {
     return;
@@ -62,6 +73,7 @@ void ExitSignalHandle::Start() {
   is_running_ = true;
   master_exit_requested_ = std::promise<void>();
   worker_exit_requested_ = std::promise<void>();
+  agent_exit_requested_ = std::promise<void>();
   has_exited_.clear();
   InitSignalHandle();
 }
@@ -79,6 +91,7 @@ void ExitSignalHandle::HandleSignalInner() {
   if (!has_exited_.test_and_set()) {
     master_exit_requested_.set_value();
     worker_exit_requested_.set_value();
+    agent_exit_requested_.set_value();
     is_running_ = false;
   }
 }

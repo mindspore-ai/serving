@@ -34,19 +34,9 @@ namespace py = pybind11;
 namespace mindspore {
 namespace serving {
 
-static std::unique_ptr<MSWorkerServer> grpc_async_worker_server_;
-
 Worker &Worker::GetInstance() {
   static Worker instance;
   return instance;
-}
-
-Status Worker::StartGrpcServer(const std::string &ip, uint32_t grpc_port) {
-  if (grpc_async_worker_server_ != nullptr) {
-    return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Serving Error: Worker gRPC server is already running";
-  }
-  grpc_async_worker_server_ = std::make_unique<MSWorkerServer>(ip, grpc_port);
-  return grpc_async_worker_server_->Init();
 }
 
 Status Worker::RegisterWorker() {
@@ -184,6 +174,11 @@ void Worker::Update() {
   */
 }
 
+Status Worker::AfterStartGrpcServer(const std::shared_ptr<MSWorkerServer> &grpc_server) {
+  worker_grpc_server_ = grpc_server;
+  return SUCCESS;
+}
+
 Status Worker::StartServable(std::shared_ptr<ServableBase> servable, std::shared_ptr<BaseNotifyMaster> notify_master) {
   ExitSignalHandle::Instance().Start();  // handle ctrl+c to exit
   if (servable_started_) {
@@ -244,7 +239,7 @@ void Worker::StopServable(bool notify_master) {
 void Worker::Clear() {
   std::unique_lock<std::shared_mutex> lock(worker_shared_lock_);
   ServableStorage::Instance().Clear();
-  grpc_async_worker_server_ = nullptr;
+  worker_grpc_server_ = nullptr;
   if (clear_flag_.test_and_set()) {
     return;
   }

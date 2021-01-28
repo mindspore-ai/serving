@@ -45,8 +45,3 @@ message AgentExitRequest {
 message AgentExitReply {
   ErrorMsg error_msg = 1;
 }
-
-service MSDistributedWorker {
-  rpc AgentExit(AgentExitRequest) returns (AgentExitReply) {}
-  rpc AgentRegister(AgentRegisterRequest) returns (AgentRegisterReply) {}
-}

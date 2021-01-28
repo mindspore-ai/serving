@@ -20,8 +20,13 @@ syntax = "proto3";
 package mindspore.serving.proto;
 import "mindspore_serving/proto/ms_service.proto";
 import "mindspore_serving/proto/ms_master.proto";
+import "mindspore_serving/proto/ms_distributed.proto";
 
 service MSWorker {
+  // for master
   rpc Predict(PredictRequest) returns (PredictReply) {}
   rpc Exit(ExitRequest) returns (ExitReply) {}
+  // for worker agent
+  rpc AgentExit(AgentExitRequest) returns (AgentExitReply) {}
+  rpc AgentRegister(AgentRegisterRequest) returns (AgentRegisterReply) {}
 }

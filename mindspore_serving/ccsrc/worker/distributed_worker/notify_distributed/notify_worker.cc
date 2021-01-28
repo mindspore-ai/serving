@@ -25,7 +25,7 @@
 namespace mindspore {
 namespace serving {
 
-GrpcNotfiyDistributeWorker::GrpcNotfiyDistributeWorker(const std::string &distributed_worker_ip,
+GrpcNotifyDistributeWorker::GrpcNotifyDistributeWorker(const std::string &distributed_worker_ip,
                                                        uint32_t distributed_worker_port, const std::string &host_ip,
                                                        uint32_t host_port)
     : distributed_worker_ip_(distributed_worker_ip),
@@ -35,12 +35,12 @@ GrpcNotfiyDistributeWorker::GrpcNotfiyDistributeWorker(const std::string &distri
   distributed_worker_address_ = distributed_worker_ip + ":" + std::to_string(distributed_worker_port);
   agent_address_ = host_ip_ + ":" + std::to_string(host_port_);
   auto channel = GrpcServer::CreateChannel(distributed_worker_address_);
-  stub_ = proto::MSDistributedWorker::NewStub(channel);
+  stub_ = proto::MSWorker::NewStub(channel);
 }
 
-GrpcNotfiyDistributeWorker::~GrpcNotfiyDistributeWorker() = default;
+GrpcNotifyDistributeWorker::~GrpcNotifyDistributeWorker() = default;
 
-Status GrpcNotfiyDistributeWorker::Register(const std::vector<WorkerAgentSpec> &worker_specs) {
+Status GrpcNotifyDistributeWorker::Register(const std::vector<WorkerAgentSpec> &worker_specs) {
   const int32_t REGISTER_TIME_OUT = 60;
   const int32_t REGISTER_INTERVAL = 1;
   auto loop = REGISTER_TIME_OUT;
@@ -67,7 +67,7 @@ Status GrpcNotfiyDistributeWorker::Register(const std::vector<WorkerAgentSpec> &
   return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Register TimeOut";
 }
 
-Status GrpcNotfiyDistributeWorker::Unregister() {
+Status GrpcNotifyDistributeWorker::Unregister() {
   if (is_stoped_.load()) {
     return SUCCESS;
   }

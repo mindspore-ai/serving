@@ -39,10 +39,8 @@ using WorkCallBack = std::function<void(const Instance &output, const Status &er
 
 class WorkExecutor {
  public:
-  WorkExecutor(std::shared_ptr<TaskQueue> py_preprocess_task_queue,
-               std::shared_ptr<TaskQueue> py_postprocess_task_queue,
-               std::shared_ptr<TaskQueue> cpp_preprocess_task_queue,
-               std::shared_ptr<TaskQueue> cpp_postprocess_task_queue);
+  WorkExecutor(std::shared_ptr<TaskQueue> py_preprocess, std::shared_ptr<TaskQueue> py_postprocess,
+               std::shared_ptr<TaskQueue> cpp_preprocess, std::shared_ptr<TaskQueue> cpp_postprocess);
   ~WorkExecutor();
 
   Status Init(const ServableSignature &servable_declare, const std::shared_ptr<ServableBase> &servable);

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MINDSPORE_SERVING_WORKER_WORKER_SERVER_H
-#define MINDSPORE_SERVING_WORKER_WORKER_SERVER_H
+#ifndef MINDSPORE_SERVING_WORKER_DISTRIBUTED_WORKER_SERVER_H
+#define MINDSPORE_SERVING_WORKER_DISTRIBUTED_WORKER_SERVER_H
 
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>
@@ -27,58 +27,33 @@
 #include "proto/ms_worker.grpc.pb.h"
 #include "common/grpc_async_server.h"
 #include "worker/grpc/worker_process.h"
-#include "worker/distributed_worker/distributed_servable.h"
+#include "worker/grpc/worker_server.h"
+#include "worker/distributed_worker/grpc/distributed_process.h"
 
 namespace mindspore {
 namespace serving {
 
 // Service Implement
-class MS_API MSWorkerServer {
+class MS_API MSDistributedWorkerServer : public MSWorkerServer {
  public:
-  enum ServerState { kGdsUninit = 0, kGdsInitializing, kGdsRunning, kGdsStopped };
-  MSWorkerServer();
-  virtual ~MSWorkerServer();
-
-  Status StartWorkerGrpcServer(const std::string &hostname, int32_t port);
-  Status Stop();
-
- protected:
-  bool in_running_ = false;
-  std::thread grpc_thread_;
-  std::unique_ptr<MSWorkerImpl> service_impl_ = nullptr;
-  std::unique_ptr<GrpcAsyncServer> async_server_ = nullptr;
-
-  Status StartAsyncRpcService();
-  Status Init();
+  Status StartDistributedWorkerGrpcServer(std::shared_ptr<DistributedServable> servable, const std::string &hostname,
+                                          int32_t port);
 };
 
-class WorkerServiceContext {
+// Service Implement
+class WorkerAgentRegisterContext : public WorkerServiceContext {
  public:
-  enum class STATE : int8_t { CREATE = 1, PROCESS = 2, FINISH = 3 };
-  virtual ~WorkerServiceContext() {}
-
-  virtual void StartEnqueueRequest() = 0;
-  virtual void HandleRequest() = 0;
-
-  virtual bool JudgeFinish() = 0;
-
- public:
-  STATE state_;
-};
-
-class WorkerPredictContext : public WorkerServiceContext {
- public:
-  WorkerPredictContext(MSWorkerImpl *service_impl, proto::MSWorker::AsyncService *async_service,
-                       grpc::ServerCompletionQueue *cq)
+  WorkerAgentRegisterContext(MSDistributedImpl *service_impl, proto::MSWorker::AsyncService *async_service,
+                             grpc::ServerCompletionQueue *cq)
       : service_impl_(service_impl), async_service_(async_service), cq_(cq), responder_(&ctx_) {
     state_ = STATE::CREATE;
   }
 
-  ~WorkerPredictContext() = default;
+  ~WorkerAgentRegisterContext() = default;
 
-  static Status EnqueueRequest(MSWorkerImpl *service_impl, proto::MSWorker::AsyncService *async_service,
+  static Status EnqueueRequest(MSDistributedImpl *service_impl, proto::MSWorker::AsyncService *async_service,
                                grpc::ServerCompletionQueue *cq) {
-    auto call = new WorkerPredictContext(service_impl, async_service, cq);
+    auto call = new WorkerAgentRegisterContext(service_impl, async_service, cq);
     call->StartEnqueueRequest();
     return SUCCESS;
   }
@@ -98,7 +73,7 @@ class WorkerPredictContext : public WorkerServiceContext {
   bool JudgeFinish() override { return state_ == STATE::FINISH; }
 
  private:
-  MSWorkerImpl *service_impl_;
+  MSDistributedImpl *service_impl_;
   proto::MSWorker::AsyncService *async_service_;
   grpc::ServerCompletionQueue *cq_;
   grpc::ServerContext ctx_;
@@ -107,19 +82,19 @@ class WorkerPredictContext : public WorkerServiceContext {
   proto::PredictReply response_;
 };
 
-class WorkerExitContext : public WorkerServiceContext {
+class WorkerAgentExitContext : public WorkerServiceContext {
  public:
-  WorkerExitContext(MSWorkerImpl *service_impl, proto::MSWorker::AsyncService *async_service,
-                    grpc::ServerCompletionQueue *cq)
+  WorkerAgentExitContext(MSDistributedImpl *service_impl, proto::MSWorker::AsyncService *async_service,
+                         grpc::ServerCompletionQueue *cq)
       : service_impl_(service_impl), async_service_(async_service), cq_(cq), responder_(&ctx_) {
     state_ = STATE::CREATE;
   }
 
-  ~WorkerExitContext() = default;
+  ~WorkerAgentExitContext() = default;
 
-  static Status EnqueueRequest(MSWorkerImpl *service_impl, proto::MSWorker::AsyncService *async_service,
+  static Status EnqueueRequest(MSDistributedImpl *service_impl, proto::MSWorker::AsyncService *async_service,
                                grpc::ServerCompletionQueue *cq) {
-    auto call = new WorkerExitContext(service_impl, async_service, cq);
+    auto call = new WorkerAgentExitContext(service_impl, async_service, cq);
     call->StartEnqueueRequest();
     return SUCCESS;
   }
@@ -139,7 +114,7 @@ class WorkerExitContext : public WorkerServiceContext {
   bool JudgeFinish() override { return state_ == STATE::FINISH; }
 
  private:
-  MSWorkerImpl *service_impl_;
+  MSDistributedImpl *service_impl_;
   proto::MSWorker::AsyncService *async_service_;
   grpc::ServerCompletionQueue *cq_;
   grpc::ServerContext ctx_;
@@ -148,40 +123,25 @@ class WorkerExitContext : public WorkerServiceContext {
   proto::ExitReply response_;
 };
 
-class WorkerGrpcServer : public GrpcAsyncServer {
+class DistributedWorkerGrpcServer : public WorkerGrpcServer {
  public:
-  WorkerGrpcServer(const std::string &host, int32_t port, MSWorkerImpl *service_impl)
-      : GrpcAsyncServer(host, port), service_impl_(service_impl) {}
+  DistributedWorkerGrpcServer(const std::string &host, int32_t port, MSDistributedImpl *service_impl)
+      : WorkerGrpcServer(host, port, service_impl), distributed_service_impl_(service_impl) {}
 
-  ~WorkerGrpcServer() = default;
-
-  Status RegisterService(grpc::ServerBuilder *builder) {
-    builder->RegisterService(&svc_);
-    return SUCCESS;
-  }
+  ~DistributedWorkerGrpcServer() = default;
 
   Status EnqueueRequest() {
-    WorkerPredictContext::EnqueueRequest(service_impl_, &svc_, cq_.get());
-    WorkerExitContext::EnqueueRequest(service_impl_, &svc_, cq_.get());
+    WorkerGrpcServer::EnqueueRequest();
+    WorkerAgentRegisterContext::EnqueueRequest(distributed_service_impl_, &svc_, cq_.get());
+    WorkerAgentExitContext::EnqueueRequest(distributed_service_impl_, &svc_, cq_.get());
     return SUCCESS;
   }
 
-  Status ProcessRequest(void *tag) {
-    auto rq = static_cast<WorkerServiceContext *>(tag);
-    if (rq->JudgeFinish()) {
-      delete rq;
-    } else {
-      rq->HandleRequest();
-    }
-    return SUCCESS;
-  }
-
- protected:
-  MSWorkerImpl *service_impl_;
-  proto::MSWorker::AsyncService svc_;
+ private:
+  MSDistributedImpl *distributed_service_impl_;
 };
 
 }  // namespace serving
 }  // namespace mindspore
 
-#endif  // MINDSPORE_SERVING_WORKER_WORKER_PROCESS_H
+#endif  // MINDSPORE_SERVING_WORKER_DISTRIBUTED_WORKER_SERVER_H

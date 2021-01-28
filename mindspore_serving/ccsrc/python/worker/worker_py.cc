@@ -23,13 +23,15 @@
 #include "worker/notfiy_master/local_notify.h"
 #include "worker/local_servable/local_sevable.h"
 #include "worker/distributed_worker/distributed_servable.h"
+#include "worker/grpc/worker_server.h"
+#include "worker/distributed_worker/grpc/distributed_server.h"
 
 namespace mindspore::serving {
 
 void PyWorker::StartServable(const std::string &model_directory, const std::string &model_name, uint32_t version_number,
-                             const std::string &master_ip, uint32_t master_port, const std::string &host_ip,
-                             uint32_t host_port) {
-  auto notify_master = std::make_shared<GrpcNotfiyMaster>(master_ip, master_port, host_ip, host_port);
+                             const std::string &master_ip, uint32_t master_port, const std::string &worker_ip,
+                             uint32_t worker_port) {
+  auto notify_master = std::make_shared<GrpcNotfiyMaster>(master_ip, master_port, worker_ip, worker_port);
   auto servable = std::make_shared<LocalModelServable>();
   auto status = servable->StartServable(model_directory, model_name, version_number);
   if (status != SUCCESS) {
@@ -39,10 +41,14 @@ void PyWorker::StartServable(const std::string &model_directory, const std::stri
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
-  status = Worker::GetInstance().StartGrpcServer(host_ip, host_port);
+  // start grpc server
+  auto grpc_sever = std::make_shared<MSWorkerServer>();
+  status = grpc_sever->StartWorkerGrpcServer(worker_ip, worker_port);
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
+  Worker::GetInstance().AfterStartGrpcServer(grpc_sever);
+
   status = Worker::GetInstance().StartVersionController();
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
@@ -72,12 +78,15 @@ void PyWorker::StartDistributedServable(const std::string &servable_directory, c
                                         const std::string &worker_ip, uint32_t worker_port,
                                         const std::string &master_ip, uint32_t master_port) {
   Status status;
-  status = Worker::GetInstance().StartGrpcServer(worker_ip, worker_port);
+  auto servable = std::make_shared<DistributedServable>();
+  auto grpc_sever = std::make_shared<MSDistributedWorkerServer>();
+  status = grpc_sever->StartDistributedWorkerGrpcServer(servable, worker_ip, worker_port);
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
+  Worker::GetInstance().AfterStartGrpcServer(grpc_sever);
+
   auto notify_master = std::make_shared<GrpcNotfiyMaster>(master_ip, master_port, worker_ip, worker_port);
-  auto servable = std::make_shared<DistributedServable>();
   status = servable->StartServable(servable_directory, servable_name, rank_table_json_file, version_number);
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
@@ -96,13 +105,15 @@ void PyWorker::StartDistributedServableInMaster(const std::string &servable_dire
                                                 const std::string &rank_table_json_file, uint32_t version_number,
                                                 const std::string &worker_ip, uint32_t worker_port) {
   Status status;
-  status = Worker::GetInstance().StartGrpcServer(worker_ip, worker_port);
+  auto servable = std::make_shared<DistributedServable>();
+  auto grpc_sever = std::make_shared<MSDistributedWorkerServer>();
+  status = grpc_sever->StartDistributedWorkerGrpcServer(servable, worker_ip, worker_port);
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
+  Worker::GetInstance().AfterStartGrpcServer(grpc_sever);
 
   auto notify_master = std::make_shared<LocalNotifyMaster>();
-  auto servable = std::make_shared<DistributedServable>();
   status = servable->StartServable(servable_directory, servable_name, rank_table_json_file, version_number);
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
