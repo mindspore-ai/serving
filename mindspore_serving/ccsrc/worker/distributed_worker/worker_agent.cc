@@ -35,7 +35,8 @@ Status WorkerAgent::ExecuteModel(const std::vector<TensorBasePtr> &request, std:
 }
 
 Status WorkerAgent::Run(const proto::DistributedPredictRequest &request, proto::DistributedPredictReply *reply) {
-  // todo :call ExecuteModel
+  // todo : DistributedPredictRequest->RequestBase
+  // todo : DistributedPredictReply->ReplyBase
   return SUCCESS;
 }
 

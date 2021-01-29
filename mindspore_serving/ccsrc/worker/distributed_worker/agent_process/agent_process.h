@@ -30,10 +30,10 @@ namespace serving {
 // Service Implement
 class MSAgentImpl final : public proto::MSAgent::Service {
  public:
-  grpc::Status DistributedPredict(grpc::ServerContext *context, const proto::DistributedPredictRequest *request,
-                                  proto::DistributedPredictReply *reply) override;
-  grpc::Status DistributedExit(grpc::ServerContext *context, const proto::DistributedExitRequest *request,
-                               proto::DistributedExitReply *reply) override;
+  grpc::Status Predict(grpc::ServerContext *context, const proto::DistributedPredictRequest *request,
+                       proto::DistributedPredictReply *reply) override;
+  grpc::Status Exit(grpc::ServerContext *context, const proto::DistributedExitRequest *request,
+                    proto::DistributedExitReply *reply) override;
 };
 
 }  // namespace serving

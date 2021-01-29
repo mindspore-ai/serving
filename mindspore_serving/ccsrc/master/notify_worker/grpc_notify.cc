@@ -55,10 +55,10 @@ Status GrpcNotfiyWorker::DispatchAsync(const proto::PredictRequest &request, pro
            << worker_address_;
   }
   if (!client_) {
-    client_ = std::make_unique<MSServiceClient>();
+    client_ = std::make_unique<MSPredictClient>();
     client_->Start();
   }
-  client_->PredictAsync(request, reply, stub_, callback);
+  client_->PredictAsync(request, reply, stub_.get(), callback);
   return SUCCESS;
 }
 

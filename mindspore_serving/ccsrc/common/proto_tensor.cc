@@ -344,10 +344,10 @@ Status GrpcTensorHelper::CreateInstanceFromRequestInstances(const proto::Predict
 void GrpcTensorHelper::CopyFromAgentSpec(const proto::AgentSpec &specs, WorkerAgentSpec *worker_specs) {
   worker_specs->rank_id = specs.rank_id();
   worker_specs->batch_size = specs.batch_size();
-  worker_specs->input_size = specs.input_size();
   for (auto &in : specs.inputs()) {
     TensorInfo info;
     info.data_type = ProtoTensor::TransDataType2Inference(in.dtype());
+    info.size = in.size();
     for (auto &dim : in.shape().dims()) {
       info.shape.push_back(dim);
     }
@@ -370,10 +370,10 @@ void GrpcTensorHelper::CopyFromWorkerAgentSpec(const std::vector<WorkerAgentSpec
     auto worker_spec = request->add_agent_spec();
     worker_spec->set_rank_id(spec.rank_id);
     worker_spec->set_batch_size(spec.batch_size);
-    worker_spec->set_input_size(spec.input_size);
     for (auto &method : spec.input_infos) {
       auto proto_method = worker_spec->add_inputs();
       proto_method->set_dtype(ProtoTensor::TransDataType2Proto(method.data_type));
+      proto_method->set_size(method.size);
       auto proto_shape = proto_method->mutable_shape();
       for (auto &dim : method.shape) {
         proto_shape->add_dims(dim);
@@ -382,6 +382,7 @@ void GrpcTensorHelper::CopyFromWorkerAgentSpec(const std::vector<WorkerAgentSpec
     for (auto &method : spec.output_infos) {
       auto proto_method = worker_spec->add_outputs();
       proto_method->set_dtype(ProtoTensor::TransDataType2Proto(method.data_type));
+      proto_method->set_size(method.size);
       auto proto_shape = proto_method->mutable_shape();
       for (auto &dim : method.shape) {
         proto_shape->add_dims(dim);

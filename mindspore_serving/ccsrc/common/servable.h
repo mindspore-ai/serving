@@ -177,7 +177,6 @@ struct WorkerAgentSpec {
   std::vector<TensorInfo> input_infos;
   std::vector<TensorInfo> output_infos;
   uint32_t batch_size = 0;
-  uint32_t input_size = 0;
 };
 
 }  // namespace mindspore::serving

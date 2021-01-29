@@ -23,39 +23,80 @@
 #include <memory>
 #include <functional>
 #include <thread>
+#include <string>
+#include <utility>
 #include "common/serving_common.h"
 #include "proto/ms_service.pb.h"
 #include "proto/ms_service.grpc.pb.h"
 #include "proto/ms_master.pb.h"
 #include "proto/ms_master.grpc.pb.h"
 #include "proto/ms_worker.grpc.pb.h"
+#include "proto/ms_agent.pb.h"
+#include "proto/ms_agent.grpc.pb.h"
 
 namespace mindspore {
 namespace serving {
-class MSServiceClient;
-extern std::unique_ptr<MSServiceClient> client_;
 
 using PredictOnFinish = std::function<void()>;
 
 using DispatchCallback = std::function<void(Status status)>;
 
+template <typename Request, typename Reply, typename MSStub>
 class MSServiceClient {
  public:
   MSServiceClient() = default;
-  ~MSServiceClient();
-  void AsyncCompleteRpc();
-  void Start();
+  ~MSServiceClient() {
+    if (in_running_) {
+      cq_.Shutdown();
+      if (client_thread_.joinable()) {
+        try {
+          client_thread_.join();
+        } catch (const std::system_error &) {
+        } catch (...) {
+        }
+      }
+    }
+    in_running_ = false;
+  }
 
-  void PredictAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
-                    std::shared_ptr<proto::MSWorker::Stub> stub, DispatchCallback callback);
+  void Start() {
+    client_thread_ = std::thread(&MSServiceClient::AsyncCompleteRpc, this);
+    in_running_ = true;
+  }
+
+  void AsyncCompleteRpc() {
+    void *got_tag;
+    bool ok = false;
+
+    while (cq_.Next(&got_tag, &ok)) {
+      AsyncClientCall *call = static_cast<AsyncClientCall *>(got_tag);
+      if (call->status.ok()) {
+        call->callback(SUCCESS);
+      } else {
+        MSI_LOG_ERROR << "RPC failed: " << call->status.error_code() << ", " << call->status.error_message();
+        call->callback(Status(FAILED, call->status.error_message()));
+      }
+      delete call;
+    }
+  }
+
+  void PredictAsync(const Request &request, Reply *reply, MSStub *stub, DispatchCallback callback) {
+    AsyncClientCall *call = new AsyncClientCall;
+    call->reply = reply;
+    call->callback = std::move(callback);
+    call->response_reader = stub->PrepareAsyncPredict(&call->context, request, &cq_);
+    call->response_reader->StartCall();
+    call->response_reader->Finish(call->reply, &call->status, call);
+    MSI_LOG(INFO) << "Finish send Predict";
+  }
 
  private:
   struct AsyncClientCall {
     grpc::ClientContext context;
     grpc::Status status;
-    proto::PredictReply *reply;
+    Reply *reply;
     DispatchCallback callback;
-    std::shared_ptr<grpc::ClientAsyncResponseReader<proto::PredictReply>> response_reader;
+    std::shared_ptr<grpc::ClientAsyncResponseReader<Reply>> response_reader;
   };
 
   grpc::CompletionQueue cq_;
@@ -63,6 +104,11 @@ class MSServiceClient {
   bool in_running_ = false;
 };
 
+using MSPredictClient = MSServiceClient<proto::PredictRequest, proto::PredictReply, proto::MSWorker::Stub>;
+using MSDistributedClient =
+  MSServiceClient<proto::DistributedPredictRequest, proto::DistributedPredictReply, proto::MSAgent::Stub>;
+extern std::unique_ptr<MSPredictClient> client_;
+extern std::unique_ptr<MSDistributedClient> distributed_client_;
 }  // namespace serving
 }  // namespace mindspore
 

@@ -21,20 +21,19 @@
 #include <future>
 #include "common/serving_common.h"
 #include "common/servable.h"
-#include "proto/ms_service.pb.h"
+#include "proto/ms_agent.pb.h"
+#include "common/grpc_client.h"
 
 namespace mindspore {
 namespace serving {
-
-using DistributeCallback = std::function<void(Status status)>;
 
 class MS_API BaseNotifyAgent {
  public:
   BaseNotifyAgent() = default;
   virtual ~BaseNotifyAgent() = default;
   virtual Status Exit() = 0;
-  virtual Status DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
-                               DistributeCallback callback) = 0;
+  virtual Status DispatchAsync(const proto::DistributedPredictRequest &request, proto::DistributedPredictReply *reply,
+                               DispatchCallback callback) = 0;
 };
 
 }  // namespace serving

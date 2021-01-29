@@ -20,22 +20,13 @@ syntax = "proto3";
 package mindspore.serving.proto;
 import "mindspore_serving/proto/ms_service.proto";
 
-message DistributedServableSpec {
-  // servable name
-  string name = 1;
-  // optional. If unspecified, the latest version servable will be used.
-  int64 version_number = 2;
-  // Specifies the method name in the servable.
-  string method_name = 3;
-}
-
 message DistributedPredictRequest {
-  DistributedServableSpec servable_spec = 1;
+  repeated Tensor inputs = 1;
 }
 
 message DistributedPredictReply {
-  DistributedServableSpec servable_spec = 1;
-  repeated ErrorMsg error_msg = 2;
+  repeated Tensor outputs = 1;
+  ErrorMsg error_msg = 2;
 }
 
 message DistributedExitRequest {
@@ -47,6 +38,6 @@ message DistributedExitReply {
 }
 
 service MSAgent {
-  rpc DistributedPredict(DistributedPredictRequest) returns (DistributedPredictReply) {}
-  rpc DistributedExit(DistributedExitRequest) returns (DistributedExitReply) {}
+  rpc Predict(DistributedPredictRequest) returns (DistributedPredictReply) {}
+  rpc Exit(DistributedExitRequest) returns (DistributedExitReply) {}
 }

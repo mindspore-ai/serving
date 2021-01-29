@@ -34,8 +34,8 @@ class MS_API GrpcNotfiyAgent : public BaseNotifyAgent {
 
   Status Exit() override;
 
-  Status DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
-                       DistributeCallback callback) override;
+  Status DispatchAsync(const proto::DistributedPredictRequest &request, proto::DistributedPredictReply *reply,
+                       DispatchCallback callback) override;
 
  private:
   std::string agent_address_;

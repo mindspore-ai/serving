@@ -20,6 +20,7 @@
 #include <thread>
 #include "common/exit_handle.h"
 #include "common/grpc_server.h"
+#include "common/grpc_client.h"
 
 namespace mindspore {
 namespace serving {
@@ -42,20 +43,24 @@ Status GrpcNotfiyAgent::Exit() {
     std::chrono::system_clock::time_point deadline = std::chrono::system_clock::now() + std::chrono::seconds(TIME_OUT);
     context.set_deadline(deadline);
 
-    (void)stub_->DistributedExit(&context, request, &reply);
+    (void)stub_->Exit(&context, request, &reply);
   }
   return SUCCESS;
 }
 
-Status GrpcNotfiyAgent::DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
-                                      DistributeCallback callback) {
+Status GrpcNotfiyAgent::DispatchAsync(const proto::DistributedPredictRequest &request,
+                                      proto::DistributedPredictReply *reply, DispatchCallback callback) {
   if (!stub_) {
     return INFER_STATUS_LOG_ERROR(FAILED)
            << "Predict failed, agent gRPC has not been inited or has already exited, agent address " << agent_address_;
   }
-  // todo send async message
+  if (!distributed_client_) {
+    distributed_client_ = std::make_unique<MSDistributedClient>();
+    distributed_client_->Start();
+  }
+  distributed_client_->PredictAsync(request, reply, stub_.get(), callback);
   return SUCCESS;
-}
+}  // namespace serving
 
 }  // namespace serving
 }  // namespace mindspore
