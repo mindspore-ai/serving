@@ -58,7 +58,7 @@ start_service()
   python3 master_with_worker.py > service.log 2>&1 &
   if [ $? -ne 0 ]
   then
-    echo "server faile to start."
+    echo "server failed to start."
   fi
 
   result=`grep -E 'Serving gRPC server start success, listening on 127.0.0.1:5500' service.log | wc -l`
@@ -88,7 +88,7 @@ pytest_serving()
   then
     clean_pid
     cat client.log
-    echo "client faile to start." && exit 1
+    echo "client failed to start." && exit 1
   fi
   echo "### client end ###"
 }
@@ -103,7 +103,7 @@ test_add_model()
 
 echo "-----serving start-----"
 rm -rf serving *.log *.mindir *.dat ${CURRPATH}/add ${CURRPATH}/kernel_meta
-rm -rf add  client.py  export_model  master_with_worker.py
+rm -rf add  client.py client_mul_process.py  export_model  master_with_worker.py master.py worker.py
 cp -r ../../../example/add/* .
 prepare_model
 test_add_model

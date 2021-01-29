@@ -51,7 +51,6 @@ def run_add_cast():
     result = client.infer(instances)
     print(result)
 
-
 if __name__ == '__main__':
     run_add_common()
     run_add_cast()
