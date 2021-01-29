@@ -92,7 +92,7 @@ def _create_numpy_from_tensor(tensor):
         ms_service_pb2.MS_BOOL: np.bool,
         ms_service_pb2.MS_INT8: np.int8,
         ms_service_pb2.MS_UINT8: np.uint8,
-        ms_service_pb2.MS_INT16: ms_service_pb2.MS_INT16,
+        ms_service_pb2.MS_INT16: np.int16,
         ms_service_pb2.MS_UINT16: np.uint16,
         ms_service_pb2.MS_INT32: np.int32,
         ms_service_pb2.MS_UINT32: np.uint32,

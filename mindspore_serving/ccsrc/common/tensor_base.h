@@ -51,7 +51,7 @@ enum DataType {
 class TensorBase;
 using TensorBasePtr = std::shared_ptr<TensorBase>;
 
-class MS_API TensorBase {
+class MS_API TensorBase : public std::enable_shared_from_this<TensorBase> {
  public:
   TensorBase() = default;
   virtual ~TensorBase() = default;
