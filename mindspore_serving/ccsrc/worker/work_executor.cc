@@ -192,14 +192,12 @@ void WorkExecutor::InitPrePostprocess() {
 
 void WorkExecutor::InitInputTensors() {
   inference_inputs_.clear();
-  for (const auto &input_info : input_infos_) {
-    TensorBasePtr tensor = servable_->MakeInferenceTensor(input_info.data_type, input_info.shape);
-    if (tensor == nullptr) {
-      tensor = std::make_shared<Tensor>();
-      tensor->set_data_type(input_info.data_type);
-      tensor->set_shape(input_info.shape);
-      tensor->resize_data(input_info.size);
-    }
+  for (size_t i = 0; i < input_infos_.size(); i++) {
+    auto &input_info = input_infos_[i];
+    auto tensor = std::make_shared<Tensor>();
+    tensor->set_data_type(input_info.data_type);
+    tensor->set_shape(input_info.shape);
+    tensor->resize_data(input_info.size);
     inference_inputs_.push_back(tensor);
   }
 }
@@ -388,7 +386,7 @@ Status WorkExecutor::PostPredict(const std::vector<Instance> &inputs, const std:
   for (auto &item : predict_result) {
     size_t item_size = item->data_size() / model_batch_size;
     if (item_size == 0) {
-      MSI_LOG_EXCEPTION << "Ouput result data size cannot be 0";
+      MSI_LOG_EXCEPTION << "Output result data size cannot be 0";
     }
     auto shape = item->shape();
     if (servable_declare_.servable_meta.with_batch_dim) {

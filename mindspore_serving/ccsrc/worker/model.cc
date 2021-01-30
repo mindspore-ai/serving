@@ -30,8 +30,4 @@ std::vector<TensorInfo> AscendModelServable::GetOutputInfos() const { return ses
 
 uint64_t AscendModelServable::GetBatchSize() const { return session_->GetBatchSize(model_id_); }
 
-TensorBasePtr AscendModelServable::MakeInferenceTensor(DataType data_type, const std::vector<int64_t> &shape) const {
-  return session_->MakeInferenceTensor(data_type, shape);
-}
-
 }  // namespace mindspore::serving

@@ -375,7 +375,7 @@ def test_grpc_larger_than_server_receive_max_size():
     base = ServingTestBase()
     base.init_servable(1, "add_servable_config.py")
     worker.start_servable_in_master(base.servable_dir, base.servable_name, 0)
-    master.start_grpc_server("0.0.0.0", 5500, max_msg_mb_size=1) # 1MB
+    master.start_grpc_server("0.0.0.0", 5500, max_msg_mb_size=1)  # 1MB
     # Client
     client = create_client("localhost", 5500, base.servable_name, "add_common")
     instances = []
@@ -385,7 +385,7 @@ def test_grpc_larger_than_server_receive_max_size():
     x2 = np.ones([1024, 1024], np.float32)
     y_data_list.append(x1 + x2)
     instances.append({"x1": x1, "x2": x2})
-    result = client.infer(instances) # more than 1MB msg
+    result = client.infer(instances)  # more than 1MB msg
 
     print(result)
     assert "Grpc Error, (8, 'resource exhausted')" in str(result["error"])

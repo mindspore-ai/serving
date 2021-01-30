@@ -19,7 +19,7 @@
 #include "cxx_api/factory.h"
 #include "stub/graph_impl_stub.h"
 
-namespace mindspore::api {
+namespace mindspore {
 API_FACTORY_REG(GraphCell::GraphImpl, Ascend910, MsGraphImpl);
 
 std::shared_ptr<GraphCell::GraphImpl> MsGraphImpl::graph_imp_stub_ = std::make_shared<GraphImplStubAdd>();
@@ -28,28 +28,27 @@ MsGraphImpl::MsGraphImpl() {}
 
 MsGraphImpl::~MsGraphImpl() {}
 
-Status MsGraphImpl::GetInputsInfo(std::vector<std::string> *names, std::vector<std::vector<int64_t>> *shapes,
-                                  std::vector<DataType> *data_types, std::vector<size_t> *mem_sizes) {
+std::vector<MSTensor> MsGraphImpl::GetInputs() {
   if (!graph_imp_stub_) {
-    return FAILED;
+    return {};
   }
-  return graph_imp_stub_->GetInputsInfo(names, shapes, data_types, mem_sizes);
+  return graph_imp_stub_->GetInputs();
 }
 
-Status MsGraphImpl::GetOutputsInfo(std::vector<std::string> *names, std::vector<std::vector<int64_t>> *shapes,
-                                   std::vector<DataType> *data_types, std::vector<size_t> *mem_sizes) {
+std::vector<MSTensor> MsGraphImpl::GetOutputs() {
   if (!graph_imp_stub_) {
-    return FAILED;
+    return {};
   }
-  return graph_imp_stub_->GetOutputsInfo(names, shapes, data_types, mem_sizes);
+  return graph_imp_stub_->GetOutputs();
 }
 
-Status MsGraphImpl::Load() { return SUCCESS; }
+Status MsGraphImpl::Load() { return kSuccess; }
 
-Status MsGraphImpl::Run(const std::vector<Buffer> &inputs, std::vector<Buffer> *outputs) {
+Status MsGraphImpl::Run(const std::vector<MSTensor> &inputs, std::vector<MSTensor> *outputs) {
   if (!graph_imp_stub_) {
-    return FAILED;
+    return kMCFailed;
   }
   return graph_imp_stub_->Run(inputs, outputs);
 }
-}  // namespace mindspore::api
+
+}  // namespace mindspore

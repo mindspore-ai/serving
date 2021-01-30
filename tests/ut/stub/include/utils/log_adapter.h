@@ -13,23 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "include/api/graph.h"
-#include "cxx_api/graph/graph_data.h"
-#include "utils/log_adapter.h"
 
-namespace mindspore {
-Graph::Graph(const std::shared_ptr<GraphData> &graph_data) : graph_data_(graph_data) {}
+#ifndef MINDSPORE_STUB_SERVING_LOG_ADAPTER_H
+#define MINDSPORE_STUB_SERVING_LOG_ADAPTER_H
 
-Graph::Graph(std::shared_ptr<GraphData> &&graph_data) : graph_data_(graph_data) {}
+#include "common/serving_common.h"
 
-Graph::~Graph() {}
+#define MS_LOG MSI_LOG
+#define MS_EXCEPTION_IF_NULL MSI_EXCEPTION_IF_NULL
 
-Graph::Graph(std::nullptr_t) : graph_data_(nullptr) {}
-
-bool Graph::operator==(std::nullptr_t) const { return graph_data_ == nullptr; }
-
-ModelType Graph::ModelType() const {
-  MS_EXCEPTION_IF_NULL(graph_data_);
-  return graph_data_->ModelType();
-}
-}  // namespace mindspore
+#endif  // MINDSPORE_STUB_SERVING_LOG_ADAPTER_H

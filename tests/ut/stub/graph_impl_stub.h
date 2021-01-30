@@ -28,34 +28,26 @@
 #include "cxx_api/graph/graph_impl.h"
 #include "cxx_api/model/model_impl.h"
 
-namespace mindspore::api {
+namespace mindspore {
 class GraphImplStubAdd : public GraphCell::GraphImpl {
  public:
   GraphImplStubAdd();
   explicit GraphImplStubAdd(const std::vector<int64_t> &add_shape);
   ~GraphImplStubAdd() override;
 
-  Status Run(const std::vector<Buffer> &inputs, std::vector<Buffer> *outputs) override;
+  Status Run(const std::vector<MSTensor> &inputs, std::vector<MSTensor> *outputs) override;
   Status Load() override;
-  Status GetInputsInfo(std::vector<std::string> *names, std::vector<std::vector<int64_t>> *shapes,
-                       std::vector<DataType> *data_types, std::vector<size_t> *mem_sizes) override;
-  Status GetOutputsInfo(std::vector<std::string> *names, std::vector<std::vector<int64_t>> *shapes,
-                        std::vector<DataType> *data_types, std::vector<size_t> *mem_sizes) override;
+
+  std::vector<MSTensor> GetInputs() override;
+  std::vector<MSTensor> GetOutputs() override;
 
  private:
-  std::vector<std::string> input_names_;
-  std::vector<std::vector<int64_t>> input_shapes_;
-  std::vector<DataType> input_data_types_;
-  std::vector<size_t> input_mem_sizes_;
-
-  std::vector<std::string> output_names_;
-  std::vector<std::vector<int64_t>> output_shapes_;
-  std::vector<DataType> output_data_types_;
-  std::vector<size_t> output_mem_sizes_;
+  std::vector<MSTensor> inputs_;
+  std::vector<MSTensor> outputs_;
 
   void Init(const std::vector<int64_t> &add_shape);
 };
 
-}  // namespace mindspore::api
+}  // namespace mindspore
 
 #endif  // MINDSPORE_SERVING_GRAPH_IMPL_STUB_H

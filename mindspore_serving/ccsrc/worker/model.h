@@ -39,9 +39,6 @@ class ServableBase {
   virtual std::vector<TensorInfo> GetInputInfos() const = 0;
   virtual std::vector<TensorInfo> GetOutputInfos() const = 0;
   virtual uint64_t GetBatchSize() const = 0;
-  virtual TensorBasePtr MakeInferenceTensor(DataType data_type, const std::vector<int64_t> &shape) const {
-    return nullptr;
-  }
 };
 
 class AscendModelServable : public ServableBase {
@@ -55,7 +52,6 @@ class AscendModelServable : public ServableBase {
   std::vector<TensorInfo> GetInputInfos() const override;
   std::vector<TensorInfo> GetOutputInfos() const override;
   uint64_t GetBatchSize() const override;
-  TensorBasePtr MakeInferenceTensor(DataType data_type, const std::vector<int64_t> &shape) const override;
 
  private:
   std::shared_ptr<serving::InferSession> session_{nullptr};
