@@ -102,7 +102,7 @@ def _wrap_fun_to_pipeline(fun, input_count):
     argspec_len = len(inspect.signature(fun).parameters)
     if argspec_len != input_count:
         raise RuntimeError(f"function {fun.__name__} input args count {argspec_len} not match "
-                           f"registed in method count {input_count}")
+                           f"registered in method count {input_count}")
 
     @wraps(fun)
     def call_func(instances):
@@ -460,7 +460,7 @@ def register_method(output_names):
             output_tensors = (output_tensors,)
         if len(output_tensors) != len(output_names):
             raise RuntimeError(
-                f"Method return output size {len(output_tensors)} not match registed {len(output_names)}")
+                f"Method return output size {len(output_tensors)} not match registered {len(output_names)}")
 
         method_def_context_.returns = [item.as_pair() for item in output_tensors]
         logger.info(f"Register method: method_name {method_def_context_.method_name} "

@@ -114,7 +114,7 @@ Status RestfulServer::CreatRestfulServer(int time_out_second) {
   event_http_ = evhttp_new(event_base_);
   if (event_http_ == nullptr) {
     status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
-             << "Serving Error: RESTful server start failed, create http server faild";
+             << "Serving Error: RESTful server start failed, create http server failed";
     free_event_base();
     return status;
   }
@@ -148,7 +148,7 @@ Status RestfulServer::StartRestfulServer() {
 
   if (listener == nullptr) {
     status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
-             << "Serving Error: RESTful server start failed, create http listener faild, port " << restful_port_;
+             << "Serving Error: RESTful server start failed, create http listener failed, port " << restful_port_;
     free_event_base();
     free_evhttp();
     return status;
@@ -156,7 +156,7 @@ Status RestfulServer::StartRestfulServer() {
   auto bound = evhttp_bind_listener(event_http_, listener);
   if (bound == nullptr) {
     status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
-             << "Serving Error: RESTful server start failed, bind http listener to server faild, port "
+             << "Serving Error: RESTful server start failed, bind http listener to server failed, port "
              << restful_port_;
     evconnlistener_free(listener);
     free_event_base();

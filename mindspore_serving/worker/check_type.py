@@ -33,7 +33,7 @@ def check_and_as_str_tuple_list(arg_name, strs):
             if not item:
                 raise RuntimeError(f"The item of parameter '{arg_name}' should not be empty str")
             if item in str_list:
-                raise RuntimeError(f"The item name '{item}' in parameter '{arg_name}' should not be repeated")
+                raise RuntimeError(f"The item value '{item}' in parameter '{arg_name}' should not be repeated")
             str_list.append(item)
 
     return tuple(strs)
@@ -53,18 +53,25 @@ def check_bool(arg_name, bool_val):
         raise RuntimeError(f"Parameter '{arg_name}' should be bool, but actually {type(bool_val)}")
 
 
-def check_int(arg_name, int_val, mininum=None, maximum=None):
+def check_int(arg_name, int_val, mininum=None, maximum=None, is_tuple_item=False):
     """Check whether the input parameters are reasonable int input"""
+    if not is_tuple_item:
+        prefix = f"Parameter '{arg_name}'"
+    else:
+        prefix = f"The item value '{int_val}' in parameter '{arg_name}'"
+
+    if isinstance(int_val, bool):
+        raise RuntimeError(f"{prefix} should be int, but actually {type(int_val)}")
     if not isinstance(int_val, int):
-        raise RuntimeError(f"Parameter '{arg_name}' should be int, but actually {type(int_val)}")
+        raise RuntimeError(f"{prefix} should be int, but actually {type(int_val)}")
     if mininum is not None and int_val < mininum:
         if maximum is not None:
-            raise RuntimeError(f"Parameter '{arg_name}' should be in range [{mininum},{maximum}]")
-        raise RuntimeError(f"Parameter '{arg_name}' should be >= {mininum}")
+            raise RuntimeError(f"{prefix} should be in range [{mininum},{maximum}]")
+        raise RuntimeError(f"{prefix} should be >= {mininum}")
     if maximum is not None and int_val > maximum:
         if mininum is not None:
-            raise RuntimeError(f"Parameter '{arg_name}' should be in range [{mininum},{maximum}]")
-        raise RuntimeError(f"Parameter '{arg_name}' should be <= {maximum}")
+            raise RuntimeError(f"{prefix} should be in range [{mininum},{maximum}]")
+        raise RuntimeError(f"{prefix} should be <= {maximum}")
 
 
 def check_ip_port(arg_name, port):
@@ -85,11 +92,9 @@ def check_and_as_int_tuple_list(arg_name, ints, mininum=None, maximum=None):
     if isinstance(ints, (tuple, list)):
         int_list = []
         for item in ints:
-            if not isinstance(item, int):
-                raise RuntimeError(f"The item of parameter '{arg_name}' should be int, but actually {type(item)}")
             if item in int_list:
-                raise RuntimeError(f"The item name '{item}' in parameter '{arg_name}' should not be repeated")
-            check_int(arg_name, item, mininum, maximum)
+                raise RuntimeError(f"The item value '{item}' in parameter '{arg_name}' should not be repeated")
+            check_int(arg_name, item, mininum, maximum, True)
             int_list.append(item)
 
     return tuple(ints)
