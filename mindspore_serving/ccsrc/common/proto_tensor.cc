@@ -241,7 +241,7 @@ Status GrpcTensorHelper::CreateInstanceFromRequest(const proto::PredictRequest &
   MethodSignature method_signature;
   if (!servable_signature.GetMethodDeclare(request_spec->method_name, &method_signature)) {
     return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
-           << "Method " << method_name << " is not registed for servable " << servable_name;
+           << "Method " << method_name << " is not registered for servable " << servable_name;
   }
 
   // instance
@@ -268,7 +268,7 @@ Status GrpcTensorHelper::CreateReplyFromInstances(const proto::PredictRequest &r
   MethodSignature method_signature;
   if (!servable_signature.GetMethodDeclare(method_name, &method_signature)) {
     return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
-           << "Method " << method_name << " is not registed for servable " << servable_name;
+           << "Method " << method_name << " is not registered for servable " << servable_name;
   }
   *reply->mutable_servable_spec() = request.servable_spec();
 

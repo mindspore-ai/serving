@@ -257,7 +257,8 @@ Status RestfulService::CheckReqJsonValid(const json &js_msg) {
   }
 
   if (count != 1) {
-    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "key 'instances' should exit and only exit one time";
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
+           << "key 'instances' expects to exist once, but actually " << count << " times";
   }
   return SUCCESS;
 }
@@ -680,7 +681,7 @@ Status RestfulService::RunRestful(const std::shared_ptr<RestfulRequest> &restful
   MSI_TIME_STAMP_END(ParseRequest)
   if (status != SUCCESS) {
     std::string error_msg = status.StatusMessage();
-    std::string msg = "Parser reqeust failed, " + error_msg;
+    std::string msg = "Parser request failed, " + error_msg;
     status = msg;
     return status;
   }
@@ -730,7 +731,7 @@ Status RestfulService::ParseRequest(const std::shared_ptr<RestfulRequest> &restf
       status = ParseInstancesMsg(js_msg, request);
       break;
     default:
-      return INFER_STATUS_LOG_ERROR(FAILED) << "restful reqeust only support instances mode";
+      return INFER_STATUS_LOG_ERROR(FAILED) << "restful request only support instances mode";
   }
 
   return status;
