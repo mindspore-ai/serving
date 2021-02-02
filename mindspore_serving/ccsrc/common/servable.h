@@ -96,9 +96,9 @@ struct CommonServableMeta {
 };
 
 struct MS_API LocalServableMeta {
-  std::string servable_file;                        // file name
-  ModelType model_format = api::kUnknownType;       // OM, MindIR
-  std::map<std::string, std::string> load_options;  // Acl options
+  std::string servable_file;                         // file name
+  ModelType model_format = ModelType::kUnknownType;  // OM, MindIR
+  std::map<std::string, std::string> load_options;   // Acl options
   void SetModelFormat(const std::string &format);
 };
 

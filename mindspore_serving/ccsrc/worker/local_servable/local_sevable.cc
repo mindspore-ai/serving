@@ -65,10 +65,6 @@ uint64_t LocalModelServable::GetBatchSize() const {
   return session_.GetBatchSize();
 }
 
-TensorBasePtr LocalModelServable::MakeInferenceTensor(DataType data_type, const std::vector<int64_t> &shape) const {
-  return std::make_shared<ApiBufferTensorWrap>(data_type, shape);
-}
-
 Status LocalModelServable::StartServable(const std::string &servable_directory, const std::string &servable_name,
                                          uint64_t version_number) {
   if (model_loaded_) {

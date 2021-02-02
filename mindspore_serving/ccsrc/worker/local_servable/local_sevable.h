@@ -41,7 +41,6 @@ class MS_API LocalModelServable : public ServableBase {
   std::vector<TensorInfo> GetInputInfos() const override;
   std::vector<TensorInfo> GetOutputInfos() const override;
   uint64_t GetBatchSize() const override;
-  TensorBasePtr MakeInferenceTensor(DataType data_type, const std::vector<int64_t> &shape) const override;
 
   Status StartServable(const std::string &servable_directory, const std::string &servable_name,
                        uint64_t version_number);

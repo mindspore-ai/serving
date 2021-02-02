@@ -317,7 +317,7 @@ Status ServableStorage::DeclareServable(ServableMeta servable) {
     return INFER_STATUS_LOG_ERROR(FAILED)
            << "Declare servable " << common_meta.servable_name << " failed, servable_file cannot be empty";
   }
-  if (servable.local_meta.model_format == api::kUnknownType) {
+  if (servable.local_meta.model_format == ModelType::kUnknownType) {
     return INFER_STATUS_LOG_ERROR(FAILED)
            << "Declare servable " << common_meta.servable_name << " failed, model_format is not inited";
   }
