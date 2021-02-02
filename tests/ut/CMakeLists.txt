@@ -79,6 +79,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(stub)
 include_directories(stub/include)
 include_directories(${CMAKE_SOURCE_DIR})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../third_party)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../mindspore_serving/ccsrc)
 
 link_directories(${CMKAE_BINARY_DIR}/securec/src)

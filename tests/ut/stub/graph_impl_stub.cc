@@ -15,11 +15,12 @@
  */
 #include "stub/graph_impl_stub.h"
 
-namespace mindspore::api {
+namespace mindspore {
 
 GraphImplStubAdd::GraphImplStubAdd() { Init({2, 2}); }
 GraphImplStubAdd::GraphImplStubAdd(const std::vector<int64_t> &add_shape) { Init(add_shape); }
 GraphImplStubAdd::~GraphImplStubAdd() {}
+
 void GraphImplStubAdd::Init(const std::vector<int64_t> &add_shape) {
   auto element_cnt = [add_shape]() -> size_t {
     size_t element_num = 1;
@@ -32,62 +33,43 @@ void GraphImplStubAdd::Init(const std::vector<int64_t> &add_shape) {
     return element_num;
   };
   auto ele_size = element_cnt() * sizeof(float);
+  MSTensor tensor_x1 = MSTensor("x1", mindspore::DataType::kNumberTypeFloat32, add_shape, nullptr, ele_size);
+  MSTensor tensor_x2 = MSTensor("x2", mindspore::DataType::kNumberTypeFloat32, add_shape, nullptr, ele_size);
 
-  input_shapes_.push_back(add_shape);
-  input_shapes_.push_back(add_shape);
-  input_data_types_.push_back(api::kMsFloat32);
-  input_data_types_.push_back(api::kMsFloat32);
-  input_names_.emplace_back("x1");
-  input_names_.emplace_back("x2");
-  input_mem_sizes_.push_back(ele_size);
-  input_mem_sizes_.push_back(ele_size);
+  MSTensor tensor_y = MSTensor("y", mindspore::DataType::kNumberTypeFloat32, add_shape, nullptr, ele_size);
 
-  output_shapes_.push_back(add_shape);
-  output_data_types_.push_back(api::kMsFloat32);
-  output_names_.emplace_back("y");
-  output_mem_sizes_.push_back(ele_size);
+  inputs_.push_back(tensor_x1);
+  inputs_.push_back(tensor_x2);
+  outputs_.push_back(tensor_y);
 }
 
-Status GraphImplStubAdd::Run(const std::vector<Buffer> &inputs, std::vector<Buffer> *outputs) {
-  if (inputs.size() != input_names_.size()) {
-    return FAILED;
+Status GraphImplStubAdd::Run(const std::vector<MSTensor> &inputs, std::vector<MSTensor> *outputs) {
+  if (inputs.size() != inputs_.size()) {
+    return mindspore::kCoreFailed;
   }
   for (size_t i = 0; i < inputs.size(); i++) {
-    if (inputs[i].DataSize() != input_mem_sizes_[i]) {
-      return FAILED;
+    if (inputs[i].DataSize() != inputs_[i].DataSize()) {
+      return mindspore::kCoreFailed;
     }
-    if (input_mem_sizes_[i] != 0 && inputs[i].Data() == nullptr) {
-      return FAILED;
+    if (inputs_[i].DataSize() != 0 && inputs[i].Data() == nullptr) {
+      return mindspore::kCoreFailed;
     }
   }
-  auto x1 = reinterpret_cast<const float *>(inputs[0].Data());
-  auto x2 = reinterpret_cast<const float *>(inputs[1].Data());
-  Buffer output;
-  output.ResizeData(output_mem_sizes_[0]);
+  auto x1 = reinterpret_cast<const float *>(inputs[0].Data().get());
+  auto x2 = reinterpret_cast<const float *>(inputs[1].Data().get());
+  MSTensor output = outputs_[0].Clone();
   auto y = reinterpret_cast<float *>(output.MutableData());
-  for (size_t i = 0; i < output_mem_sizes_[0] / sizeof(float); i++) {
+  for (size_t i = 0; i < outputs_[0].DataSize() / sizeof(float); i++) {
     y[i] = x1[i] + x2[i];
   }
   outputs->push_back(output);
-  return SUCCESS;
+  return mindspore::kSuccess;
 }
 
-Status GraphImplStubAdd::Load() { return SUCCESS; }
-Status GraphImplStubAdd::GetInputsInfo(std::vector<std::string> *names, std::vector<std::vector<int64_t>> *shapes,
-                                       std::vector<DataType> *data_types, std::vector<size_t> *mem_sizes) {
-  *names = input_names_;
-  *shapes = input_shapes_;
-  *data_types = input_data_types_;
-  *mem_sizes = input_mem_sizes_;
-  return SUCCESS;
-}
-Status GraphImplStubAdd::GetOutputsInfo(std::vector<std::string> *names, std::vector<std::vector<int64_t>> *shapes,
-                                        std::vector<DataType> *data_types, std::vector<size_t> *mem_sizes) {
-  *names = output_names_;
-  *shapes = output_shapes_;
-  *data_types = output_data_types_;
-  *mem_sizes = output_mem_sizes_;
-  return SUCCESS;
-}
+Status GraphImplStubAdd::Load() { return kSuccess; }
 
-}  // namespace mindspore::api
+std::vector<MSTensor> GraphImplStubAdd::GetInputs() { return inputs_; }
+
+std::vector<MSTensor> GraphImplStubAdd::GetOutputs() { return outputs_; }
+
+}  // namespace mindspore

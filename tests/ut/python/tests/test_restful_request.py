@@ -350,7 +350,7 @@ def test_restful_request_larger_than_server_receive_max_size():
     base = ServingTestBase()
     base.init_servable(1, "add_servable_config.py")
     worker.start_servable_in_master(base.servable_dir, base.servable_name, 0)
-    master.start_restful_server("0.0.0.0", 5500, max_msg_mb_size=1) # 1MB
+    master.start_restful_server("0.0.0.0", 5500, max_msg_mb_size=1)  # 1MB
     # Client
     instances = []
     x1 = np.ones([1024, 1024], np.float32)

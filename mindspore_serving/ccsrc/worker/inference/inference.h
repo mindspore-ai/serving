@@ -28,13 +28,14 @@
 #include "common/log.h"
 #include "common/status.h"
 #include "include/api/types.h"
+#include "include/api/data_type.h"
 
 namespace mindspore {
 namespace serving {
 
-using api::ModelType;
-using api::ModelType::kMindIR;
-using api::ModelType::kOM;
+using mindspore::ModelType;
+using mindspore::ModelType::kMindIR;
+using mindspore::ModelType::kOM;
 
 struct TensorInfo {
   size_t size;  // -1: unspecified
@@ -76,9 +77,6 @@ class MS_API InferSession {
   virtual std::vector<TensorInfo> GetInputInfos(uint32_t model_id) const = 0;
   virtual std::vector<TensorInfo> GetOutputInfos(uint32_t model_id) const = 0;
   virtual ssize_t GetBatchSize(uint32_t model_id) const = 0;
-  virtual TensorBasePtr MakeInferenceTensor(DataType data_type, const std::vector<int64_t> &shape) const {
-    return nullptr;
-  }
   virtual bool CheckModelSupport(DeviceType device_type, ModelType model_type) const { return true; }
 };
 
@@ -207,12 +205,12 @@ static inline LogStream &operator<<(LogStream &stream, DeviceType device_type) {
   return stream;
 }
 
-static inline LogStream &operator<<(LogStream &stream, api::ModelType model_type) {
+static inline LogStream &operator<<(LogStream &stream, mindspore::ModelType model_type) {
   switch (model_type) {
-    case api::kMindIR:
+    case mindspore::kMindIR:
       stream << "MindIR";
       break;
-    case api::kOM:
+    case mindspore::kOM:
       stream << "OM";
       break;
     default:

@@ -14,28 +14,11 @@
  * limitations under the License.
  */
 #include "include/api/serialization.h"
-#include <limits.h>
 #include <fstream>
-#include <atomic>
-#include <string>
 #include "cxx_api/graph/graph_data.h"
+#include "utils/utils.h"
 
 namespace mindspore {
-namespace common {
-const int CACHED_STR_NUM = 1 << 8;
-const int CACHED_STR_MASK = CACHED_STR_NUM - 1;
-std::vector<std::string> STR_HOLDER(CACHED_STR_NUM);
-const char *SafeCStr(const std::string &str) {
-  static std::atomic<uint32_t> index{0};
-  uint32_t cur_index = index++;
-  cur_index = cur_index & CACHED_STR_MASK;
-  STR_HOLDER[cur_index] = str;
-  return STR_HOLDER[cur_index].c_str();
-}
-}  // namespace common
-}  // namespace mindspore
-
-namespace mindspore::api {
 static Buffer ReadFile(const std::string &file) {
   Buffer buffer;
   if (file.empty()) {
@@ -84,6 +67,16 @@ static Buffer ReadFile(const std::string &file) {
   return buffer;
 }
 
+Graph Serialization::LoadModel(const void *model_data, size_t data_size, ModelType model_type) {
+  if (model_type == kMindIR) {
+    auto anf_graph = std::make_shared<FuncGraph>();
+    return Graph(std::make_shared<Graph::GraphData>(anf_graph, kMindIR));
+  } else if (model_type == kOM) {
+    return Graph(std::make_shared<Graph::GraphData>(Buffer(model_data, data_size), kOM));
+  }
+  MS_LOG(EXCEPTION) << "Unsupported ModelType " << model_type;
+}
+
 Graph Serialization::LoadModel(const std::string &file, ModelType model_type) {
   Buffer data = ReadFile(file);
   if (data.Data() == nullptr) {
@@ -100,21 +93,21 @@ Graph Serialization::LoadModel(const std::string &file, ModelType model_type) {
 
 Status Serialization::LoadCheckPoint(const std::string &ckpt_file, std::map<std::string, Buffer> *parameters) {
   MS_LOG(ERROR) << "Unsupported feature.";
-  return FAILED;
+  return kMEFailed;
 }
 
 Status Serialization::SetParameters(const std::map<std::string, Buffer> &parameters, Model *model) {
   MS_LOG(ERROR) << "Unsupported feature.";
-  return FAILED;
+  return kMEFailed;
 }
 
 Status Serialization::ExportModel(const Model &model, ModelType model_type, Buffer *model_data) {
   MS_LOG(ERROR) << "Unsupported feature.";
-  return FAILED;
+  return kMEFailed;
 }
 
 Status Serialization::ExportModel(const Model &model, ModelType model_type, const std::string &model_file) {
   MS_LOG(ERROR) << "Unsupported feature.";
-  return FAILED;
+  return kMEFailed;
 }
-}  // namespace mindspore::api
+}  // namespace mindspore

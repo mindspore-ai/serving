@@ -21,25 +21,26 @@
 #include <vector>
 #include <memory>
 #include <utility>
+#include <mutex>
 #include "include/api/status.h"
 #include "include/api/graph.h"
 #include "cxx_api/graph/graph_impl.h"
 #include "cxx_api/model/model_impl.h"
 
-namespace mindspore::api {
+namespace mindspore {
 class MsGraphImpl : public GraphCell::GraphImpl {
  public:
   MsGraphImpl();
   ~MsGraphImpl() override;
 
-  Status Run(const std::vector<Buffer> &inputs, std::vector<Buffer> *outputs) override;
+  Status Run(const std::vector<MSTensor> &inputs, std::vector<MSTensor> *outputs) override;
   Status Load() override;
-  Status GetInputsInfo(std::vector<std::string> *names, std::vector<std::vector<int64_t>> *shapes,
-                       std::vector<DataType> *data_types, std::vector<size_t> *mem_sizes) override;
-  Status GetOutputsInfo(std::vector<std::string> *names, std::vector<std::vector<int64_t>> *shapes,
-                        std::vector<DataType> *data_types, std::vector<size_t> *mem_sizes) override;
+  std::vector<MSTensor> GetInputs() override;
+  std::vector<MSTensor> GetOutputs() override;
 
+ private:
   static std::shared_ptr<GraphCell::GraphImpl> graph_imp_stub_;
 };
-}  // namespace mindspore::api
+
+}  // namespace mindspore
 #endif  // MINDSPORE_CCSRC_CXX_API_GRAPH_MS_MS_GRAPH_IMPL_H

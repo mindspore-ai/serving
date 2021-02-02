@@ -28,7 +28,8 @@ def declare_servable(servable_file, model_format, with_batch_dim=True, options=N
     Args:
         servable_file (str): Model file name.
         model_format (str): Model format, "OM" or "MindIR", case ignored.
-        with_batch_dim (bool): Whether the first shape dim of the inputs and outpus of model is batch dim, default True.
+        with_batch_dim (bool): Whether the first shape dim of the inputs and outputs of model is batch dim,
+             default True.
         options (None, AclOptions, map): Options of model, currently AclOptions works.
         without_batch_dim_inputs (None, int, tuple or list of int): Index of inputs that without batch dim
             when with_batch_dim is True.
@@ -54,7 +55,8 @@ def declare_servable(servable_file, model_format, with_batch_dim=True, options=N
             check_type.check_str("options key", k)
             check_type.check_str(k + " value", w)
     elif isinstance(options, AclOptions):
-        options = _as_options_map(options)
+        # pylint: disable=protected-access
+        options = options._as_options_map()
     elif options is not None:
         raise RuntimeError(f"Parameter 'options' should be None, dict of <str,str> or AclOptions, but "
                            f"gotten {type(options)}")
@@ -202,20 +204,19 @@ class AclOptions:
                                f"'high_precision', actually given '{val}'")
         self.op_select_impl_mode = val
 
-
-def _as_options_map(acl_options):
-    """Transfer AclOptions to dict of str,str"""
-    options = {}
-    if acl_options.insert_op_cfg_path:
-        options['mindspore.option.insert_op_config_file_path'] = acl_options.insert_op_cfg_path
-    if acl_options.input_format:
-        options['mindspore.option.input_format'] = acl_options.input_format
-    if acl_options.input_shape:
-        options['mindspore.option.input_shape'] = acl_options.input_shape
-    if acl_options.output_type:
-        options['mindspore.option.output_type'] = acl_options.output_type
-    if acl_options.precision_mode:
-        options['mindspore.option.precision_mode'] = acl_options.precision_mode
-    if acl_options.op_select_impl_mode:
-        options['mindspore.option.op_select_impl_mode'] = acl_options.op_select_impl_mode
-    return options
+    def _as_options_map(self):
+        """Transfer AclOptions to dict of str,str"""
+        options = {}
+        if self.insert_op_cfg_path:
+            options['acl_option.insert_op_config_file_path'] = self.insert_op_cfg_path
+        if self.input_format:
+            options['acl_option.input_format'] = self.input_format
+        if self.input_shape:
+            options['acl_option.input_shape'] = self.input_shape
+        if self.output_type:
+            options['acl_option.output_type'] = self.output_type
+        if self.precision_mode:
+            options['acl_option.precision_mode'] = self.precision_mode
+        if self.op_select_impl_mode:
+            options['acl_option.op_select_impl_mode'] = self.op_select_impl_mode
+        return options
