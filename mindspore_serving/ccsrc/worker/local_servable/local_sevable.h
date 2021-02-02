@@ -48,6 +48,7 @@ class MS_API LocalModelServable : public ServableBase {
   Status InitDevice(ModelType model_type, const std::map<std::string, std::string> &other_options);
   std::string GetServableName() const override;
   uint64_t GetServableVersion() const override;
+  void Clear() override;
 
  private:
   LoadServableSpec base_spec_;

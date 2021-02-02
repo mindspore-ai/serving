@@ -35,9 +35,12 @@ struct DistributedAgentContext {
 
 class MS_API DistributedServable : public ServableBase {
  public:
+  DistributedServable() = default;
+  ~DistributedServable();
   // from python, worker.py
   Status StartServable(const std::string &servable_directory, const std::string &servable_name,
-                       const std::string &rank_table_json_file, uint64_t version_number);
+                       const std::string &rank_table_json_file, uint64_t version_number,
+                       uint64_t wait_agents_time_in_seconds);
 
   // invoke from agent
   Status GetDistributedServableConfig(DistributedServableConfig *config) const;
@@ -55,7 +58,8 @@ class MS_API DistributedServable : public ServableBase {
   uint64_t GetBatchSize() const override;
   std::string GetServableName() const override;
   uint64_t GetServableVersion() const override;
-  void Clear();
+  void Clear() override;
+  void OnAgentFailed();
 
  private:
   DistributedServableConfig config_;
@@ -63,19 +67,22 @@ class MS_API DistributedServable : public ServableBase {
   uint64_t version_number_ = 0;
   bool model_loaded_ = false;
 
+  std::mutex mutex_;
   std::map<uint32_t, DistributedAgentContext> agent_spec_map_;
   std::string rank_table_json_file_;
 
   std::vector<TensorInfo> input_infos_;
   std::vector<TensorInfo> output_infos_;
   uint64_t batch_size_ = 0;
-  std::promise<void> agents_promise_;
+  std::atomic_flag promise_set_flag_ = ATOMIC_FLAG_INIT;
+  std::promise<bool> agents_promise_;
 
   Status InitConfigOnStartup(const std::string &rank_table_json_file);
-  Status WaitAgentsReady();
+  Status WaitAgentsReady(uint64_t wait_agents_time_in_seconds);
   Status CheckAgentsInfosAndInitTensorInfos();
   Status CompareTensorInfos(const std::vector<TensorInfo> &lefts, const std::vector<TensorInfo> &rights);
   Status CheckRankConfig();
+  void SetWaitAgentsPromise(bool flag);
   // agent stubs
 };
 

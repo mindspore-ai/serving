@@ -29,4 +29,5 @@ service MSWorker {
   // for worker agent
   rpc AgentExit(AgentExitRequest) returns (AgentExitReply) {}
   rpc AgentRegister(AgentRegisterRequest) returns (AgentRegisterReply) {}
+  rpc AgentFailed(AgentFailedRequest) returns (AgentFailedReply) {}
 }

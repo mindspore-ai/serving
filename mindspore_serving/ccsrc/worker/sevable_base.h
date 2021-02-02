@@ -41,6 +41,7 @@ class ServableBase {
   virtual uint64_t GetBatchSize() const = 0;
   virtual std::string GetServableName() const = 0;
   virtual uint64_t GetServableVersion() const = 0;
+  virtual void Clear() = 0;
 };
 
 }  // namespace mindspore::serving

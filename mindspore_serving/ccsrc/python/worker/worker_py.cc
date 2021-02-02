@@ -24,7 +24,7 @@
 #include "worker/local_servable/local_sevable.h"
 #include "worker/distributed_worker/distributed_servable.h"
 #include "worker/grpc/worker_server.h"
-#include "worker/distributed_worker/grpc/distributed_server.h"
+#include "worker/distributed_worker/distributed_process/distributed_server.h"
 
 namespace mindspore::serving {
 
@@ -43,11 +43,10 @@ void PyWorker::StartServable(const std::string &model_directory, const std::stri
   }
   // start grpc server
   auto grpc_sever = std::make_shared<MSWorkerServer>();
-  status = grpc_sever->StartWorkerGrpcServer(worker_ip, worker_port);
+  status = Worker::GetInstance().StartGrpcServer(grpc_sever, worker_ip, worker_port);
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
-  Worker::GetInstance().AfterStartGrpcServer(grpc_sever);
 
   status = Worker::GetInstance().StartVersionController();
   if (status != SUCCESS) {
@@ -76,18 +75,19 @@ void PyWorker::StartServableInMaster(const std::string &model_directory, const s
 void PyWorker::StartDistributedServable(const std::string &servable_directory, const std::string &servable_name,
                                         const std::string &rank_table_json_file, uint32_t version_number,
                                         const std::string &worker_ip, uint32_t worker_port,
-                                        const std::string &master_ip, uint32_t master_port) {
+                                        const std::string &master_ip, uint32_t master_port,
+                                        uint32_t wait_agents_time_in_seconds) {
   Status status;
   auto servable = std::make_shared<DistributedServable>();
-  auto grpc_sever = std::make_shared<MSDistributedWorkerServer>();
-  status = grpc_sever->StartDistributedWorkerGrpcServer(servable, worker_ip, worker_port);
+  auto grpc_sever = std::make_shared<MSDistributedWorkerServer>(servable);
+  status = Worker::GetInstance().StartGrpcServer(grpc_sever, worker_ip, worker_port);
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
-  Worker::GetInstance().AfterStartGrpcServer(grpc_sever);
 
   auto notify_master = std::make_shared<GrpcNotfiyMaster>(master_ip, master_port, worker_ip, worker_port);
-  status = servable->StartServable(servable_directory, servable_name, rank_table_json_file, version_number);
+  status = servable->StartServable(servable_directory, servable_name, rank_table_json_file, version_number,
+                                   wait_agents_time_in_seconds);
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
@@ -103,18 +103,19 @@ void PyWorker::StartDistributedServable(const std::string &servable_directory, c
 
 void PyWorker::StartDistributedServableInMaster(const std::string &servable_directory, const std::string &servable_name,
                                                 const std::string &rank_table_json_file, uint32_t version_number,
-                                                const std::string &worker_ip, uint32_t worker_port) {
+                                                const std::string &worker_ip, uint32_t worker_port,
+                                                uint32_t wait_agents_time_in_seconds) {
   Status status;
   auto servable = std::make_shared<DistributedServable>();
-  auto grpc_sever = std::make_shared<MSDistributedWorkerServer>();
-  status = grpc_sever->StartDistributedWorkerGrpcServer(servable, worker_ip, worker_port);
+  auto grpc_sever = std::make_shared<MSDistributedWorkerServer>(servable);
+  status = Worker::GetInstance().StartGrpcServer(grpc_sever, worker_ip, worker_port);
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
-  Worker::GetInstance().AfterStartGrpcServer(grpc_sever);
 
   auto notify_master = std::make_shared<LocalNotifyMaster>();
-  status = servable->StartServable(servable_directory, servable_name, rank_table_json_file, version_number);
+  status = servable->StartServable(servable_directory, servable_name, rank_table_json_file, version_number,
+                                   wait_agents_time_in_seconds);
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }

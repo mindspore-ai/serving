@@ -13,15 +13,17 @@
 # limitations under the License.
 # ============================================================================
 """Serving, distributed worker startup"""
-from mindspore_serving.worker._worker import stop_on_except, _load_servable_config
-from mindspore_serving.worker._worker import _start_py_task, _start_wait_and_clear
-from mindspore_serving.worker import check_type
 from mindspore_serving._mindspore_serving import Worker_
+
+from mindspore_serving.worker import check_type
+from mindspore_serving.worker._worker import _start_py_task, _start_wait_and_clear
+from mindspore_serving.worker._worker import stop_on_except, _load_servable_config
 
 
 @stop_on_except
 def start_distributed_servable(servable_directory, servable_name, rank_table_json_file, version_number=1,
-                               worker_ip="0.0.0.0", worker_port=6200, master_ip="0.0.0.0", master_port=6100):
+                               worker_ip="0.0.0.0", worker_port=6200, master_ip="0.0.0.0", master_port=6100,
+                               wait_agents_time_in_seconds=300):
     r"""
     Start up the servable named 'servable_name' defined in 'servable_directory', and link the worker to the master
     through gRPC (master_ip, master_port).
@@ -46,6 +48,7 @@ def start_distributed_servable(servable_directory, servable_name, rank_table_jso
         master_port (int): The master port the worker linked to.
         worker_ip (str): The worker ip the master and agents linked to.
         worker_port (int): The worker port the master and agents linked to.
+        wait_agents_time_in_seconds(int): The maximum time in seconds the worker waiting ready of all agents.
 
     Examples:
         >>> import os
@@ -70,15 +73,15 @@ def start_distributed_servable(servable_directory, servable_name, rank_table_jso
     check_type.check_ip_port('worker_port', worker_port)
 
     _load_servable_config(servable_directory, servable_name)
-    _start_wait_and_clear()
     Worker_.start_distributed_servable(servable_directory, servable_name, rank_table_json_file, version_number,
-                                       master_ip, master_port, worker_ip, worker_port)
+                                       master_ip, master_port, worker_ip, worker_port, wait_agents_time_in_seconds)
     _start_py_task(Worker_.get_batch_size())
+    _start_wait_and_clear()
 
 
 @stop_on_except
 def start_distributed_servable_in_master(servable_directory, servable_name, rank_table_json_file, version_number=1,
-                                         worker_ip="0.0.0.0", worker_port=6200):
+                                         worker_ip="0.0.0.0", worker_port=6200, wait_agents_time_in_seconds=300):
     r"""
     Start up the servable named 'servable_name' defined in 'svable_directory', and the worker will run in
     the process of the master.
@@ -97,6 +100,7 @@ def start_distributed_servable_in_master(servable_directory, servable_name, rank
         rank_table_json_file (str): The ranke table json file name.
         worker_ip (str): The worker ip the agents linked to.
         worker_port (int): The worker port the agents linked to.
+        wait_agents_time_in_seconds(int): The maximum time in seconds the worker waiting ready of all agents.
 
     Examples:
         >>> import os
@@ -121,7 +125,7 @@ def start_distributed_servable_in_master(servable_directory, servable_name, rank
     check_type.check_ip_port('worker_port', worker_port)
 
     _load_servable_config(servable_directory, servable_name)
-    _start_wait_and_clear()
     Worker_.start_distributed_servable_in_master(servable_directory, servable_name, rank_table_json_file,
-                                                 version_number, worker_ip, worker_port)
+                                                 version_number, worker_ip, worker_port, wait_agents_time_in_seconds)
     _start_py_task(Worker_.get_batch_size())
+    _start_wait_and_clear()

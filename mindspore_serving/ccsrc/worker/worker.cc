@@ -174,9 +174,13 @@ void Worker::Update() {
   */
 }
 
-Status Worker::AfterStartGrpcServer(const std::shared_ptr<MSWorkerServer> &grpc_server) {
+Status Worker::StartGrpcServer(const std::shared_ptr<MSWorkerServer> &grpc_server, const std::string &worker_ip,
+                               int32_t port) {
+  if (worker_grpc_server_ != nullptr) {
+    return INFER_STATUS_LOG_ERROR(FAILED) << "Worker gRPC server is already running";
+  }
   worker_grpc_server_ = grpc_server;
-  return SUCCESS;
+  return worker_grpc_server_->StartWorkerGrpcServer(worker_ip, port);
 }
 
 Status Worker::StartServable(std::shared_ptr<ServableBase> servable, std::shared_ptr<BaseNotifyMaster> notify_master) {
@@ -248,6 +252,9 @@ void Worker::Clear() {
   if (exit_notify_master_ && servable_started_) {
     notify_master_->Unregister();
   }
+  for (auto &worker_item : work_list_) {
+    worker_item.servable->Clear();
+  }
   work_list_.clear();
 
   py_task_queue_group_.Stop();
@@ -257,7 +264,7 @@ void Worker::Clear() {
   MSI_LOG_INFO << "End clear worker session";
 }
 
-bool Worker::HasCleared() { return !servable_started_; }
+bool Worker::IsRunning() { return servable_started_; }
 
 Worker::~Worker() { Clear(); }
 
@@ -318,7 +325,7 @@ Status AsyncResult::GetNext(Instance *instance_result) {
   const int kWaitMaxHundredMs = 100;
   int i;
   for (i = 0; i < kWaitMaxHundredMs; i++) {  //
-    if (ExitSignalHandle::Instance().HasStopped() || Worker::GetInstance().HasCleared()) {
+    if (ExitSignalHandle::Instance().HasStopped() || !Worker::GetInstance().IsRunning()) {
       instance_result->error_msg = Status(SYSTEM_ERROR, "Servable stopped");
       return SYSTEM_ERROR;
     }

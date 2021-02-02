@@ -23,6 +23,9 @@
 #include "common/servable.h"
 #include "worker/context.h"
 #include "python/master/master_py.h"
+#include "python/agent/agent_py.h"
+#include "common/exit_handle.h"
+#include "worker/distributed_worker/worker_agent.h"
 
 namespace mindspore::serving {
 
@@ -104,11 +107,23 @@ void PyRegServable(pybind11::module *m_ptr) {
     .def_static("register_method", &PyServableStorage::RegisterMethod)
     .def_static("declare_servable", &PyServableStorage::DeclareServable)
     .def_static("declare_distributed_servable", &PyServableStorage::DeclareDistributedServable);
+
+  py::class_<OneRankConfig>(m, "OneRankConfig_")
+    .def(py::init<>())
+    .def_readwrite("device_id", &OneRankConfig::device_id)
+    .def_readwrite("ip", &OneRankConfig::ip);
+
+  py::class_<DistributedServableConfig>(m, "DistributedServableConfig_")
+    .def(py::init<>())
+    .def_readwrite("common_meta", &DistributedServableConfig::common_meta)
+    .def_readwrite("distributed_meta", &DistributedServableConfig::distributed_meta)
+    .def_readwrite("rank_table_content", &DistributedServableConfig::rank_table_content)
+    .def_readwrite("rank_list", &DistributedServableConfig::rank_list);
 }
 
 void PyRegMaster(pybind11::module *m_ptr) {
   auto &m = *m_ptr;
-  py::class_<PyMaster, std::shared_ptr<PyMaster>>(m, "Master_")
+  py::class_<PyMaster>(m, "Master_")
     .def_static("start_grpc_server", &PyMaster::StartGrpcServer)
     .def_static("start_grpc_master_server", &PyMaster::StartGrpcMasterServer)
     .def_static("start_restful_server", &PyMaster::StartRestfulServer)
@@ -163,15 +178,50 @@ void PyRegWorker(pybind11::module *m_ptr) {
     .def("set_device_id", &ServableContext::SetDeviceId);
 }
 
+void PyRegWorkerAgent(pybind11::module *m_ptr) {
+  auto &m = *m_ptr;
+  py::class_<PyAgent>(m, "WorkerAgent_")
+    .def_static("get_agents_config_from_worker", &PyAgent::GetAgentsConfigsFromWorker)
+    .def_static("wait_and_clear", &PyAgent::WaitAndClear)
+    .def_static("stop_and_clear", &PyAgent::StopAndClear)
+    .def_static("notify_failed", &PyAgent::NotifyFailed)
+    .def_static("start_agent", &PyAgent::StartAgent);
+
+  py::class_<AgentStartUpConfig>(m, "AgentStartUpConfig_")
+    .def(py::init<>())
+    .def_readwrite("rank_id", &AgentStartUpConfig::rank_id)
+    .def_readwrite("device_id", &AgentStartUpConfig::device_id)
+    .def_readwrite("model_file_name", &AgentStartUpConfig::model_file_name)
+    .def_readwrite("group_file_name", &AgentStartUpConfig::group_file_name)
+    .def_readwrite("rank_table_json_file_name", &AgentStartUpConfig::rank_table_json_file_name)
+    .def_readwrite("agent_ip", &AgentStartUpConfig::agent_ip)
+    .def_readwrite("agent_port", &AgentStartUpConfig::agent_port)
+    .def_readwrite("worker_ip", &AgentStartUpConfig::worker_ip)
+    .def_readwrite("worker_port", &AgentStartUpConfig::worker_port)
+    .def_readwrite("common_meta", &AgentStartUpConfig::common_meta);
+}
+
+class PyExitSignalHandle {
+ public:
+  static void Start() { ExitSignalHandle::Instance().Start(); }
+  static bool HasStopped() { return ExitSignalHandle::Instance().HasStopped(); }
+};
+
 // cppcheck-suppress syntaxError
 PYBIND11_MODULE(_mindspore_serving, m) {
   PyRegServable(&m);
   PyRegMaster(&m);
   PyRegWorker(&m);
+  PyRegWorkerAgent(&m);
+
+  py::class_<PyExitSignalHandle>(m, "ExitSignalHandle_")
+    .def_static("start", &PyExitSignalHandle::Start)
+    .def_static("has_stopped", &PyExitSignalHandle::HasStopped);
 
   (void)py::module::import("atexit").attr("register")(py::cpp_function{[&]() -> void {
     Server::Instance().Clear();
     Worker::GetInstance().Clear();
+    WorkerAgent::Instance().Clear();
   }});
 }
 

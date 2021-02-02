@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright 2020 Huawei Technologies Co., Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,25 +14,34 @@
  * limitations under the License.
  */
 
-#ifndef MINDSPORE_SERVING_WORKER_BASE_NOTIFY_WORKER_H
-#define MINDSPORE_SERVING_WORKER_BASE_NOTIFY_WORKER_H
-#include <vector>
+#ifndef MINDSPORE_SERVER_AGENT_PY_H
+#define MINDSPORE_SERVER_AGENT_PY_H
+
+#include <pybind11/pybind11.h>
+#include <pybind11/numpy.h>
+#include <pybind11/stl.h>
+#include <string>
+#include <memory>
 #include "common/serving_common.h"
-#include "common/servable.h"
 #include "worker/distributed_worker/common.h"
+
+namespace py = pybind11;
 
 namespace mindspore {
 namespace serving {
 
-class MS_API BaseNotifyDistributeWorker {
+class MS_API PyAgent {
  public:
-  BaseNotifyDistributeWorker() = default;
-  virtual ~BaseNotifyDistributeWorker() = default;
-  virtual Status Register(const std::vector<WorkerAgentSpec> &worker_specs) = 0;
-  virtual Status Unregister() = 0;
+  static void StartAgent(const AgentStartUpConfig &start_config);
+
+  static DistributedServableConfig GetAgentsConfigsFromWorker(const std::string &worker_ip, uint32_t worker_port);
+  static void WaitAndClear();
+  static void StopAndClear();
+  // from start up, not agent
+  static void NotifyFailed(const std::string &worker_ip, uint32_t worker_port);
 };
 
 }  // namespace serving
 }  // namespace mindspore
 
-#endif  // MINDSPORE_SERVING_WORKER_BASE_NOTIFY_WORKER_H
+#endif  // MINDSPORE_SERVER_AGENT_PY_H

@@ -17,12 +17,14 @@
 #include "worker/distributed_worker/distributed_servable.h"
 #include <vector>
 #include <string>
-#include "worker/worker.h"
+#include <set>
 #include "worker/distributed_worker/notify_agent/notify_agent.h"
 #include "common/exit_handle.h"
 
 namespace mindspore {
 namespace serving {
+
+DistributedServable::~DistributedServable() { Clear(); }
 
 std::string DistributedServable::GetServableName() const { return servable_name_; }
 
@@ -60,7 +62,15 @@ Status DistributedServable::GetDistributedServableConfig(DistributedServableConf
   return SUCCESS;
 }
 
+void DistributedServable::SetWaitAgentsPromise(bool flag) {
+  if (!promise_set_flag_.test_and_set()) {
+    agents_promise_.set_value(flag);
+  }
+}
+
 Status DistributedServable::RegisterAgent(const WorkerAgentSpec &agent_spec) {
+  std::unique_lock<std::mutex> lock{mutex_};
+
   if (agent_spec.rank_id < config_.distributed_meta.rank_size) {
     return INFER_STATUS_LOG_ERROR(FAILED)
            << "Invalid rank id " << agent_spec.rank_id << ", rank size " << config_.distributed_meta.rank_size;
@@ -75,27 +85,24 @@ Status DistributedServable::RegisterAgent(const WorkerAgentSpec &agent_spec) {
   std::shared_ptr<BaseNotifyAgent> notify_agent = std::make_shared<GrpcNotfiyAgent>(agent_spec.agent_address);
   context.notify_agent_ = notify_agent;
   agent_spec_map_[agent_spec.rank_id] = context;
-  if (config_.distributed_meta.rank_size == agent_spec_map_.size()) {
-    Status status = Worker::GetInstance().RegisterWorker();
-    if (status != SUCCESS) {
-      Clear();
-      return FAILED;
-    }
-  }
+
   if (agent_spec_map_.size() >= config_.distributed_meta.rank_size) {
-    agents_promise_.set_value();
+    SetWaitAgentsPromise(true);
   }
   return SUCCESS;
 }
 
 void DistributedServable::Clear() {
-  for (auto agent : agent_spec_map_) {
+  std::unique_lock<std::mutex> lock{mutex_};
+  for (auto &agent : agent_spec_map_) {
     agent.second.notify_agent_->Exit();
   }
-  Worker::GetInstance().StopServable(false);
+  agent_spec_map_.clear();
+  MSI_LOG_INFO << "End Clear servable";
 }
 
 Status DistributedServable::UnregisterAgent(const WorkerAgentSpec &agent_spec) {
+  std::unique_lock<std::mutex> lock{mutex_};
   for (auto iter = agent_spec_map_.begin(); iter != agent_spec_map_.end();) {
     if (agent_spec.rank_id == iter->second.agent_spec_.rank_id) {
       iter = agent_spec_map_.erase(iter);
@@ -103,13 +110,13 @@ Status DistributedServable::UnregisterAgent(const WorkerAgentSpec &agent_spec) {
       ++iter;
     }
   }
-  // todo: send exit message to agent, and then exit if split with master
-  Clear();
+  SetWaitAgentsPromise(false);
   return SUCCESS;
 }
 
 Status DistributedServable::StartServable(const std::string &servable_directory, const std::string &servable_name,
-                                          const std::string &rank_table_json_file, uint64_t version_number) {
+                                          const std::string &rank_table_json_file, uint64_t version_number,
+                                          uint64_t wait_agents_time_in_seconds) {
   if (model_loaded_) {
     MSI_LOG_EXCEPTION << "Model has loaded";
   }
@@ -138,7 +145,7 @@ Status DistributedServable::StartServable(const std::string &servable_directory,
     MSI_LOG_ERROR << "Check rank config failed";
     return status;
   }
-  status = WaitAgentsReady();
+  status = WaitAgentsReady(wait_agents_time_in_seconds);
   if (status != SUCCESS) {
     MSI_LOG_ERROR << "Waiting for ready of agents failed";
     return status;
@@ -154,16 +161,23 @@ Status DistributedServable::StartServable(const std::string &servable_directory,
 
 Status DistributedServable::InitConfigOnStartup(const std::string &rank_table_json_file) { return FAILED; }
 
-Status DistributedServable::WaitAgentsReady() {
+Status DistributedServable::WaitAgentsReady(uint64_t wait_agents_time_in_seconds) {
   auto future = agents_promise_.get_future();
-  const int kWaitMaxHundredMs = 100 * 10;  // 100s
-  int i;
+  if (wait_agents_time_in_seconds == 0) {
+    wait_agents_time_in_seconds = UINT32_MAX;
+  }
+  const uint64_t kWaitMaxHundredMs = wait_agents_time_in_seconds * 10;
+  uint64_t i;
   for (i = 0; i < kWaitMaxHundredMs; i++) {  //
     if (ExitSignalHandle::Instance().HasStopped()) {
       return INFER_STATUS_LOG_ERROR(FAILED) << "Agents has stopped";
     }
     // waiting for 100ms
     if (future.wait_for(std::chrono::milliseconds(100)) == std::future_status::ready) {
+      auto flag = future.get();
+      if (!flag) {
+        return INFER_STATUS_LOG_ERROR(FAILED) << "Failed to starting all agents, maybe some error reported";
+      }
       break;
     }
   }
@@ -264,32 +278,49 @@ Status DistributedServable::CheckRankConfig() {
            << "Rank size must be an integral multiple of stage size, rank size: " << rank_size
            << ", stage size: " << stage_size;
   }
-  auto parallel_count = rank_size / stage_size;
-  constexpr size_t card_count_per_machine = 8;
-  if (rank_size > card_count_per_machine && parallel_count % card_count_per_machine != 0) {
-    return INFER_STATUS_LOG_ERROR(FAILED)
-           << "Parallel count " << parallel_count << " in one stage must be an integral multiple of card count "
-           << card_count_per_machine << " in one machine, when rank size is greater than card count in one machine, "
-           << "rank size: " << rank_size << ", stage size: " << stage_size;
-  }
   if (config_.rank_list.size() != rank_size) {
     return INFER_STATUS_LOG_ERROR(FAILED)
            << "Rank size " << config_.rank_list.size() << " declared in rank table file not equal to rank size "
            << rank_size << " declared in servable_config, rank json config file: " << rank_table_json_file_;
   }
-  for (size_t i = 0; i < rank_size; i++) {
-    const auto &first_item = config_.rank_list[i];
-    for (size_t k = 0; i + k < rank_size && k < card_count_per_machine; k++) {
-      auto rank_id = i + k;
-      const auto &item = config_.rank_list[rank_id];
-      if (k != item.device_id) {
-        return INFER_STATUS_LOG_ERROR(FAILED)
-               << "Check rank table config failed, expected device id of rank " << rank_id << " to be " << k;
+  auto parallel_count = rank_size / stage_size;
+  constexpr size_t card_count_per_machine = 8;
+  if (stage_size == 1) {
+    std::map<std::string, std::set<uint32_t>> device_map;
+    for (size_t i = 0; i < rank_size; i++) {
+      const auto &item = config_.rank_list[i];
+      auto &device_id_list = device_map[item.ip];
+      if (device_id_list.count(item.device_id) > 0) {
+        return INFER_STATUS_LOG_ERROR(FAILED) << "Check rank table config failed, device id repeatedly used by rank "
+                                              << i << " in device ip " << item.ip;
       }
-      if (first_item.ip != item.ip) {
-        return INFER_STATUS_LOG_ERROR(FAILED)
-               << "Check rank table config failed, expected device ip " << item.ip << " of rank " << rank_id
-               << " to be equal with device ip " << first_item.ip << " of rank " << i;
+      device_id_list.emplace(item.device_id);
+    }
+  } else {
+    if (rank_size < card_count_per_machine) {
+      return INFER_STATUS_LOG_ERROR(FAILED)
+             << "Rank size " << rank_size << "must >= card count " << card_count_per_machine
+             << " of one machine when stage size " << stage_size << " > 1";
+    }
+    if (parallel_count % card_count_per_machine != 0) {
+      return INFER_STATUS_LOG_ERROR(FAILED)
+             << "Parallel count " << parallel_count << " in one stage must be N * " << card_count_per_machine
+             << "(card count of one machine), rank size: " << rank_size << ", stage size: " << stage_size;
+    }
+    for (size_t i = 0; i < rank_size; i += card_count_per_machine) {
+      const auto &first_item = config_.rank_list[i];
+      for (size_t k = 0; i + k < rank_size && k < card_count_per_machine; k++) {
+        auto rank_id = i + k;
+        const auto &item = config_.rank_list[rank_id];
+        if (k != item.device_id) {
+          return INFER_STATUS_LOG_ERROR(FAILED)
+                 << "Check rank table config failed, expected device id of rank " << rank_id << " to be " << k;
+        }
+        if (first_item.ip != item.ip) {
+          return INFER_STATUS_LOG_ERROR(FAILED)
+                 << "Check rank table config failed, expected device ip " << item.ip << " of rank " << rank_id
+                 << " to be equal with device ip " << first_item.ip << " of rank " << i;
+        }
       }
     }
   }
@@ -297,6 +328,8 @@ Status DistributedServable::CheckRankConfig() {
                << ", parallel count in one stage: " << parallel_count;
   return SUCCESS;
 }
+
+void DistributedServable::OnAgentFailed() { SetWaitAgentsPromise(false); }
 
 }  // namespace serving
 }  // namespace mindspore

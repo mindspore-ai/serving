@@ -22,7 +22,7 @@ namespace serving {
 grpc::Status MSAgentImpl::Exit(grpc::ServerContext *context, const proto::DistributedExitRequest *request,
                                proto::DistributedExitReply *reply) {
   MSI_LOG(INFO) << "Distributed Worker Exit";
-  WorkerAgent::Instance().Clear();
+  WorkerAgent::Instance().StopAgent(false);
   return grpc::Status::OK;
 }
 

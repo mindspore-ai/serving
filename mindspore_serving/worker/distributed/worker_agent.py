@@ -13,22 +13,54 @@
 # limitations under the License.
 # ============================================================================
 """Serving, distributed worker agent"""
-from mindspore_serving.worker import check_type
+
+import os
+import threading
+from mindspore_serving._mindspore_serving import WorkerAgent_, AgentStartUpConfig_
+from mindspore_serving import log as logger
 
 
-def _start_worker_agent(agent_ip, agent_port, worker_ip, worker_port,
-                        rank_id, device_id, model_file, group_config_file, rank_table_file,
-                        with_bach_dim, without_batch_dim_inputs):
+def start_worker_agent(start_config):
     """Start up one worker agent on one device id, invoke by agent_startup.startup_worker_agents
     """
-    check_type.check_str("agent_ip", agent_ip)
-    check_type.check_ip_port("agent_port", agent_port)
-    check_type.check_str("worker_ip", worker_ip)
-    check_type.check_ip_port("worker_port", worker_port)
-    check_type.check_int("rank_id", rank_id, 0)
-    check_type.check_int("device_id", device_id, 0)
-    check_type.check_str("model_file", model_file)
-    check_type.check_str("group_config_file", group_config_file)
-    check_type.check_str("rank_table_file", rank_table_file)
-    check_type.check_bool("with_bach_dim", with_bach_dim)
-    check_type.check_and_as_int_tuple_list("without_batch_dim_inputs", without_batch_dim_inputs, 0)
+    if not isinstance(start_config, AgentStartUpConfig_):
+        raise RuntimeError("Parameter 'start_config' should be instance of AgentStartUpConfig_")
+
+    os.environ["RANK_ID"] = str(start_config.rank_id)
+    os.environ["DEVICE_ID"] = str(start_config.device_id)
+    os.environ["MS_ENABLE_HCCL"] = "1"
+    os.environ["PARA_GROUP_FILE"] = start_config.group_file_name
+    os.environ["RANK_TABLE_FILE"] = start_config.rank_table_json_file_name
+
+    for item in ("RANK_ID", "DEVICE_ID", "MS_ENABLE_HCCL", "PARA_GROUP_FILE", "RANK_TABLE_FILE",
+                 "LD_LIBRARY_PATH", "PYTHONPATH"):
+        logger.info(f"Env {item}: {os.getenv(item, '')}")
+    WorkerAgent_.start_agent(start_config)
+
+    start_wait_and_clear()
+
+
+_wait_and_clear_thread = None
+
+
+def start_wait_and_clear():
+    """Waiting for Ctrl+C, and clear up environment"""
+
+    def thread_func():
+        logger.info("Serving worker: wait for Ctrl+C to exit ------------------------------------")
+        print("Serving worker: wait for Ctrl+C to exit ------------------------------------")
+        WorkerAgent_.wait_and_clear()
+        logger.info("Serving worker: exited ------------------------------------")
+        print("Serving worker: exited ------------------------------------")
+
+    global _wait_and_clear_thread
+    if not _wait_and_clear_thread:
+        _wait_and_clear_thread = threading.Thread(target=thread_func)
+        _wait_and_clear_thread.start()
+
+
+def stop():
+    r"""
+    Stop the running of agent.
+    """
+    WorkerAgent_.stop_and_clear()

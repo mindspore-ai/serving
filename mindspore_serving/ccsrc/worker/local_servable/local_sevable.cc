@@ -31,7 +31,7 @@ static const char *kVersionStrategySpecific = "specific";
 
 namespace mindspore::serving {
 
-LocalModelServable::~LocalModelServable() { session_.UnloadModel(); }
+LocalModelServable::~LocalModelServable() { Clear(); }
 
 std::string LocalModelServable::GetServableName() const { return servable_name_; }
 
@@ -246,6 +246,13 @@ Status LocalModelServable::LoadModel(uint64_t version_number) {
            << version_number << ", options " << local_meta.load_options;
   }
   return SUCCESS;
+}
+
+void LocalModelServable::Clear() {
+  if (model_loaded_) {
+    session_.UnloadModel();
+  }
+  model_loaded_ = false;
 }
 
 }  // namespace mindspore::serving

@@ -75,10 +75,11 @@ class MS_API Worker {
                                                            const std::vector<InstanceData> &inputs);
   Status StartServable(std::shared_ptr<ServableBase> servable, std::shared_ptr<BaseNotifyMaster> notify_master);
 
-  Status AfterStartGrpcServer(const std::shared_ptr<MSWorkerServer> &grpc_server);
+  Status StartGrpcServer(const std::shared_ptr<MSWorkerServer> &grpc_server, const std::string &worker_ip,
+                         int32_t port);
 
   void StopServable(bool notify_master = true);
-  bool HasCleared();
+  bool IsRunning();
   Status RegisterWorker();
   void Update();
   Status StartVersionController();

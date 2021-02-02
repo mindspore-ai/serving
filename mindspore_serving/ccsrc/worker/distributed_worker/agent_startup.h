@@ -27,16 +27,15 @@ namespace serving {
 
 class MS_API WorkerAgentStartUp {
  public:
+  static WorkerAgentStartUp &Instance();
   // from python, worker_agent.py
   // start_worker_agent
   // step1, get agents config from worker
-  Status InitAgentsConfig(const std::string &model_dir, const std::string &model_file_prefix,
-                          const std::string &group_file_dir, const std::string &group_file_prefix);
+  Status GetAgentsConfigsFromWorker(const std::string &worker_ip, uint32_t worker_port);
+  // step2, invoke from python
+  Status GetDistributedServableConfig(DistributedServableConfig *config);
 
-  Status GetAgentsConfigsFromWorker(const std::string &rank_start, uint32_t agent_start_port,
-                                    const std::string &worker_ip, uint32_t worker_port);
-  // step2, invoke from python, get current machine agents config
-  Status GetCurrentMachineConfigs(std::vector<AgentStartUpConfig> *configs);
+  Status NotifyFailed(const std::string &worker_ip, uint32_t worker_port);
 
  private:
   DistributedServableConfig config_;

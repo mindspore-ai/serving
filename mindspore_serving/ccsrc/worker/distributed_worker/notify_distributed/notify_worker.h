@@ -19,7 +19,8 @@
 #include <vector>
 #include <string>
 #include <memory>
-#include "worker/distributed_worker/notify_distributed/base_notify_worker.h"
+#include "common/serving_common.h"
+#include "worker/distributed_worker/common.h"
 #include "proto/ms_distributed.pb.h"
 #include "proto/ms_distributed.grpc.pb.h"
 #include "proto/ms_worker.pb.h"
@@ -27,13 +28,15 @@
 namespace mindspore {
 namespace serving {
 
-class MS_API GrpcNotifyDistributeWorker : public BaseNotifyDistributeWorker {
+class MS_API GrpcNotifyDistributeWorker {
  public:
-  GrpcNotifyDistributeWorker(const std::string &master_ip, uint32_t master_port, const std::string &host_ip,
-                             uint32_t host_port);
-  ~GrpcNotifyDistributeWorker() override;
-  Status Register(const std::vector<WorkerAgentSpec> &worker_specs) override;
-  Status Unregister() override;
+  GrpcNotifyDistributeWorker(const std::string &worker_ip, uint32_t worker_port, const std::string &agent_ip,
+                             uint32_t agent_port);
+  ~GrpcNotifyDistributeWorker();
+  Status Register(const std::vector<WorkerAgentSpec> &agent_specs);
+  Status Unregister();
+  // from start up, not agent
+  static Status NotifyFailed(const std::string &worker_ip, uint32_t worker_port);
 
  private:
   std::string distributed_worker_ip_;

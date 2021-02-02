@@ -62,7 +62,7 @@ Status GrpcNotifyDistributeWorker::Register(const std::vector<WorkerAgentSpec> &
     std::this_thread::sleep_for(std::chrono::milliseconds(REGISTER_INTERVAL * 1000));
   }
   if (ExitSignalHandle::Instance().HasStopped()) {
-    return INFER_STATUS_LOG_WARNING(FAILED) << "Worker exit, stop registration";
+    return INFER_STATUS_LOG_WARNING(FAILED) << "Agent exit, stop registration";
   }
   return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Register TimeOut";
 }
@@ -85,6 +85,22 @@ Status GrpcNotifyDistributeWorker::Unregister() {
     return SUCCESS;
   }
   return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Exit Failed";
+}
+
+Status GrpcNotifyDistributeWorker::NotifyFailed(const std::string &worker_ip, uint32_t worker_port) {
+  auto address = worker_ip + ":" + std::to_string(worker_port);
+  auto channel = GrpcServer::CreateChannel(address);
+  auto stub = proto::MSWorker::NewStub(channel);
+
+  grpc::ClientContext context;
+  proto::AgentFailedRequest request;
+  proto::AgentFailedReply reply;
+  grpc::Status status = stub->AgentFailed(&context, request, &reply);
+  if (status.ok()) {
+    MSI_LOG(INFO) << "Success to notify failure of agent";
+    return SUCCESS;
+  }
+  return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Failed to notify failure of agent";
 }
 
 }  // namespace serving

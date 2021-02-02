@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-#include "worker/distributed_worker/grpc/distributed_process.h"
+#include "worker/distributed_worker/distributed_process/distributed_process.h"
+#include "worker/worker.h"
 #include "common/proto_tensor.h"
 
 namespace mindspore {
@@ -50,6 +51,20 @@ grpc::Status MSDistributedImpl::AgentExit(grpc::ServerContext *context, const pr
     if (status != SUCCESS) {
       MSI_LOG(ERROR) << "Agent Exit FAILED";
     }
+  }
+  if (Worker::GetInstance().IsRunning()) {
+    Worker::GetInstance().StopServable();
+  }
+  return grpc::Status::OK;
+}
+
+grpc::Status MSDistributedImpl::AgentFailed(grpc::ServerContext *context, const proto::AgentFailedRequest *request,
+                                            proto::AgentFailedReply *reply) {
+  if (Worker::GetInstance().IsRunning()) {
+    MSI_LOG_ERROR << "Expect worker should not be running";
+    Worker::GetInstance().StopServable();
+  } else {
+    servable_->OnAgentFailed();
   }
   return grpc::Status::OK;
 }

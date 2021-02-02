@@ -14,17 +14,32 @@
  * limitations under the License.
  */
 #include "worker/distributed_worker/agent_startup.h"
+#include "worker/distributed_worker/notify_distributed/notify_worker.h"
+
 namespace mindspore {
 namespace serving {
 
-Status WorkerAgentStartUp::InitAgentsConfig(const std::string &model_dir, const std::string &model_file_prefix,
-                                            const std::string &group_file_dir, const std::string &group_file_prefix) {
+WorkerAgentStartUp &WorkerAgentStartUp::Instance() {
+  static WorkerAgentStartUp instance;
+  return instance;
+}
+
+Status WorkerAgentStartUp::GetAgentsConfigsFromWorker(const std::string &worker_ip, uint32_t worker_port) {
   return Status();
 }
-Status WorkerAgentStartUp::GetAgentsConfigsFromWorker(const std::string &agent_ip, uint32_t agent_start_port,
-                                                      const std::string &worker_ip, uint32_t worker_port) {
-  return Status();
+
+Status WorkerAgentStartUp::GetDistributedServableConfig(DistributedServableConfig *config) {
+  MSI_EXCEPTION_IF_NULL(config);
+  if (config_.rank_list.empty()) {
+    return INFER_STATUS_LOG_ERROR(FAILED) << "Rank table config is not ready";
+  }
+  *config = config_;
+  return SUCCESS;
 }
-Status WorkerAgentStartUp::GetCurrentMachineConfigs(std::vector<AgentStartUpConfig> *configs) { return Status(); }
+
+Status WorkerAgentStartUp::NotifyFailed(const std::string &worker_ip, uint32_t worker_port) {
+  return GrpcNotifyDistributeWorker::NotifyFailed(worker_ip, worker_port);
+}
+
 }  // namespace serving
 }  // namespace mindspore

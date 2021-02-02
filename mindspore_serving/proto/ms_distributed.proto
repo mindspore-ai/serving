@@ -44,3 +44,10 @@ message AgentExitRequest {
 message AgentExitReply {
   ErrorMsg error_msg = 1;
 }
+
+message AgentFailedRequest {
+}
+
+message AgentFailedReply {
+  ErrorMsg error_msg = 1;
+}

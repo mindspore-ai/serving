@@ -17,24 +17,36 @@
 #ifndef MINDSPORE_SERVING_WORKER_AGENT_H
 #define MINDSPORE_SERVING_WORKER_AGENT_H
 #include <vector>
+#include <memory>
 #include "worker/distributed_worker/agent_executor.h"
 #include "proto/ms_agent.pb.h"
 #include "proto/ms_agent.grpc.pb.h"
+#include "common/grpc_server.h"
+#include "worker/distributed_worker/common.h"
+#include "worker/distributed_worker/notify_distributed/notify_worker.h"
 
 namespace mindspore {
 namespace serving {
 class MS_API WorkerAgent {
  public:
   static WorkerAgent &Instance();
-  Status LoadModelFromFile(const AgentStartUpConfig &config);
   Status Clear();
 
-  Status ExecuteModel(const std::vector<TensorBasePtr> &request, std::vector<TensorBasePtr> *reply);
   Status Run(const proto::DistributedPredictRequest &request, proto::DistributedPredictReply *reply);
+
+  Status StartAgent(const AgentStartUpConfig &config);
+
+  void StopAgent(bool notify_worker = true);
 
  private:
   AgentStartUpConfig config_;
   WorkerAgentExecutor executor_;
+  GrpcServer grpc_server_;
+  bool exit_notify_worker_ = true;
+  std::shared_ptr<GrpcNotifyDistributeWorker> notify_worker_;
+
+  Status StartGrpcServer();
+  Status RegisterAgent();
 };
 
 }  // namespace serving

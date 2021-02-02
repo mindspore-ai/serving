@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "worker/distributed_worker/grpc/distributed_server.h"
+#include "worker/distributed_worker/distributed_process/distributed_server.h"
 #include <string>
 #include <memory>
 #include <utility>
@@ -23,12 +23,11 @@
 namespace mindspore {
 namespace serving {
 
-Status MSDistributedWorkerServer::StartDistributedWorkerGrpcServer(std::shared_ptr<DistributedServable> servable,
-                                                                   const std::string &hostname, int32_t port) {
+Status MSDistributedWorkerServer::StartWorkerGrpcServer(const std::string &hostname, int32_t port) {
   if (in_running_) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Worker grpc server is already running";
   }
-  auto impl = std::make_unique<MSDistributedImpl>(servable);
+  auto impl = std::make_unique<MSDistributedImpl>(servable_);
   async_server_ = std::make_unique<DistributedWorkerGrpcServer>(hostname, port, impl.get());
   service_impl_ = std::move(impl);
   return Init();
