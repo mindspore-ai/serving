@@ -25,15 +25,16 @@
 namespace mindspore {
 namespace serving {
 
-GrpcNotfiyAgent::GrpcNotfiyAgent(const std::string &agent_address) {
+GrpcNotifyAgent::GrpcNotifyAgent(const std::string &agent_address) {
   agent_address_ = agent_address;
   std::shared_ptr<grpc::Channel> channel = GrpcServer::CreateChannel(agent_address_);
   stub_ = proto::MSAgent::NewStub(channel);
 }
 
-GrpcNotfiyAgent::~GrpcNotfiyAgent() = default;
+GrpcNotifyAgent::~GrpcNotifyAgent() = default;
 
-Status GrpcNotfiyAgent::Exit() {
+Status GrpcNotifyAgent::Exit() {
+  MSI_LOG_INFO << "Notify one agent exit begin";
   if (stub_) {
     proto::DistributedExitRequest request;
     request.set_address(agent_address_);
@@ -43,12 +44,18 @@ Status GrpcNotfiyAgent::Exit() {
     std::chrono::system_clock::time_point deadline = std::chrono::system_clock::now() + std::chrono::seconds(TIME_OUT);
     context.set_deadline(deadline);
 
-    (void)stub_->Exit(&context, request, &reply);
+    auto status = stub_->Exit(&context, request, &reply);
+    if (status.ok()) {
+      MSI_LOG_INFO << "Notify one agent exit success, agent address: " << agent_address_;
+    } else {
+      MSI_LOG_INFO << "Notify one agent exit failed, agent address: " << agent_address_
+                   << ", error: " << status.error_code() << ", " << status.error_message();
+    }
   }
   return SUCCESS;
 }
 
-Status GrpcNotfiyAgent::DispatchAsync(const proto::DistributedPredictRequest &request,
+Status GrpcNotifyAgent::DispatchAsync(const proto::DistributedPredictRequest &request,
                                       proto::DistributedPredictReply *reply, DispatchCallback callback) {
   if (!stub_) {
     return INFER_STATUS_LOG_ERROR(FAILED)

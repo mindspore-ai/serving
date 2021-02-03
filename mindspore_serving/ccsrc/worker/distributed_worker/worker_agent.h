@@ -24,6 +24,7 @@
 #include "common/grpc_server.h"
 #include "worker/distributed_worker/common.h"
 #include "worker/distributed_worker/notify_distributed/notify_worker.h"
+#include "worker/inference/mindspore_model_wrap.h"
 
 namespace mindspore {
 namespace serving {
@@ -40,7 +41,8 @@ class MS_API WorkerAgent {
 
  private:
   AgentStartUpConfig config_;
-  WorkerAgentExecutor executor_;
+  // WorkerAgentExecutor executor_;
+  MindSporeModelWrap session_;
   GrpcServer grpc_server_;
   bool exit_notify_worker_ = true;
   std::shared_ptr<GrpcNotifyDistributeWorker> notify_worker_;

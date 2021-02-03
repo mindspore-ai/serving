@@ -42,16 +42,7 @@ grpc::Status MSDistributedImpl::AgentExit(grpc::ServerContext *context, const pr
                                           proto::AgentExitReply *reply) {
   MSI_EXCEPTION_IF_NULL(request);
   MSI_EXCEPTION_IF_NULL(reply);
-  for (auto &spec : request->agent_spec()) {
-    WorkerAgentSpec agent_spec;
-    agent_spec.agent_address = request->address();
-    GrpcTensorHelper::CopyFromAgentSpec(spec, &agent_spec);
-    Status status(FAILED);
-    status = servable_->UnregisterAgent(agent_spec);
-    if (status != SUCCESS) {
-      MSI_LOG(ERROR) << "Agent Exit FAILED";
-    }
-  }
+  servable_->OnAgentExit();
   if (Worker::GetInstance().IsRunning()) {
     Worker::GetInstance().StopServable();
   }

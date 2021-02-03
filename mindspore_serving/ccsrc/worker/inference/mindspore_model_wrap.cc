@@ -97,9 +97,10 @@ Status MindSporeModelWrap::LoadModelFromFile(serving::DeviceType device_type, ui
   }
   mindspore::Status status = model->Build();
   if (!status.IsOk()) {
-    MSI_LOG_ERROR << "Load model from file failed, model file: " << file_name << ", device_type: '" << device_type_str
-                  << "', device_id: " << device_id << ", model type: " << model_type << ", options: " << other_options;
-    return Status(FAILED, status.ToString());
+    return INFER_STATUS_LOG_ERROR(FAILED)
+           << "Load model from file failed, model file: " << file_name << ", device_type: '" << device_type_str
+           << "', device_id: " << device_id << ", model type: " << model_type << ", options: " << other_options
+           << ", build error detail: " << status.ToString();
   }
   ApiModelInfo api_model_info;
   api_model_info.model = model;
@@ -246,6 +247,9 @@ Status MindSporeModelWrap::ExecuteModel(const RequestBase &request, serving::Rep
   MSI_EXCEPTION_IF_NULL(reply);
   FuncMakeInBuffer func_in = [&request](size_t index, const std::string &name) {
     auto input_tensor = request[index];
+    if (input_tensor == nullptr || input_tensor->data() == nullptr) {
+      MSI_LOG_EXCEPTION << "Input tensor data cannot be nullptr, index " << index;
+    }
     return mindspore::MSTensor::CreateRefTensor(name, TransInferDataType2ApiTypeId(input_tensor->data_type()),
                                                 input_tensor->shape(), const_cast<uint8_t *>(input_tensor->data()),
                                                 input_tensor->data_size());

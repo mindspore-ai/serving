@@ -16,6 +16,8 @@
 
 import os
 import time
+import sys
+import traceback
 from multiprocessing import Process, Pipe
 
 from mindspore_serving._mindspore_serving import ExitSignalHandle_
@@ -46,7 +48,7 @@ def _get_local_ip(rank_list, port):
 
 def _update_model_files_path(model_files, group_config_files):
     """Check and return model files or group config files"""
-    script_dir = os.path.dirname(os.path.realpath(__file__))
+    script_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
     logger.info(f"input model files: {model_files}")
     logger.info(f"input group config files: {group_config_files}")
     model_files_temp = []
@@ -72,8 +74,8 @@ def _make_json_table_file(distributed_config):
     """Make rank table json file"""
     rank_size = len(distributed_config.rank_list)
     runtime_dir = os.path.abspath(".")
-    time_stamp = str(time.strftime('%Y_%m_%d_%H_%M_%S', time.localtime(time.time())))
-    rank_table_file_name = os.path.join(runtime_dir, f"hccl_rank_table_{time_stamp}_{rank_size}.json")
+    time_stamp = str(time.strftime('%Y%m%d_%H%M%S', time.localtime(time.time())))
+    rank_table_file_name = os.path.join(runtime_dir, f"hccl_rank_table_{time_stamp}_{rank_size}p.json")
     with open(rank_table_file_name, "w") as fp:
         fp.write(distributed_config.rank_table_content)
     return rank_table_file_name
@@ -125,18 +127,20 @@ def _agent_process(send_pipe, recv_pipe, index, start_config):
         success_msg = _recv_parent(index, recv_pipe)
         if not success_msg:
             worker_agent.stop()
-        send_pipe.close()
-        recv_pipe.close()
     # pylint: disable=broad-except
     except Exception as e:
+        traceback.print_exc()
         logger.error(f"Child {index}: Catch exception and notify exit of others")
         send_pipe.send((index, e))
+        _recv_parent(index, recv_pipe)  # receive exit message from parent process
         worker_agent.stop()
-        raise
+    send_pipe.close()
+    recv_pipe.close()
 
 
 def _start_listening_child_processes(p_recv_pipe, send_pipe_list, subprocess_list):
     """Listening child process"""
+
     def send_pipe_msg(send_pipe, msg):
         try:
             send_pipe.send(msg)
@@ -217,8 +221,8 @@ def startup_worker_agents(worker_ip, worker_port, model_files, group_config_file
     check_type.check_str("worker_ip", worker_ip)
     check_type.check_ip_port("worker_port", worker_port)
     check_type.check_int("agent_start_port", agent_start_port, 1, 65535 - 7)
-    model_files = check_type.check_and_as_int_tuple_list("model_files", model_files)
-    group_config_files = check_type.check_and_as_int_tuple_list("group_config_files", group_config_files)
+    model_files = check_type.check_and_as_str_tuple_list("model_files", model_files)
+    group_config_files = check_type.check_and_as_str_tuple_list("group_config_files", group_config_files)
     distributed_config = WorkerAgent_.get_agents_config_from_worker(worker_ip, worker_port)
 
     # get machine ip

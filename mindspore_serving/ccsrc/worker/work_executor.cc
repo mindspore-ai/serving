@@ -54,19 +54,18 @@ Status WorkExecutor::CheckSevableSignature() {
     return INFER_STATUS_LOG_ERROR(FAILED) << "The inputs count " << common_meta.inputs_count << " registered in method "
                                           << "not equal to the count " << input_infos.size() << " defined in servable";
   }
-  const auto &output_infos = output_infos_;
-  if (output_infos.size() != common_meta.outputs_count) {
+  if (output_infos_.size() != common_meta.outputs_count) {
     return INFER_STATUS_LOG_ERROR(FAILED)
            << "The outputs count " << common_meta.outputs_count << " registered in method "
-           << "not equal to the count " << output_infos.size() << " defined in servable";
+           << "not equal to the count " << output_infos_.size() << " defined in servable";
   }
   MSI_LOG_INFO << "Model input infos: count " << input_infos.size();
   for (auto &item : input_infos) {
     MSI_LOG_INFO << item.shape << ", " << item.data_type << ", " << item.size;
   }
-  MSI_LOG_INFO << "Model output infos: count " << output_infos.size();
-  for (auto &item : output_infos) {
-    MSI_LOG_INFO << item.shape << ", " << item.data_type << ", " << item.size;
+  MSI_LOG_INFO << "Model output infos: count " << output_infos_.size();
+  for (auto &item : output_infos_) {
+    MSI_LOG_INFO << item.tensor_info.shape << ", " << item.tensor_info.data_type << ", " << item.tensor_info.size;
   }
   if (common_meta.with_batch_dim) {
     if (model_batch_size_ == 0) {
@@ -82,11 +81,21 @@ Status WorkExecutor::CheckSevableSignature() {
                << "Servable batch size " << model_batch_size_ << " not match model input shape " << item.shape;
       }
     }
-    for (const auto &item : output_infos) {
-      if (item.shape.empty() || static_cast<uint32_t>(item.shape[0]) != model_batch_size_) {
+    for (auto &item : output_infos_) {
+      auto &tensor_info = item.tensor_info;
+      if (tensor_info.shape.empty() || static_cast<uint32_t>(tensor_info.shape[0]) != model_batch_size_) {
         return INFER_STATUS_LOG_ERROR(FAILED)
-               << "Servable batch size " << model_batch_size_ << " not match model output shape " << item.shape;
+               << "Servable batch size " << model_batch_size_ << " not match model output shape " << tensor_info.shape;
       }
+      item.shape_one_batch = tensor_info.shape;
+      item.shape_one_batch.erase(item.shape_one_batch.begin());
+      item.size_one_batch = tensor_info.size / model_batch_size_;
+    }
+  } else {
+    for (auto &item : output_infos_) {
+      auto &tensor_info = item.tensor_info;
+      item.shape_one_batch = tensor_info.shape;
+      item.size_one_batch = tensor_info.size;
     }
   }
   return SUCCESS;
@@ -103,7 +112,12 @@ Status WorkExecutor::Init(const ServableSignature &servable_declare, const std::
   servable_declare_ = servable_declare;
   servable_ = servable;
   input_infos_ = servable_->GetInputInfos();
-  output_infos_ = servable_->GetOutputInfos();
+  auto output_infos = servable_->GetOutputInfos();
+  for (auto &item : output_infos) {
+    TensorInfoWithBatch info;
+    info.tensor_info = item;
+    output_infos_.push_back(info);
+  }
   if (servable_declare_.servable_meta.common_meta.with_batch_dim) {
     model_batch_size_ = servable_->GetBatchSize();
   } else {
@@ -351,6 +365,10 @@ Status WorkExecutor::PrePredict(const std::vector<Instance> &inputs) {
     auto data_size = tensor->data_size();
     auto dst_buffer = reinterpret_cast<uint8_t *>(tensor->mutable_data());
     if (IsNoBatchDimInput(i)) {
+      if (data_size != inputs[0].data[i]->data_size()) {
+        return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Input " << i << " data size " << inputs[0].data[i]->data_size()
+                                                    << "does not match size " << data_size << " defined in model";
+      }
       memcpy_s(dst_buffer, data_size, inputs[0].data[i]->data(), data_size);
       continue;
     }
@@ -361,7 +379,7 @@ Status WorkExecutor::PrePredict(const std::vector<Instance> &inputs) {
       }
       if (item_size != inputs[k].data[i]->data_size()) {
         return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
-               << " Batch index " << k << " input data size " << inputs[k].data[i]->data_size()
+               << "Input " << i << " Batch index " << k << " input data size " << inputs[k].data[i]->data_size()
                << "does not match size " << item_size << " defined in model";
       }
       memcpy_s(dst_buffer + k * item_size, data_size - k * item_size, inputs[k].data[i]->data(), item_size);
@@ -382,23 +400,27 @@ Status WorkExecutor::PostPredict(const std::vector<Instance> &inputs, const std:
     MSI_LOG_ERROR << "Input batch size " << input_batch_size << " invalid, model batch size " << model_batch_size;
     return SYSTEM_ERROR;
   }
+  if (predict_result.size() != output_infos_.size()) {
+    MSI_LOG_ERROR << "Output result count " << predict_result.size() << " not equal to output_infos_ count "
+                  << output_infos_.size();
+    return SYSTEM_ERROR;
+  }
   std::vector<ResultInstance> results_data(input_batch_size);
-  for (auto &item : predict_result) {
-    size_t item_size = item->data_size() / model_batch_size;
-    if (item_size == 0) {
-      MSI_LOG_EXCEPTION << "Output result data size cannot be 0";
+  for (size_t i = 0; i < predict_result.size(); i++) {
+    auto &item = predict_result[i];
+    auto &output_info = output_infos_[i];
+    if (item->data_size() != output_info.tensor_info.size) {
+      MSI_LOG_ERROR << "Output result " << i << " data size " << item->data_size() << " not equal to size "
+                    << output_info.tensor_info.size << " in output_infos_ ";
+      return SYSTEM_ERROR;
     }
-    auto shape = item->shape();
-    if (servable_declare_.servable_meta.common_meta.with_batch_dim) {
-      if (shape.empty() || shape[0] != model_batch_size) {
-        MSI_LOG_EXCEPTION << "Output shape " << shape << " not match batch size " << model_batch_size;
-      }
-      shape.erase(shape.begin());
-    }
+    auto item_size = output_info.size_one_batch;
+    auto shape = output_info.shape_one_batch;
+    auto data_type = output_info.tensor_info.data_type;
     auto src_buffer = const_cast<uint8_t *>(item->data());
     for (uint32_t k = 0; k < input_batch_size; k++) {
-      auto tensor = std::make_shared<BufferTensorWithOwner>(item, item->data_type(), shape, src_buffer + item_size * k,
-                                                            item_size, true);
+      auto tensor =
+        std::make_shared<BufferTensorWithOwner>(item, data_type, shape, src_buffer + item_size * k, item_size, true);
       results_data[k].data.push_back(tensor);
     }
   }

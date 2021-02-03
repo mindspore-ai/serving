@@ -23,7 +23,7 @@ from mindspore_serving.worker._worker import stop_on_except, _load_servable_conf
 @stop_on_except
 def start_distributed_servable(servable_directory, servable_name, rank_table_json_file, version_number=1,
                                worker_ip="0.0.0.0", worker_port=6200, master_ip="0.0.0.0", master_port=6100,
-                               wait_agents_time_in_seconds=300):
+                               wait_agents_time_in_seconds=0):
     r"""
     Start up the servable named 'servable_name' defined in 'servable_directory', and link the worker to the master
     through gRPC (master_ip, master_port).
@@ -48,7 +48,8 @@ def start_distributed_servable(servable_directory, servable_name, rank_table_jso
         master_port (int): The master port the worker linked to.
         worker_ip (str): The worker ip the master and agents linked to.
         worker_port (int): The worker port the master and agents linked to.
-        wait_agents_time_in_seconds(int): The maximum time in seconds the worker waiting ready of all agents.
+        wait_agents_time_in_seconds(int): The maximum time in seconds the worker waiting ready of all agents,
+            0 means unlimited time, default 0
 
     Examples:
         >>> import os
@@ -81,7 +82,7 @@ def start_distributed_servable(servable_directory, servable_name, rank_table_jso
 
 @stop_on_except
 def start_distributed_servable_in_master(servable_directory, servable_name, rank_table_json_file, version_number=1,
-                                         worker_ip="0.0.0.0", worker_port=6200, wait_agents_time_in_seconds=300):
+                                         worker_ip="0.0.0.0", worker_port=6200, wait_agents_time_in_seconds=0):
     r"""
     Start up the servable named 'servable_name' defined in 'svable_directory', and the worker will run in
     the process of the master.
@@ -100,7 +101,8 @@ def start_distributed_servable_in_master(servable_directory, servable_name, rank
         rank_table_json_file (str): The ranke table json file name.
         worker_ip (str): The worker ip the agents linked to.
         worker_port (int): The worker port the agents linked to.
-        wait_agents_time_in_seconds(int): The maximum time in seconds the worker waiting ready of all agents.
+        wait_agents_time_in_seconds(int): The maximum time in seconds the worker waiting ready of all agents,
+            0 means unlimited time, default 0.
 
     Examples:
         >>> import os

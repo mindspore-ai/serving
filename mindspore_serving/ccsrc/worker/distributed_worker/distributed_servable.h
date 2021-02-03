@@ -48,7 +48,7 @@ class MS_API DistributedServable : public ServableBase {
 
   // register and unregister agent, agent_spec_list_
   Status RegisterAgent(const WorkerAgentSpec &agent_spec);
-  Status UnregisterAgent(const WorkerAgentSpec &agent_spec);
+  Status OnAgentExit();
 
   // predict, use config_ and agent_spec_list_
   Status Predict(const std::vector<TensorBasePtr> &input, std::vector<TensorBasePtr> *output) override;
@@ -75,6 +75,7 @@ class MS_API DistributedServable : public ServableBase {
   std::vector<TensorInfo> output_infos_;
   uint64_t batch_size_ = 0;
   std::atomic_flag promise_set_flag_ = ATOMIC_FLAG_INIT;
+  std::atomic_bool registered_end_flag_ = false;
   std::promise<bool> agents_promise_;
 
   Status InitConfigOnStartup(const std::string &rank_table_json_file);

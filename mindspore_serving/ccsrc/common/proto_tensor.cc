@@ -356,6 +356,7 @@ void GrpcTensorHelper::CopyFromAgentSpec(const proto::AgentSpec &specs, WorkerAg
   for (auto &out : specs.outputs()) {
     TensorInfo info;
     info.data_type = ProtoTensor::TransDataType2Inference(out.dtype());
+    info.size = out.size();
     for (auto &dim : out.shape().dims()) {
       info.shape.push_back(dim);
     }

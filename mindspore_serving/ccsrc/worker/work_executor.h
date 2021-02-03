@@ -58,7 +58,7 @@ class WorkExecutor {
   ServableSignature servable_declare_;
   std::shared_ptr<ServableBase> servable_;
   std::vector<TensorInfo> input_infos_;
-  std::vector<TensorInfo> output_infos_;
+  std::vector<TensorInfoWithBatch> output_infos_;
   uint32_t model_batch_size_ = 0;
   uint64_t worker_id_ = 0;
   bool init_flag_ = false;
