@@ -341,6 +341,56 @@ Status GrpcTensorHelper::CreateInstanceFromRequestInstances(const proto::Predict
   return SUCCESS;
 }
 
+void GrpcTensorHelper::CopyFromAgentSpec(const proto::AgentSpec &specs, WorkerAgentSpec *worker_specs) {
+  worker_specs->rank_id = specs.rank_id();
+  worker_specs->batch_size = specs.batch_size();
+  for (auto &in : specs.inputs()) {
+    TensorInfo info;
+    info.data_type = ProtoTensor::TransDataType2Inference(in.dtype());
+    info.size = in.size();
+    for (auto &dim : in.shape().dims()) {
+      info.shape.push_back(dim);
+    }
+    worker_specs->input_infos.push_back(info);
+  }
+  for (auto &out : specs.outputs()) {
+    TensorInfo info;
+    info.data_type = ProtoTensor::TransDataType2Inference(out.dtype());
+    for (auto &dim : out.shape().dims()) {
+      info.shape.push_back(dim);
+    }
+    worker_specs->output_infos.push_back(info);
+  }
+}
+
+void GrpcTensorHelper::CopyFromWorkerAgentSpec(const std::vector<WorkerAgentSpec> &worker_specs,
+                                               proto::AgentRegisterRequest *request) {
+  for (size_t i = 0; i < worker_specs.size(); i++) {
+    auto &spec = worker_specs[i];
+    auto worker_spec = request->add_agent_spec();
+    worker_spec->set_rank_id(spec.rank_id);
+    worker_spec->set_batch_size(spec.batch_size);
+    for (auto &method : spec.input_infos) {
+      auto proto_method = worker_spec->add_inputs();
+      proto_method->set_dtype(ProtoTensor::TransDataType2Proto(method.data_type));
+      proto_method->set_size(method.size);
+      auto proto_shape = proto_method->mutable_shape();
+      for (auto &dim : method.shape) {
+        proto_shape->add_dims(dim);
+      }
+    }
+    for (auto &method : spec.output_infos) {
+      auto proto_method = worker_spec->add_outputs();
+      proto_method->set_dtype(ProtoTensor::TransDataType2Proto(method.data_type));
+      proto_method->set_size(method.size);
+      auto proto_shape = proto_method->mutable_shape();
+      for (auto &dim : method.shape) {
+        proto_shape->add_dims(dim);
+      }
+    }
+  }
+}
+
 Status GrpcTensorHelper::CheckRequestTensor(const proto::Tensor &tensor) {
   Status status;
   ProtoTensor tensor_input(const_cast<proto::Tensor *>(&tensor));

@@ -15,7 +15,6 @@
  */
 
 #include "worker/grpc/worker_process.h"
-#include "master/dispacther.h"
 #include "worker/worker.h"
 
 namespace mindspore {

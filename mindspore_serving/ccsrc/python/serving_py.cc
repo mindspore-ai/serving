@@ -23,10 +23,14 @@
 #include "common/servable.h"
 #include "worker/context.h"
 #include "python/master/master_py.h"
+#include "python/agent/agent_py.h"
+#include "common/exit_handle.h"
+#include "worker/distributed_worker/worker_agent.h"
 
 namespace mindspore::serving {
 
-PYBIND11_MODULE(_mindspore_serving, m) {
+void PyRegServable(pybind11::module *m_ptr) {
+  auto &m = *m_ptr;
   // avoid as numpy object memory copy in PyTensor::AsPythonData
   py::class_<TensorBase, TensorBasePtr>(m, "Tensor_");
 
@@ -68,16 +72,30 @@ PYBIND11_MODULE(_mindspore_serving, m) {
     .def_readwrite("version_number", &RequestSpec::version_number)
     .def_readwrite("method_name", &RequestSpec::method_name);
 
+  py::class_<CommonServableMeta>(m, "CommonServableMeta_")
+    .def(py::init<>())
+    .def_readwrite("servable_name", &CommonServableMeta::servable_name)
+    .def_readwrite("inputs_count", &CommonServableMeta::inputs_count)
+    .def_readwrite("outputs_count", &CommonServableMeta::outputs_count)
+    .def_readwrite("with_batch_dim", &CommonServableMeta::with_batch_dim)
+    .def_readwrite("without_batch_dim_inputs", &CommonServableMeta::without_batch_dim_inputs);
+
+  py::class_<LocalServableMeta>(m, "LocalServableMeta_")
+    .def(py::init<>())
+    .def_readwrite("servable_file", &LocalServableMeta::servable_file)
+    .def_readwrite("options", &LocalServableMeta::load_options)
+    .def("set_model_format", &LocalServableMeta::SetModelFormat);
+
+  py::class_<DistributedServableMeta>(m, "DistributedServableMeta_")
+    .def(py::init<>())
+    .def_readwrite("rank_size", &DistributedServableMeta::rank_size)
+    .def_readwrite("stage_size", &DistributedServableMeta::stage_size);
+
   py::class_<ServableMeta>(m, "ServableMeta_")
     .def(py::init<>())
-    .def_readwrite("servable_name", &ServableMeta::servable_name)
-    .def_readwrite("inputs_count", &ServableMeta::inputs_count)
-    .def_readwrite("outputs_count", &ServableMeta::outputs_count)
-    .def_readwrite("servable_file", &ServableMeta::servable_file)
-    .def_readwrite("with_batch_dim", &ServableMeta::with_batch_dim)
-    .def_readwrite("options", &ServableMeta::load_options)
-    .def_readwrite("without_batch_dim_inputs", &ServableMeta::without_batch_dim_inputs)
-    .def("set_model_format", &ServableMeta::SetModelFormat);
+    .def_readwrite("common_meta", &ServableMeta::common_meta)
+    .def_readwrite("local_meta", &ServableMeta::local_meta)
+    .def_readwrite("distributed_meta", &ServableMeta::distributed_meta);
 
   py::class_<ServableSignature>(m, "ServableSignature_")
     .def(py::init<>())
@@ -87,8 +105,34 @@ PYBIND11_MODULE(_mindspore_serving, m) {
   py::class_<PyServableStorage>(m, "ServableStorage_")
     .def_static("register_servable_input_output_info", &PyServableStorage::RegisterInputOutputInfo)
     .def_static("register_method", &PyServableStorage::RegisterMethod)
-    .def_static("declare_servable", &PyServableStorage::DeclareServable);
+    .def_static("declare_servable", &PyServableStorage::DeclareServable)
+    .def_static("declare_distributed_servable", &PyServableStorage::DeclareDistributedServable);
 
+  py::class_<OneRankConfig>(m, "OneRankConfig_")
+    .def(py::init<>())
+    .def_readwrite("device_id", &OneRankConfig::device_id)
+    .def_readwrite("ip", &OneRankConfig::ip);
+
+  py::class_<DistributedServableConfig>(m, "DistributedServableConfig_")
+    .def(py::init<>())
+    .def_readwrite("common_meta", &DistributedServableConfig::common_meta)
+    .def_readwrite("distributed_meta", &DistributedServableConfig::distributed_meta)
+    .def_readwrite("rank_table_content", &DistributedServableConfig::rank_table_content)
+    .def_readwrite("rank_list", &DistributedServableConfig::rank_list);
+}
+
+void PyRegMaster(pybind11::module *m_ptr) {
+  auto &m = *m_ptr;
+  py::class_<PyMaster>(m, "Master_")
+    .def_static("start_grpc_server", &PyMaster::StartGrpcServer)
+    .def_static("start_grpc_master_server", &PyMaster::StartGrpcMasterServer)
+    .def_static("start_restful_server", &PyMaster::StartRestfulServer)
+    .def_static("wait_and_clear", &PyMaster::WaitAndClear)
+    .def_static("stop_and_clear", &PyMaster::StopAndClear);
+}
+
+void PyRegWorker(pybind11::module *m_ptr) {
+  auto &m = *m_ptr;
   py::class_<TaskContext>(m, "TaskContext_").def(py::init<>());
 
   py::class_<TaskItem>(m, "TaskItem_")
@@ -108,6 +152,8 @@ PYBIND11_MODULE(_mindspore_serving, m) {
   py::class_<PyWorker>(m, "Worker_")
     .def_static("start_servable", &PyWorker::StartServable)
     .def_static("start_servable_in_master", &PyWorker::StartServableInMaster)
+    .def_static("start_distributed_servable", &PyWorker::StartDistributedServable)
+    .def_static("start_distributed_servable_in_master", &PyWorker::StartDistributedServableInMaster)
     .def_static("get_batch_size", &PyWorker::GetBatchSize)
     .def_static("wait_and_clear", &PyWorker::WaitAndClear)
     .def_static("stop_and_clear", PyWorker::StopAndClear)
@@ -130,17 +176,52 @@ PYBIND11_MODULE(_mindspore_serving, m) {
            }
          })
     .def("set_device_id", &ServableContext::SetDeviceId);
+}
 
-  py::class_<PyMaster, std::shared_ptr<PyMaster>>(m, "Master_")
-    .def_static("start_grpc_server", &PyMaster::StartGrpcServer)
-    .def_static("start_grpc_master_server", &PyMaster::StartGrpcMasterServer)
-    .def_static("start_restful_server", &PyMaster::StartRestfulServer)
-    .def_static("wait_and_clear", &PyMaster::WaitAndClear)
-    .def_static("stop_and_clear", &PyMaster::StopAndClear);
+void PyRegWorkerAgent(pybind11::module *m_ptr) {
+  auto &m = *m_ptr;
+  py::class_<PyAgent>(m, "WorkerAgent_")
+    .def_static("get_agents_config_from_worker", &PyAgent::GetAgentsConfigsFromWorker)
+    .def_static("wait_and_clear", &PyAgent::WaitAndClear)
+    .def_static("stop_and_clear", &PyAgent::StopAndClear)
+    .def_static("notify_failed", &PyAgent::NotifyFailed)
+    .def_static("start_agent", &PyAgent::StartAgent);
+
+  py::class_<AgentStartUpConfig>(m, "AgentStartUpConfig_")
+    .def(py::init<>())
+    .def_readwrite("rank_id", &AgentStartUpConfig::rank_id)
+    .def_readwrite("device_id", &AgentStartUpConfig::device_id)
+    .def_readwrite("model_file_name", &AgentStartUpConfig::model_file_name)
+    .def_readwrite("group_file_name", &AgentStartUpConfig::group_file_name)
+    .def_readwrite("rank_table_json_file_name", &AgentStartUpConfig::rank_table_json_file_name)
+    .def_readwrite("agent_ip", &AgentStartUpConfig::agent_ip)
+    .def_readwrite("agent_port", &AgentStartUpConfig::agent_port)
+    .def_readwrite("worker_ip", &AgentStartUpConfig::worker_ip)
+    .def_readwrite("worker_port", &AgentStartUpConfig::worker_port)
+    .def_readwrite("common_meta", &AgentStartUpConfig::common_meta);
+}
+
+class PyExitSignalHandle {
+ public:
+  static void Start() { ExitSignalHandle::Instance().Start(); }
+  static bool HasStopped() { return ExitSignalHandle::Instance().HasStopped(); }
+};
+
+// cppcheck-suppress syntaxError
+PYBIND11_MODULE(_mindspore_serving, m) {
+  PyRegServable(&m);
+  PyRegMaster(&m);
+  PyRegWorker(&m);
+  PyRegWorkerAgent(&m);
+
+  py::class_<PyExitSignalHandle>(m, "ExitSignalHandle_")
+    .def_static("start", &PyExitSignalHandle::Start)
+    .def_static("has_stopped", &PyExitSignalHandle::HasStopped);
 
   (void)py::module::import("atexit").attr("register")(py::cpp_function{[&]() -> void {
     Server::Instance().Clear();
     Worker::GetInstance().Clear();
+    WorkerAgent::Instance().Clear();
   }});
 }
 

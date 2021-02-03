@@ -27,40 +27,53 @@
 #include "proto/ms_worker.grpc.pb.h"
 #include "common/grpc_async_server.h"
 #include "worker/grpc/worker_process.h"
+#include "worker/distributed_worker/distributed_servable.h"
 
 namespace mindspore {
 namespace serving {
 
 // Service Implement
-class MSWorkerServer {
+class MS_API MSWorkerServer {
  public:
   enum ServerState { kGdsUninit = 0, kGdsInitializing, kGdsRunning, kGdsStopped };
-  MSWorkerServer(const std::string &hostname, int32_t port);
-  ~MSWorkerServer();
+  MSWorkerServer();
+  virtual ~MSWorkerServer();
 
-  Status Init();
-
+  virtual Status StartWorkerGrpcServer(const std::string &hostname, int32_t port);
   Status Stop();
 
-  Status StartAsyncRpcService();
-
+ protected:
   bool in_running_ = false;
   std::thread grpc_thread_;
-  std::unique_ptr<MSWorkerImpl> service_impl_;
-  std::unique_ptr<GrpcAsyncServer> async_server_;
+  std::unique_ptr<MSWorkerImpl> service_impl_ = nullptr;
+  std::unique_ptr<GrpcAsyncServer> async_server_ = nullptr;
+
+  Status Init();
+  Status StartAsyncRpcService();
 };
 
 class WorkerServiceContext {
  public:
   enum class STATE : int8_t { CREATE = 1, PROCESS = 2, FINISH = 3 };
+
+  WorkerServiceContext(MSWorkerImpl *service_impl, proto::MSWorker::AsyncService *async_service,
+                       grpc::ServerCompletionQueue *cq)
+      : service_impl_(service_impl), async_service_(async_service), cq_(cq) {
+    state_ = STATE::CREATE;
+  }
   virtual ~WorkerServiceContext() {}
+
+  bool JudgeFinish() { return state_ == STATE::FINISH; }
 
   virtual void StartEnqueueRequest() = 0;
   virtual void HandleRequest() = 0;
 
-  virtual bool JudgeFinish() = 0;
+ protected:
+  MSWorkerImpl *service_impl_;
+  proto::MSWorker::AsyncService *async_service_;
+  grpc::ServerCompletionQueue *cq_;
+  grpc::ServerContext ctx_;
 
- public:
   STATE state_;
 };
 
@@ -68,9 +81,7 @@ class WorkerPredictContext : public WorkerServiceContext {
  public:
   WorkerPredictContext(MSWorkerImpl *service_impl, proto::MSWorker::AsyncService *async_service,
                        grpc::ServerCompletionQueue *cq)
-      : service_impl_(service_impl), async_service_(async_service), cq_(cq), responder_(&ctx_) {
-    state_ = STATE::CREATE;
-  }
+      : WorkerServiceContext(service_impl, async_service, cq), responder_(&ctx_) {}
 
   ~WorkerPredictContext() = default;
 
@@ -93,13 +104,7 @@ class WorkerPredictContext : public WorkerServiceContext {
     responder_.Finish(response_, status, this);
   }
 
-  bool JudgeFinish() override { return state_ == STATE::FINISH; }
-
  private:
-  MSWorkerImpl *service_impl_;
-  proto::MSWorker::AsyncService *async_service_;
-  grpc::ServerCompletionQueue *cq_;
-  grpc::ServerContext ctx_;
   grpc::ServerAsyncResponseWriter<proto::PredictReply> responder_;
   proto::PredictRequest request_;
   proto::PredictReply response_;
@@ -109,9 +114,7 @@ class WorkerExitContext : public WorkerServiceContext {
  public:
   WorkerExitContext(MSWorkerImpl *service_impl, proto::MSWorker::AsyncService *async_service,
                     grpc::ServerCompletionQueue *cq)
-      : service_impl_(service_impl), async_service_(async_service), cq_(cq), responder_(&ctx_) {
-    state_ = STATE::CREATE;
-  }
+      : WorkerServiceContext(service_impl, async_service, cq), responder_(&ctx_) {}
 
   ~WorkerExitContext() = default;
 
@@ -134,13 +137,7 @@ class WorkerExitContext : public WorkerServiceContext {
     responder_.Finish(response_, status, this);
   }
 
-  bool JudgeFinish() override { return state_ == STATE::FINISH; }
-
  private:
-  MSWorkerImpl *service_impl_;
-  proto::MSWorker::AsyncService *async_service_;
-  grpc::ServerCompletionQueue *cq_;
-  grpc::ServerContext ctx_;
   grpc::ServerAsyncResponseWriter<proto::ExitReply> responder_;
   proto::ExitRequest request_;
   proto::ExitReply response_;
@@ -174,7 +171,7 @@ class WorkerGrpcServer : public GrpcAsyncServer {
     return SUCCESS;
   }
 
- private:
+ protected:
   MSWorkerImpl *service_impl_;
   proto::MSWorker::AsyncService svc_;
 };

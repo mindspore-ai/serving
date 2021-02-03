@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MINDSPORE_SERVING_WORKER_MODEL_H
-#define MINDSPORE_SERVING_WORKER_MODEL_H
+#ifndef MINDSPORE_SERVING_WORKER_SERVABLE_BASE_H
+#define MINDSPORE_SERVING_WORKER_SERVABLE_BASE_H
 
 #include <memory>
 #include <unordered_map>
@@ -39,25 +39,11 @@ class ServableBase {
   virtual std::vector<TensorInfo> GetInputInfos() const = 0;
   virtual std::vector<TensorInfo> GetOutputInfos() const = 0;
   virtual uint64_t GetBatchSize() const = 0;
-};
-
-class AscendModelServable : public ServableBase {
- public:
-  AscendModelServable(const std::shared_ptr<serving::InferSession> &session, uint32_t model_id)
-      : session_(session), model_id_(model_id) {}
-  ~AscendModelServable() = default;
-
-  Status Predict(const std::vector<TensorBasePtr> &input, std::vector<TensorBasePtr> *output) override;
-
-  std::vector<TensorInfo> GetInputInfos() const override;
-  std::vector<TensorInfo> GetOutputInfos() const override;
-  uint64_t GetBatchSize() const override;
-
- private:
-  std::shared_ptr<serving::InferSession> session_{nullptr};
-  uint32_t model_id_ = 0;
+  virtual std::string GetServableName() const = 0;
+  virtual uint64_t GetServableVersion() const = 0;
+  virtual void Clear() = 0;
 };
 
 }  // namespace mindspore::serving
 
-#endif  // MINDSPORE_SERVING_WORKER_MODEL_H
+#endif  // MINDSPORE_SERVING_WORKER_SERVABLE_BASE_H

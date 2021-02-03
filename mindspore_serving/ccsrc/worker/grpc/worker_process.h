@@ -28,7 +28,7 @@ namespace mindspore {
 namespace serving {
 
 // Service Implement
-class MSWorkerImpl final : public proto::MSWorker::Service {
+class MSWorkerImpl : public proto::MSWorker::Service {
  public:
   grpc::Status Predict(grpc::ServerContext *context, const proto::PredictRequest *request,
                        proto::PredictReply *reply) override;

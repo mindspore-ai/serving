@@ -32,6 +32,7 @@ class MS_API ExitSignalHandle {
   void InitSignalHandle();
   void MasterWait();
   void WorkerWait();
+  void AgentWait();
   void Start();
   void Stop();
   bool HasStopped();
@@ -39,6 +40,7 @@ class MS_API ExitSignalHandle {
  private:
   std::promise<void> master_exit_requested_;
   std::promise<void> worker_exit_requested_;
+  std::promise<void> agent_exit_requested_;
   std::atomic_flag has_exited_ = true;
   std::atomic_flag has_inited_ = ATOMIC_FLAG_INIT;
   std::atomic_bool is_running_ = false;

@@ -26,16 +26,6 @@
 namespace mindspore {
 namespace serving {
 
-Status MindSporeModelWrap::InitEnv(serving::DeviceType device_type, uint32_t device_id,
-                                   const std::map<std::string, std::string> &other_options) {
-  return SUCCESS;
-}
-
-Status MindSporeModelWrap::FinalizeEnv() {
-  model_map_.clear();
-  return SUCCESS;
-}
-
 mindspore::DataType TransInferDataType2ApiTypeId(DataType data_type) {
   const std::map<DataType, mindspore::DataType> type2id_map{
     {serving::kMSI_Unknown, mindspore::DataType::kTypeUnknown},
@@ -81,11 +71,9 @@ DataType TransTypeId2InferDataType(mindspore::DataType type_id) {
 }
 
 Status MindSporeModelWrap::LoadModelFromFile(serving::DeviceType device_type, uint32_t device_id,
-                                             const std::string &file_name, ModelType model_type,
+                                             const std::string &file_name, ModelType model_type, bool with_batch_dim,
                                              const std::vector<int> &without_batch_dim_inputs,
-                                             const std::map<std::string, std::string> &other_options,
-                                             uint32_t *model_id) {
-  MSI_EXCEPTION_IF_NULL(model_id);
+                                             const std::map<std::string, std::string> &other_options) {
   std::string device_type_str;
   if (device_type == kDeviceTypeAscendMS) {
     device_type_str = mindspore::kDeviceTypeAscend910;
@@ -113,18 +101,18 @@ Status MindSporeModelWrap::LoadModelFromFile(serving::DeviceType device_type, ui
                   << "', device_id: " << device_id << ", model type: " << model_type << ", options: " << other_options;
     return Status(FAILED, status.ToString());
   }
-  model_index_++;
-  *model_id = model_index_;
   ApiModelInfo api_model_info;
   api_model_info.model = model;
   api_model_info.device_type = device_type_str;
   api_model_info.device_id = device_id;
+  api_model_info.with_batch_dim = with_batch_dim;
   api_model_info.without_batch_dim_inputs = without_batch_dim_inputs;
   auto st = GetModelInfos(&api_model_info);
   if (st != SUCCESS) {
     return st;
   }
-  model_map_[*model_id] = api_model_info;
+  GetModelBatchSize(&api_model_info);
+  model_ = api_model_info;
   MSI_LOG_INFO << "Load model from file success, model file: " << file_name << ", device_type: '" << device_type_str
                << "', device_id: " << device_id << ", model type: " << model_type << ", options: " << other_options;
   return SUCCESS;
@@ -169,20 +157,6 @@ Status MindSporeModelWrap::GetModelInfos(ApiModelInfo *api_model_info) {
   MSI_EXCEPTION_IF_NULL(api_model_info);
   auto model = api_model_info->model;
 
-  bool first_dim_same = true;
-  auto find_batch_size = [&first_dim_same, api_model_info](const std::vector<int64_t> &shape) {
-    if (first_dim_same) {
-      if (shape.empty()) {
-        first_dim_same = false;
-      } else if (api_model_info->batch_size != 0) {
-        if (api_model_info->batch_size != shape[0]) {
-          first_dim_same = false;
-        }
-      } else {
-        api_model_info->batch_size = shape[0];
-      }
-    }
-  };
   auto get_tensor_info_from_tensor = [](const mindspore::MSTensor &ms_tensor) {
     serving::TensorInfo tensor_info;
     tensor_info.shape = ms_tensor.Shape();
@@ -204,10 +178,6 @@ Status MindSporeModelWrap::GetModelInfos(ApiModelInfo *api_model_info) {
         return INFER_STATUS_LOG_ERROR(FAILED)
                << "Unknown input mindspore data type " << static_cast<int>(info.DataType());
       }
-      const auto &list = api_model_info->without_batch_dim_inputs;
-      if (std::find(list.begin(), list.end(), i) == list.end()) {
-        find_batch_size(tensor_info.shape);
-      }
       api_model_info->input_tensor_infos.push_back(tensor_info);
       api_model_info->input_names.push_back(info.Name());
     }
@@ -220,27 +190,59 @@ Status MindSporeModelWrap::GetModelInfos(ApiModelInfo *api_model_info) {
         return INFER_STATUS_LOG_ERROR(FAILED)
                << "Unknown output mindspore data type " << static_cast<int>(info.DataType());
       }
-      find_batch_size(tensor_info.shape);
       api_model_info->output_tensor_infos.push_back(tensor_info);
       api_model_info->output_names.push_back(info.Name());
     }
   }
+  return SUCCESS;
+}
+
+void MindSporeModelWrap::GetModelBatchSize(ApiModelInfo *api_model_info) {
+  MSI_EXCEPTION_IF_NULL(api_model_info);
+  bool first_dim_same = true;
+  auto find_batch_size = [&first_dim_same, api_model_info](const std::vector<int64_t> &shape) {
+    if (!api_model_info->with_batch_dim) {
+      first_dim_same = false;
+      return;
+    }
+    if (!first_dim_same) {
+      return;
+    }
+    if (shape.empty()) {
+      first_dim_same = false;
+      return;
+    }
+    if (api_model_info->batch_size != 0) {
+      if (api_model_info->batch_size != shape[0]) {
+        first_dim_same = false;
+      }
+    } else {
+      api_model_info->batch_size = shape[0];
+    }
+  };
+
+  auto list = api_model_info->without_batch_dim_inputs;
+  auto size = api_model_info->input_tensor_infos.size();
+  for (size_t i = 0; i < size; i++) {
+    if (std::find(list.begin(), list.end(), i) == list.end()) {
+      auto &info = api_model_info->input_tensor_infos[i];
+      find_batch_size(info.shape);
+    }
+  }
+  for (auto &info : api_model_info->output_tensor_infos) {
+    find_batch_size(info.shape);
+  }
   if (!first_dim_same) {
     api_model_info->batch_size = 0;
   }
+}
+
+Status MindSporeModelWrap::UnloadModel() {
+  model_.model = nullptr;
   return SUCCESS;
 }
 
-Status MindSporeModelWrap::UnloadModel(uint32_t model_id) {
-  auto it = model_map_.find(model_id);
-  if (it == model_map_.end()) {
-    return INFER_STATUS_LOG_ERROR(FAILED) << "Invalid model id " << model_id;
-  }
-  model_map_.erase(it);
-  return SUCCESS;
-}
-
-Status MindSporeModelWrap::ExecuteModel(uint32_t model_id, const RequestBase &request, serving::ReplyBase *reply) {
+Status MindSporeModelWrap::ExecuteModel(const RequestBase &request, serving::ReplyBase *reply) {
   MSI_EXCEPTION_IF_NULL(reply);
   FuncMakeInBuffer func_in = [&request](size_t index, const std::string &name) {
     auto input_tensor = request[index];
@@ -260,11 +262,10 @@ Status MindSporeModelWrap::ExecuteModel(uint32_t model_id, const RequestBase &re
     tensor->set_data_type(data_type);
     tensor->set_shape(shape);
   };
-  return ExecuteModelCommon(model_id, request.size(), func_in, func_out);
+  return ExecuteModelCommon(request.size(), func_in, func_out);
 }
 
-Status MindSporeModelWrap::ExecuteModel(uint32_t model_id, const std::vector<TensorBasePtr> &request,
-                                        std::vector<TensorBasePtr> *reply) {
+Status MindSporeModelWrap::ExecuteModel(const std::vector<TensorBasePtr> &request, std::vector<TensorBasePtr> *reply) {
   MSI_EXCEPTION_IF_NULL(reply);
   FuncMakeInBuffer func_in = [&request](size_t index, const std::string &name) {
     auto &input_tensor = request[index];
@@ -282,16 +283,15 @@ Status MindSporeModelWrap::ExecuteModel(uint32_t model_id, const std::vector<Ten
     tensor->set_shape(shape);
     reply->push_back(tensor);
   };
-  return ExecuteModelCommon(model_id, request.size(), func_in, func_out);
+  return ExecuteModelCommon(request.size(), func_in, func_out);
 }
 
-Status MindSporeModelWrap::ExecuteModelCommon(uint32_t model_id, size_t request_size, const FuncMakeInBuffer &in_func,
+Status MindSporeModelWrap::ExecuteModelCommon(size_t request_size, const FuncMakeInBuffer &in_func,
                                               const FuncMakeOutTensor &out_func) {
-  auto it = model_map_.find(model_id);
-  if (it == model_map_.end()) {
-    return INFER_STATUS_LOG_ERROR(FAILED) << "Invalid model id " << model_id;
+  if (model_.model == nullptr) {
+    return INFER_STATUS_LOG_ERROR(FAILED) << "Model is not loaded";
   }
-  auto &model_info = it->second;
+  auto &model_info = model_;
   auto model = model_info.model;
   auto &input_names = model_info.input_names;
   auto &output_names = model_info.output_names;
@@ -327,43 +327,25 @@ Status MindSporeModelWrap::ExecuteModelCommon(uint32_t model_id, size_t request_
   return SUCCESS;
 }
 
-std::vector<serving::TensorInfo> MindSporeModelWrap::GetInputInfos(uint32_t model_id) const {
-  auto it = model_map_.find(model_id);
-  if (it == model_map_.end()) {
-    MSI_LOG_ERROR << "Invalid model id " << model_id;
-    return {};
-  }
-  auto &model_info = it->second;
-  return model_info.input_tensor_infos;
-}
+std::vector<serving::TensorInfo> MindSporeModelWrap::GetInputInfos() const { return model_.input_tensor_infos; }
 
-std::vector<serving::TensorInfo> MindSporeModelWrap::GetOutputInfos(uint32_t model_id) const {
-  auto it = model_map_.find(model_id);
-  if (it == model_map_.end()) {
-    MSI_LOG_ERROR << "Invalid model id " << model_id;
-    return {};
-  }
-  auto &model_info = it->second;
-  return model_info.output_tensor_infos;
-}
+std::vector<serving::TensorInfo> MindSporeModelWrap::GetOutputInfos() const { return model_.output_tensor_infos; }
 
-ssize_t MindSporeModelWrap::GetBatchSize(uint32_t model_id) const {
-  auto it = model_map_.find(model_id);
-  if (it == model_map_.end()) {
-    MSI_LOG_ERROR << "Invalid model id " << model_id;
-    return {};
-  }
-  auto &model_info = it->second;
-  return model_info.batch_size;
-}
+ssize_t MindSporeModelWrap::GetBatchSize() const { return model_.batch_size; }
 
 bool MindSporeModelWrap::CheckModelSupport(DeviceType device_type, ModelType model_type) const {
   std::string device_type_str;
   switch (device_type) {
     case kDeviceTypeAscendMS:
+      if (model_type != kMindIR) {
+        return false;
+      }
       device_type_str = mindspore::kDeviceTypeAscend910;
       break;
     case kDeviceTypeAscendCL:
+      if (model_type != kMindIR && model_type != kOM) {
+        return false;
+      }
       device_type_str = mindspore::kDeviceTypeAscend310;
       break;
     default:
@@ -377,10 +359,6 @@ ApiBufferTensorWrap::ApiBufferTensorWrap() = default;
 ApiBufferTensorWrap::ApiBufferTensorWrap(const mindspore::MSTensor &tensor) : tensor_(tensor) {}
 
 ApiBufferTensorWrap::~ApiBufferTensorWrap() = default;
-
-REGISTER_INFER_SEESION(serving::kDeviceTypeAscendCL, kOM, MindSporeModelWrap, 1);
-REGISTER_INFER_SEESION(serving::kDeviceTypeAscendCL, kMindIR, MindSporeModelWrap, 1);
-REGISTER_INFER_SEESION(serving::kDeviceTypeAscendMS, kMindIR, MindSporeModelWrap, 1);
 
 }  // namespace serving
 }  // namespace mindspore

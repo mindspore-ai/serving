@@ -34,54 +34,46 @@ struct ApiModelInfo {
   std::vector<serving::TensorInfo> input_tensor_infos;
   std::vector<std::string> output_names;
   std::vector<serving::TensorInfo> output_tensor_infos;
-  std::shared_ptr<mindspore::Model> model;
+  std::shared_ptr<mindspore::Model> model = nullptr;
   uint32_t batch_size = 0;
   std::string device_type;
   uint32_t device_id = 0;
+  bool with_batch_dim = false;
   std::vector<int> without_batch_dim_inputs;
 };
 
-class MindSporeModelWrap : public InferSession {
+class MindSporeModelWrap {
  public:
   MindSporeModelWrap() = default;
 
   ~MindSporeModelWrap() = default;
 
-  Status InitEnv(serving::DeviceType device_type, uint32_t device_id,
-                 const std::map<std::string, std::string> &other_options) override;
-
-  Status FinalizeEnv() override;
-
   Status LoadModelFromFile(serving::DeviceType device_type, uint32_t device_id, const std::string &file_name,
-                           ModelType model_type, const std::vector<int> &without_batch_dim_inputs,
-                           const std::map<std::string, std::string> &other_options, uint32_t *model_id) override;
+                           ModelType model_type, bool with_batch_dim, const std::vector<int> &without_batch_dim_inputs,
+                           const std::map<std::string, std::string> &other_options);
 
-  Status UnloadModel(uint32_t model_id) override;
+  Status UnloadModel();
+  Status ExecuteModel(const RequestBase &request, ReplyBase *reply);
+  Status ExecuteModel(const std::vector<TensorBasePtr> &request, std::vector<TensorBasePtr> *reply);
 
-  // override this method to avoid request/reply data copy
-  Status ExecuteModel(uint32_t model_id, const RequestBase &request, ReplyBase *reply) override;
-  Status ExecuteModel(uint32_t model_id, const std::vector<TensorBasePtr> &request,
-                      std::vector<TensorBasePtr> *reply) override;
+  std::vector<serving::TensorInfo> GetInputInfos() const;
 
-  std::vector<serving::TensorInfo> GetInputInfos(uint32_t model_id) const override;
+  std::vector<serving::TensorInfo> GetOutputInfos() const;
 
-  std::vector<serving::TensorInfo> GetOutputInfos(uint32_t model_id) const override;
+  ssize_t GetBatchSize() const;
 
-  ssize_t GetBatchSize(uint32_t model_id) const override;
-
-  bool CheckModelSupport(DeviceType device_type, ModelType model_type) const override;
+  bool CheckModelSupport(DeviceType device_type, ModelType model_type) const;
 
  private:
-  std::unordered_map<uint32_t, ApiModelInfo> model_map_;
-  uint32_t model_index_ = 0;
+  ApiModelInfo model_;
 
   using FuncMakeInBuffer = std::function<mindspore::MSTensor(size_t index, const std::string &name)>;
   using FuncMakeOutTensor =
     std::function<void(const mindspore::MSTensor, DataType data_type, const std::vector<int64_t> &shape)>;
-  Status ExecuteModelCommon(uint32_t model_id, size_t request_size, const FuncMakeInBuffer &in_func,
-                            const FuncMakeOutTensor &out_func);
+  Status ExecuteModelCommon(size_t request_size, const FuncMakeInBuffer &in_func, const FuncMakeOutTensor &out_func);
   Status GetModelInfos(ApiModelInfo *model_info);
   std::shared_ptr<Context> TransformModelContext(const std::map<std::string, std::string> &other_options);
+  void GetModelBatchSize(ApiModelInfo *model_info);
 };
 
 class ApiBufferTensorWrap : public TensorBase {

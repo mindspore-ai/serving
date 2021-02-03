@@ -32,6 +32,8 @@
 #include "worker/task_queue.h"
 #include "worker/version_control/version_controller.h"
 #include "common/grpc_async_server.h"
+#include "worker/sevable_base.h"
+#include "worker/grpc/worker_server.h"
 
 namespace mindspore {
 namespace serving {
@@ -53,11 +55,10 @@ class AsyncResult {
 };
 
 struct ServableWorkerContext {
-  LoadServableSpec servable_spec;
+  WorkerSpec worker_spec;
   ServableSignature servable_signature;
   std::shared_ptr<WorkExecutor> worker_service = nullptr;
-  uint32_t model_id = 0;
-  std::string model_file_name;
+  std::shared_ptr<ServableBase> servable = nullptr;
 };
 
 class MS_API Worker {
@@ -72,17 +73,14 @@ class MS_API Worker {
   Status Run(const RequestSpec &request_spec, const std::vector<InstanceData> &inputs, std::vector<Instance> *outputs);
   std::pair<Status, std::shared_ptr<AsyncResult>> RunAsync(const RequestSpec &request_spec,
                                                            const std::vector<InstanceData> &inputs);
+  Status StartServable(std::shared_ptr<ServableBase> servable, std::shared_ptr<BaseNotifyMaster> notify_master);
 
-  Status InitEnv(ModelType model_type, const std::map<std::string, std::string> &other_options);
-  Status FinalizeEnv();
+  Status StartGrpcServer(const std::shared_ptr<MSWorkerServer> &grpc_server, const std::string &worker_ip,
+                         int32_t port);
 
-  Status StartServable(const std::string &servable_directory, const std::string &servable_name, uint32_t version_number,
-                       std::shared_ptr<BaseNotifyMaster> notify_master);
   void StopServable(bool notify_master = true);
-  bool HasCleared();
+  bool IsRunning();
   Status RegisterWorker();
-  Status StartGrpcServer(const std::string &ip, uint32_t grpc_port);
-  Status LoadModel(LoadServableSpec *servable_spec, uint64_t version, ServableWorkerContext *work);
   void Update();
   Status StartVersionController();
   Status AddWorker(const ServableWorkerContext &work);
@@ -93,31 +91,24 @@ class MS_API Worker {
   std::shared_ptr<TaskQueue> GetPyTaskQueuePostprocess() { return py_task_queue_group_.GetPostprocessTaskQueue(); }
   std::shared_ptr<TaskQueue> GetCppTaskQueuePreprocess() { return cpp_preprocess_.GetTaskQueue(); }
   std::shared_ptr<TaskQueue> GetCppTaskQueuePostprocess() { return cpp_postprocess_.GetTaskQueue(); }
-  ssize_t GetBatchSize() const;
+  size_t GetBatchSize() const;
 
  private:
-  static std::shared_ptr<Worker> global_worker_;
-
   std::vector<ServableWorkerContext> work_list_;
-  std::shared_ptr<serving::InferSession> session_ = nullptr;
-  std::string version_strategy_;
   PyTaskQueueGroup py_task_queue_group_;
   PreprocessThreadPool cpp_preprocess_;
   PostprocessThreadPool cpp_postprocess_;
 
   VersionController version_controller_;
-  LoadServableSpec base_spec_;
   std::atomic_bool exit_notify_master_ = true;
   std::atomic_bool servable_started_ = false;
   std::atomic_flag clear_flag_ = ATOMIC_FLAG_INIT;
   std::shared_ptr<BaseNotifyMaster> notify_master_ = nullptr;
+  std::shared_ptr<MSWorkerServer> worker_grpc_server_ = nullptr;
 
   std::shared_mutex worker_shared_lock_;
 
   ServableWorkerContext GetServableWorker(const RequestSpec &request_spec);
-  Status LoadServableConfig(const LoadServableSpec &servable_spec, const std::string &version_strategy,
-                            std::vector<uint64_t> *real_version_number);
-  void GetVersions(const LoadServableSpec &servable_spec, std::vector<uint64_t> *real_versions);
 };
 
 }  // namespace serving

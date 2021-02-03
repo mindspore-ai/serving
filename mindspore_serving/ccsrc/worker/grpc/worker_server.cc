@@ -21,12 +21,20 @@
 
 namespace mindspore {
 namespace serving {
+
 MSWorkerServer::~MSWorkerServer() { Stop(); }
 
-MSWorkerServer::MSWorkerServer(const std::string &hostname, int32_t port) {
+Status MSWorkerServer::StartWorkerGrpcServer(const std::string &hostname, int32_t port) {
+  if (in_running_) {
+    return INFER_STATUS_LOG_ERROR(FAILED) << "Worker grpc server is already running";
+  }
   service_impl_ = std::make_unique<MSWorkerImpl>();
   async_server_ = std::make_unique<WorkerGrpcServer>(hostname, port, service_impl_.get());
+  return Init();
 }
+
+MSWorkerServer::MSWorkerServer() = default;
+
 Status MSWorkerServer::Init() {
   Status status = async_server_->Run("Worker gRPC", gRpcMaxMBMsgSize);
   if (status != SUCCESS) return status;
@@ -40,10 +48,14 @@ Status MSWorkerServer::StartAsyncRpcService() {
   return status;
 }
 Status MSWorkerServer::Stop() {
-  if (in_running_) {
+  if (in_running_ && async_server_) {
     async_server_->Stop();
-    grpc_thread_.join();
+    if (grpc_thread_.joinable()) {
+      grpc_thread_.join();
+    }
   }
+  async_server_ = nullptr;
+  service_impl_ = nullptr;
   in_running_ = false;
   return SUCCESS;
 }

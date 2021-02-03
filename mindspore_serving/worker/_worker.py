@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-"""Inferface for start up servable"""
+"""Interface for start up servable"""
 
 import threading
 from functools import wraps
 from mindspore_serving import log as logger
+from mindspore_serving._mindspore_serving import ExitSignalHandle_
 from mindspore_serving._mindspore_serving import Worker_
 from .register.preprocess import preprocess_storage
 from .register.postprocess import postprocess_storage
@@ -77,6 +78,7 @@ def stop_on_except(func):
     @wraps(func)
     def handle_except(*args, **kwargs):
         try:
+            ExitSignalHandle_.start()  # Set flag to running and receive Ctrl+C message
             func(*args, **kwargs)
         except:
             stop()

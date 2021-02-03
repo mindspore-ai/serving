@@ -22,11 +22,10 @@
 #include "common/serving_common.h"
 #include "common/servable.h"
 #include "proto/ms_service.pb.h"
+#include "common/grpc_client.h"
 
 namespace mindspore {
 namespace serving {
-
-using DispatchCallback = std::function<void(Status status)>;
 
 class MS_API BaseNotifyWorker {
  public:

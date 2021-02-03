@@ -81,19 +81,39 @@ struct RequestSpec {
   std::string Repr() const;
 };
 
-struct MS_API ServableMeta {
+enum ServableType {
+  kServableTypeUnknown = 0,
+  kServableTypeLocal = 1,
+  kServableTypeDistributed = 2,
+};
+
+struct CommonServableMeta {
   std::string servable_name;
-  std::string servable_file;   // file name
-  ModelType model_format;      // OM, MindIR
   bool with_batch_dim = true;  // whether there is batch dim in model's inputs/outputs
+  std::vector<int> without_batch_dim_inputs;
   size_t inputs_count = 0;
   size_t outputs_count = 0;
+};
 
-  std::map<std::string, std::string> load_options;  // Acl options
-  std::vector<int> without_batch_dim_inputs;
+struct MS_API LocalServableMeta {
+  std::string servable_file;                         // file name
+  ModelType model_format = ModelType::kUnknownType;  // OM, MindIR
+  std::map<std::string, std::string> load_options;   // Acl options
+  void SetModelFormat(const std::string &format);
+};
+
+struct DistributedServableMeta {
+  size_t rank_size = 0;
+  size_t stage_size = 0;
+};
+
+struct MS_API ServableMeta {
+  ServableType servable_type = kServableTypeUnknown;
+  CommonServableMeta common_meta;
+  LocalServableMeta local_meta;
+  DistributedServableMeta distributed_meta;
 
   std::string Repr() const;
-  void SetModelFormat(const std::string &format);
 };
 
 struct ServableSignature {
@@ -102,6 +122,12 @@ struct ServableSignature {
 
   Status Check() const;
   bool GetMethodDeclare(const std::string &method_name, MethodSignature *method);
+
+ private:
+  Status CheckPreprocessInput(const MethodSignature &method, size_t *pre) const;
+  Status CheckPredictInput(const MethodSignature &method, size_t pre) const;
+  Status CheckPostprocessInput(const MethodSignature &method, size_t pre, size_t *post) const;
+  Status CheckReturn(const MethodSignature &method, size_t pre, size_t post) const;
 };
 
 class MS_API ServableStorage {
@@ -111,7 +137,8 @@ class MS_API ServableStorage {
 
   bool GetServableDef(const std::string &model_name, ServableSignature *def) const;
 
-  void DeclareServable(const ServableMeta &servable);
+  Status DeclareServable(ServableMeta servable);
+  Status DeclareDistributedServable(ServableMeta servable);
 
   Status RegisterInputOutputInfo(const std::string &servable_name, size_t inputs_count, size_t outputs_count);
   std::vector<size_t> GetInputOutputInfo(const std::string &servable_name) const;
@@ -143,6 +170,14 @@ static inline LogStream &operator<<(LogStream &stream, PredictPhaseTag data_type
   }
   return stream;
 }
+
+struct WorkerAgentSpec {
+  std::string agent_address;
+  uint32_t rank_id = 0;
+  std::vector<TensorInfo> input_infos;
+  std::vector<TensorInfo> output_infos;
+  uint32_t batch_size = 0;
+};
 
 }  // namespace mindspore::serving
 
