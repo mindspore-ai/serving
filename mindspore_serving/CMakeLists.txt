@@ -27,7 +27,7 @@ message("serving using grpc_DIR : " ${gPRC_DIR})
 find_package(gRPC CONFIG REQUIRED)
 message(STATUS "Using gRPC ${gRPC_VERSION}")
 
-set(_GRPC_GRPCPP gRPC::grpc++)
+set(_GRPC_GRPCPP gRPC::grpc++ gRPC::grpc)
 set(_REFLECTION gRPC::grpc++_reflection)
 
 if (CMAKE_CROSSCOMPILING)
