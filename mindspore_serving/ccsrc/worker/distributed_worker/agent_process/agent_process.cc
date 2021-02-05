@@ -30,6 +30,7 @@ grpc::Status MSAgentImpl::Predict(grpc::ServerContext *context, const proto::Dis
                                   proto::DistributedPredictReply *reply) {
   MSI_LOG(INFO) << "Begin call service Eval";
   WorkerAgent::Instance().Run(*request, reply);
+  MSI_LOG(INFO) << "End call service Eval";
   return grpc::Status::OK;
 }
 

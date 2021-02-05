@@ -27,10 +27,10 @@
 namespace mindspore {
 namespace serving {
 
-class MS_API GrpcNotfiyAgent : public BaseNotifyAgent {
+class MS_API GrpcNotifyAgent : public BaseNotifyAgent {
  public:
-  explicit GrpcNotfiyAgent(const std::string &worker_address);
-  ~GrpcNotfiyAgent() override;
+  explicit GrpcNotifyAgent(const std::string &worker_address);
+  ~GrpcNotifyAgent() override;
 
   Status Exit() override;
 

@@ -45,9 +45,10 @@ Status GrpcNotifyDistributeWorker::Register(const std::vector<WorkerAgentSpec> &
   const int32_t REGISTER_INTERVAL = 1;
   auto loop = REGISTER_TIME_OUT;
   while (loop-- && !ExitSignalHandle::Instance().HasStopped()) {
-    MSI_LOG(INFO) << "Register to " << distributed_worker_address_;
+    MSI_LOG(INFO) << "Register to " << distributed_worker_address_ << ", agent address: " << agent_address_;
     proto::AgentRegisterRequest request;
     GrpcTensorHelper::CopyFromWorkerAgentSpec(worker_specs, &request);
+    request.set_address(agent_address_);
     proto::AgentRegisterReply reply;
     grpc::ClientContext context;
     std::chrono::system_clock::time_point deadline =

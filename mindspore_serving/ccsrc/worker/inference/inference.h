@@ -38,9 +38,15 @@ using mindspore::ModelType::kMindIR;
 using mindspore::ModelType::kOM;
 
 struct TensorInfo {
-  size_t size;  // -1: unspecified
-  DataType data_type;
+  size_t size = 0;  // -1: unspecified
+  DataType data_type = kMSI_Unknown;
   std::vector<int64_t> shape;
+};
+
+struct TensorInfoWithBatch {
+  TensorInfo tensor_info;
+  size_t size_one_batch = 0;
+  std::vector<int64_t> shape_one_batch;
 };
 
 enum DeviceType {

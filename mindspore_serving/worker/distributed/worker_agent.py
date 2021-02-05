@@ -47,11 +47,11 @@ def start_wait_and_clear():
     """Waiting for Ctrl+C, and clear up environment"""
 
     def thread_func():
-        logger.info("Serving worker: wait for Ctrl+C to exit ------------------------------------")
-        print("Serving worker: wait for Ctrl+C to exit ------------------------------------")
+        logger.info("Serving worker Agent: wait for Ctrl+C to exit ------------------------------------")
+        print("Serving worker Agent: wait for Ctrl+C to exit ------------------------------------")
         WorkerAgent_.wait_and_clear()
-        logger.info("Serving worker: exited ------------------------------------")
-        print("Serving worker: exited ------------------------------------")
+        logger.info("Serving worker Agent: exited ------------------------------------")
+        print("Serving worker Agent: exited ------------------------------------")
 
     global _wait_and_clear_thread
     if not _wait_and_clear_thread:

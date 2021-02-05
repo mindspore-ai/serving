@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include "worker/distributed_worker/agent_startup.h"
+#include <fstream>
 #include "worker/distributed_worker/notify_distributed/notify_worker.h"
 
 namespace mindspore {
@@ -25,7 +26,7 @@ WorkerAgentStartUp &WorkerAgentStartUp::Instance() {
 }
 
 Status WorkerAgentStartUp::GetAgentsConfigsFromWorker(const std::string &worker_ip, uint32_t worker_port) {
-  return Status();
+  return FAILED;
 }
 
 Status WorkerAgentStartUp::GetDistributedServableConfig(DistributedServableConfig *config) {

@@ -20,7 +20,7 @@ from mindspore_serving.worker.common import get_servable_dir
 from mindspore_serving import log as logger
 
 
-def declare_distributed_servable(rank_size, stage_size, with_batch_dim, without_batch_dim_inputs):
+def declare_distributed_servable(rank_size, stage_size, with_batch_dim=True, without_batch_dim_inputs=None):
     """declare distributed servable in servable_config.py"""
     check_type.check_bool('with_batch_dim', with_batch_dim)
 

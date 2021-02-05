@@ -18,6 +18,7 @@
 #include <vector>
 #include <string>
 #include <set>
+#include <fstream>
 #include "worker/distributed_worker/notify_agent/notify_agent.h"
 #include "common/exit_handle.h"
 
@@ -65,13 +66,17 @@ Status DistributedServable::GetDistributedServableConfig(DistributedServableConf
 void DistributedServable::SetWaitAgentsPromise(bool flag) {
   if (!promise_set_flag_.test_and_set()) {
     agents_promise_.set_value(flag);
+    registered_end_flag_ = true;
   }
 }
 
 Status DistributedServable::RegisterAgent(const WorkerAgentSpec &agent_spec) {
   std::unique_lock<std::mutex> lock{mutex_};
+  if (registered_end_flag_) {
+    return INFER_STATUS_LOG_ERROR(FAILED) << "Distributed servable has ended up registration";
+  }
 
-  if (agent_spec.rank_id < config_.distributed_meta.rank_size) {
+  if (agent_spec.rank_id >= config_.distributed_meta.rank_size) {
     return INFER_STATUS_LOG_ERROR(FAILED)
            << "Invalid rank id " << agent_spec.rank_id << ", rank size " << config_.distributed_meta.rank_size;
   }
@@ -82,7 +87,7 @@ Status DistributedServable::RegisterAgent(const WorkerAgentSpec &agent_spec) {
     return SUCCESS;
   }
   context.agent_spec_ = agent_spec;
-  std::shared_ptr<BaseNotifyAgent> notify_agent = std::make_shared<GrpcNotfiyAgent>(agent_spec.agent_address);
+  std::shared_ptr<BaseNotifyAgent> notify_agent = std::make_shared<GrpcNotifyAgent>(agent_spec.agent_address);
   context.notify_agent_ = notify_agent;
   agent_spec_map_[agent_spec.rank_id] = context;
 
@@ -98,18 +103,11 @@ void DistributedServable::Clear() {
     agent.second.notify_agent_->Exit();
   }
   agent_spec_map_.clear();
-  MSI_LOG_INFO << "End Clear servable";
+  model_loaded_ = false;
+  MSI_LOG_INFO << "End clear distributed servable";
 }
 
-Status DistributedServable::UnregisterAgent(const WorkerAgentSpec &agent_spec) {
-  std::unique_lock<std::mutex> lock{mutex_};
-  for (auto iter = agent_spec_map_.begin(); iter != agent_spec_map_.end();) {
-    if (agent_spec.rank_id == iter->second.agent_spec_.rank_id) {
-      iter = agent_spec_map_.erase(iter);
-    } else {
-      ++iter;
-    }
-  }
+Status DistributedServable::OnAgentExit() {
   SetWaitAgentsPromise(false);
   return SUCCESS;
 }
@@ -162,6 +160,7 @@ Status DistributedServable::StartServable(const std::string &servable_directory,
 Status DistributedServable::InitConfigOnStartup(const std::string &rank_table_json_file) { return FAILED; }
 
 Status DistributedServable::WaitAgentsReady(uint64_t wait_agents_time_in_seconds) {
+  MSI_LOG_INFO << "Begin waiting ready of all agents";
   auto future = agents_promise_.get_future();
   if (wait_agents_time_in_seconds == 0) {
     wait_agents_time_in_seconds = UINT32_MAX;
@@ -186,6 +185,7 @@ Status DistributedServable::WaitAgentsReady(uint64_t wait_agents_time_in_seconds
            << "Failed to wait for ready of all agents, current agents count: " << agent_spec_map_.size()
            << ", rank size: " << config_.distributed_meta.rank_size;
   }
+  MSI_LOG_INFO << "Success waiting ready of all agents";
   return SUCCESS;
 }
 

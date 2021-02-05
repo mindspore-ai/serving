@@ -28,6 +28,16 @@
 
 namespace mindspore::serving {
 
+void PyWorker::OnEndStartServable(const std::string &servable_directory, const std::string &servable_name,
+                                  uint32_t spec_version_number, uint32_t started_version_number) {
+  auto status = INFER_STATUS(SUCCESS) << "Serving: Start servable success, servable directory: '" << servable_directory
+                                      << "', servable name: '" << servable_name
+                                      << "', specified version number: " << spec_version_number
+                                      << ", started version numbers: " << started_version_number;
+  MSI_LOG_INFO << status.StatusMessage();
+  std::cout << status.StatusMessage() << std::endl;
+}
+
 void PyWorker::StartServable(const std::string &model_directory, const std::string &model_name, uint32_t version_number,
                              const std::string &master_ip, uint32_t master_port, const std::string &worker_ip,
                              uint32_t worker_port) {
@@ -52,6 +62,7 @@ void PyWorker::StartServable(const std::string &model_directory, const std::stri
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
+  OnEndStartServable(model_directory, model_name, version_number, servable->GetServableVersion());
 }
 
 void PyWorker::StartServableInMaster(const std::string &model_directory, const std::string &model_name,
@@ -70,6 +81,7 @@ void PyWorker::StartServableInMaster(const std::string &model_directory, const s
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
+  OnEndStartServable(model_directory, model_name, version_number, servable->GetServableVersion());
 }
 
 void PyWorker::StartDistributedServable(const std::string &servable_directory, const std::string &servable_name,
@@ -99,6 +111,7 @@ void PyWorker::StartDistributedServable(const std::string &servable_directory, c
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
+  OnEndStartServable(servable_directory, servable_name, version_number, servable->GetServableVersion());
 }
 
 void PyWorker::StartDistributedServableInMaster(const std::string &servable_directory, const std::string &servable_name,
@@ -127,6 +140,7 @@ void PyWorker::StartDistributedServableInMaster(const std::string &servable_dire
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
+  OnEndStartServable(servable_directory, servable_name, version_number, servable->GetServableVersion());
 }
 
 TaskItem PyWorker::GetPyTask() {
