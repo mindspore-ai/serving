@@ -27,7 +27,8 @@ message("serving using grpc_DIR : " ${gPRC_DIR})
 find_package(gRPC CONFIG REQUIRED)
 message(STATUS "Using gRPC ${gRPC_VERSION}")
 
-message(GRPC_CPP_LIBS------ ${GRPC_CPP_LIBS})
+set(_GRPC_GRPCPP gRPC::grpc++ gRPC::grpc)
+set(_REFLECTION gRPC::grpc++_reflection)
 
 if(CMAKE_CROSSCOMPILING)
     find_program(_GRPC_CPP_PLUGIN_EXECUTABLE grpc_cpp_plugin)
@@ -92,7 +93,7 @@ check_pie_supported()
 set_property(TARGET serving_common PROPERTY POSITION_INDEPENDENT_CODE TRUE)
 
 target_link_libraries(serving_common PRIVATE PROTO_SRC_LIB mindspore_serving::event mindspore_serving::event_pthreads)
-target_link_libraries(serving_common PRIVATE ${GRPC_CPP_LIBS} ${_PROTOBUF_LIBPROTOBUF} pthread)
+target_link_libraries(serving_common PRIVATE ${_REFLECTION} ${_GRPC_GRPCPP} ${_PROTOBUF_LIBPROTOBUF} pthread)
 target_link_libraries(serving_common PRIVATE mindspore_serving::eigen)
 
 # python

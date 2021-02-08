@@ -60,7 +60,6 @@ add_library(mindspore_serving::grpc++ ALIAS grpc::grpc++)
 
 # link other grpc libs
 target_link_libraries(grpc::grpc++ INTERFACE grpc::grpc grpc::gpr grpc::upb grpc::address_sorting)
-set(GRPC_CPP_LIBS gRPC::grpc++_reflection gRPC::grpc++ gRPC::grpc gRPC::gpr gRPC::upb gRPC::address_sorting)
 
 # link built dependencies
 target_link_libraries(grpc::grpc++ INTERFACE mindspore_serving::z)
