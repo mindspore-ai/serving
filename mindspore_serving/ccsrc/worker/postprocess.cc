@@ -19,11 +19,21 @@
 
 namespace mindspore::serving {
 
-void PostprocessStorage::Register(const std::string &postprocess_name, std::shared_ptr<PostprocessBase> postprocess) {
+bool PostprocessStorage::Register(const std::string &postprocess_name, std::shared_ptr<PostprocessBase> postprocess) {
   if (postprocess_map_.find(postprocess_name) != postprocess_map_.end()) {
     MSI_LOG_WARNING << "postprocess " << postprocess_name << " has been registered";
+    return false;
   }
   postprocess_map_[postprocess_name] = std::move(postprocess);
+  return true;
+}
+
+void PostprocessStorage::Unregister(const std::string &postprocess_name) {
+  auto it = postprocess_map_.find(postprocess_name);
+  if (it == postprocess_map_.end()) {
+    return;
+  }
+  postprocess_map_.erase(it);
 }
 
 std::shared_ptr<PostprocessBase> PostprocessStorage::GetPostprocess(const std::string &postprocess_name) const {
@@ -40,8 +50,16 @@ PostprocessStorage &PostprocessStorage::Instance() {
 }
 
 RegPostprocess::RegPostprocess(const std::string &postprocess_name, std::shared_ptr<PostprocessBase> postprocess) {
+  postprocess_name_ = postprocess_name;
   MSI_LOG_INFO << "Register C++ postprocess " << postprocess_name;
-  PostprocessStorage::Instance().Register(postprocess_name, std::move(postprocess));
+  register_success_ = PostprocessStorage::Instance().Register(postprocess_name, std::move(postprocess));
+}
+
+RegPostprocess::~RegPostprocess() {
+  if (register_success_) {
+    MSI_LOG_INFO << "Unregister C++ preprocess " << postprocess_name_;
+    PostprocessStorage::Instance().Unregister(postprocess_name_);
+  }
 }
 
 }  // namespace mindspore::serving

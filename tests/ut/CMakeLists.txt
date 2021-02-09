@@ -62,6 +62,8 @@ foreach(proto_file_with_path ${PROTO_FILE_LIST})
     list(APPEND PROTO_SRC_LIST ${hw_proto_srcs} ${hw_grpc_srcs})
 endforeach()
 
+add_library(PROTO_SRC_LIB STATIC ${PROTO_SRC_LIST})
+
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/mindspore_serving") # for proto header file
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 include_directories("${CMAKE_SOURCE_DIR}/mindspore_serving")
@@ -72,8 +74,14 @@ file(GLOB_RECURSE UT_SERVING_CORE_SRC RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
         "../../mindspore_serving/ccsrc/master/*.cc"
         "../../mindspore_serving/ccsrc/worker/*.cc")
 
+file(GLOB_RECURSE UT_SERVING_ASCEND_SRC RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+        "../../mindspore_serving/ccsrc/worker/inference/mindspore_model_wrap.cc")
+
+list(REMOVE_ITEM UT_SERVING_CORE_SRC ${UT_SERVING_ASCEND_SRC})
+
 file(GLOB_RECURSE UT_SERVING_STUB RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "stub/*.cc")
-set(UT_SERVING_COMMON ${UT_SERVING_CORE_SRC} ${UT_SERVING_STUB} ${PROTO_SRC_LIST})
+set(UT_SERVING_COMMON ${UT_SERVING_CORE_SRC})
+set(UT_SERVING_ASCEND ${UT_SERVING_ASCEND_SRC} ${UT_SERVING_STUB})
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(stub)
@@ -84,20 +92,38 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../mindspore_serving/ccsrc)
 
 link_directories(${CMKAE_BINARY_DIR}/securec/src)
 
-add_library(serving_ut_common STATIC ${UT_SERVING_COMMON})
+add_library(serving_common SHARED ${UT_SERVING_COMMON})
 
-target_link_libraries(serving_ut_common PRIVATE ${_REFLECTION} ${_GRPC_GRPCPP} ${_PROTOBUF_LIBPROTOBUF})
-target_link_libraries(serving_ut_common PRIVATE mindspore_serving::event mindspore_serving::event_pthreads)
-target_link_libraries(serving_ut_common PRIVATE pthread mindspore_serving::glog)
-target_link_libraries(serving_ut_common PRIVATE mindspore_serving::eigen)
-target_link_libraries(serving_ut_common PRIVATE ${SECUREC_LIBRARY})
+add_library(serving_ascend SHARED ${UT_SERVING_ASCEND})
+target_link_libraries(serving_ascend PRIVATE serving_common)
 
+target_link_libraries(serving_common PRIVATE PROTO_SRC_LIB)
+target_link_libraries(serving_common PRIVATE ${_REFLECTION} ${_GRPC_GRPCPP} ${_PROTOBUF_LIBPROTOBUF} pthread)
+target_link_libraries(serving_common PRIVATE mindspore_serving::event mindspore_serving::event_pthreads)
+target_link_libraries(serving_common PRIVATE mindspore_serving::glog)
+target_link_libraries(serving_common PRIVATE mindspore_serving::eigen)
+target_link_libraries(serving_common PRIVATE ${SECUREC_LIBRARY})
 # copy libevent lib
 file(GLOB_RECURSE LIBEVENT_LIB_LIST ${libevent_LIBPATH}/libevent* libevent_LIBPATH}/libevent_pthreads*)
 file(COPY ${LIBEVENT_LIB_LIST} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/lib)
 # copy glog lib
 file(GLOB_RECURSE GLOG_LIB_LIST ${glog_LIBPATH}/libglog*)
 file(COPY ${GLOG_LIB_LIST} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/lib)
+
+# for cpp/serving_ut
+set(CPP_UT_SERVING_CORE ${UT_SERVING_COMMON} ${UT_SERVING_ASCEND})
+file(GLOB_RECURSE CPP_UT_SERVING_RMV_SRC RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+        "../../mindspore_serving/ccsrc/worker/inference/inference.cc")
+list(REMOVE_ITEM CPP_UT_SERVING_CORE ${CPP_UT_SERVING_RMV_SRC})
+file(GLOB_RECURSE CPP_UT_SERVING_ADD_SRC RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+        "cpp/stub/stub_inference.cc")
+add_library(cpp_serving_common STATIC ${CPP_UT_SERVING_CORE} ${CPP_UT_SERVING_ADD_SRC})
+target_link_libraries(cpp_serving_common PRIVATE PROTO_SRC_LIB)
+target_link_libraries(cpp_serving_common PRIVATE ${_REFLECTION} ${_GRPC_GRPCPP} ${_PROTOBUF_LIBPROTOBUF} pthread)
+target_link_libraries(cpp_serving_common PRIVATE mindspore_serving::event mindspore_serving::event_pthreads)
+target_link_libraries(cpp_serving_common PRIVATE pthread mindspore_serving::glog)
+target_link_libraries(cpp_serving_common PRIVATE mindspore_serving::eigen)
+target_link_libraries(cpp_serving_common PRIVATE ${SECUREC_LIBRARY})
 
 add_subdirectory("cpp")
 add_subdirectory("python")

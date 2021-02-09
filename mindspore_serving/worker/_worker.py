@@ -17,6 +17,7 @@
 import threading
 from functools import wraps
 from mindspore_serving import log as logger
+from mindspore_serving.worker import init_mindspore
 from mindspore_serving._mindspore_serving import ExitSignalHandle_
 from mindspore_serving._mindspore_serving import Worker_
 from .register.preprocess import preprocess_storage
@@ -158,6 +159,7 @@ def start_servable(servable_directory, servable_name, version_number=0,
     check_type.check_str('worker_ip', worker_ip)
     check_type.check_ip_port('worker_port', worker_port)
 
+    init_mindspore.init_mindspore_cxx_env()
     _load_servable_config(servable_directory, servable_name)
 
     if device_type is not None:
@@ -167,7 +169,6 @@ def start_servable(servable_directory, servable_name, version_number=0,
         context.set_context(device_type='None')  # depend on register implement
 
     context.set_context(device_id=device_id)
-
     Worker_.start_servable(servable_directory, servable_name, version_number, master_ip, master_port,
                            worker_ip, worker_port)
     _start_py_task(Worker_.get_batch_size())
@@ -214,6 +215,7 @@ def start_servable_in_master(servable_directory, servable_name, version_number=0
 
     check_type.check_int('device_id', device_id, 0)
 
+    init_mindspore.init_mindspore_cxx_env()
     _load_servable_config(servable_directory, servable_name)
 
     if device_type is not None:

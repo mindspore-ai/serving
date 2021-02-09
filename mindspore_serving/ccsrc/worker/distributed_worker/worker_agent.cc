@@ -15,6 +15,7 @@
  */
 #include "worker/distributed_worker/worker_agent.h"
 #include <memory>
+#include <string>
 #include "worker/distributed_worker/agent_process/agent_process.h"
 #include "worker/distributed_worker/notify_distributed/notify_worker.h"
 #include "common/exit_handle.h"
@@ -37,11 +38,17 @@ Status WorkerAgent::Clear() {
     notify_worker_ = nullptr;
   }
   grpc_server_.Stop();
-  session_.UnloadModel();
+  if (session_ != nullptr) {
+    session_->UnloadModel();
+    session_ = nullptr;
+  }
   return SUCCESS;
 }
 
 Status WorkerAgent::Run(const proto::DistributedPredictRequest &request, proto::DistributedPredictReply *reply) {
+  if (session_ == nullptr) {
+    return INFER_STATUS_LOG_ERROR(FAILED) << "Model is not loaded";
+  }
   // todo : DistributedPredictRequest->RequestBase
   // todo : DistributedPredictReply->ReplyBase
   Status status;
@@ -68,11 +75,15 @@ Status WorkerAgent::Run(const proto::DistributedPredictRequest &request, proto::
 }
 
 Status WorkerAgent::StartAgent(const AgentStartUpConfig &config) {
+  session_ = InferenceLoader::Instance().CreateMindSporeInfer();
+  if (session_ == nullptr) {
+    return INFER_STATUS_LOG_ERROR(FAILED) << "Create MindSpore infer failed";
+  }
   Status status;
   config_ = config;
   const auto &common_meta = config.common_meta;
-  status = session_.LoadModelFromFile(kDeviceTypeAscendMS, config.device_id, config.model_file_name, kMindIR,
-                                      common_meta.with_batch_dim, common_meta.without_batch_dim_inputs, {});
+  status = session_->LoadModelFromFile(kDeviceTypeAscendMS, config.device_id, config.model_file_name, kMindIR,
+                                       common_meta.with_batch_dim, common_meta.without_batch_dim_inputs, {});
   if (status != SUCCESS) {
     MSI_LOG_ERROR << "LoadModelFromFile failed, servable name: " << common_meta.servable_name
                   << ", rank_id: " << config.rank_id << ", device id: " << config.device_id
@@ -111,9 +122,9 @@ Status WorkerAgent::RegisterAgent() {
   WorkerAgentSpec spec;
   spec.agent_address = config_.agent_ip + ":" + std::to_string(config_.agent_port);
   spec.rank_id = config_.rank_id;
-  spec.batch_size = session_.GetBatchSize();
-  spec.input_infos = session_.GetInputInfos();
-  spec.output_infos = session_.GetOutputInfos();
+  spec.batch_size = session_->GetBatchSize();
+  spec.input_infos = session_->GetInputInfos();
+  spec.output_infos = session_->GetOutputInfos();
   return notify_worker_->Register({spec});
 }
 

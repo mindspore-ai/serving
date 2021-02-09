@@ -55,6 +55,11 @@ install(
     COMPONENT mindspore_serving
 )
 install(
+        TARGETS serving_ascend
+        DESTINATION ${INSTALL_LIB_DIR}
+        COMPONENT mindspore_serving
+)
+install(
     DIRECTORY
     ${CMAKE_SOURCE_DIR}/mindspore_serving/master
     ${CMAKE_SOURCE_DIR}/mindspore_serving/worker

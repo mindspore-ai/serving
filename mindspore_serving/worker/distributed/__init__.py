@@ -14,15 +14,14 @@
 # ============================================================================
 """MindSpore Serving Worker."""
 
-from . import register
-from ._worker import start_servable, start_servable_in_master, stop
-from . import distributed
+from .agent_startup import startup_worker_agents
+from .register import declare_distributed_servable
+from .distributed_worker import start_distributed_servable, start_distributed_servable_in_master
 
 __all__ = []
-__all__.extend(register.__all__)
 __all__.extend([
-    "start_servable",
-    'start_servable_in_master',
-    'stop'
+    "startup_worker_agents",
+    'declare_distributed_servable',
+    'start_distributed_servable',
+    'start_distributed_servable_in_master'
 ])
-__all__.extend(distributed.__all__)

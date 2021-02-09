@@ -19,11 +19,21 @@
 
 namespace mindspore::serving {
 
-void PreprocessStorage::Register(const std::string &preprocess_name, std::shared_ptr<PreprocessBase> preprocess) {
+bool PreprocessStorage::Register(const std::string &preprocess_name, std::shared_ptr<PreprocessBase> preprocess) {
   if (preprocess_map_.find(preprocess_name) != preprocess_map_.end()) {
     MSI_LOG_WARNING << "preprocess " << preprocess_name << " has been registered";
+    return false;
   }
   preprocess_map_[preprocess_name] = std::move(preprocess);
+  return true;
+}
+
+void PreprocessStorage::Unregister(const std::string &preprocess_name) {
+  auto it = preprocess_map_.find(preprocess_name);
+  if (it == preprocess_map_.end()) {
+    return;
+  }
+  preprocess_map_.erase(it);
 }
 
 PreprocessStorage &PreprocessStorage::Instance() {
@@ -40,8 +50,16 @@ std::shared_ptr<PreprocessBase> PreprocessStorage::GetPreprocess(const std::stri
 }
 
 RegPreprocess::RegPreprocess(const std::string &preprocess_name, std::shared_ptr<PreprocessBase> preprocess) {
+  preprocess_name_ = preprocess_name;
   MSI_LOG_INFO << "Register C++ preprocess " << preprocess_name;
-  PreprocessStorage::Instance().Register(preprocess_name, std::move(preprocess));
+  register_success_ = PreprocessStorage::Instance().Register(preprocess_name, std::move(preprocess));
+}
+
+RegPreprocess::~RegPreprocess() {
+  if (register_success_) {
+    MSI_LOG_INFO << "Unregister C++ preprocess " << preprocess_name_;
+    PreprocessStorage::Instance().Unregister(preprocess_name_);
+  }
 }
 
 }  // namespace mindspore::serving

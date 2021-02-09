@@ -27,7 +27,7 @@
 
 namespace mindspore::serving {
 
-class PreprocessBase : public std::enable_shared_from_this<PreprocessBase> {
+class MS_API PreprocessBase : public std::enable_shared_from_this<PreprocessBase> {
  public:
   PreprocessBase() = default;
   virtual ~PreprocessBase() = default;
@@ -40,7 +40,8 @@ class PreprocessBase : public std::enable_shared_from_this<PreprocessBase> {
 
 class MS_API PreprocessStorage {
  public:
-  void Register(const std::string &preprocess_name, std::shared_ptr<PreprocessBase> preprocess);
+  bool Register(const std::string &preprocess_name, std::shared_ptr<PreprocessBase> preprocess);
+  void Unregister(const std::string &preprocess_name);
 
   std::shared_ptr<PreprocessBase> GetPreprocess(const std::string &preprocess_name) const;
 
@@ -50,9 +51,14 @@ class MS_API PreprocessStorage {
   std::unordered_map<std::string, std::shared_ptr<PreprocessBase>> preprocess_map_;
 };
 
-class RegPreprocess {
+class MS_API RegPreprocess {
  public:
   RegPreprocess(const std::string &preprocess_name, std::shared_ptr<PreprocessBase> preprocess);
+  ~RegPreprocess();
+
+ private:
+  std::string preprocess_name_;
+  bool register_success_ = false;
 };
 
 #define REGISTER_PREPROCESS(cls_name, preprocess_name) \

@@ -19,12 +19,16 @@
 #include <vector>
 
 #include "worker/inference/mindspore_model_wrap.h"
-#include "include/api/types.h"
-#include "include/api/serialization.h"
-#include "include/api/context.h"
 
 namespace mindspore {
 namespace serving {
+
+extern "C" {
+MS_API InferenceBase *ServingCreateInfer() {
+  auto obj = new MindSporeModelWrap();
+  return dynamic_cast<InferenceBase *>(obj);
+}
+}
 
 mindspore::DataType TransInferDataType2ApiTypeId(DataType data_type) {
   const std::map<DataType, mindspore::DataType> type2id_map{
@@ -82,18 +86,22 @@ Status MindSporeModelWrap::LoadModelFromFile(serving::DeviceType device_type, ui
   } else {
     MSI_LOG_EXCEPTION << "Only support Ascend310 or Ascend910 in MindSporeModelWrap";
   }
+  auto ms_model_type = GetMsModelType(model_type);
+  if (ms_model_type == mindspore::kUnknownType) {
+    return INFER_STATUS_LOG_ERROR(FAILED) << "Invalid model type " << model_type;
+  }
 
   std::shared_ptr<mindspore::Model> model = nullptr;
   try {
     mindspore::GlobalContext::SetGlobalDeviceTarget(device_type_str);
     mindspore::GlobalContext::SetGlobalDeviceID(device_id);
-    auto graph = mindspore::Serialization::LoadModel(file_name, model_type);
+    auto graph = mindspore::Serialization::LoadModel(file_name, ms_model_type);
     auto context = TransformModelContext(other_options);
     model = std::make_shared<mindspore::Model>(mindspore::GraphCell(graph), context);
   } catch (std::runtime_error &ex) {
-    MSI_LOG_ERROR << "Load model from file failed, model file: " << file_name << ", device_type: '" << device_type_str
-                  << "', device_id: " << device_id << ", model type: " << model_type << ", options: " << other_options;
-    return FAILED;
+    return INFER_STATUS_LOG_ERROR(FAILED)
+           << "Load model from file failed, model file: " << file_name << ", device_type: '" << device_type_str
+           << "', device_id: " << device_id << ", model type: " << model_type << ", options: " << other_options;
   }
   mindspore::Status status = model->Build();
   if (!status.IsOk()) {
@@ -355,7 +363,28 @@ bool MindSporeModelWrap::CheckModelSupport(DeviceType device_type, ModelType mod
     default:
       return false;
   }
-  return mindspore::Model::CheckModelSupport(device_type_str, model_type);
+  return mindspore::Model::CheckModelSupport(device_type_str, GetMsModelType(model_type));
+}
+
+mindspore::ModelType MindSporeModelWrap::GetMsModelType(serving::ModelType model_type) {
+  mindspore::ModelType ms_model_type;
+  switch (model_type) {
+    case kMindIR:
+      ms_model_type = mindspore::kMindIR;
+      break;
+    case kAIR:
+      ms_model_type = mindspore::kAIR;
+      break;
+    case kOM:
+      ms_model_type = mindspore::kOM;
+      break;
+    case kONNX:
+      ms_model_type = mindspore::kONNX;
+      break;
+    default:
+      ms_model_type = mindspore::kUnknownType;
+  }
+  return ms_model_type;
 }
 
 ApiBufferTensorWrap::ApiBufferTensorWrap() = default;

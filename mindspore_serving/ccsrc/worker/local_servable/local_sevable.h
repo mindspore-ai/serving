@@ -27,7 +27,6 @@
 #include "common/servable.h"
 #include "worker/sevable_base.h"
 #include "worker/inference/inference.h"
-#include "worker/inference/mindspore_model_wrap.h"
 
 namespace mindspore::serving {
 
@@ -54,7 +53,7 @@ class MS_API LocalModelServable : public ServableBase {
   std::string servable_name_;
   uint64_t version_number_ = 0;
 
-  MindSporeModelWrap session_;
+  std::shared_ptr<InferenceBase> session_ = nullptr;
   std::string version_strategy_;
   bool model_loaded_ = false;
 

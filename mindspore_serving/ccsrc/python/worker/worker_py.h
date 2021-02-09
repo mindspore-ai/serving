@@ -27,6 +27,7 @@ namespace mindspore::serving {
 
 class MS_API PyWorker {
  public:
+  static void InitServingLog();
   static void StartServable(const std::string &model_directory, const std::string &model_name, uint32_t version_number,
                             const std::string &master_ip, uint32_t master_port, const std::string &host_ip,
                             uint32_t host_port);

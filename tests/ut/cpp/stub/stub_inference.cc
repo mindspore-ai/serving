@@ -13,15 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <memory>
+#include "worker/inference/inference.h"
+#include "worker/inference/mindspore_model_wrap.h"
 
-#ifndef MINDSPORE_SERVING_SERVING_COMMON_H
-#define MINDSPORE_SERVING_SERVING_COMMON_H
+namespace mindspore::serving {
 
-#include <securec.h>
+InferenceLoader::InferenceLoader() {}
+InferenceLoader::~InferenceLoader() {}
 
-#include "common/status.h"
-#include "common/log.h"
-#include "common/tensor.h"
-#include "common/utils.h"
+InferenceLoader &InferenceLoader::Instance() {
+  static InferenceLoader inference;
+  return inference;
+}
 
-#endif  // MINDSPORE_SERVING_SERVING_COMMON_H
+std::shared_ptr<InferenceBase> InferenceLoader::CreateMindSporeInfer() {
+  return std::make_shared<MindSporeModelWrap>();
+}
+
+Status InferenceLoader::LoadMindSporeModelWrap() { return SUCCESS; }
+}  // namespace mindspore::serving

@@ -159,6 +159,3 @@ def check_version_and_env_config():
         env_checker.set_env()
     except ImportError as e:
         env_checker.check_env(e)
-
-
-check_version_and_env_config()

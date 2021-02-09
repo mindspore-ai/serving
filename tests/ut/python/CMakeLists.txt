@@ -22,9 +22,11 @@ endif()
 include_directories(${PYTHON_INCLUDE_DIRS})
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/mindspore_serving)
 pybind11_add_module(_mindspore_serving ${PY_SRC_LIST})
-target_link_libraries(_mindspore_serving PRIVATE -Wl,--whole-archive serving_ut_common -Wl,--no-whole-archive)
+target_link_libraries(_mindspore_serving PRIVATE serving_common)
 target_link_libraries(_mindspore_serving PRIVATE "${PYTHON_LIBRARIES}")
 target_include_directories(_mindspore_serving PRIVATE ${pybind11_INCLUDE_DIRS})
+
+# target_link_options(_mindspore_serving PRIVATE -Wl,-init,mindspore_serving_log_init)
 
 # disable auto rpath
 set_target_properties(_mindspore_serving PROPERTIES SKIP_BUILD_RPATH TRUE)
