@@ -21,7 +21,9 @@
 #include <grpcpp/health_check_service_interface.h>
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
 #include <memory>
+#include <string>
 #include "common/serving_common.h"
+#include "common/heart_beat.h"
 #include "proto/ms_service.pb.h"
 #include "proto/ms_service.grpc.pb.h"
 #include "proto/ms_distributed.pb.h"
@@ -35,7 +37,8 @@ namespace serving {
 // Service Implement
 class MSDistributedImpl final : public MSWorkerImpl {
  public:
-  explicit MSDistributedImpl(std::shared_ptr<DistributedServable> servable) : servable_(servable) {}
+  explicit MSDistributedImpl(std::shared_ptr<DistributedServable> servable, const std::string server_address)
+      : MSWorkerImpl(server_address), servable_(servable) {}
   ~MSDistributedImpl() = default;
   grpc::Status AgentRegister(grpc::ServerContext *context, const proto::AgentRegisterRequest *request,
                              proto::AgentRegisterReply *reply) override;

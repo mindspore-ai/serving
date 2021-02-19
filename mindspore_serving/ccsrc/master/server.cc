@@ -49,8 +49,9 @@ Status Server::StartGrpcServer(const std::string &ip, uint32_t grpc_port, int ma
 }
 
 Status Server::StartGrpcMasterServer(const std::string &ip, uint32_t grpc_port) {
-  return grpc_manager_server_.Start(std::make_shared<MSMasterImpl>(dispatcher_), ip, grpc_port, gRpcMaxMBMsgSize,
-                                    "Master");
+  std::string server_address = ip + ":" + std::to_string(grpc_port);
+  return grpc_manager_server_.Start(std::make_shared<MSMasterImpl>(dispatcher_, server_address), ip, grpc_port,
+                                    gRpcMaxMBMsgSize, "Master");
 }
 
 Status Server::StartRestfulServer(const std::string &ip, uint32_t restful_port, int max_msg_mb_size,

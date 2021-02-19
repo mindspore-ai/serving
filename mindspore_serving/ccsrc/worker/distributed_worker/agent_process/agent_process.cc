@@ -33,6 +33,20 @@ grpc::Status MSAgentImpl::Predict(grpc::ServerContext *context, const proto::Dis
   MSI_LOG(INFO) << "End call service Eval";
   return grpc::Status::OK;
 }
+grpc::Status MSAgentImpl::Ping(grpc::ServerContext *context, const proto::PingRequest *request,
+                               proto::PingReply *reply) {
+  MSI_EXCEPTION_IF_NULL(request);
+  MSI_EXCEPTION_IF_NULL(reply);
+  watcher_->RecvPing(request->address());
+  return grpc::Status::OK;
+}
 
+grpc::Status MSAgentImpl::Pong(grpc::ServerContext *context, const proto::PongRequest *request,
+                               proto::PongReply *reply) {
+  MSI_EXCEPTION_IF_NULL(request);
+  MSI_EXCEPTION_IF_NULL(reply);
+  watcher_->RecvPong(request->address());
+  return grpc::Status::OK;
+}
 }  // namespace serving
 }  // namespace mindspore
