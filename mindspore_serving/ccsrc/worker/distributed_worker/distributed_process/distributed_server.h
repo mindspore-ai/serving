@@ -153,6 +153,38 @@ class WorkerAgentFailedContext : public DistributedServiceContext {
   proto::AgentFailedReply response_;
 };
 
+class WorkerAgentConfigAcquireContext : public DistributedServiceContext {
+ public:
+  WorkerAgentConfigAcquireContext(MSDistributedImpl *service_impl, proto::MSWorker::AsyncService *async_service,
+                                  grpc::ServerCompletionQueue *cq)
+      : DistributedServiceContext(service_impl, async_service, cq), responder_(&ctx_) {}
+
+  ~WorkerAgentConfigAcquireContext() = default;
+  static Status EnqueueRequest(MSDistributedImpl *service_impl, proto::MSWorker::AsyncService *async_service,
+                               grpc::ServerCompletionQueue *cq) {
+    auto call = new WorkerAgentConfigAcquireContext(service_impl, async_service, cq);
+    call->StartEnqueueRequest();
+    return SUCCESS;
+  }
+
+  void StartEnqueueRequest() override {
+    state_ = STATE::PROCESS;
+    async_service_->RequestAgentConfigAcquire(&ctx_, &request_, &responder_, cq_, cq_, this);
+  }
+
+  void HandleRequest() override {
+    EnqueueRequest(dist_service_impl_, async_service_, cq_);
+    state_ = STATE::FINISH;
+    grpc::Status status = dist_service_impl_->AgentConfigAcquire(&ctx_, &request_, &response_);
+    responder_.Finish(response_, status, this);
+  }
+
+ private:
+  grpc::ServerAsyncResponseWriter<proto::AgentConfigAcquireReply> responder_;
+  proto::AgentConfigAcquireRequest request_;
+  proto::AgentConfigAcquireReply response_;
+};
+
 class DistributedWorkerGrpcServer : public WorkerGrpcServer {
  public:
   DistributedWorkerGrpcServer(const std::string &host, int32_t port, MSDistributedImpl *service_impl)
@@ -165,6 +197,7 @@ class DistributedWorkerGrpcServer : public WorkerGrpcServer {
     WorkerAgentRegisterContext::EnqueueRequest(distributed_service_impl_, &svc_, cq_.get());
     WorkerAgentExitContext::EnqueueRequest(distributed_service_impl_, &svc_, cq_.get());
     WorkerAgentFailedContext::EnqueueRequest(distributed_service_impl_, &svc_, cq_.get());
+    WorkerAgentConfigAcquireContext::EnqueueRequest(distributed_service_impl_, &svc_, cq_.get());
     return SUCCESS;
   }
 

@@ -59,5 +59,51 @@ grpc::Status MSDistributedImpl::AgentFailed(grpc::ServerContext *context, const 
   }
   return grpc::Status::OK;
 }
+
+grpc::Status MSDistributedImpl::AgentConfigAcquire(grpc::ServerContext *context,
+                                                   const proto::AgentConfigAcquireRequest *request,
+                                                   proto::AgentConfigAcquireReply *reply) {
+  Status status(FAILED);
+  DistributedServableConfig agent_config;
+  status = servable_->GetDistributedServableConfig(&agent_config);
+  if (status != SUCCESS) {
+    MSI_LOG(ERROR) << "Get distributed servable config failed";
+    return grpc::Status::CANCELLED;
+  }
+  if (agent_config.rank_list.empty()) {
+    MSI_LOG(ERROR) << "Get distributed servable config failed, config_ not init";
+    return grpc::Status::CANCELLED;
+  }
+
+  MSI_LOG(INFO) << "Begin to set DistributedServableConfig info in reply message";
+  // set reply message:AgentConfigAcquireReply, parameter:rank_table_content
+  reply->set_rank_table_content(agent_config.rank_table_content);
+  // set reply message:AgentConfigAcquireReply, parameter:rank_list
+  auto &agent_rank_list = agent_config.rank_list;
+  for (auto &agent_rank : agent_rank_list) {
+    auto rank_list = reply->add_rank_list();
+    rank_list->set_ip(agent_rank.ip);
+    rank_list->set_device_id(agent_rank.device_id);
+  }
+  // set reply message:AgentConfigAcquireReply, parameter:common_meta
+  auto reply_common_meta = reply->mutable_common_meta();
+  reply_common_meta->set_servable_name(agent_config.common_meta.servable_name);
+  reply_common_meta->set_with_batch_dim(agent_config.common_meta.with_batch_dim);
+  auto &without_batch_dim_inputs_list = agent_config.common_meta.without_batch_dim_inputs;
+  for (auto &without_batch_dim_input : without_batch_dim_inputs_list) {
+    reply_common_meta->add_without_batch_dim_inputs(without_batch_dim_input);
+  }
+  reply_common_meta->set_inputs_count(agent_config.common_meta.inputs_count);
+  reply_common_meta->set_outputs_count(agent_config.common_meta.outputs_count);
+
+  // set reply message:AgentConfigAcquireReply, parameter:distributed_meta
+  auto reply_distributed_meta = reply->mutable_distributed_meta();
+  reply_distributed_meta->set_rank_size(agent_config.distributed_meta.rank_size);
+  reply_distributed_meta->set_stage_size(agent_config.distributed_meta.stage_size);
+  MSI_LOG(INFO) << "Success to set DistributedServableConfig info in reply message";
+
+  return grpc::Status::OK;
+}
+
 }  // namespace serving
 }  // namespace mindspore

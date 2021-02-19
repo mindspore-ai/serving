@@ -17,14 +17,17 @@
 #ifndef MINDSPORE_SERVING_WORKER_DISTRIBUTED_SERVABLE_H
 #define MINDSPORE_SERVING_WORKER_DISTRIBUTED_SERVABLE_H
 
+#include <fstream>
 #include <vector>
 #include <string>
 #include <map>
 #include <memory>
+#include <nlohmann/json.hpp>
 #include "worker/sevable_base.h"
 #include "worker/distributed_worker/common.h"
 #include "worker/distributed_worker/notify_agent/base_notify_agent.h"
 
+using nlohmann::json;
 namespace mindspore {
 namespace serving {
 
@@ -85,6 +88,15 @@ class MS_API DistributedServable : public ServableBase {
   Status CheckRankConfig();
   void SetWaitAgentsPromise(bool flag);
   // agent stubs
+  Status ParserRankTableWithGroupList(const std::string &rank_table_json_file, const json &rank_table_json);
+
+  Status ParserRankTableWithServerList(const std::string &rank_table_json_file, const json &rank_table_json);
+
+  json ParserArrayInJson(const json &json_array, const std::string &str);
+
+  json ParserStringInJson(const json &json_str, const std::string &str);
+  Status ConvertStr2Int(const std::string &rank_table_json_file, const std::string &para_str,
+                        const std::string &para_key, uint32_t *para_int) const;
 };
 
 }  // namespace serving

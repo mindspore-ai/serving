@@ -30,4 +30,5 @@ service MSWorker {
   rpc AgentExit(AgentExitRequest) returns (AgentExitReply) {}
   rpc AgentRegister(AgentRegisterRequest) returns (AgentRegisterReply) {}
   rpc AgentFailed(AgentFailedRequest) returns (AgentFailedReply) {}
+  rpc AgentConfigAcquire(AgentConfigAcquireRequest) returns (AgentConfigAcquireReply) {}
 }
