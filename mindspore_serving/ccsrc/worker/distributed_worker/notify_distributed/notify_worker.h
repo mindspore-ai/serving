@@ -37,6 +37,8 @@ class MS_API GrpcNotifyDistributeWorker {
   Status Unregister();
   // from start up, not agent
   static Status NotifyFailed(const std::string &worker_ip, uint32_t worker_port);
+  static Status GetAgentsConfigsFromWorker(const std::string &worker_ip, uint32_t worker_port,
+                                           DistributedServableConfig *config);
 
  private:
   std::string distributed_worker_ip_;

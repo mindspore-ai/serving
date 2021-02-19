@@ -43,6 +43,8 @@ class MSDistributedImpl final : public MSWorkerImpl {
                          proto::AgentExitReply *reply) override;
   grpc::Status AgentFailed(grpc::ServerContext *context, const proto::AgentFailedRequest *request,
                            proto::AgentFailedReply *reply) override;
+  grpc::Status AgentConfigAcquire(grpc::ServerContext *context, const proto::AgentConfigAcquireRequest *request,
+                                  proto::AgentConfigAcquireReply *reply) override;
 
  private:
   std::shared_ptr<DistributedServable> servable_;

@@ -157,7 +157,211 @@ Status DistributedServable::StartServable(const std::string &servable_directory,
   return SUCCESS;
 }
 
-Status DistributedServable::InitConfigOnStartup(const std::string &rank_table_json_file) { return FAILED; }
+std::string RealPath(const char *path) {
+  // Return absolute path when path is accessible
+  std::string res;
+  char resolved_path[PATH_MAX] = {0};
+  if (realpath(path, resolved_path) != nullptr) {
+    res = resolved_path;
+  }
+
+  return res;
+}
+
+Status DistributedServable::InitConfigOnStartup(const std::string &rank_table_json_file) {
+  std::string rank_table_json_abs_path = RealPath(rank_table_json_file.c_str());
+  if (rank_table_json_abs_path.empty()) {
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "failed to get realpath of：" << rank_table_json_file.c_str();
+  }
+
+  MSI_LOG(INFO) << "Begin to parser rank table json file: " << rank_table_json_file.c_str();
+  json rank_table_json;
+  std::ifstream json_file(rank_table_json_abs_path);
+  if (!json_file.is_open()) {
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "failed to open rank table file：" << rank_table_json_file.c_str();
+  }
+
+  json_file >> rank_table_json;
+  if (!rank_table_json.is_object()) {
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << rank_table_json_file.c_str() << " is not json object";
+  }
+
+  if (rank_table_json.find("group_list") != rank_table_json.end()) {
+    return ParserRankTableWithGroupList(rank_table_json_file, rank_table_json);
+  } else {
+    return ParserRankTableWithServerList(rank_table_json_file, rank_table_json);
+  }
+}
+
+json DistributedServable::ParserArrayInJson(const json &json_array, const std::string &str) {
+  json temp_array;
+  auto iter = json_array.find(str);
+  if (iter == json_array.end()) {
+    MSI_LOG_ERROR << "Check rank table file failed" << str << "in file is not find";
+    return temp_array;
+  }
+  if (!iter->is_array()) {
+    MSI_LOG_ERROR << "Check rank table file failed" << str << "in file is not array";
+    return temp_array;
+  }
+  temp_array = json_array.at(str);
+  return temp_array;
+}
+
+json DistributedServable::ParserStringInJson(const json &json_str, const std::string &str) {
+  json temp_str;
+  auto iter = json_str.find(str);
+  if (iter == json_str.end()) {
+    MSI_LOG_ERROR << "Check rank table file failed" << str << "in file is not find";
+    return temp_str;
+  }
+  if (!iter->is_string()) {
+    MSI_LOG_ERROR << "Check rank table file failed" << str << "in file is not string";
+    return temp_str;
+  }
+  temp_str = json_str.at(str);
+  return temp_str;
+}
+
+Status DistributedServable::ParserRankTableWithGroupList(const std::string &rank_table_json_file,
+                                                         const json &rank_table_json) {
+  MSI_LOG_INFO << "Begin to parser rank table with group list";
+  auto server_list = ParserArrayInJson(rank_table_json, "group_list");
+  if (server_list.empty()) {
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "group_list attr is empty in" << rank_table_json_file.c_str();
+  }
+
+  size_t rank_id = 0;
+  for (auto &server : server_list) {
+    auto instance_list = ParserArrayInJson(server, "instance_list");
+    if (instance_list.empty()) {
+      return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "instance_list attr is empty in" << rank_table_json_file.c_str();
+    }
+
+    for (auto &instance : instance_list) {
+      auto str_server_id = ParserStringInJson(instance, "server_id");
+      if (str_server_id.empty()) {
+        return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "server_id attr is empty in" << rank_table_json_file.c_str();
+      }
+
+      OneRankConfig one_rank_config;
+      one_rank_config.ip = str_server_id;
+
+      auto devices = ParserArrayInJson(instance, "devices");
+      if (devices.empty()) {
+        return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "devices attr is empty in" << rank_table_json_file.c_str();
+      }
+
+      auto str_device_id = ParserStringInJson(devices.at(0), "device_id");
+      if (str_device_id.empty()) {
+        return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "device_id attr is empty in" << rank_table_json_file.c_str();
+      }
+      auto temp_str_device_id = str_device_id.get<std::string>();
+      uint32_t temp_device_id;
+      auto status = ConvertStr2Int(rank_table_json_file, temp_str_device_id, "device_id", &temp_device_id);
+      if (status != SUCCESS) {
+        MSI_LOG_ERROR << "Convert device_id from string to int failed";
+        return status;
+      }
+
+      auto str_rank_id = ParserStringInJson(instance, "rank_id");
+      if (str_rank_id.empty()) {
+        return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "rank_id attr is empty in" << rank_table_json_file.c_str();
+      }
+      auto temp_str_rank_id = str_rank_id.get<std::string>();
+      uint32_t temp_rank_id;
+      status = ConvertStr2Int(rank_table_json_file, temp_str_rank_id, "rank_id", &temp_rank_id);
+      if (status != SUCCESS) {
+        MSI_LOG_ERROR << "Convert rank_id from string to int failed";
+        return status;
+      }
+
+      if (rank_id != temp_rank_id) {
+        return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
+               << "device size not match rank_id in" << rank_table_json_file.c_str();
+      }
+      rank_id++;
+      one_rank_config.device_id = temp_device_id;
+      config_.rank_list.push_back(one_rank_config);
+    }
+  }
+  MSI_LOG(INFO) << "Success parser rank table json file with group list and save to DistributedServableConfig";
+
+  return SUCCESS;
+}
+Status DistributedServable::ConvertStr2Int(const std::string &rank_table_json_file, const std::string &para_str,
+                                           const std::string &para_key, uint32_t *para_int) const {
+  try {
+    *para_int = std::stoi(para_str);
+  } catch (std::invalid_argument &) {
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
+           << para_key << "attr is invalid argument in" << rank_table_json_file.c_str();
+  } catch (std::out_of_range &) {
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
+           << para_key << "attr is out of range in" << rank_table_json_file.c_str();
+  } catch (...) {
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
+           << "convert" << para_key << "attr exception occurred in" << rank_table_json_file.c_str();
+  }
+  return SUCCESS;
+}
+
+Status DistributedServable::ParserRankTableWithServerList(const std::string &rank_table_json_file,
+                                                          const json &rank_table_json) {
+  MSI_LOG_INFO << "Begin to parser rank table with server list";
+  auto server_list = ParserArrayInJson(rank_table_json, "server_list");
+  if (server_list.empty()) {
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "server_list attr is empty in" << rank_table_json_file.c_str();
+  }
+
+  size_t rank_id = 0;
+  for (auto &server : server_list) {
+    auto server_id = ParserStringInJson(server, "server_id");
+    if (server_id.empty()) {
+      return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "server_id attr is empty in" << rank_table_json_file.c_str();
+    }
+
+    auto device_list = ParserArrayInJson(server, "device");
+    if (device_list.empty()) {
+      return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "device attr is empty in" << rank_table_json_file.c_str();
+    }
+
+    for (auto &device : device_list) {
+      OneRankConfig one_rank_config;
+      one_rank_config.ip = server_id;
+      auto str_device_id = ParserStringInJson(device, "device_id");
+      if (str_device_id.empty()) {
+        return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "device_id attr is empty in" << rank_table_json_file.c_str();
+      }
+      auto temp_str_device_id = str_device_id.get<std::string>();
+      uint32_t temp_device_id;
+      auto status = ConvertStr2Int(rank_table_json_file, temp_str_device_id, "device_id", &temp_device_id);
+      if (status != SUCCESS) {
+        MSI_LOG_ERROR << "Convert device_id from string to int failed";
+        return status;
+      }
+
+      auto str_rank_id = ParserStringInJson(device, "rank_id");
+      if (str_rank_id.empty()) {
+        return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "rank_id attr is empty in" << rank_table_json_file.c_str();
+      }
+      auto temp_str_rank_id = str_rank_id.get<std::string>();
+      uint32_t temp_rank_id;
+      status = ConvertStr2Int(rank_table_json_file, temp_str_rank_id, "rank_id", &temp_rank_id);
+      if (status != SUCCESS) {
+        MSI_LOG_ERROR << "Convert rank_id from string to int failed";
+        return status;
+      }
+
+      rank_id++;
+      one_rank_config.device_id = temp_device_id;
+      config_.rank_list.push_back(one_rank_config);
+    }
+  }
+  MSI_LOG(INFO) << "Success parser rank table json file with server list and save to DistributedServableConfig";
+
+  return SUCCESS;
+}
 
 Status DistributedServable::WaitAgentsReady(uint64_t wait_agents_time_in_seconds) {
   MSI_LOG_INFO << "Begin waiting ready of all agents";
