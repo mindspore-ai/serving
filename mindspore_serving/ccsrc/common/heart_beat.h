@@ -39,18 +39,9 @@ using TimerCallback = std::function<void()>;
 class MS_API Timer {
  public:
   Timer() {}
-  ~Timer() { StopTimer(); }
-  void StartTimer(int64_t millisecond, TimerCallback callback) {
-    auto timer_run = [this, millisecond, callback]() {
-      std::unique_lock<std::mutex> lk(cv_m_);
-      if (cv_.wait_for(lk, std::chrono::milliseconds(millisecond)) == std::cv_status::timeout) {
-        callback();
-      }
-    };
-    thread_ = std::thread(timer_run);
-  }
-  void StopTimer() {
-    cv_.notify_one();
+  ~Timer() {
+    is_stoped_.store(true);
+    cv_.notify_all();
     if (thread_.joinable()) {
       try {
         thread_.join();
@@ -60,10 +51,27 @@ class MS_API Timer {
     }
   }
 
+  void StartTimer(int64_t millisecond, TimerCallback callback) {
+    auto timer_run = [this, millisecond, callback]() {
+      while (!is_stoped_.load()) {
+        std::unique_lock<std::mutex> lk(cv_m_);
+        if (cv_.wait_for(lk, std::chrono::milliseconds(millisecond)) == std::cv_status::timeout) {
+          callback();
+        }
+      }
+    };
+    thread_ = std::thread(timer_run);
+  }
+  void StopTimer() {
+    is_stoped_.store(true);
+    cv_.notify_all();
+  }
+
  private:
   std::mutex cv_m_;
   std::thread thread_;
   std::condition_variable cv_;
+  std::atomic<bool> is_stoped_ = false;
 };
 
 template <class SendStub, class RecvStub>
@@ -74,13 +82,14 @@ class MS_API Watcher {
     auto it = watchee_map_.find(address);
     if (it != watchee_map_.end()) {
       MSI_LOG(INFO) << "watchee exist: " << address;
-      return;
+      watchee_map_[address].timer_ = std::make_shared<Timer>();
+    } else {
+      WatcheeContext context;
+      auto channel = GrpcServer::CreateChannel(address);
+      context.stub_ = SendStub::NewStub(channel);
+      context.timer_ = std::make_shared<Timer>();
+      watchee_map_.insert(make_pair(address, context));
     }
-    WatcheeContext context;
-    auto channel = GrpcServer::CreateChannel(address);
-    context.stub_ = SendStub::NewStub(channel);
-    context.timer_ = std::make_shared<Timer>();
-    watchee_map_.insert(make_pair(address, context));
     MSI_LOG(INFO) << "Begin to send ping to " << address;
     // add timer
     watchee_map_[address].timer_->StartTimer(max_time_out_ / max_ping_times_,
@@ -105,9 +114,11 @@ class MS_API Watcher {
   }
 
   void RecvPing(const std::string &address) {
+    std::unique_lock<std::mutex> lock{m_lock_};
     // recv message
     if (watcher_map_.count(address)) {
       watcher_map_[address].timer_->StopTimer();
+      watcher_map_[address].timer_ = std::make_shared<Timer>();
     } else {
       WatcherContext context;
       auto channel = GrpcServer::CreateChannel(address);
@@ -116,13 +127,14 @@ class MS_API Watcher {
       watcher_map_.insert(make_pair(address, context));
       MSI_LOG(INFO) << "Begin to send pong to " << address;
     }
-    // add timer
-    watcher_map_[address].timer_->StartTimer(max_time_out_, std::bind(&Watcher::RecvPingTimeOut, this, address));
     // send async message
     PongAsync(address);
+    // add timer
+    watcher_map_[address].timer_->StartTimer(max_time_out_, std::bind(&Watcher::RecvPingTimeOut, this, address));
   }
 
   void RecvPong(const std::string &address) {
+    std::unique_lock<std::mutex> lock{m_lock_};
     // recv message
     if (watchee_map_.count(address)) {
       watchee_map_[address].timeouts_ = 0;
@@ -132,10 +144,12 @@ class MS_API Watcher {
   }
 
   void RecvPongTimeOut(const std::string &address) {
+    std::unique_lock<std::mutex> lock{m_lock_};
     if (watchee_map_[address].timeouts_ >= max_ping_times_) {
       // add exit handle
       MSI_LOG(INFO) << "Recv Pong Time Out from " << address;
-      watchee_map_.erase(address);
+      watchee_map_[address].timer_->StopTimer();
+      // need erase map
       return;
     }
     SendPing(address);
@@ -144,32 +158,31 @@ class MS_API Watcher {
   void RecvPingTimeOut(const std::string &address) {
     MSI_LOG(INFO) << "Recv Ping Time Out from " << address;
     // add exit handle
-    watcher_map_.erase(address);
+    watcher_map_[address].timer_->StopTimer();
+    // need erase map
   }
   void PingAsync(const std::string &address) {
     proto::PingRequest request;
     proto::PingReply reply;
-    request.set_address(address);
+    request.set_address(host_address_);
     grpc::ClientContext context;
     const int32_t TIME_OUT = 100;
     std::chrono::system_clock::time_point deadline =
       std::chrono::system_clock::now() + std::chrono::microseconds(TIME_OUT);
     context.set_deadline(deadline);
     (void)watchee_map_[address].stub_->Ping(&context, request, &reply);
-    MSI_LOG(INFO) << "Finish send ping";
   }
 
   void PongAsync(const std::string &address) {
     proto::PongRequest request;
     proto::PongReply reply;
-    request.set_address(address);
+    request.set_address(host_address_);
     grpc::ClientContext context;
     const int32_t TIME_OUT = 100;
     std::chrono::system_clock::time_point deadline =
       std::chrono::system_clock::now() + std::chrono::microseconds(TIME_OUT);
     context.set_deadline(deadline);
     (void)watcher_map_[address].stub_->Pong(&context, request, &reply);
-    MSI_LOG(INFO) << "Finish send pong";
   }
 
  private:
@@ -188,6 +201,7 @@ class MS_API Watcher {
   uint64_t max_time_out_ = 10000;  // 10s
   std::unordered_map<std::string, WatcheeContext> watchee_map_;
   std::unordered_map<std::string, WatcherContext> watcher_map_;
+  std::mutex m_lock_;
 };
 }  // namespace mindspore::serving
 

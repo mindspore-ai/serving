@@ -143,6 +143,71 @@ class WorkerExitContext : public WorkerServiceContext {
   proto::ExitReply response_;
 };
 
+class WorkerPingContext : public WorkerServiceContext {
+ public:
+  WorkerPingContext(MSWorkerImpl *service_impl, proto::MSWorker::AsyncService *async_service,
+                    grpc::ServerCompletionQueue *cq)
+      : WorkerServiceContext(service_impl, async_service, cq), responder_(&ctx_) {}
+
+  ~WorkerPingContext() = default;
+
+  static Status EnqueueRequest(MSWorkerImpl *service_impl, proto::MSWorker::AsyncService *async_service,
+                               grpc::ServerCompletionQueue *cq) {
+    auto call = new WorkerPingContext(service_impl, async_service, cq);
+    call->StartEnqueueRequest();
+    return SUCCESS;
+  }
+
+  void StartEnqueueRequest() override {
+    state_ = STATE::PROCESS;
+    async_service_->RequestPing(&ctx_, &request_, &responder_, cq_, cq_, this);
+  }
+
+  void HandleRequest() override {
+    EnqueueRequest(service_impl_, async_service_, cq_);
+    state_ = STATE::FINISH;
+    grpc::Status status = service_impl_->Ping(&ctx_, &request_, &response_);
+    responder_.Finish(response_, status, this);
+  }
+
+ private:
+  grpc::ServerAsyncResponseWriter<proto::PingReply> responder_;
+  proto::PingRequest request_;
+  proto::PingReply response_;
+};
+
+class WorkerPongContext : public WorkerServiceContext {
+ public:
+  WorkerPongContext(MSWorkerImpl *service_impl, proto::MSWorker::AsyncService *async_service,
+                    grpc::ServerCompletionQueue *cq)
+      : WorkerServiceContext(service_impl, async_service, cq), responder_(&ctx_) {}
+
+  ~WorkerPongContext() = default;
+
+  static Status EnqueueRequest(MSWorkerImpl *service_impl, proto::MSWorker::AsyncService *async_service,
+                               grpc::ServerCompletionQueue *cq) {
+    auto call = new WorkerPongContext(service_impl, async_service, cq);
+    call->StartEnqueueRequest();
+    return SUCCESS;
+  }
+
+  void StartEnqueueRequest() override {
+    state_ = STATE::PROCESS;
+    async_service_->RequestPong(&ctx_, &request_, &responder_, cq_, cq_, this);
+  }
+
+  void HandleRequest() override {
+    EnqueueRequest(service_impl_, async_service_, cq_);
+    state_ = STATE::FINISH;
+    grpc::Status status = service_impl_->Pong(&ctx_, &request_, &response_);
+    responder_.Finish(response_, status, this);
+  }
+
+ private:
+  grpc::ServerAsyncResponseWriter<proto::PongReply> responder_;
+  proto::PongRequest request_;
+  proto::PongReply response_;
+};
 class WorkerGrpcServer : public GrpcAsyncServer {
  public:
   WorkerGrpcServer(const std::string &host, int32_t port, MSWorkerImpl *service_impl)
@@ -158,6 +223,8 @@ class WorkerGrpcServer : public GrpcAsyncServer {
   Status EnqueueRequest() {
     WorkerPredictContext::EnqueueRequest(service_impl_, &svc_, cq_.get());
     WorkerExitContext::EnqueueRequest(service_impl_, &svc_, cq_.get());
+    WorkerPingContext::EnqueueRequest(service_impl_, &svc_, cq_.get());
+    WorkerPongContext::EnqueueRequest(service_impl_, &svc_, cq_.get());
     return SUCCESS;
   }
 
