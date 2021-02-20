@@ -28,7 +28,8 @@ Status MSWorkerServer::StartWorkerGrpcServer(const std::string &hostname, int32_
   if (in_running_) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Worker grpc server is already running";
   }
-  service_impl_ = std::make_unique<MSWorkerImpl>();
+  std::string server_address = hostname + ":" + std::to_string(port);
+  service_impl_ = std::make_unique<MSWorkerImpl>(server_address);
   async_server_ = std::make_unique<WorkerGrpcServer>(hostname, port, service_impl_.get());
   return Init();
 }

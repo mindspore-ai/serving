@@ -20,19 +20,34 @@
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
+#include <memory>
+#include <string>
 #include "common/serving_common.h"
+#include "common/heart_beat.h"
 #include "proto/ms_worker.pb.h"
 #include "proto/ms_worker.grpc.pb.h"
-
+#include "proto/ms_master.pb.h"
+#include "proto/ms_master.grpc.pb.h"
+#include "proto/ms_agent.pb.h"
+#include "proto/ms_agent.grpc.pb.h"
 namespace mindspore {
 namespace serving {
 
 // Service Implement
 class MSWorkerImpl : public proto::MSWorker::Service {
  public:
+  explicit MSWorkerImpl(const std::string server_address) {
+    if (!watcher_) {
+      watcher_ = std::make_shared<Watcher<proto::MSMaster, proto::MSAgent>>(server_address);
+    }
+  }
   grpc::Status Predict(grpc::ServerContext *context, const proto::PredictRequest *request,
                        proto::PredictReply *reply) override;
   grpc::Status Exit(grpc::ServerContext *context, const proto::ExitRequest *request, proto::ExitReply *reply) override;
+  grpc::Status Ping(grpc::ServerContext *context, const proto::PingRequest *request, proto::PingReply *reply) override;
+  grpc::Status Pong(grpc::ServerContext *context, const proto::PongRequest *request, proto::PongReply *reply) override;
+
+  std::shared_ptr<Watcher<proto::MSMaster, proto::MSAgent>> watcher_;
 };
 
 }  // namespace serving

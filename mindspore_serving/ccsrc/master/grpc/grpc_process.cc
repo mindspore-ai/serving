@@ -106,6 +106,7 @@ grpc::Status MSMasterImpl::Register(grpc::ServerContext *context, const proto::R
     MSI_LOG_ERROR << "Register servable failed, " << worker_sig();
     return grpc::Status::OK;
   }
+  watcher_->StartWatch(request->address());
   MSI_LOG(INFO) << "Register success: " << worker_sig();
   return grpc::Status::OK;
 }
@@ -126,6 +127,7 @@ grpc::Status MSMasterImpl::AddWorker(grpc::ServerContext *context, const proto::
     MSI_LOG_ERROR << "Add servable failed, " << worker_sig();
     return grpc::Status::OK;
   }
+  watcher_->StartWatch(request->address());
   MSI_LOG(INFO) << "Add success, " << worker_sig();
   return grpc::Status::OK;
 }
@@ -141,6 +143,7 @@ grpc::Status MSMasterImpl::RemoveWorker(grpc::ServerContext *context, const prot
     return str.str();
   };
   Status status(FAILED);
+  watcher_->StopWatch(request->address());
   status = dispatcher_->RemoveServable(*request, reply);
   if (status != SUCCESS) {
     MSI_LOG_ERROR << "Add servable failed, " << worker_sig();
@@ -162,6 +165,7 @@ grpc::Status MSMasterImpl::Exit(grpc::ServerContext *context, const proto::ExitR
 
   MSI_LOG(INFO) << "Worker Exit, " << worker_sig();
   Status status(FAILED);
+  watcher_->StopWatch(request->address());
   status = dispatcher_->UnregisterServable(*request, reply);
   if (status != SUCCESS) {
     MSI_LOG_ERROR << "UnRegister servable failed, " << worker_sig();
@@ -169,6 +173,20 @@ grpc::Status MSMasterImpl::Exit(grpc::ServerContext *context, const proto::ExitR
   }
   return grpc::Status::OK;
 }
+grpc::Status MSMasterImpl::Ping(grpc::ServerContext *context, const proto::PingRequest *request,
+                                proto::PingReply *reply) {
+  MSI_EXCEPTION_IF_NULL(request);
+  MSI_EXCEPTION_IF_NULL(reply);
+  watcher_->RecvPing(request->address());
+  return grpc::Status::OK;
+}
 
+grpc::Status MSMasterImpl::Pong(grpc::ServerContext *context, const proto::PongRequest *request,
+                                proto::PongReply *reply) {
+  MSI_EXCEPTION_IF_NULL(request);
+  MSI_EXCEPTION_IF_NULL(reply);
+  watcher_->RecvPong(request->address());
+  return grpc::Status::OK;
+}
 }  // namespace serving
 }  // namespace mindspore

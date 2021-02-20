@@ -34,6 +34,7 @@ grpc::Status MSDistributedImpl::AgentRegister(grpc::ServerContext *context, cons
     if (status != SUCCESS) {
       MSI_LOG(ERROR) << "Agent Register FAILED";
     }
+    watcher_->StartWatch(request->address());
   }
   return grpc::Status::OK;
 }
@@ -42,6 +43,7 @@ grpc::Status MSDistributedImpl::AgentExit(grpc::ServerContext *context, const pr
                                           proto::AgentExitReply *reply) {
   MSI_EXCEPTION_IF_NULL(request);
   MSI_EXCEPTION_IF_NULL(reply);
+  watcher_->StopWatch(request->address());
   servable_->OnAgentExit();
   if (Worker::GetInstance().IsRunning()) {
     Worker::GetInstance().StopServable();

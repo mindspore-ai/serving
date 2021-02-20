@@ -94,3 +94,18 @@ message ServableSpec {
   // Specifies the method name in the servable.
   string method_name = 2;
 }
+
+message PingRequest {
+  string address = 1;
+}
+
+message PingReply {
+  string address = 1;
+}
+message PongRequest {
+  string address = 1;
+}
+
+message PongReply {
+  string address = 1;
+}

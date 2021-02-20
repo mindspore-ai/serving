@@ -25,6 +25,8 @@ service MSMaster {
   rpc Exit(ExitRequest) returns (ExitReply) {}
   rpc AddWorker(AddWorkerRequest) returns (AddWorkerReply) {}
   rpc RemoveWorker(RemoveWorkerRequest) returns (RemoveWorkerReply) {}
+  rpc Ping(PingRequest) returns (PingReply) {}
+  rpc Pong(PongRequest) returns (PongReply) {}
 }
 
 message WorkerSpec {

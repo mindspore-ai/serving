@@ -27,7 +27,8 @@ Status MSDistributedWorkerServer::StartWorkerGrpcServer(const std::string &hostn
   if (in_running_) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Worker grpc server is already running";
   }
-  auto impl = std::make_unique<MSDistributedImpl>(servable_);
+  std::string server_address = hostname + ":" + std::to_string(port);
+  auto impl = std::make_unique<MSDistributedImpl>(servable_, server_address);
   async_server_ = std::make_unique<DistributedWorkerGrpcServer>(hostname, port, impl.get());
   service_impl_ = std::move(impl);
   return Init();

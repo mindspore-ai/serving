@@ -31,4 +31,6 @@ service MSWorker {
   rpc AgentRegister(AgentRegisterRequest) returns (AgentRegisterReply) {}
   rpc AgentFailed(AgentFailedRequest) returns (AgentFailedReply) {}
   rpc AgentConfigAcquire(AgentConfigAcquireRequest) returns (AgentConfigAcquireReply) {}
+  rpc Ping(PingRequest) returns (PingReply) {}
+  rpc Pong(PongRequest) returns (PongReply) {}
 }

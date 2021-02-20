@@ -21,11 +21,15 @@
 #include <grpcpp/health_check_service_interface.h>
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
 #include <memory>
+#include <string>
 #include "common/serving_common.h"
+#include "common/heart_beat.h"
 #include "proto/ms_service.pb.h"
 #include "proto/ms_service.grpc.pb.h"
 #include "proto/ms_master.pb.h"
 #include "proto/ms_master.grpc.pb.h"
+#include "proto/ms_worker.pb.h"
+#include "proto/ms_worker.grpc.pb.h"
 #include "master/dispacther.h"
 
 namespace mindspore {
@@ -46,7 +50,12 @@ class MSServiceImpl {
 // Service Implement
 class MSMasterImpl final : public proto::MSMaster::Service {
  public:
-  explicit MSMasterImpl(std::shared_ptr<Dispatcher> dispatcher) : dispatcher_(dispatcher) {}
+  explicit MSMasterImpl(std::shared_ptr<Dispatcher> dispatcher, const std::string server_address)
+      : dispatcher_(dispatcher) {
+    if (!watcher_) {
+      watcher_ = std::make_shared<Watcher<proto::MSWorker, proto::MSWorker>>(server_address);
+    }
+  }
   ~MSMasterImpl() = default;
 
   grpc::Status Register(grpc::ServerContext *context, const proto::RegisterRequest *request,
@@ -56,9 +65,12 @@ class MSMasterImpl final : public proto::MSMaster::Service {
                          proto::AddWorkerReply *reply) override;
   grpc::Status RemoveWorker(grpc::ServerContext *context, const proto::RemoveWorkerRequest *request,
                             proto::RemoveWorkerReply *reply) override;
+  grpc::Status Ping(grpc::ServerContext *context, const proto::PingRequest *request, proto::PingReply *reply) override;
+  grpc::Status Pong(grpc::ServerContext *context, const proto::PongRequest *request, proto::PongReply *reply) override;
 
  private:
   std::shared_ptr<Dispatcher> dispatcher_;
+  std::shared_ptr<Watcher<proto::MSWorker, proto::MSWorker>> watcher_;
 };
 
 }  // namespace serving

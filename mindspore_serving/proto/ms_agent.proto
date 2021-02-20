@@ -40,4 +40,6 @@ message DistributedExitReply {
 service MSAgent {
   rpc Predict(DistributedPredictRequest) returns (DistributedPredictReply) {}
   rpc Exit(DistributedExitRequest) returns (DistributedExitReply) {}
+  rpc Ping(PingRequest) returns (PingReply) {}
+  rpc Pong(PongRequest) returns (PongReply) {}
 }
