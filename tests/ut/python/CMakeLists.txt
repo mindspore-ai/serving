@@ -26,7 +26,7 @@ target_link_libraries(_mindspore_serving PRIVATE serving_common)
 target_link_libraries(_mindspore_serving PRIVATE "${PYTHON_LIBRARIES}")
 target_include_directories(_mindspore_serving PRIVATE ${pybind11_INCLUDE_DIRS})
 
-# target_link_options(_mindspore_serving PRIVATE -Wl,-init,mindspore_serving_log_init)
+target_link_options(_mindspore_serving PRIVATE -Wl,-init,mindspore_serving_log_init)
 
 # disable auto rpath
 set_target_properties(_mindspore_serving PROPERTIES SKIP_BUILD_RPATH TRUE)

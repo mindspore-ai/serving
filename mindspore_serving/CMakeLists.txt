@@ -27,7 +27,7 @@ message("serving using grpc_DIR : " ${gPRC_DIR})
 find_package(gRPC CONFIG REQUIRED)
 message(STATUS "Using gRPC ${gRPC_VERSION}")
 
-set(_GRPC_GRPCPP gRPC::grpc++ gRPC::grpc)
+set(_GRPC_GRPCPP gRPC::grpc++)
 set(_REFLECTION gRPC::grpc++_reflection)
 
 if(CMAKE_CROSSCOMPILING)
@@ -97,9 +97,6 @@ target_link_libraries(serving_ascend PRIVATE serving_common)
 include(CheckPIESupported)
 check_pie_supported()
 set_property(TARGET serving_common PROPERTY POSITION_INDEPENDENT_CODE TRUE)
-
-include(CheckPIESupported)
-check_pie_supported()
 set_property(TARGET serving_ascend PROPERTY POSITION_INDEPENDENT_CODE TRUE)
 
 target_link_libraries(serving_common PRIVATE PROTO_SRC_LIB)

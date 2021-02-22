@@ -14,7 +14,7 @@ add_executable(serving_ut ${UT_LIST})
 target_link_libraries(serving_ut PRIVATE mindspore_serving::gtest)
 target_link_libraries(serving_ut PRIVATE -Wl,--whole-archive cpp_serving_common -Wl,--no-whole-archive)
 
-# target_link_options(serving_ut PRIVATE -Wl,-init,mindspore_serving_log_init)
+target_link_options(serving_ut PRIVATE -Wl,-init,mindspore_serving_log_init)
 
 # disable auto rpath
 set_target_properties(serving_ut PROPERTIES SKIP_BUILD_RPATH TRUE)
