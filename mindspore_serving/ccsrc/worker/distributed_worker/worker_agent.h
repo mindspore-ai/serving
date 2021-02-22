@@ -18,7 +18,6 @@
 #define MINDSPORE_SERVING_WORKER_AGENT_H
 #include <vector>
 #include <memory>
-#include "worker/distributed_worker/agent_executor.h"
 #include "proto/ms_agent.pb.h"
 #include "proto/ms_agent.grpc.pb.h"
 #include "common/grpc_server.h"

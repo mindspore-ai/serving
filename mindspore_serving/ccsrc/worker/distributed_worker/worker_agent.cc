@@ -135,5 +135,58 @@ void WorkerAgent::StopAgent(bool notify_worker) {
   ExitSignalHandle::Instance().Stop();
 }
 
+class ProtoDistributedPredictRequest : public RequestBase {
+ public:
+  explicit ProtoDistributedPredictRequest(const proto::DistributedPredictRequest &other) : proto_request_(other) {
+    for (int i = 0; i < proto_request_.inputs_size(); i++) {
+      tensor_list_.emplace_back(const_cast<proto::Tensor *>(&proto_request_.inputs(i)));
+    }
+  }
+  ~ProtoDistributedPredictRequest() = default;
+
+  size_t size() const override { return tensor_list_.size(); }
+  const TensorBase *operator[](size_t index) const override {
+    if (index >= tensor_list_.size()) {
+      MSI_LOG_EXCEPTION << "visit invalid index " << index << " total size " << tensor_list_.size();
+    }
+    return &tensor_list_[index];
+  }
+
+ private:
+  std::vector<ProtoTensor> tensor_list_;
+  const proto::DistributedPredictRequest &proto_request_;
+};
+
+class ProtoDistributedPredictReply : public ReplyBase {
+ public:
+  explicit ProtoDistributedPredictReply(proto::DistributedPredictReply *other) : proto_reply_(other) {}
+  ~ProtoDistributedPredictReply() = default;
+
+  size_t size() const override { return tensor_list_.size(); };
+  TensorBase *operator[](size_t index) override {
+    if (index >= tensor_list_.size()) {
+      MSI_LOG_EXCEPTION << "visit invalid index " << index << " total size " << tensor_list_.size();
+    }
+    return &tensor_list_[index];
+  };
+  const TensorBase *operator[](size_t index) const override {
+    if (index >= tensor_list_.size()) {
+      MSI_LOG_EXCEPTION << "visit invalid index " << index << " total size " << tensor_list_.size();
+    }
+    return &tensor_list_[index];
+  }
+  TensorBase *add() override {
+    auto tensor = proto_reply_->add_outputs();
+    ProtoTensor proto_tensor(tensor);
+    tensor_list_.push_back(proto_tensor);
+    return &(tensor_list_.back());
+  }
+  void clear() override { tensor_list_.clear(); }
+
+ private:
+  proto::DistributedPredictReply *proto_reply_;
+  std::vector<ProtoTensor> tensor_list_;
+};
+
 }  // namespace serving
 }  // namespace mindspore
