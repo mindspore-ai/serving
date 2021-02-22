@@ -86,15 +86,28 @@ include_directories("${CMAKE_CURRENT_BINARY_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}" 
 file(GLOB_RECURSE SERVING_SRC RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
         "ccsrc/master/*.cc" "ccsrc/common/*.cc" "ccsrc/worker/*.cc")
 
+file(GLOB_RECURSE SERVING_ASCEND_SRC RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+        "ccsrc/worker/inference/mindspore_model_wrap.cc")
+
+list(REMOVE_ITEM SERVING_SRC ${SERVING_ASCEND_SRC})
 add_library(serving_common SHARED ${SERVING_SRC})
+add_library(serving_ascend SHARED ${SERVING_ASCEND_SRC})
+target_link_libraries(serving_ascend PRIVATE serving_common)
 
 include(CheckPIESupported)
 check_pie_supported()
 set_property(TARGET serving_common PROPERTY POSITION_INDEPENDENT_CODE TRUE)
 
-target_link_libraries(serving_common PRIVATE PROTO_SRC_LIB mindspore_serving::event mindspore_serving::event_pthreads)
+include(CheckPIESupported)
+check_pie_supported()
+set_property(TARGET serving_ascend PROPERTY POSITION_INDEPENDENT_CODE TRUE)
+
+target_link_libraries(serving_common PRIVATE PROTO_SRC_LIB)
 target_link_libraries(serving_common PRIVATE ${_REFLECTION} ${_GRPC_GRPCPP} ${_PROTOBUF_LIBPROTOBUF} pthread)
+target_link_libraries(serving_common PRIVATE mindspore_serving::event mindspore_serving::event_pthreads)
+target_link_libraries(serving_common PRIVATE mindspore_serving::glog)
 target_link_libraries(serving_common PRIVATE mindspore_serving::eigen)
+target_link_libraries(serving_common PRIVATE ${SECUREC_LIBRARY})
 
 # python
 add_compile_definitions(ENABLE_PYTHON)
@@ -124,11 +137,11 @@ target_link_options(serving_common PRIVATE -Wl,-init,mindspore_serving_log_init)
 if(MS_WHL_LIB_PATH)
     include_directories(${MS_WHL_LIB_PATH}/../include)
     include_directories(${MS_WHL_LIB_PATH}/../)
-    target_link_libraries(serving_common PRIVATE ${MS_WHL_LIB_PATH}/libmindspore.so)
+    target_link_libraries(serving_ascend PRIVATE ${MS_WHL_LIB_PATH}/libmindspore.so)
 elseif(MS_BACKEND)
     include_directories(${MS_SOURCE_DIR}/build/package/mindspore)
     include_directories(${MS_SOURCE_DIR}/build/package/mindspore/include)
-    target_link_libraries(serving_common PRIVATE ${MS_SOURCE_DIR}/build/package/mindspore/lib/libmindspore.so)
+    target_link_libraries(serving_ascend PRIVATE ${MS_SOURCE_DIR}/build/package/mindspore/lib/libmindspore.so)
 else()
     message(FATAL_ERROR "Please check MindSpore path.")
 endif()

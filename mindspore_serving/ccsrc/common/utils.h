@@ -14,14 +14,27 @@
  * limitations under the License.
  */
 
-#ifndef MINDSPORE_SERVING_SERVING_COMMON_H
-#define MINDSPORE_SERVING_SERVING_COMMON_H
+#ifndef MINDSPORE_SERVING_COMMON_UTILS_H
+#define MINDSPORE_SERVING_COMMON_UTILS_H
 
-#include <securec.h>
+#include <string>
 
-#include "common/status.h"
-#include "common/log.h"
-#include "common/tensor.h"
-#include "common/utils.h"
+namespace mindspore {
+namespace serving {
+namespace common {
 
-#endif  // MINDSPORE_SERVING_SERVING_COMMON_H
+static inline std::string GetEnv(const std::string &envvar) {
+  const char *value = ::getenv(envvar.c_str());
+
+  if (value == nullptr) {
+    return std::string();
+  }
+
+  return std::string(value);
+}
+
+}  // namespace common
+}  // namespace serving
+}  // namespace mindspore
+
+#endif  // MINDSPORE_SERVING_UTILS_H

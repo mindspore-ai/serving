@@ -16,6 +16,7 @@
 
 import os
 import threading
+from mindspore_serving.worker import init_mindspore
 from mindspore_serving._mindspore_serving import WorkerAgent_, AgentStartUpConfig_
 from mindspore_serving import log as logger
 
@@ -26,6 +27,7 @@ def start_worker_agent(start_config):
     if not isinstance(start_config, AgentStartUpConfig_):
         raise RuntimeError("Parameter 'start_config' should be instance of AgentStartUpConfig_")
 
+    init_mindspore.init_mindspore_cxx_env()
     os.environ["RANK_ID"] = str(start_config.rank_id)
     os.environ["DEVICE_ID"] = str(start_config.device_id)
     os.environ["MS_ENABLE_HCCL"] = "1"

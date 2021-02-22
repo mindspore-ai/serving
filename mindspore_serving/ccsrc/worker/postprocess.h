@@ -27,7 +27,7 @@
 
 namespace mindspore::serving {
 
-class PostprocessBase : public std::enable_shared_from_this<PostprocessBase> {
+class MS_API PostprocessBase : public std::enable_shared_from_this<PostprocessBase> {
  public:
   PostprocessBase() = default;
   virtual ~PostprocessBase() = default;
@@ -40,7 +40,8 @@ class PostprocessBase : public std::enable_shared_from_this<PostprocessBase> {
 
 class MS_API PostprocessStorage {
  public:
-  void Register(const std::string &postprocess_name, std::shared_ptr<PostprocessBase> postprocess);
+  bool Register(const std::string &postprocess_name, std::shared_ptr<PostprocessBase> postprocess);
+  void Unregister(const std::string &postprocess_name);
 
   std::shared_ptr<PostprocessBase> GetPostprocess(const std::string &postprocess_name) const;
 
@@ -50,9 +51,14 @@ class MS_API PostprocessStorage {
   std::unordered_map<std::string, std::shared_ptr<PostprocessBase>> postprocess_map_;
 };
 
-class RegPostprocess {
+class MS_API RegPostprocess {
  public:
   RegPostprocess(const std::string &postprocess_name, std::shared_ptr<PostprocessBase> postprocess);
+  ~RegPostprocess();
+
+ private:
+  std::string postprocess_name_;
+  bool register_success_ = false;
 };
 
 #define REGISTER_POSTPROCESS(cls_name, postprocess_name) \

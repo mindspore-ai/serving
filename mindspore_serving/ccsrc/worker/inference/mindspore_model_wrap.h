@@ -25,6 +25,10 @@
 #include "common/serving_common.h"
 #include "worker/inference/inference.h"
 #include "api/model.h"
+#include "api/types.h"
+#include "api/data_type.h"
+#include "api/serialization.h"
+#include "api/context.h"
 
 namespace mindspore {
 namespace serving {
@@ -42,7 +46,7 @@ struct ApiModelInfo {
   std::vector<int> without_batch_dim_inputs;
 };
 
-class MindSporeModelWrap {
+class MindSporeModelWrap : public InferenceBase {
  public:
   MindSporeModelWrap() = default;
 
@@ -50,19 +54,19 @@ class MindSporeModelWrap {
 
   Status LoadModelFromFile(serving::DeviceType device_type, uint32_t device_id, const std::string &file_name,
                            ModelType model_type, bool with_batch_dim, const std::vector<int> &without_batch_dim_inputs,
-                           const std::map<std::string, std::string> &other_options);
+                           const std::map<std::string, std::string> &other_options) override;
 
-  Status UnloadModel();
-  Status ExecuteModel(const RequestBase &request, ReplyBase *reply);
-  Status ExecuteModel(const std::vector<TensorBasePtr> &request, std::vector<TensorBasePtr> *reply);
+  Status UnloadModel() override;
+  Status ExecuteModel(const RequestBase &request, ReplyBase *reply) override;
+  Status ExecuteModel(const std::vector<TensorBasePtr> &request, std::vector<TensorBasePtr> *reply) override;
 
-  std::vector<serving::TensorInfo> GetInputInfos() const;
+  std::vector<serving::TensorInfo> GetInputInfos() const override;
 
-  std::vector<serving::TensorInfo> GetOutputInfos() const;
+  std::vector<serving::TensorInfo> GetOutputInfos() const override;
 
-  ssize_t GetBatchSize() const;
+  ssize_t GetBatchSize() const override;
 
-  bool CheckModelSupport(DeviceType device_type, ModelType model_type) const;
+  bool CheckModelSupport(DeviceType device_type, ModelType model_type) const override;
 
  private:
   ApiModelInfo model_;
@@ -74,6 +78,7 @@ class MindSporeModelWrap {
   Status GetModelInfos(ApiModelInfo *model_info);
   std::shared_ptr<Context> TransformModelContext(const std::map<std::string, std::string> &other_options);
   void GetModelBatchSize(ApiModelInfo *model_info);
+  static mindspore::ModelType GetMsModelType(serving::ModelType model_type);
 };
 
 class ApiBufferTensorWrap : public TensorBase {

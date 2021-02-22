@@ -219,5 +219,6 @@ void PyWorker::StopAndClear() {
 }
 
 int PyWorker::GetBatchSize() { return Worker::GetInstance().GetBatchSize(); }
+void PyWorker::InitServingLog() { common_log_init(); }
 
 }  // namespace mindspore::serving

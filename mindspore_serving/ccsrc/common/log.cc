@@ -335,15 +335,7 @@ void InitSubModulesLogLevel() {
   }
 }
 
-}  // namespace serving
-}  // namespace mindspore
-
-extern "C" {
-#if defined(_WIN32) || defined(_WIN64)
-__attribute__((constructor)) void common_log_init(void) {
-#else
 void common_log_init(void) {
-#endif
   // do not use glog predefined log prefix
   FLAGS_log_prefix = false;
   // set default log level to WARNING
@@ -366,12 +358,15 @@ void common_log_init(void) {
   mindspore::serving::InitSubModulesLogLevel();
 }
 
-// shared lib init hook
+}  // namespace serving
+}  // namespace mindspore
+
+extern "C" {
 #if defined(_WIN32) || defined(_WIN64)
 __attribute__((constructor)) void mindspore_serving_log_init(void) {
 #else
 void mindspore_serving_log_init(void) {
 #endif
-  common_log_init();
+  mindspore::serving::common_log_init();
 }
 }

@@ -23,19 +23,29 @@
 #include <memory>
 #include <vector>
 #include <string>
-#include "common/tensor_base.h"
-#include "common/tensor.h"
-#include "common/log.h"
-#include "common/status.h"
-#include "include/api/types.h"
-#include "include/api/data_type.h"
+#include "atomic"
+#include "common/serving_common.h"
 
 namespace mindspore {
 namespace serving {
 
-using mindspore::ModelType;
-using mindspore::ModelType::kMindIR;
-using mindspore::ModelType::kOM;
+enum DeviceType {
+  kDeviceTypeNotSpecified,
+  kDeviceTypeAscendMS,
+  kDeviceTypeAscendCL,
+  kDeviceTypeAscend,
+  kDeviceTypeGpu,
+  kDeviceTypeCpu,
+};
+
+enum ModelType : uint32_t {
+  kMindIR = 0,
+  kAIR = 1,
+  kOM = 2,
+  kONNX = 3,
+  // insert new data type here
+  kUnknownType = 0xFFFFFFFF
+};
 
 struct TensorInfo {
   size_t size = 0;  // -1: unspecified
@@ -47,15 +57,6 @@ struct TensorInfoWithBatch {
   TensorInfo tensor_info;
   size_t size_one_batch = 0;
   std::vector<int64_t> shape_one_batch;
-};
-
-enum DeviceType {
-  kDeviceTypeNotSpecified,
-  kDeviceTypeAscendMS,
-  kDeviceTypeAscendCL,
-  kDeviceTypeAscend,
-  kDeviceTypeGpu,
-  kDeviceTypeCpu,
 };
 
 static inline LogStream &operator<<(LogStream &stream, DeviceType device_type) {
@@ -85,13 +86,19 @@ static inline LogStream &operator<<(LogStream &stream, DeviceType device_type) {
   return stream;
 }
 
-static inline LogStream &operator<<(LogStream &stream, mindspore::ModelType model_type) {
+static inline LogStream &operator<<(LogStream &stream, ModelType model_type) {
   switch (model_type) {
-    case mindspore::kMindIR:
+    case kMindIR:
       stream << "MindIR";
       break;
-    case mindspore::kOM:
+    case kOM:
       stream << "OM";
+      break;
+    case kONNX:
+      stream << "ONNX";
+      break;
+    case kAIR:
+      stream << "AIR";
       break;
     default:
       stream << "[model type: " << static_cast<int>(model_type) << "]";
@@ -99,6 +106,41 @@ static inline LogStream &operator<<(LogStream &stream, mindspore::ModelType mode
   }
   return stream;
 }
+
+class InferenceBase {
+ public:
+  virtual Status LoadModelFromFile(DeviceType device_type, uint32_t device_id, const std::string &file_name,
+                                   ModelType model_type, bool with_batch_dim,
+                                   const std::vector<int> &without_batch_dim_inputs,
+                                   const std::map<std::string, std::string> &other_options) = 0;
+
+  virtual Status UnloadModel() = 0;
+  virtual Status ExecuteModel(const RequestBase &request, ReplyBase *reply) = 0;
+  virtual Status ExecuteModel(const std::vector<TensorBasePtr> &request, std::vector<TensorBasePtr> *reply) = 0;
+
+  virtual std::vector<TensorInfo> GetInputInfos() const = 0;
+
+  virtual std::vector<TensorInfo> GetOutputInfos() const = 0;
+
+  virtual ssize_t GetBatchSize() const = 0;
+
+  virtual bool CheckModelSupport(DeviceType device_type, ModelType model_type) const = 0;
+};
+
+class MS_API InferenceLoader {
+ public:
+  InferenceLoader();
+  ~InferenceLoader();
+  static InferenceLoader &Instance();
+  std::shared_ptr<InferenceBase> CreateMindSporeInfer();
+
+ private:
+  typedef InferenceBase *(*CreateInferHandle)();
+  void *ms_lib_handle_ = nullptr;
+  void *ms_cxx_lib_handle_ = nullptr;
+  CreateInferHandle ms_create_handle_ = nullptr;
+  Status LoadMindSporeModelWrap();
+};
 
 }  // namespace serving
 }  // namespace mindspore

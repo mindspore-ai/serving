@@ -36,11 +36,12 @@ cp -r ${PROJECT_PATH}/mindspore_serving/client mindspore_serving/
 cp ${PROJECT_PATH}/mindspore_serving/*.py mindspore_serving/
 
 export PYTHONPATH=${BUILD_PATH}/mindspore_serving/tests/ut/python:${PROJECT_PATH}/tests/ut/python:$PYTHONPATH
+export LD_LIBRARY_PATH=${BUILD_PATH}/mindspore_serving/tests/ut/:${LD_LIBRARY_PATH}
 export LD_LIBRARY_PATH=${BUILD_PATH}/mindspore_serving/tests/ut/lib:${LD_LIBRARY_PATH}
 export LD_LIBRARY_PATH=${BUILD_PATH}/mindspore_serving/tests/ut/python:${LD_LIBRARY_PATH}
 
 echo "PYTHONPATH=$PYTHONPATH"
-echo "LD_LIBRARY_PATH=LD_LIBRARY_PATH"
+echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
 unset http_proxy
 unset https_proxy
 

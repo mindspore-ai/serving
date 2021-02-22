@@ -26,11 +26,13 @@ else
   echo "BUILD_PATH = $BUILD_PATH"
 fi
 cd ${BUILD_PATH}/mindspore_serving/tests/ut/cpp
+export LD_LIBRARY_PATH=${BUILD_PATH}/mindspore_serving/tests/ut/:${LD_LIBRARY_PATH}
 export LD_LIBRARY_PATH=${BUILD_PATH}/mindspore_serving/tests/ut/lib:${LD_LIBRARY_PATH}
 export LD_LIBRARY_PATH=${BUILD_PATH}/mindspore_serving/tests/ut/cpp:${LD_LIBRARY_PATH}
+echo "LD_LIBRARY_PATH = $LD_LIBRARY_PATH"
 
 if [ $# -gt 0 ]; then
-  ./serving_ut --gtest_filter=$1
+  gdb --args ./serving_ut --gtest_filter=$1
 else
   ./serving_ut
 fi

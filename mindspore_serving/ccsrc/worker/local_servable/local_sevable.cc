@@ -38,38 +38,43 @@ std::string LocalModelServable::GetServableName() const { return servable_name_;
 uint64_t LocalModelServable::GetServableVersion() const { return version_number_; }
 
 Status LocalModelServable::Predict(const std::vector<TensorBasePtr> &input, std::vector<TensorBasePtr> *output) {
-  if (!model_loaded_) {
+  if (!model_loaded_ || !session_) {
     MSI_LOG_EXCEPTION << "Model has not been loaded";
   }
-  return session_.ExecuteModel(input, output);
+  return session_->ExecuteModel(input, output);
 }
 
 std::vector<TensorInfo> LocalModelServable::GetInputInfos() const {
-  if (!model_loaded_) {
+  if (!model_loaded_ || !session_) {
     MSI_LOG_EXCEPTION << "Model has not been loaded";
   }
-  return session_.GetInputInfos();
+  return session_->GetInputInfos();
 }
 
 std::vector<TensorInfo> LocalModelServable::GetOutputInfos() const {
-  if (!model_loaded_) {
+  if (!model_loaded_ || !session_) {
     MSI_LOG_EXCEPTION << "Model has not been loaded";
   }
-  return session_.GetOutputInfos();
+  return session_->GetOutputInfos();
 }
 
 uint64_t LocalModelServable::GetBatchSize() const {
-  if (!model_loaded_) {
+  if (!model_loaded_ || !session_) {
     MSI_LOG_EXCEPTION << "Model has not been loaded";
   }
-  return session_.GetBatchSize();
+  return session_->GetBatchSize();
 }
 
 Status LocalModelServable::StartServable(const std::string &servable_directory, const std::string &servable_name,
                                          uint64_t version_number) {
   if (model_loaded_) {
-    MSI_LOG_EXCEPTION << "Model has loaded";
+    return INFER_STATUS_LOG_ERROR(FAILED) << "Model has loaded";
   }
+  session_ = InferenceLoader::Instance().CreateMindSporeInfer();
+  if (session_ == nullptr) {
+    return INFER_STATUS_LOG_ERROR(FAILED) << "Create MindSpore infer failed";
+  }
+
   base_spec_.servable_directory = servable_directory;
   base_spec_.servable_name = servable_name;
   base_spec_.version_number = version_number;
@@ -200,12 +205,12 @@ Status LocalModelServable::InitDevice(ModelType model_type, const std::map<std::
     if (device_type == kDeviceTypeNotSpecified || device_type == kDeviceTypeAscend) {
       auto ascend_list = {kDeviceTypeAscendCL, kDeviceTypeAscendMS};
       for (auto item : ascend_list) {
-        if (session_.CheckModelSupport(item, model_type)) {
+        if (session_->CheckModelSupport(item, model_type)) {
           return item;
         }
       }
     } else if (device_type == kDeviceTypeAscendCL || device_type == kDeviceTypeAscendMS) {
-      if (session_.CheckModelSupport(device_type, model_type)) {
+      if (session_->CheckModelSupport(device_type, model_type)) {
         return device_type;
       }
     }
@@ -232,9 +237,9 @@ Status LocalModelServable::LoadModel(uint64_t version_number) {
   std::string model_file_name = base_spec_.servable_directory + "/" + base_spec_.servable_name + "/" +
                                 std::to_string(version_number) + "/" + local_meta.servable_file;
   auto context = ServableContext::Instance();
-  Status status = session_.LoadModelFromFile(context->GetDeviceType(), context->GetDeviceId(), model_file_name,
-                                             local_meta.model_format, common_meta.with_batch_dim,
-                                             common_meta.without_batch_dim_inputs, local_meta.load_options);
+  Status status = session_->LoadModelFromFile(context->GetDeviceType(), context->GetDeviceId(), model_file_name,
+                                              local_meta.model_format, common_meta.with_batch_dim,
+                                              common_meta.without_batch_dim_inputs, local_meta.load_options);
   if (status != SUCCESS) {
     return INFER_STATUS_LOG_ERROR(FAILED)
            << "Load model failed, servable directory: '" << base_spec_.servable_directory << "', servable name: '"
@@ -246,7 +251,8 @@ Status LocalModelServable::LoadModel(uint64_t version_number) {
 
 void LocalModelServable::Clear() {
   if (model_loaded_) {
-    session_.UnloadModel();
+    session_->UnloadModel();
+    session_ = nullptr;
   }
   model_loaded_ = false;
 }

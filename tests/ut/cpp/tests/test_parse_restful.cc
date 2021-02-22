@@ -883,26 +883,26 @@ TEST_F(TestParseReply, test_reply_SUCCESS) {
             auto array_items = it.value().items();
             auto int_val = *(array_items.begin());
             ASSERT_TRUE(int_val.value().is_number_integer());
-            ASSERT_EQ(int_val.value(), 1);
+            ASSERT_EQ(int_val.value().get<int>(), 1);
             count++;
           } else if (it.key() == "key_bool") {
             ASSERT_TRUE(it.value().is_boolean());
-            ASSERT_EQ(it.value(), false);
+            ASSERT_EQ(it.value().get<bool>(), false);
             count++;
           } else if (it.key() == "key_float") {
             ASSERT_TRUE(it.value().is_array());
             ASSERT_EQ(it.value().size(), 1);
             auto array_items = it.value().items();
             auto float_val = *(array_items.begin());
-            ASSERT_FLOAT_EQ(float_val.value(), 2.3);
+            ASSERT_FLOAT_EQ(float_val.value().get<float>(), 2.3);
             count++;
           } else if (it.key() == "key_str") {
             ASSERT_TRUE(it.value().is_string());
-            ASSERT_EQ(it.value(), "ut_test");
+            ASSERT_EQ(it.value().get<std::string>(), "ut_test");
             count++;
           } else if (it.key() == "key_bytes") {
             ASSERT_TRUE(it.value().is_object());
-            ASSERT_EQ(it.value()["b64"], "dXRfdGVzdA==");
+            ASSERT_EQ(it.value()["b64"].get<std::string>(), "dXRfdGVzdA==");
             count++;
           }
         }
@@ -915,34 +915,34 @@ TEST_F(TestParseReply, test_reply_SUCCESS) {
           if (it.key() == "key_int") {
             ASSERT_TRUE(it.value().is_array());
             ASSERT_EQ(it.value().size(), 3);
-            ASSERT_EQ(it.value()[0], 1);
-            ASSERT_EQ(it.value()[1], 2);
-            ASSERT_EQ(it.value()[2], 3);
+            ASSERT_EQ(it.value()[0].get<int>(), 1);
+            ASSERT_EQ(it.value()[1].get<int>(), 2);
+            ASSERT_EQ(it.value()[2].get<int>(), 3);
             count++;
           } else if (it.key() == "key_bool") {
             ASSERT_TRUE(it.value().is_array());
             ASSERT_EQ(it.value().size(), 2);
             ASSERT_TRUE(it.value()[0].is_array());
             ASSERT_EQ(it.value()[0].size(), 2);
-            ASSERT_EQ(it.value()[0][0], true);
-            ASSERT_EQ(it.value()[0][1], false);
+            ASSERT_EQ(it.value()[0][0].get<bool>(), true);
+            ASSERT_EQ(it.value()[0][1].get<bool>(), false);
             ASSERT_EQ(it.value()[1].size(), 2);
-            ASSERT_EQ(it.value()[1][0], false);
-            ASSERT_EQ(it.value()[1][1], true);
+            ASSERT_EQ(it.value()[1][0].get<bool>(), false);
+            ASSERT_EQ(it.value()[1][1].get<bool>(), true);
             count++;
           } else if (it.key() == "key_float") {
             ASSERT_TRUE(it.value().is_array());
             ASSERT_EQ(it.value().size(), 1);
             ASSERT_TRUE(it.value()[0].is_array());
             ASSERT_EQ(it.value()[0].size(), 2);
-            ASSERT_FLOAT_EQ(it.value()[0][0], 1.1);
-            ASSERT_FLOAT_EQ(it.value()[0][1], 2.2);
+            ASSERT_FLOAT_EQ(it.value()[0][0].get<float>(), 1.1);
+            ASSERT_FLOAT_EQ(it.value()[0][1].get<float>(), 2.2);
             count++;
           } else if (it.key() == "key_str") {
             ASSERT_TRUE(it.value().is_array());
             ASSERT_EQ(it.value().size(), 2);
-            ASSERT_EQ(it.value()[0], "ut_test");
-            ASSERT_EQ(it.value()[1], "ut_test2");
+            ASSERT_EQ(it.value()[0].get<std::string>(), "ut_test");
+            ASSERT_EQ(it.value()[1].get<std::string>(), "ut_test2");
             count++;
           }
         }
