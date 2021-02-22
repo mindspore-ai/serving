@@ -19,6 +19,7 @@
 #include <string>
 #include <set>
 #include <fstream>
+#include <utility>
 #include "worker/distributed_worker/notify_agent/notify_agent.h"
 #include "worker/worker.h"
 #include "common/exit_handle.h"
@@ -26,6 +27,13 @@
 
 namespace mindspore {
 namespace serving {
+
+struct DistributedPredictMsg {
+  proto::DistributedPredictReply reply;
+  std::promise<void> promise = std::promise<void>();
+  Status status = FAILED;
+  std::future<void> future = promise.get_future();
+};
 
 DistributedServable::~DistributedServable() { Clear(); }
 
@@ -48,7 +56,61 @@ Status DistributedServable::PredictInner(const std::vector<TensorBasePtr> &input
   if (!model_loaded_) {
     MSI_LOG_EXCEPTION << "Model has not been loaded";
   }
-  return Status();
+  MSI_EXCEPTION_IF_NULL(output);
+
+  proto::DistributedPredictRequest request;
+  proto::DistributedPredictRequest empty_request;
+
+  for (const auto &tensor_ptr : input) {
+    auto tensor = request.add_inputs();
+    ProtoTensor proto_tensor(tensor);
+    proto_tensor.assign(*tensor_ptr);
+  }
+
+  auto rank_size = config_.distributed_meta.rank_size;
+  auto stage_size = config_.distributed_meta.stage_size;
+  auto agent_num_per_stage = rank_size / stage_size;
+  auto result_agent_id = agent_num_per_stage * (stage_size - 1);
+
+  auto msg_list = std::make_shared<std::vector<DistributedPredictMsg>>(rank_size);
+
+  for (size_t i = 0; i < rank_size; ++i) {
+    DispatchCallback callback = [msg_list, i](const Status &status) {
+      msg_list->at(i).status = status;
+      msg_list->at(i).promise.set_value();
+    };
+    if (i < agent_num_per_stage) {
+      agent_spec_map_[i].notify_agent_->DispatchAsync(request, &msg_list->at(i).reply, callback);
+    } else {
+      agent_spec_map_[i].notify_agent_->DispatchAsync(empty_request, &msg_list->at(i).reply, callback);
+    }
+  }
+
+  for (size_t i = 0; i < msg_list->size(); ++i) {
+    while (true) {
+      auto state = msg_list->at(i).future.wait_for(std::chrono::milliseconds(1000));
+      if (state == std::future_status::timeout) {
+        if (ExitSignalHandle::Instance().HasStopped()) {
+          return INFER_STATUS_LOG_ERROR(FAILED) << "WorkerAgent(rank_id is " << i << " ) has stopped";
+        }
+        continue;
+      } else if (state == std::future_status::ready) {
+        auto status = msg_list->at(i).status;
+        if (status != SUCCESS) {
+          return INFER_STATUS_LOG_ERROR(FAILED) << "WorkerAgent(rank_id is " << i << " ) infers failed";
+        }
+        break;
+      }
+    }
+  }
+
+  auto &reply = msg_list->at(result_agent_id).reply;
+  for (int i = 0; i < reply.outputs_size(); ++i) {
+    auto p = std::make_shared<ProtoTensor>(reply.mutable_outputs(i));
+    auto tensor_ptr = std::make_shared<Tensor>(p->data_type(), p->shape(), p->data(), p->data_size());
+    output->push_back(tensor_ptr);
+  }
+  return SUCCESS;
 }
 std::vector<TensorInfo> DistributedServable::GetInputInfos() const {
   if (!model_loaded_) {
