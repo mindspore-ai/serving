@@ -65,10 +65,10 @@ static inline LogStream &operator<<(LogStream &stream, DeviceType device_type) {
       stream << "Ascend";
       break;
     case kDeviceTypeAscendMS:
-      stream << "kDeviceTypeAscend910";
+      stream << "Ascend910";
       break;
     case kDeviceTypeAscendCL:
-      stream << "kDeviceTypeAscend310";
+      stream << "Ascend310";
       break;
     case kDeviceTypeGpu:
       stream << "Gpu";

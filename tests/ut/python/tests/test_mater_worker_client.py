@@ -389,3 +389,348 @@ def test_grpc_larger_than_server_receive_max_size():
 
     print(result)
     assert "Grpc Error, (8, 'resource exhausted')" in str(result["error"])
+
+
+@serving_test
+def test_servable_postprocess_result_count_less():
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += r"""
+register.declare_servable(servable_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=True)
+"""
+    servable_content += r"""
+def postprocess(instances):
+    count = len(instances)
+    for i in range(count -1):
+        yield i
+    
+@register.register_method(output_names=["y"])
+def add_common(x1, x2):
+    y = register.call_servable(x1, x2)
+    y = register.call_postprocess_pipeline(postprocess, y)
+    return y
+"""
+    base.init_servable_with_servable_config(1, servable_content)
+    worker.start_servable_in_master(base.servable_dir, base.servable_name)
+    master.start_grpc_server("0.0.0.0", 5500)
+    # Client
+    instance_count = 3
+
+    instances = []
+    y_data_list = []
+    for i in range(instance_count):
+        x1 = np.asarray([[1.1], [3.3]]).astype(np.float32) * (i + 1)
+        x2 = np.asarray([[5.5], [7.7]]).astype(np.float32) * (i + 1)
+        y_data_list.append(x1 + x2)
+        instances.append({"x1": x1, "x2": x2})
+
+    client = create_client("localhost", 5500, base.servable_name, "add_common")
+    result = client.infer(instances)
+    print(result)
+    assert len(result) == instance_count
+    assert "Postprocess Failed" in str(result[1]["error"])
+
+
+@serving_test
+def test_servable_postprocess_result_count_more():
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += r"""
+register.declare_servable(servable_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=True)
+"""
+    servable_content += r"""
+def postprocess(instances):
+    count = len(instances)
+    for i in range(count + 1):
+        yield i
+    
+@register.register_method(output_names=["y"])
+def add_common(x1, x2):
+    y = register.call_servable(x1, x2)
+    y = register.call_postprocess_pipeline(postprocess, y)
+    return y
+"""
+    base.init_servable_with_servable_config(1, servable_content)
+    worker.start_servable_in_master(base.servable_dir, base.servable_name)
+    master.start_grpc_server("0.0.0.0", 5500)
+    # Client
+    instance_count = 3
+
+    instances = []
+    y_data_list = []
+    for i in range(instance_count):
+        x1 = np.asarray([[1.1], [3.3]]).astype(np.float32) * (i + 1)
+        x2 = np.asarray([[5.5], [7.7]]).astype(np.float32) * (i + 1)
+        y_data_list.append(x1 + x2)
+        instances.append({"x1": x1, "x2": x2})
+
+    client = create_client("localhost", 5500, base.servable_name, "add_common")
+    result = client.infer(instances)
+    print(result)
+    assert len(result) == instance_count
+    assert result[0]["y"] == 0
+    assert result[1]["y"] == 1
+    assert result[2]["y"] == 0
+
+
+@serving_test
+def test_servable_postprocess_result_type_invalid():
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += r"""
+register.declare_servable(servable_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=True)
+"""
+    servable_content += r"""
+def postprocess(instances):
+    count = len(instances)
+    for i in range(count):
+        yield np.int8
+    
+@register.register_method(output_names=["y"])
+def add_common(x1, x2):
+    y = register.call_servable(x1, x2)
+    y = register.call_postprocess_pipeline(postprocess, y)
+    return y
+"""
+    base.init_servable_with_servable_config(1, servable_content)
+    worker.start_servable_in_master(base.servable_dir, base.servable_name)
+    master.start_grpc_server("0.0.0.0", 5500)
+    # Client
+    instance_count = 3
+
+    instances = []
+    y_data_list = []
+    for i in range(instance_count):
+        x1 = np.asarray([[1.1], [3.3]]).astype(np.float32) * (i + 1)
+        x2 = np.asarray([[5.5], [7.7]]).astype(np.float32) * (i + 1)
+        y_data_list.append(x1 + x2)
+        instances.append({"x1": x1, "x2": x2})
+
+    client = create_client("localhost", 5500, base.servable_name, "add_common")
+    result = client.infer(instances)
+    print(result)
+    assert len(result) == instance_count
+
+    assert "Postprocess Failed" in str(result[0]["error"])
+    assert "Postprocess Failed" in str(result[1]["error"])
+
+
+@serving_test
+def test_servable_postprocess_get_result_exception():
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += r"""
+register.declare_servable(servable_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=True)
+"""
+    servable_content += r"""
+def postprocess(instances):
+    count = len(instances)
+    for i in range(count):
+        if i == 0:
+           yield i
+        raise RuntimeError("RuntimeError")
+    
+@register.register_method(output_names=["y"])
+def add_common(x1, x2):
+    y = register.call_servable(x1, x2)
+    y = register.call_postprocess_pipeline(postprocess, y)
+    return y
+"""
+    base.init_servable_with_servable_config(1, servable_content)
+    worker.start_servable_in_master(base.servable_dir, base.servable_name)
+    master.start_grpc_server("0.0.0.0", 5500)
+    # Client
+    instance_count = 3
+
+    instances = []
+    y_data_list = []
+    for i in range(instance_count):
+        x1 = np.asarray([[1.1], [3.3]]).astype(np.float32) * (i + 1)
+        x2 = np.asarray([[5.5], [7.7]]).astype(np.float32) * (i + 1)
+        y_data_list.append(x1 + x2)
+        instances.append({"x1": x1, "x2": x2})
+
+    client = create_client("localhost", 5500, base.servable_name, "add_common")
+    result = client.infer(instances)
+    print(result)
+    assert len(result) == instance_count
+
+    assert result[0]["y"] == 0
+    assert "Postprocess Failed" in str(result[1]["error"])
+
+
+@serving_test
+def test_servable_preprocess_result_count_less():
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += r"""
+register.declare_servable(servable_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=True)
+"""
+    servable_content += r"""
+def preprocess(instances):
+    count = len(instances)
+    for i in range(count-1):
+        yield i
+    
+@register.register_method(output_names=["y"])
+def add_common(x1, x2):
+    x3 = register.call_preprocess_pipeline(preprocess, x1)
+    y = register.call_servable(x1, x2)
+    return x3
+"""
+    base.init_servable_with_servable_config(1, servable_content)
+    worker.start_servable_in_master(base.servable_dir, base.servable_name)
+    master.start_grpc_server("0.0.0.0", 5500)
+    # Client
+    instance_count = 3
+
+    instances = []
+    y_data_list = []
+    for i in range(instance_count):
+        x1 = np.asarray([[1.1], [3.3]]).astype(np.float32) * (i + 1)
+        x2 = np.asarray([[5.5], [7.7]]).astype(np.float32) * (i + 1)
+        y_data_list.append(x1 + x2)
+        instances.append({"x1": x1, "x2": x2})
+
+    client = create_client("localhost", 5500, base.servable_name, "add_common")
+    result = client.infer(instances)
+    print(result)
+    assert len(result) == instance_count
+
+    assert result[0]["y"] == 0
+    assert result[1]["y"] == 1
+    assert "Preprocess Failed" in str(result[2]["error"])
+
+
+@serving_test
+def test_servable_preprocess_result_count_more():
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += r"""
+register.declare_servable(servable_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=True)
+"""
+    servable_content += r"""
+def preprocess(instances):
+    count = len(instances)
+    for i in range(count+1):
+        yield i
+    
+@register.register_method(output_names=["y"])
+def add_common(x1, x2):
+    x3 = register.call_preprocess_pipeline(preprocess, x1)
+    y = register.call_servable(x1, x2)
+    return x3
+"""
+    base.init_servable_with_servable_config(1, servable_content)
+    worker.start_servable_in_master(base.servable_dir, base.servable_name)
+    master.start_grpc_server("0.0.0.0", 5500)
+    # Client
+    instance_count = 3
+
+    instances = []
+    y_data_list = []
+    for i in range(instance_count):
+        x1 = np.asarray([[1.1], [3.3]]).astype(np.float32) * (i + 1)
+        x2 = np.asarray([[5.5], [7.7]]).astype(np.float32) * (i + 1)
+        y_data_list.append(x1 + x2)
+        instances.append({"x1": x1, "x2": x2})
+
+    client = create_client("localhost", 5500, base.servable_name, "add_common")
+    result = client.infer(instances)
+    print(result)
+    assert len(result) == instance_count
+
+    assert result[0]["y"] == 0
+    assert result[1]["y"] == 1
+    assert result[2]["y"] == 2
+
+
+@serving_test
+def test_servable_preprocess_result_type_invalid():
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += r"""
+register.declare_servable(servable_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=True)
+"""
+    servable_content += r"""
+def preprocess(instances):
+    count = len(instances)
+    for i in range(count):
+        if i == 0:
+            yield i
+            continue
+        yield np.int8
+    
+@register.register_method(output_names=["y"])
+def add_common(x1, x2):
+    x3 = register.call_preprocess_pipeline(preprocess, x1)
+    y = register.call_servable(x1, x2)
+    return x3
+"""
+    base.init_servable_with_servable_config(1, servable_content)
+    worker.start_servable_in_master(base.servable_dir, base.servable_name)
+    master.start_grpc_server("0.0.0.0", 5500)
+    # Client
+    instance_count = 3
+
+    instances = []
+    y_data_list = []
+    for i in range(instance_count):
+        x1 = np.asarray([[1.1], [3.3]]).astype(np.float32) * (i + 1)
+        x2 = np.asarray([[5.5], [7.7]]).astype(np.float32) * (i + 1)
+        y_data_list.append(x1 + x2)
+        instances.append({"x1": x1, "x2": x2})
+
+    client = create_client("localhost", 5500, base.servable_name, "add_common")
+    result = client.infer(instances)
+    print(result)
+    assert len(result) == instance_count
+
+    assert "Preprocess Failed" in str(result[0]["error"])
+    assert "Preprocess Failed" in str(result[1]["error"])
+    assert "Preprocess Failed" in str(result[2]["error"])
+
+
+@serving_test
+def test_servable_preprocess_get_result_exception():
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += r"""
+register.declare_servable(servable_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=True)
+"""
+    servable_content += r"""
+def preprocess(instances):
+    count = len(instances)
+    for i in range(count):
+        if i == 0:
+           yield i
+        raise RuntimeError("RuntimeError")
+    
+@register.register_method(output_names=["y"])
+def add_common(x1, x2):
+    x3 = register.call_preprocess_pipeline(preprocess, x1)
+    y = register.call_servable(x1, x2)
+    return x3
+"""
+    base.init_servable_with_servable_config(1, servable_content)
+    worker.start_servable_in_master(base.servable_dir, base.servable_name)
+    master.start_grpc_server("0.0.0.0", 5500)
+    # Client
+    instance_count = 3
+
+    instances = []
+    y_data_list = []
+    for i in range(instance_count):
+        x1 = np.asarray([[1.1], [3.3]]).astype(np.float32) * (i + 1)
+        x2 = np.asarray([[5.5], [7.7]]).astype(np.float32) * (i + 1)
+        y_data_list.append(x1 + x2)
+        instances.append({"x1": x1, "x2": x2})
+
+    client = create_client("localhost", 5500, base.servable_name, "add_common")
+    result = client.infer(instances)
+    print(result)
+    assert len(result) == instance_count
+
+    assert result[0]["y"] == 0
+    assert "Preprocess Failed" in str(result[1]["error"])
+    assert result[0]["y"] == 0

@@ -45,12 +45,11 @@ class PyTask:
         super(PyTask, self).__init__()
         self.task_name = task_name
         self.switch_batch = switch_batch
-        self.temp_result = None
-        self.task = None
         self.index = 0
         self.instances_size = 0
-        self.stop_flag = False
         self.result_batch = []
+        self.task_info = None
+        self.temp_result = None
 
     def push_failed_impl(self, count):
         """Base method to push failed result"""
@@ -74,34 +73,53 @@ class PyTask:
         """Push success result"""
         if not self.result_batch:
             return
-
-        self.index += len(self.result_batch)
-        self.push_result_batch_impl(tuple(self.result_batch))
+        result_batch = self.result_batch
         self.result_batch = []
+        try:
+            self.push_result_batch_impl(tuple(result_batch))
+        except Exception as e:
+            raise ServingSystemException(f"Push {self.task_name} result cause exception: {e}")
+        self.index += len(result_batch)
 
-    def in_processing(self):
-        """Is last task time gab not handled done, every time gab handles some instances of preprocess and
-        postprocess"""
-        return self.temp_result is not None
+    def has_next(self):
+        """Is there result not handled"""
+        return self.index < self.instances_size
 
     def run(self, task=None):
         """Run preprocess or postprocess, if last task has not been handled, continue to handle,
         or handle new task, every task has some instances"""
         if not self.temp_result:
             assert task is not None
-            self.instances_size = len(task.instance_list)
-            self.index = 0
-            self.task = task
-            self.temp_result = self._handle_task()
-            if not self.temp_result:
-                return
-        while self.index < self.instances_size:
+            self.temp_result = self._run_inner(task)
+        try:
+            next(self.temp_result)
+            if not self.has_next():
+                self.temp_result = None
+        except StopIteration:
+            raise RuntimeError(f"Get next '{self.task_name}' result failed")
+
+    def _run_inner(self, task):
+        """Iterator get next result, and push it to c++"""
+        instances_size = len(task.instance_list)
+        self.index = 0
+        self.instances_size = len(task.instance_list)
+
+        self.task_info = self.get_task_info(task.name)
+        instance_list = task.instance_list
+        # check input
+        for item in instance_list:
+            if not isinstance(item, tuple) or len(item) != self.task_info["inputs_count"]:
+                raise RuntimeError(f"length of given inputs {len(item)}"
+                                   f" not match {self.task_name} required " + str(self.task_info["inputs_count"]))
+
+        result = self._handle_task(instance_list)
+        while self.index < instances_size:
             try:
                 get_result_time_end = time.time()
                 last_index = self.index
 
-                for _ in range(self.index, min(self.index + self.switch_batch, self.instances_size)):
-                    output = next(self.temp_result)
+                for _ in range(self.index, min(self.index + self.switch_batch, instances_size)):
+                    output = next(result)
                     output = self._handle_result(output)
                     self.result_batch.append(output)
 
@@ -111,49 +129,33 @@ class PyTask:
                             f"{(get_result_time - get_result_time_end) * 1000} ms")
 
                 self.push_result_batch()
-                break
+                yield self.index  # end current coroutine, switch to next coroutine
+
             except StopIteration:
-                self.push_result_batch()
-                self.push_failed(self.instances_size - self.index)
+                result_count = self.index + len(self.result_batch)
+                self.push_failed(instances_size - result_count)
                 raise RuntimeError(
-                    f"expecting '{self.task_name}' yield count equal to instance size {self.instances_size}")
+                    f"expecting '{self.task_name}' yield count {result_count} equal to "
+                    f"instance size {instances_size}")
             except ServingSystemException as e:
-                self.push_failed(self.instances_size - self.index)
+                result_count = self.index + len(self.result_batch)
+                self.push_failed(instances_size - result_count)
                 raise e
             except Exception as e:  # catch exception and try next
                 logger.warning(f"{self.task_name} get result catch exception: {e}")
                 logging.exception(e)
                 self.push_failed(1)  # push success results and a failed result
-                self.temp_result = self._handle_task_continue()
+                result = self._handle_task(instance_list[self.index:])
 
-        if self.index >= self.instances_size:
-            self.temp_result = None
-
-    def _handle_task(self):
-        """Handle new task"""
-        self.task_info = self.get_task_info(self.task.name)
-        instance_list = self.task.instance_list
-
-        self.context_list = self.task.context_list
-        # check input
-        for item in instance_list:
-            if not isinstance(item, tuple) or len(item) != self.task_info["inputs_count"]:
-                raise RuntimeError(f"length of given inputs {len(item)}"
-                                   f" not match {self.task_name} required " + str(self.task_info["inputs_count"]))
-        return self._handle_task_continue()
-
-    def _handle_task_continue(self):
+    def _handle_task(self, instance_list):
         """Continue to handle task on new task or task exception happened"""
-        if self.index >= self.instances_size:
-            return None
-        instance_list = self.task.instance_list
         try:
-            outputs = self.task_info["fun"](instance_list[self.index:])
+            outputs = self.task_info["fun"](instance_list)
             return outputs
         except Exception as e:
             logger.warning(f"{self.task_name} invoke catch exception: ")
             logging.exception(e)
-            self.push_failed(len(instance_list) - self.index)
+            self.push_failed(len(instance_list))
             return None
 
     def _handle_result(self, output):
@@ -223,7 +225,7 @@ class PyTaskThread(threading.Thread):
         preprocess_turn = True
         while True:
             try:
-                if not self.preprocess.in_processing() and not self.postprocess.in_processing():
+                if not self.preprocess.has_next() and not self.postprocess.has_next():
                     task = Worker_.get_py_task()
                     if task.task_type == task_type_stop:
                         break
@@ -238,9 +240,9 @@ class PyTaskThread(threading.Thread):
                 # otherwise try get next preprocess task when postprocess is running
                 # when next preprocess is not available, switch to running postprocess
                 if preprocess_turn:
-                    if self.preprocess.in_processing():
+                    if self.preprocess.has_next():
                         self.preprocess.run()
-                    elif self.postprocess.in_processing():
+                    elif self.postprocess.has_next():
                         task = Worker_.try_get_preprocess_py_task()
                         if task.task_type == task_type_stop:
                             break
@@ -248,9 +250,9 @@ class PyTaskThread(threading.Thread):
                             self.preprocess.run(task)
                     preprocess_turn = False
                 else:
-                    if self.postprocess.in_processing():
+                    if self.postprocess.has_next():
                         self.postprocess.run()
-                    elif self.preprocess.in_processing():
+                    elif self.preprocess.has_next():
                         task = Worker_.try_get_postprocess_py_task()
                         if task.task_type == task_type_stop:
                             break
