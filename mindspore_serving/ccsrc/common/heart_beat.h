@@ -147,7 +147,7 @@ class MS_API Watcher {
     std::unique_lock<std::mutex> lock{m_lock_};
     if (watchee_map_[address].timeouts_ >= max_ping_times_) {
       // add exit handle
-      MSI_LOG(INFO) << "Recv Pong Time Out from " << address;
+      MSI_LOG(ERROR) << "Recv Pong Time Out from " << address << ", host address is " << host_address_;
       watchee_map_[address].timer_->StopTimer();
       // need erase map
       return;
@@ -156,7 +156,7 @@ class MS_API Watcher {
   }
 
   void RecvPingTimeOut(const std::string &address) {
-    MSI_LOG(INFO) << "Recv Ping Time Out from " << address;
+    MSI_LOG(ERROR) << "Recv Ping Time Out from " << address << ", host address is " << host_address_;
     // add exit handle
     watcher_map_[address].timer_->StopTimer();
     // need erase map
@@ -197,8 +197,8 @@ class MS_API Watcher {
     std::shared_ptr<typename RecvStub::Stub> stub_ = nullptr;
   };
   std::string host_address_;
-  uint64_t max_ping_times_ = 10;
-  uint64_t max_time_out_ = 10000;  // 10s
+  uint64_t max_ping_times_ = 20;
+  uint64_t max_time_out_ = 20000;  // 20s
   std::unordered_map<std::string, WatcheeContext> watchee_map_;
   std::unordered_map<std::string, WatcherContext> watcher_map_;
   std::mutex m_lock_;
