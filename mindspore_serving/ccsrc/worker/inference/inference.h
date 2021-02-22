@@ -23,7 +23,7 @@
 #include <memory>
 #include <vector>
 #include <string>
-#include "atomic"
+#include <atomic>
 #include "common/serving_common.h"
 
 namespace mindspore {
@@ -109,6 +109,8 @@ static inline LogStream &operator<<(LogStream &stream, ModelType model_type) {
 
 class InferenceBase {
  public:
+  InferenceBase() = default;
+  virtual ~InferenceBase() = default;
   virtual Status LoadModelFromFile(DeviceType device_type, uint32_t device_id, const std::string &file_name,
                                    ModelType model_type, bool with_batch_dim,
                                    const std::vector<int> &without_batch_dim_inputs,

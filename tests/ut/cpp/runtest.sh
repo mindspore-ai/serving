@@ -32,7 +32,7 @@ export LD_LIBRARY_PATH=${BUILD_PATH}/mindspore_serving/tests/ut/cpp:${LD_LIBRARY
 echo "LD_LIBRARY_PATH = $LD_LIBRARY_PATH"
 
 if [ $# -gt 0 ]; then
-  gdb --args ./serving_ut --gtest_filter=$1
+  ./serving_ut --gtest_filter=$1
 else
   ./serving_ut
 fi

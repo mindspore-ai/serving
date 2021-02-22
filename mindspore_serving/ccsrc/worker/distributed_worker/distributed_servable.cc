@@ -20,7 +20,9 @@
 #include <set>
 #include <fstream>
 #include "worker/distributed_worker/notify_agent/notify_agent.h"
+#include "worker/worker.h"
 #include "common/exit_handle.h"
+#include "common/proto_tensor.h"
 
 namespace mindspore {
 namespace serving {
@@ -32,6 +34,17 @@ std::string DistributedServable::GetServableName() const { return servable_name_
 uint64_t DistributedServable::GetServableVersion() const { return version_number_; }
 
 Status DistributedServable::Predict(const std::vector<TensorBasePtr> &input, std::vector<TensorBasePtr> *output) {
+  auto status = PredictInner(input, output);
+  if (status != SUCCESS) {
+    MSI_LOG_ERROR << "Predict error happened, now exit distributed servable";
+    Worker::GetInstance().StopServable();
+  }
+  return status;
+}
+
+Status DistributedServable::PredictInner(const std::vector<TensorBasePtr> &input, std::vector<TensorBasePtr> *output) {
+  MSI_EXCEPTION_IF_NULL(output);
+  std::unique_lock<std::mutex> lock{mutex_};
   if (!model_loaded_) {
     MSI_LOG_EXCEPTION << "Model has not been loaded";
   }
@@ -59,6 +72,9 @@ uint64_t DistributedServable::GetBatchSize() const {
 }
 
 Status DistributedServable::GetDistributedServableConfig(DistributedServableConfig *config) const {
+  if (!config_loaded_) {
+    return INFER_STATUS(FAILED) << "Config not loaded";
+  }
   *config = config_;
   return SUCCESS;
 }
@@ -90,6 +106,7 @@ Status DistributedServable::RegisterAgent(const WorkerAgentSpec &agent_spec) {
   std::shared_ptr<BaseNotifyAgent> notify_agent = std::make_shared<GrpcNotifyAgent>(agent_spec.agent_address);
   context.notify_agent_ = notify_agent;
   agent_spec_map_[agent_spec.rank_id] = context;
+  MSI_LOG_INFO << "Rank " << agent_spec.rank_id << " been registered";
 
   if (agent_spec_map_.size() >= config_.distributed_meta.rank_size) {
     SetWaitAgentsPromise(true);
@@ -108,7 +125,9 @@ void DistributedServable::Clear() {
 }
 
 Status DistributedServable::OnAgentExit() {
+  std::unique_lock<std::mutex> lock{mutex_};
   SetWaitAgentsPromise(false);
+  model_loaded_ = false;
   return SUCCESS;
 }
 
@@ -138,6 +157,7 @@ Status DistributedServable::StartServable(const std::string &servable_directory,
     MSI_LOG_ERROR << "Init with rank table on start up failed";
     return status;
   }
+  config_loaded_ = true;
   status = CheckRankConfig();
   if (status != SUCCESS) {
     MSI_LOG_ERROR << "Check rank config failed";
@@ -175,13 +195,15 @@ Status DistributedServable::InitConfigOnStartup(const std::string &rank_table_js
   }
 
   MSI_LOG(INFO) << "Begin to parser rank table json file: " << rank_table_json_file.c_str();
-  json rank_table_json;
   std::ifstream json_file(rank_table_json_abs_path);
   if (!json_file.is_open()) {
     return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "failed to open rank table file：" << rank_table_json_file.c_str();
   }
+  std::stringstream buffer;
+  buffer << json_file.rdbuf();
+  config_.rank_table_content = buffer.str();
 
-  json_file >> rank_table_json;
+  json rank_table_json = nlohmann::json::parse(config_.rank_table_content);
   if (!rank_table_json.is_object()) {
     return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << rank_table_json_file.c_str() << " is not json object";
   }

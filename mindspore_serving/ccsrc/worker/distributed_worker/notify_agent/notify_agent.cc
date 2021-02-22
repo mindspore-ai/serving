@@ -34,7 +34,6 @@ GrpcNotifyAgent::GrpcNotifyAgent(const std::string &agent_address) {
 GrpcNotifyAgent::~GrpcNotifyAgent() = default;
 
 Status GrpcNotifyAgent::Exit() {
-  MSI_LOG_INFO << "Notify one agent exit begin";
   if (stub_) {
     proto::DistributedExitRequest request;
     request.set_address(agent_address_);

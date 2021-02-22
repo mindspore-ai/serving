@@ -31,9 +31,9 @@ from mindspore_serving.worker.distributed import worker_agent
 def _get_local_ip(rank_list, port):
     """Get the local ip from the rank table config"""
     import socket
-    ip_list = []
+    ip_list = set()
     for item in rank_list:
-        ip_list.append(item.ip)
+        ip_list.add(item.ip)
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         for ip in ip_list:
             try:
@@ -86,7 +86,7 @@ signal_exit = "Exit"
 signal_heartbeat = "HeartBeat"
 
 
-def _recv_parent(index, recv_pipe):
+def _recv_parent(index, recv_pipe, handle_stop_signal=True):
     """Receive message from Start up process.
     Return False on Ctrl+C(and worker Stop message) Exit Signal, heartbeat failed, and signal_exit.
     Return True on receiving signal_success."""
@@ -94,7 +94,7 @@ def _recv_parent(index, recv_pipe):
         while True:
             heartbeat_count = 0
             while not recv_pipe.poll(0.1):
-                if ExitSignalHandle_.has_stopped():
+                if handle_stop_signal and ExitSignalHandle_.has_stopped():
                     logger.warning(f"Child {index}: Exit on Ctrl+C or stop message from worker")
                     return False
                 heartbeat_count += 1
@@ -127,15 +127,15 @@ def _agent_process(send_pipe, recv_pipe, index, start_config):
         success_msg = _recv_parent(index, recv_pipe)
         if not success_msg:
             worker_agent.stop()
+        send_pipe.close()
+        recv_pipe.close()
     # pylint: disable=broad-except
     except Exception as e:
         traceback.print_exc()
         logger.error(f"Child {index}: Catch exception and notify exit of others")
         send_pipe.send((index, e))
-        _recv_parent(index, recv_pipe)  # receive exit message from parent process
-        worker_agent.stop()
-    send_pipe.close()
-    recv_pipe.close()
+        _recv_parent(index, recv_pipe, False)
+        logger.error(f"Child {index}: end send message to parent")
 
 
 def _start_listening_child_processes(p_recv_pipe, send_pipe_list, subprocess_list):
@@ -148,6 +148,17 @@ def _start_listening_child_processes(p_recv_pipe, send_pipe_list, subprocess_lis
         except Exception as e:
             logger.warning(f"Send pipe message exception happen: {e}")
 
+    def send_exit_msg():
+        index = 0
+        for send_pipe, process in zip(send_pipe_list, subprocess_list):
+            if process.is_alive():
+                logger.warning(f"Send exit message to Child {index}")
+                send_pipe_msg(send_pipe, signal_exit)
+                logger.warning(f"End send exit message to Child {index}")
+            else:
+                logger.warning(f"Child {index} is not alive")
+            index += 1
+
     count = len(send_pipe_list)
     for _ in range(count):
         while True:
@@ -157,18 +168,16 @@ def _start_listening_child_processes(p_recv_pipe, send_pipe_list, subprocess_lis
                 if process.is_alive():
                     continue
                 logger.warning("Fail to start agents because of death of one agent")
-                for send_pipe_x, process_x in zip(send_pipe_list, subprocess_list):
-                    if process_x.is_alive():
-                        send_pipe_msg(send_pipe_x, signal_exit)
+                send_exit_msg()
                 return False
             for send_pipe in send_pipe_list:
                 send_pipe_msg(send_pipe, signal_heartbeat)
 
-        _, msg = p_recv_pipe.recv()
+        index, msg = p_recv_pipe.recv()
+        logger.info(f"Receive msg from Child {index}: {msg}")
         if isinstance(msg, Exception):
             logger.warning("Fail to start agents because of exception raise by one agent")
-            for send_pipe in send_pipe_list:
-                send_pipe_msg(send_pipe, signal_exit)
+            send_exit_msg()
             return False
 
     for send_pipe in send_pipe_list:
@@ -223,6 +232,8 @@ def startup_worker_agents(worker_ip, worker_port, model_files, group_config_file
     check_type.check_int("agent_start_port", agent_start_port, 1, 65535 - 7)
     model_files = check_type.check_and_as_str_tuple_list("model_files", model_files)
     group_config_files = check_type.check_and_as_str_tuple_list("group_config_files", group_config_files)
+
+    ExitSignalHandle_.start()
     distributed_config = WorkerAgent_.get_agents_config_from_worker(worker_ip, worker_port)
 
     # get machine ip

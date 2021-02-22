@@ -20,11 +20,17 @@ syntax = "proto3";
 package mindspore.serving.proto;
 import "mindspore_serving/proto/ms_service.proto";
 
+message TensorInfo {
+  TensorShape shape = 1; // tensor shape info
+  DataType dtype = 2; // tensor content data type
+  int64 size = 3;
+}
+
 message AgentSpec {
   int64 rank_id = 1;
   int64 batch_size = 2;
-  repeated Tensor inputs = 3;
-  repeated Tensor outputs = 4;
+  repeated TensorInfo inputs = 3;
+  repeated TensorInfo outputs = 4;
 }
 
 message CommonServableMeta {

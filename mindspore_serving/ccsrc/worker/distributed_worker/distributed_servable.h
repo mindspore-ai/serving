@@ -66,9 +66,11 @@ class MS_API DistributedServable : public ServableBase {
 
  private:
   DistributedServableConfig config_;
+  std::atomic_bool config_loaded_ = false;
+
   std::string servable_name_;
   uint64_t version_number_ = 0;
-  bool model_loaded_ = false;
+  std::atomic_bool model_loaded_ = false;
 
   std::mutex mutex_;
   std::map<uint32_t, DistributedAgentContext> agent_spec_map_;
@@ -87,6 +89,7 @@ class MS_API DistributedServable : public ServableBase {
   Status CompareTensorInfos(const std::vector<TensorInfo> &lefts, const std::vector<TensorInfo> &rights);
   Status CheckRankConfig();
   void SetWaitAgentsPromise(bool flag);
+  Status PredictInner(const std::vector<TensorBasePtr> &input, std::vector<TensorBasePtr> *output);
   // agent stubs
   Status ParserRankTableWithGroupList(const std::string &rank_table_json_file, const json &rank_table_json);
 

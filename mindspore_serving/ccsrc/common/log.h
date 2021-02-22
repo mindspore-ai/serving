@@ -181,8 +181,6 @@ extern int g_ms_serving_log_level MS_API;
     }                                                                \
   } while (0)
 
-MS_API void common_log_init();
-
 }  // namespace mindspore::serving
 
 #endif  // MINDSPORE_SERVING_LOG_H

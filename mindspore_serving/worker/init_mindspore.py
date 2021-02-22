@@ -41,7 +41,7 @@ def _set_mindspore_cxx_env():
 
 
 def init_mindspore_cxx_env():
-    """Init MindSpore env, and init serving log"""
+    """Init env for load libmindspore.so"""
     global _flag_set_mindspore_cxx_env
     if _flag_set_mindspore_cxx_env:
         return

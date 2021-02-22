@@ -80,8 +80,6 @@ message Tensor {
 
   // for string type and images, the dtype is MS_BYTES.
   repeated bytes bytes_val = 4;
-
-  int64 size = 5;
 }
 
 message ServableSpec {

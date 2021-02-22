@@ -41,31 +41,24 @@ GrpcNotifyDistributeWorker::GrpcNotifyDistributeWorker(const std::string &distri
 GrpcNotifyDistributeWorker::~GrpcNotifyDistributeWorker() = default;
 
 Status GrpcNotifyDistributeWorker::Register(const std::vector<WorkerAgentSpec> &worker_specs) {
-  const int32_t REGISTER_TIME_OUT = 60;
   const int32_t REGISTER_INTERVAL = 1;
-  auto loop = REGISTER_TIME_OUT;
-  while (loop-- && !ExitSignalHandle::Instance().HasStopped()) {
-    MSI_LOG(INFO) << "Register to " << distributed_worker_address_ << ", agent address: " << agent_address_;
-    proto::AgentRegisterRequest request;
-    GrpcTensorHelper::CopyFromWorkerAgentSpec(worker_specs, &request);
-    request.set_address(agent_address_);
-    proto::AgentRegisterReply reply;
-    grpc::ClientContext context;
-    std::chrono::system_clock::time_point deadline =
-      std::chrono::system_clock::now() + std::chrono::seconds(REGISTER_INTERVAL);
-    context.set_deadline(deadline);
-    grpc::Status status = stub_->AgentRegister(&context, request, &reply);
-    if (status.ok()) {
-      MSI_LOG(INFO) << "Register SUCCESS ";
-      return SUCCESS;
-    }
-    MSI_LOG_INFO << "Grpc message: " << status.error_code() << ", " << status.error_message();
-    std::this_thread::sleep_for(std::chrono::milliseconds(REGISTER_INTERVAL * 1000));
+
+  MSI_LOG(INFO) << "Register to worker " << distributed_worker_address_ << ", agent address: " << agent_address_;
+  proto::AgentRegisterRequest request;
+  GrpcTensorHelper::CopyFromWorkerAgentSpec(worker_specs, &request);
+  request.set_address(agent_address_);
+  proto::AgentRegisterReply reply;
+  grpc::ClientContext context;
+  std::chrono::system_clock::time_point deadline =
+    std::chrono::system_clock::now() + std::chrono::seconds(REGISTER_INTERVAL);
+  context.set_deadline(deadline);
+  grpc::Status status = stub_->AgentRegister(&context, request, &reply);
+  if (status.ok()) {
+    MSI_LOG(INFO) << "Register SUCCESS ";
+    return SUCCESS;
   }
-  if (ExitSignalHandle::Instance().HasStopped()) {
-    return INFER_STATUS_LOG_WARNING(FAILED) << "Agent exit, stop registration";
-  }
-  return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Register TimeOut";
+  return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
+         << "Register to worker failed, grpc error: " << status.error_code() << ", " << status.error_message();
 }
 
 Status GrpcNotifyDistributeWorker::Unregister() {
