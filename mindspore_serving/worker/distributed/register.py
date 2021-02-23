@@ -21,7 +21,19 @@ from mindspore_serving import log as logger
 
 
 def declare_distributed_servable(rank_size, stage_size, with_batch_dim=True, without_batch_dim_inputs=None):
-    """declare distributed servable in servable_config.py"""
+    """declare distributed servable in servable_config.py.
+
+    Args:
+        rank_size (int): Te rank size of the distributed model.
+        stage_size (int): The stage size of the distributed model.
+        with_batch_dim (bool): Whether the first shape dim of the inputs and outputs of model is batch, default True.
+        without_batch_dim_inputs (None, int, tuple or list of int): Index of inputs that without batch dim
+            when with_batch_dim is True.
+
+    Examples:
+        >>> from mindspore_serving.worker import distributed
+        >>> distributed.declare_distributed_servable(rank_size=8, stage_size=1)
+    """
     check_type.check_bool('with_batch_dim', with_batch_dim)
 
     meta = ServableMeta_()
