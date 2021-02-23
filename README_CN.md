@@ -100,12 +100,6 @@ MindSpore Serving运行需要配置以下环境变量：
 
 - MindSpore Serving依赖MindSpore正确运行，运行MindSpore需要完成[环境变量配置](https://gitee.com/mindspore/docs/blob/master/install/mindspore_ascend_install_pip.md#%E9%85%8D%E7%BD%AE%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F)。
 
-- MindSpore Serving依赖MindSpore库文件，需指定MindSpore软件包的编译或安装路径下的`lib`路径到LD_LIBRARY_PATH。其中，`$MINDSPORE_LIB_PATH`含义参考[安装Serving](https://gitee.com/mindspore/serving#%E5%AE%89%E8%A3%85serving)。
-
-    ```shell
-    export LD_LIBRARY_PATH=$MINDSPORE_LIB_PATH:${LD_LIBRARY_PATH}
-    ```
-
 ## 快速入门
 
 以一个简单的[Add网络示例](https://www.mindspore.cn/tutorial/inference/zh-CN/master/serving_example.html)，演示MindSpore Serving如何使用。

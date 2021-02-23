@@ -56,7 +56,6 @@ Status DistributedServable::PredictInner(const std::vector<TensorBasePtr> &input
   if (!model_loaded_) {
     MSI_LOG_EXCEPTION << "Model has not been loaded";
   }
-  MSI_EXCEPTION_IF_NULL(output);
 
   proto::DistributedPredictRequest request;
   proto::DistributedPredictRequest empty_request;
@@ -69,6 +68,9 @@ Status DistributedServable::PredictInner(const std::vector<TensorBasePtr> &input
 
   auto rank_size = config_.distributed_meta.rank_size;
   auto stage_size = config_.distributed_meta.stage_size;
+  if (rank_size != agent_spec_map_.size()) {
+    MSI_LOG_EXCEPTION << "agent_spec_map_ size " << agent_spec_map_.size() << " not match rank size " << rank_size;
+  }
   auto agent_num_per_stage = rank_size / stage_size;
   auto result_agent_id = agent_num_per_stage * (stage_size - 1);
 
@@ -86,25 +88,34 @@ Status DistributedServable::PredictInner(const std::vector<TensorBasePtr> &input
     }
   }
 
-  for (size_t i = 0; i < msg_list->size(); ++i) {
-    while (true) {
-      auto state = msg_list->at(i).future.wait_for(std::chrono::milliseconds(1000));
-      if (state == std::future_status::timeout) {
-        if (ExitSignalHandle::Instance().HasStopped()) {
-          return INFER_STATUS_LOG_ERROR(FAILED) << "WorkerAgent(rank_id is " << i << " ) has stopped";
-        }
-        continue;
-      } else if (state == std::future_status::ready) {
-        auto status = msg_list->at(i).status;
-        if (status != SUCCESS) {
-          return INFER_STATUS_LOG_ERROR(FAILED) << "WorkerAgent(rank_id is " << i << " ) infers failed";
-        }
+  for (size_t rank_id = 0; rank_id < msg_list->size(); ++rank_id) {
+    auto &future = msg_list->at(rank_id).future;
+    const uint64_t kWaitMaxHundredMs = 10 * 10;  // waiting for 10s
+    uint64_t k;
+    for (k = 0; k < kWaitMaxHundredMs; k++) {
+      if (ExitSignalHandle::Instance().HasStopped()) {
+        return INFER_STATUS_LOG_ERROR(FAILED) << "Worker has stopped";
+      }
+      // waiting for 100ms
+      if (future.wait_for(std::chrono::milliseconds(100)) == std::future_status::ready) {
         break;
       }
+    }
+    if (k >= kWaitMaxHundredMs) {
+      return INFER_STATUS_LOG_ERROR(FAILED) << "Failed to wait for result of rank " << rank_id;
+    }
+    auto status = msg_list->at(rank_id).status;
+    if (status != SUCCESS) {
+      return INFER_STATUS_LOG_ERROR(FAILED)
+             << "Error happened on get result of rank " << rank_id << ": " << status.StatusMessage();
     }
   }
 
   auto &reply = msg_list->at(result_agent_id).reply;
+  if (reply.has_error_msg() && reply.error_msg().error_code() != 0) {
+    return INFER_STATUS_LOG_ERROR(FAILED)
+           << "Error happened on get result of rank " << result_agent_id << ": " << reply.error_msg().error_msg();
+  }
   for (int i = 0; i < reply.outputs_size(); ++i) {
     auto p = std::make_shared<ProtoTensor>(reply.mutable_outputs(i));
     auto tensor_ptr = std::make_shared<Tensor>(p->data_type(), p->shape(), p->data(), p->data_size());
@@ -112,6 +123,7 @@ Status DistributedServable::PredictInner(const std::vector<TensorBasePtr> &input
   }
   return SUCCESS;
 }
+
 std::vector<TensorInfo> DistributedServable::GetInputInfos() const {
   if (!model_loaded_) {
     MSI_LOG_EXCEPTION << "Model has not been loaded";

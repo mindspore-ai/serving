@@ -145,6 +145,7 @@ class PyTask:
                 logger.warning(f"{self.task_name} get result catch exception: {e}")
                 logging.exception(e)
                 self.push_failed(1)  # push success results and a failed result
+                yield self.index  # end current coroutine, switch to next coroutine
                 result = self._handle_task(instance_list[self.index:])
 
     def _handle_task(self, instance_list):
