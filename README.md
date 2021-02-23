@@ -100,12 +100,6 @@ To run MindSpore Serving, configure the following environment variables:
 
 - MindSpore Serving depends on MindSpore. You need to configure [environment variables](https://gitee.com/mindspore/docs/blob/master/install/mindspore_ascend_install_source_en.md#configuring-environment-variables) to run MindSpore.
 
-- MindSpore Serving depends on the MindSpore library file. You need to specify the `lib` path in the build or installation path of the MindSpore software package to LD_LIBRARY_PATH. For the meaning of `$MINDSPORE_LIB_PATH`, see [MindSpore-based Inference Service Deployment](https://gitee.com/mindspore/serving/blob/master/README.md#installation).
-
-    ```shell
-    export LD_LIBRARY_PATH=$MINDSPORE_LIB_PATH:${LD_LIBRARY_PATH}
-    ```
-
 ## Quick Start
 
 [MindSpore-based Inference Service Deployment](https://www.mindspore.cn/tutorial/inference/en/master/serving_example.html) is used to demonstrate how to use MindSpore Serving.

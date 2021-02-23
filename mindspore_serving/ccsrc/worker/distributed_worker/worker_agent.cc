@@ -45,35 +45,6 @@ Status WorkerAgent::Clear() {
   return SUCCESS;
 }
 
-Status WorkerAgent::Run(const proto::DistributedPredictRequest &request, proto::DistributedPredictReply *reply) {
-  if (session_ == nullptr) {
-    return INFER_STATUS_LOG_ERROR(FAILED) << "Model is not loaded";
-  }
-  // todo : DistributedPredictRequest->RequestBase
-  // todo : DistributedPredictReply->ReplyBase
-  Status status;
-  try {
-    MSI_TIME_STAMP_START(ExecuteModel)
-    // status = session_.ExecuteModel(request_wrap, &reply_wrap);
-    MSI_TIME_STAMP_END(ExecuteModel)
-  } catch (const std::bad_alloc &ex) {
-    status = INFER_STATUS_LOG_ERROR(FAILED) << "Serving Error: malloc memory failed";
-  } catch (const std::runtime_error &ex) {
-    status = INFER_STATUS_LOG_ERROR(FAILED) << "Serving Error: runtime error occurred: " << ex.what();
-  } catch (const std::exception &ex) {
-    status = INFER_STATUS_LOG_ERROR(FAILED) << "Serving Error: exception occurred: " << ex.what();
-  } catch (...) {
-    status = INFER_STATUS_LOG_ERROR(FAILED) << "Serving Error: exception occurred";
-  }
-  if (status != SUCCESS) {
-    reply->Clear();
-    auto error_msg = reply->mutable_error_msg();
-    error_msg->set_error_code(status.StatusCode());
-    error_msg->set_error_msg(status.StatusMessage());
-  }
-  return status;
-}
-
 Status WorkerAgent::StartAgent(const AgentStartUpConfig &config) {
   session_ = InferenceLoader::Instance().CreateMindSporeInfer();
   if (session_ == nullptr) {
@@ -187,6 +158,35 @@ class ProtoDistributedPredictReply : public ReplyBase {
   proto::DistributedPredictReply *proto_reply_;
   std::vector<ProtoTensor> tensor_list_;
 };
+
+Status WorkerAgent::Run(const proto::DistributedPredictRequest &request, proto::DistributedPredictReply *reply) {
+  if (session_ == nullptr) {
+    return INFER_STATUS_LOG_ERROR(FAILED) << "Model is not loaded";
+  }
+  Status status;
+  try {
+    MSI_TIME_STAMP_START(ExecuteModel)
+    ProtoDistributedPredictRequest request_wrap(request);
+    ProtoDistributedPredictReply reply_wrap(reply);
+    status = session_->ExecuteModel(request_wrap, &reply_wrap);
+    MSI_TIME_STAMP_END(ExecuteModel)
+  } catch (const std::bad_alloc &ex) {
+    status = INFER_STATUS_LOG_ERROR(FAILED) << "Serving Error: malloc memory failed";
+  } catch (const std::runtime_error &ex) {
+    status = INFER_STATUS_LOG_ERROR(FAILED) << "Serving Error: runtime error occurred: " << ex.what();
+  } catch (const std::exception &ex) {
+    status = INFER_STATUS_LOG_ERROR(FAILED) << "Serving Error: exception occurred: " << ex.what();
+  } catch (...) {
+    status = INFER_STATUS_LOG_ERROR(FAILED) << "Serving Error: exception occurred";
+  }
+  if (status != SUCCESS) {
+    reply->Clear();
+    auto error_msg = reply->mutable_error_msg();
+    error_msg->set_error_code(status.StatusCode());
+    error_msg->set_error_msg(status.StatusMessage());
+  }
+  return status;
+}
 
 }  // namespace serving
 }  // namespace mindspore
