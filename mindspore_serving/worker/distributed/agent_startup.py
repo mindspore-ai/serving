@@ -35,6 +35,7 @@ def _get_local_ip(rank_list, port):
     for item in rank_list:
         ip_list.add(item.ip)
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         for ip in ip_list:
             try:
                 s.bind((ip, port))
@@ -58,13 +59,15 @@ def _update_model_files_path(model_files, group_config_files):
             raise RuntimeError(f"Cannot access model file '{file_name}'")
         model_files_temp.append(file_name)
 
-    group_files_temp = []
-    for item in group_config_files:
-        file_name = os.path.join(script_dir, item)
-        if not os.access(file_name, os.R_OK):
-            raise RuntimeError(f"Cannot access group config file '{file_name}'")
-        group_files_temp.append(file_name)
-
+    if group_config_files is not None:
+        group_files_temp = []
+        for item in group_config_files:
+            file_name = os.path.join(script_dir, item)
+            if not os.access(file_name, os.R_OK):
+                raise RuntimeError(f"Cannot access group config file '{file_name}'")
+            group_files_temp.append(file_name)
+    else:
+        group_files_temp = None
     logger.info(f"absolute model files: {model_files_temp}")
     logger.info(f"absolute group config files: {group_files_temp}")
     return model_files_temp, group_files_temp
@@ -138,27 +141,49 @@ def _agent_process(send_pipe, recv_pipe, index, start_config):
         logger.error(f"Child {index}: end send message to parent")
 
 
+def _send_pipe_msg(send_pipe, msg):
+    """Send pipe message"""
+    try:
+        send_pipe.send(msg)
+    # pylint: disable=broad-except
+    except Exception as e:
+        logger.warning(f"Send pipe message exception happen: {e}")
+
+
+def _send_exit_msg_to_children(send_pipe_list, subprocess_list):
+    """Send exit msg to all child processes, and terminate all child processes when they are still alive
+    in some seconds later"""
+    index = 0
+    for send_pipe, process in zip(send_pipe_list, subprocess_list):
+        if process.is_alive():
+            logger.warning(f"Send exit message to Child {index}")
+            _send_pipe_msg(send_pipe, signal_exit)
+            logger.warning(f"End send exit message to Child {index}")
+        else:
+            logger.warning(f"Child {index} is not alive")
+        index += 1
+
+    wait_seconds = 10
+    for i in range(wait_seconds):
+        all_exit = True
+        for process in subprocess_list:
+            if process.is_alive():
+                logger.warning(f"There are still child processes that have not exited and will be forcibly killed in "
+                               f"{wait_seconds - i} seconds.")
+                time.sleep(1)
+                all_exit = False
+                break
+        if all_exit:
+            logger.info(f"All Child process exited")
+            return
+    for index, process in enumerate(subprocess_list):
+        if process.is_alive():
+            logger.warning(f"Kill Child process {index}")
+            process.kill()
+
+
 def _start_listening_child_processes(p_recv_pipe, send_pipe_list, subprocess_list):
     """Listening child process"""
-
-    def send_pipe_msg(send_pipe, msg):
-        try:
-            send_pipe.send(msg)
-        # pylint: disable=broad-except
-        except Exception as e:
-            logger.warning(f"Send pipe message exception happen: {e}")
-
-    def send_exit_msg():
-        index = 0
-        for send_pipe, process in zip(send_pipe_list, subprocess_list):
-            if process.is_alive():
-                logger.warning(f"Send exit message to Child {index}")
-                send_pipe_msg(send_pipe, signal_exit)
-                logger.warning(f"End send exit message to Child {index}")
-            else:
-                logger.warning(f"Child {index} is not alive")
-            index += 1
-
     count = len(send_pipe_list)
     for _ in range(count):
         while True:
@@ -168,21 +193,20 @@ def _start_listening_child_processes(p_recv_pipe, send_pipe_list, subprocess_lis
                 if process.is_alive():
                     continue
                 logger.warning("Fail to start agents because of death of one agent")
-                send_exit_msg()
+                _send_exit_msg_to_children(send_pipe_list, subprocess_list)
                 return False
             for send_pipe in send_pipe_list:
-                send_pipe_msg(send_pipe, signal_heartbeat)
+                _send_pipe_msg(send_pipe, signal_heartbeat)
 
         index, msg = p_recv_pipe.recv()
         logger.info(f"Receive msg from Child {index}: {msg}")
         if isinstance(msg, Exception):
             logger.warning("Fail to start agents because of exception raise by one agent")
-            send_exit_msg()
+            _send_exit_msg_to_children(send_pipe_list, subprocess_list)
             return False
 
     for send_pipe in send_pipe_list:
-        send_pipe_msg(send_pipe, signal_success)
-    logger.info("Success to start agents")
+        _send_pipe_msg(send_pipe, signal_success)
     return True
 
 
@@ -191,12 +215,16 @@ def _startup_all_agents(common_meta, worker_ip, worker_port,
                         model_files, group_config_files, rank_table_file):
     """Start up all agents in one machine"""
     servable_name = common_meta.servable_name
-    index = 0
     send_pipe_list = []
     subprocess_list = []
     c_send_pipe, p_recv_pipe = Pipe()
-    for device_id, rank_id, model_file, group_file in zip(device_id_list, rank_id_list, model_files,
-                                                          group_config_files):
+    group_file = ""
+    agents_count = len(device_id_list)
+    for index in range(agents_count):
+        device_id, rank_id, model_file = device_id_list[index], rank_id_list[index], model_files[index]
+        if group_config_files is not None:
+            group_file = group_config_files[index]
+
         p_send_pipe, c_recv_pipe = Pipe()
         send_pipe_list.append(p_send_pipe)
 
@@ -219,19 +247,53 @@ def _startup_all_agents(common_meta, worker_ip, worker_port,
                           name=f"{servable_name}_worker_agent_rank{rank_id}_device{device_id}")
         process.start()
         subprocess_list.append(process)
-        index += 1
     ret = _start_listening_child_processes(p_recv_pipe, send_pipe_list, subprocess_list)
+
+    msg = f"worker_ip: {worker_ip}, worker_port: {worker_port}, agent_ip: {agent_ip}, " \
+          f"agent_start_port: {agent_start_port}, device ids: {device_id_list}, rank ids: {rank_id_list}, " \
+          f"rank table file: {rank_table_file}, model files: {model_files}, group config files: {group_config_files}"
     if not ret:
         WorkerAgent_.notify_failed(worker_ip, worker_port)
+        logger.info(f"Failed to start agents, {msg}")
+        print(f"Failed to start agents, {msg}")
+    else:
+        logger.info(f"Success to start agents, {msg}")
+        print(f"Success to start agents, {msg}")
 
 
-def startup_worker_agents(worker_ip, worker_port, model_files, group_config_files, agent_start_port=7000):
-    """Start up all needed worker agents on one machine"""
+def startup_worker_agents(worker_ip, worker_port, model_files, group_config_files=None, agent_start_port=7000):
+    r"""
+    Start up all needed worker agenton current machine.
+
+    Serving has two running modes. One is running in a single process, providing the Serving service of a single model.
+    The other includes a master and multiple workers. This interface is for the second scenario.
+
+    The master is responsible for providing the Serving access interface for clients,
+    while the worker is responsible for providing the inference service of the specific model. The communications
+    between the master and workers through gPRC are defined as (master_ip, master_port) and (worker_ip, worker_port).
+
+    Args:
+        worker_ip (str): The worker ip the agents linked to.
+        worker_port (int): The worker port the agents linked to.
+        model_files (list or tuple of str): All model files need in current machine, absolute path or path relative to
+            this startup python script.
+        group_config_files (None, list or tuple of str): All group config files need in current machine, absolute path
+            or path relative to this startup python script, default None, which means there are no configuration files.
+
+    Examples:
+        >>> import os
+        >>> from mindspore_serving.worker import distributed
+        >>> model_files = []
+        >>> for i in range(8):
+        >>>    model_files.append(f"models/device{i}/matmul.mindir")
+        >>> distributed.startup_worker_agents(worker_ip="127.0.0.1", worker_port=6200, model_files=model_files)
+    """
     check_type.check_str("worker_ip", worker_ip)
     check_type.check_ip_port("worker_port", worker_port)
     check_type.check_int("agent_start_port", agent_start_port, 1, 65535 - 7)
     model_files = check_type.check_and_as_str_tuple_list("model_files", model_files)
-    group_config_files = check_type.check_and_as_str_tuple_list("group_config_files", group_config_files)
+    if group_config_files is not None:
+        group_config_files = check_type.check_and_as_str_tuple_list("group_config_files", group_config_files)
 
     ExitSignalHandle_.start()
     distributed_config = WorkerAgent_.get_agents_config_from_worker(worker_ip, worker_port)
@@ -252,9 +314,10 @@ def startup_worker_agents(worker_ip, worker_port, model_files, group_config_file
         raise RuntimeError(f"Card count {local_device_id_list} described rank table does not equal to model files size "
                            f"{len(model_files)}, model files: {model_files}")
 
-    if len(local_device_id_list) != len(group_config_files):
-        raise RuntimeError(f"Card count {local_device_id_list} described rank table does not equal to group config "
-                           f"files size {len(group_config_files)}, group config files: {group_config_files}")
+    if group_config_files is not None and len(model_files) != len(group_config_files):
+        raise RuntimeError(f"Model files count {len(model_files)} does not equal to group config files "
+                           f"count {len(group_config_files)} when group_config_files is not None, "
+                           f"model files: {model_files}, group config files: {group_config_files}")
 
     model_files, group_config_files = _update_model_files_path(model_files, group_config_files)
 

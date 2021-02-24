@@ -53,12 +53,12 @@ def start_distributed_servable(servable_directory, servable_name, rank_table_jso
 
     Examples:
         >>> import os
-        >>> from mindspore_serving import worker
+        >>> from mindspore_serving.worker import distributed
         >>>
         >>> servable_dir = os.path.abspath(".")
-        >>> worker.start_servable(servable_dir, "lenet", device_id=0, \
-        ...                       master_ip="127.0.0.1", master_port=6500, \
-        ...                       host_ip="127.0.0.1", host_port=6600)
+        >>> distributed.start_distributed_servable(servable_dir, "matmul", rank_table_json_file="hccl_8p.json", \
+        ...                                        worker_ip="127.0.0.1", worker_port=6200,   \
+        ...                                        master_ip="127.0.0.1", master_port=6500)
     """
     check_type.check_str('servable_directory', servable_directory)
     check_type.check_str('servable_name', servable_name)
@@ -75,7 +75,7 @@ def start_distributed_servable(servable_directory, servable_name, rank_table_jso
 
     _load_servable_config(servable_directory, servable_name)
     Worker_.start_distributed_servable(servable_directory, servable_name, rank_table_json_file, version_number,
-                                       master_ip, master_port, worker_ip, worker_port, wait_agents_time_in_seconds)
+                                       worker_ip, worker_port, master_ip, master_port, wait_agents_time_in_seconds)
     _start_py_task(Worker_.get_batch_size())
     _start_wait_and_clear()
 
@@ -106,11 +106,13 @@ def start_distributed_servable_in_master(servable_directory, servable_name, rank
 
     Examples:
         >>> import os
-        >>> from mindspore_serving import worker
+        >>> from mindspore_serving.worker import distributed
         >>> from mindspore_serving import master
         >>>
         >>> servable_dir = os.path.abspath(".")
-        >>> worker.start_servable_in_master(servable_dir, "lenet", device_id=0)
+        >>> distributed.start_distributed_servable_in_master(servable_dir, "matmul", \
+        ...                                                  rank_table_json_file="hccl_8p.json", \
+        ...                                                  worker_ip="127.0.0.1", worker_port=6200)
         >>>
         >>> master.start_grpc_server("0.0.0.0", 5500)
         >>> master.start_restful_server("0.0.0.0", 1500)

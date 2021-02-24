@@ -59,7 +59,6 @@ Status DistributedServable::PredictInner(const std::vector<TensorBasePtr> &input
 
   proto::DistributedPredictRequest request;
   proto::DistributedPredictRequest empty_request;
-
   for (const auto &tensor_ptr : input) {
     auto tensor = request.add_inputs();
     ProtoTensor proto_tensor(tensor);
@@ -89,7 +88,8 @@ Status DistributedServable::PredictInner(const std::vector<TensorBasePtr> &input
   }
 
   for (size_t rank_id = 0; rank_id < msg_list->size(); ++rank_id) {
-    auto &future = msg_list->at(rank_id).future;
+    auto &predict_msg = msg_list->at(rank_id);
+    auto &future = predict_msg.future;
     const uint64_t kWaitMaxHundredMs = 10 * 10;  // waiting for 10s
     uint64_t k;
     for (k = 0; k < kWaitMaxHundredMs; k++) {
@@ -104,18 +104,19 @@ Status DistributedServable::PredictInner(const std::vector<TensorBasePtr> &input
     if (k >= kWaitMaxHundredMs) {
       return INFER_STATUS_LOG_ERROR(FAILED) << "Failed to wait for result of rank " << rank_id;
     }
-    auto status = msg_list->at(rank_id).status;
+    auto status = predict_msg.status;
     if (status != SUCCESS) {
       return INFER_STATUS_LOG_ERROR(FAILED)
              << "Error happened on get result of rank " << rank_id << ": " << status.StatusMessage();
     }
+    auto &reply = predict_msg.reply;
+    if (reply.has_error_msg() && reply.error_msg().error_code() != 0) {
+      return INFER_STATUS_LOG_ERROR(FAILED)
+             << "Error happened on get result of rank " << rank_id << ": " << reply.error_msg().error_msg();
+    }
   }
 
   auto &reply = msg_list->at(result_agent_id).reply;
-  if (reply.has_error_msg() && reply.error_msg().error_code() != 0) {
-    return INFER_STATUS_LOG_ERROR(FAILED)
-           << "Error happened on get result of rank " << result_agent_id << ": " << reply.error_msg().error_msg();
-  }
   for (int i = 0; i < reply.outputs_size(); ++i) {
     auto p = std::make_shared<ProtoTensor>(reply.mutable_outputs(i));
     auto tensor_ptr = std::make_shared<Tensor>(p->data_type(), p->shape(), p->data(), p->data_size());
@@ -200,6 +201,7 @@ void DistributedServable::Clear() {
 
 Status DistributedServable::OnAgentExit() {
   std::unique_lock<std::mutex> lock{mutex_};
+  MSI_LOG_INFO << "Worker agent notify exit";
   SetWaitAgentsPromise(false);
   model_loaded_ = false;
   return SUCCESS;
@@ -629,7 +631,10 @@ Status DistributedServable::CheckRankConfig() {
   return SUCCESS;
 }
 
-void DistributedServable::OnAgentFailed() { SetWaitAgentsPromise(false); }
+void DistributedServable::OnAgentFailed() {
+  MSI_LOG_INFO << "Worker agent notify failed";
+  SetWaitAgentsPromise(false);
+}
 
 }  // namespace serving
 }  // namespace mindspore

@@ -31,12 +31,13 @@ def start_worker_agent(start_config):
     os.environ["RANK_ID"] = str(start_config.rank_id)
     os.environ["DEVICE_ID"] = str(start_config.device_id)
     os.environ["MS_ENABLE_HCCL"] = "1"
-    os.environ["PARA_GROUP_FILE"] = start_config.group_file_name
+    if start_config.group_file_name:
+        os.environ["PARA_GROUP_FILE"] = start_config.group_file_name
     os.environ["RANK_TABLE_FILE"] = start_config.rank_table_json_file_name
 
     for item in ("RANK_ID", "DEVICE_ID", "MS_ENABLE_HCCL", "PARA_GROUP_FILE", "RANK_TABLE_FILE",
                  "LD_LIBRARY_PATH", "PYTHONPATH"):
-        logger.info(f"Env {item}: {os.getenv(item, '')}")
+        logger.info(f"Env {item}: {os.getenv(item, None)}")
     WorkerAgent_.start_agent(start_config)
 
     start_wait_and_clear()
