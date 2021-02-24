@@ -97,7 +97,7 @@ class MS_API DistributedServable : public ServableBase {
 
   json ParserArrayInJson(const json &json_array, const std::string &str);
 
-  json ParserStringInJson(const json &json_str, const std::string &str);
+  std::string ParserStringInJson(const json &json_str, const std::string &str);
   Status ConvertStr2Int(const std::string &rank_table_json_file, const std::string &para_str,
                         const std::string &para_key, uint32_t *para_int) const;
 };
