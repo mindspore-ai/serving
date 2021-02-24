@@ -279,7 +279,17 @@ Status DistributedServable::InitConfigOnStartup(const std::string &rank_table_js
   buffer << json_file.rdbuf();
   config_.rank_table_content = buffer.str();
 
-  json rank_table_json = nlohmann::json::parse(config_.rank_table_content);
+  json rank_table_json;
+  try {
+    rank_table_json = nlohmann::json::parse(config_.rank_table_content);
+  } catch (json::parse_error &e) {
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "parse error:" << e.what();
+  } catch (json::out_of_range &e) {
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "out of range:" << e.what();
+  } catch (json::exception &e) {
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Json exception:" << e.what();
+  }
+
   if (!rank_table_json.is_object()) {
     return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << rank_table_json_file.c_str() << " is not json object";
   }
@@ -306,8 +316,8 @@ json DistributedServable::ParserArrayInJson(const json &json_array, const std::s
   return temp_array;
 }
 
-json DistributedServable::ParserStringInJson(const json &json_str, const std::string &str) {
-  json temp_str;
+std::string DistributedServable::ParserStringInJson(const json &json_str, const std::string &str) {
+  std::string temp_str;
   auto iter = json_str.find(str);
   if (iter == json_str.end()) {
     MSI_LOG_ERROR << "Check rank table file failed" << str << "in file is not find";
@@ -317,7 +327,8 @@ json DistributedServable::ParserStringInJson(const json &json_str, const std::st
     MSI_LOG_ERROR << "Check rank table file failed" << str << "in file is not string";
     return temp_str;
   }
-  temp_str = json_str.at(str);
+  json temp_json_str = json_str.at(str);
+  temp_str = temp_json_str.get<std::string>();
   return temp_str;
 }
 
@@ -354,9 +365,8 @@ Status DistributedServable::ParserRankTableWithGroupList(const std::string &rank
       if (str_device_id.empty()) {
         return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "device_id attr is empty in" << rank_table_json_file.c_str();
       }
-      auto temp_str_device_id = str_device_id.get<std::string>();
       uint32_t temp_device_id;
-      auto status = ConvertStr2Int(rank_table_json_file, temp_str_device_id, "device_id", &temp_device_id);
+      auto status = ConvertStr2Int(rank_table_json_file, str_device_id, "device_id", &temp_device_id);
       if (status != SUCCESS) {
         MSI_LOG_ERROR << "Convert device_id from string to int failed";
         return status;
@@ -366,14 +376,16 @@ Status DistributedServable::ParserRankTableWithGroupList(const std::string &rank
       if (str_rank_id.empty()) {
         return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "rank_id attr is empty in" << rank_table_json_file.c_str();
       }
-      auto temp_str_rank_id = str_rank_id.get<std::string>();
       uint32_t temp_rank_id;
-      status = ConvertStr2Int(rank_table_json_file, temp_str_rank_id, "rank_id", &temp_rank_id);
+      status = ConvertStr2Int(rank_table_json_file, str_rank_id, "rank_id", &temp_rank_id);
       if (status != SUCCESS) {
         MSI_LOG_ERROR << "Convert rank_id from string to int failed";
         return status;
       }
-
+      if (temp_device_id > temp_rank_id) {
+        return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
+               << "device_id large than rank_id in" << rank_table_json_file.c_str();
+      }
       if (rank_id != temp_rank_id) {
         return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
                << "device size not match rank_id in" << rank_table_json_file.c_str();
@@ -389,18 +401,19 @@ Status DistributedServable::ParserRankTableWithGroupList(const std::string &rank
 }
 Status DistributedServable::ConvertStr2Int(const std::string &rank_table_json_file, const std::string &para_str,
                                            const std::string &para_key, uint32_t *para_int) const {
-  try {
-    *para_int = std::stoi(para_str);
-  } catch (std::invalid_argument &) {
+  uint32_t parsed_value = 0;
+  for (auto c : para_str) {
+    if (c < '0' || c > '9') {
+      return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
+             << para_key << "attr is invalid argument in" << rank_table_json_file.c_str();
+    }
+    parsed_value = parsed_value * 10 + c - '0';
+  }
+  if (std::to_string(parsed_value) != para_str) {
     return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
            << para_key << "attr is invalid argument in" << rank_table_json_file.c_str();
-  } catch (std::out_of_range &) {
-    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
-           << para_key << "attr is out of range in" << rank_table_json_file.c_str();
-  } catch (...) {
-    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
-           << "convert" << para_key << "attr exception occurred in" << rank_table_json_file.c_str();
   }
+  *para_int = parsed_value;
   return SUCCESS;
 }
 
@@ -431,9 +444,8 @@ Status DistributedServable::ParserRankTableWithServerList(const std::string &ran
       if (str_device_id.empty()) {
         return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "device_id attr is empty in" << rank_table_json_file.c_str();
       }
-      auto temp_str_device_id = str_device_id.get<std::string>();
       uint32_t temp_device_id;
-      auto status = ConvertStr2Int(rank_table_json_file, temp_str_device_id, "device_id", &temp_device_id);
+      auto status = ConvertStr2Int(rank_table_json_file, str_device_id, "device_id", &temp_device_id);
       if (status != SUCCESS) {
         MSI_LOG_ERROR << "Convert device_id from string to int failed";
         return status;
@@ -443,14 +455,21 @@ Status DistributedServable::ParserRankTableWithServerList(const std::string &ran
       if (str_rank_id.empty()) {
         return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "rank_id attr is empty in" << rank_table_json_file.c_str();
       }
-      auto temp_str_rank_id = str_rank_id.get<std::string>();
       uint32_t temp_rank_id;
-      status = ConvertStr2Int(rank_table_json_file, temp_str_rank_id, "rank_id", &temp_rank_id);
+      status = ConvertStr2Int(rank_table_json_file, str_rank_id, "rank_id", &temp_rank_id);
       if (status != SUCCESS) {
         MSI_LOG_ERROR << "Convert rank_id from string to int failed";
         return status;
       }
 
+      if (temp_device_id > temp_rank_id) {
+        return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
+               << "device_id large than rank_id in" << rank_table_json_file.c_str();
+      }
+      if (rank_id != temp_rank_id) {
+        return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
+               << "device size not match rank_id in" << rank_table_json_file.c_str();
+      }
       rank_id++;
       one_rank_config.device_id = temp_device_id;
       config_.rank_list.push_back(one_rank_config);
