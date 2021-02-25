@@ -41,6 +41,8 @@ class MS_API GrpcNotifyDistributeWorker {
                                            DistributedServableConfig *config);
 
  private:
+  static Status ParseAgentConfigAcquireReply(const proto::AgentConfigAcquireReply &reply,
+                                             DistributedServableConfig *config);
   std::string distributed_worker_ip_;
   uint32_t distributed_worker_port_;
   std::string host_ip_;
