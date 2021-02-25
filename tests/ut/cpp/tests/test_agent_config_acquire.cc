@@ -78,32 +78,7 @@ TEST_F(TestAgentConfigAcquire, test_agent_config_acquire_success) {
 
 TEST_F(TestAgentConfigAcquire, test_agent_config_acquire_not_load_config_failed) {
   std::shared_ptr<DistributedServable> servable = std::make_shared<DistributedServable>();
-  servable->config_loaded_ = true;
-  const std::string server_address = "any_addr";
-  MSDistributedImpl mSDistributedImpl(servable, server_address);
-  grpc::ServerContext context;
-  const proto::AgentConfigAcquireRequest request;
-  proto::AgentConfigAcquireReply reply;
-  const grpc::Status status = mSDistributedImpl.AgentConfigAcquire(&context, &request, &reply);
-  ASSERT_EQ(status.error_code(), 1);
-}
-
-TEST_F(TestAgentConfigAcquire, test_agent_config_acquire_not_init_config_failed) {
-  std::shared_ptr<DistributedServable> servable = std::make_shared<DistributedServable>();
-  std::string rank_table_content = "rank table content";
-  CommonServableMeta commonServableMeta;
-  commonServableMeta.servable_name = "servable_name";
-  commonServableMeta.outputs_count = 1;
-  commonServableMeta.inputs_count = 1;
-  commonServableMeta.with_batch_dim = false;
-  commonServableMeta.without_batch_dim_inputs.push_back(8);
-  DistributedServableMeta distributedServableMeta;
-  distributedServableMeta.stage_size = 8;
-  distributedServableMeta.rank_size = 8;
-  servable->config_.rank_table_content = rank_table_content;
-  servable->config_.common_meta = commonServableMeta;
-  servable->config_.distributed_meta = distributedServableMeta;
-  servable->config_loaded_ = true;
+  servable->config_loaded_ = false;
   const std::string server_address = "any_addr";
   MSDistributedImpl mSDistributedImpl(servable, server_address);
   grpc::ServerContext context;
