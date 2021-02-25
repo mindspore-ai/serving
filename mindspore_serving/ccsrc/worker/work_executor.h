@@ -76,9 +76,9 @@ class WorkExecutor {
   bool ReplyRequest(const std::vector<Instance> &outputs);
   bool ReplyRequest(const Instance &outputs);
 
-  void OnRecievePreprocessInputs(const std::vector<Instance> &inputs);  //  callback
-  void OnRecievePredictInputs(const std::vector<Instance> &inputs);     //  callback
-  void OnRecievePostprocessInputs(const Instance &inputs);              //  callback
+  void OnRecievePreprocessInputs(const std::vector<Instance> &inputs);   //  callback
+  void OnRecievePredictInputs(const std::vector<Instance> &inputs);      //  callback
+  void OnRecievePostprocessInputs(const std::vector<Instance> &inputs);  //  callback
 
   void PredictHandle(const std::vector<Instance> &inputs);
   Status PrePredict(const std::vector<Instance> &inputs);
