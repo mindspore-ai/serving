@@ -414,7 +414,7 @@ def add_common(x1, x2):
     worker.start_servable_in_master(base.servable_dir, base.servable_name)
     master.start_grpc_server("0.0.0.0", 5500)
     # Client
-    instance_count = 3
+    instance_count = 2
 
     instances = []
     y_data_list = []
@@ -454,7 +454,7 @@ def add_common(x1, x2):
     worker.start_servable_in_master(base.servable_dir, base.servable_name)
     master.start_grpc_server("0.0.0.0", 5500)
     # Client
-    instance_count = 3
+    instance_count = 2
 
     instances = []
     y_data_list = []
@@ -470,7 +470,6 @@ def add_common(x1, x2):
     assert len(result) == instance_count
     assert result[0]["y"] == 0
     assert result[1]["y"] == 1
-    assert result[2]["y"] == 0
 
 
 @serving_test
