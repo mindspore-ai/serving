@@ -42,8 +42,16 @@ export LD_LIBRARY_PATH=${BUILD_PATH}/mindspore_serving/tests/ut/python:${LD_LIBR
 
 echo "PYTHONPATH=$PYTHONPATH"
 echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+
 unset http_proxy
 unset https_proxy
+
+PROCESS=`netstat -nlp | grep :5500 | awk '{print $7}' | awk -F"/" '{print $1}'`
+for i in $PROCESS
+   do
+   echo "Kill the process [ $i ]"
+   kill -9 $i
+done
 
 cd -
 cd ${PROJECT_PATH}/tests/ut/python/tests/

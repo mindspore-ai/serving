@@ -19,6 +19,7 @@
 #include <cstring>
 #include <thread>
 #include <chrono>
+#include <map>
 #include "worker/preprocess.h"
 #include "worker/postprocess.h"
 #include "mindspore_serving/ccsrc/common/tensor.h"
@@ -265,13 +266,16 @@ void WorkExecutor::OnRecievePreprocessInputs(const std::vector<Instance> &inputs
   }
 }
 
-void WorkExecutor::OnRecievePostprocessInputs(const Instance &input) {
-  const MethodSignature &method_def = input.context.user_context->method_def;
-  auto real_input = CreateInputInstance(input, kPredictPhaseTag_Postprocess);
+void WorkExecutor::OnRecievePostprocessInputs(const std::vector<Instance> &inputs) {
+  if (inputs.empty()) {
+    MSI_LOG_EXCEPTION << "Inputs cannot be empty";
+  }
+  const MethodSignature &method_def = inputs[0].context.user_context->method_def;
+  auto real_input = CreateInputInstance(inputs, kPredictPhaseTag_Postprocess);
   if (python_postprocess_names_.count(method_def.postprocess_name) > 0) {
-    py_postprocess_task_queue_->PushTask(method_def.postprocess_name, GetWorkerId(), {real_input});
+    py_postprocess_task_queue_->PushTask(method_def.postprocess_name, GetWorkerId(), real_input);
   } else {
-    cpp_postprocess_task_queue_->PushTask(method_def.postprocess_name, GetWorkerId(), {real_input});
+    cpp_postprocess_task_queue_->PushTask(method_def.postprocess_name, GetWorkerId(), real_input);
   }
 }
 
@@ -332,13 +336,21 @@ void WorkExecutor::PredictHandle(const std::vector<Instance> &inputs) {
       this->ReplyError(inputs, status);
       return;
     }
+    std::map<std::string, std::vector<Instance>> map_output;
+    std::vector<Instance> reply_result;
     for (auto &output : outputs) {
       MethodSignature &method_def = output.context.user_context->method_def;
       if (!method_def.postprocess_name.empty()) {
-        OnRecievePostprocessInputs(output);
+        map_output[method_def.postprocess_name].push_back(output);
       } else {
-        ReplyRequest(output);
+        reply_result.push_back(output);
       }
+    }
+    if (!reply_result.empty()) {
+      ReplyRequest(reply_result);
+    }
+    for (auto &item : map_output) {
+      OnRecievePostprocessInputs(item.second);
     }
     return;
   } catch (const std::bad_alloc &ex) {
