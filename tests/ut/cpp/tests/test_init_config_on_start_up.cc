@@ -40,6 +40,7 @@ TEST_F(TestParseRankTableFile, test_init_config_on_startup_empty_file_failed) {
   std::ofstream fp(empty_rank_table_file);
   fp << "empty rank table file";
   fp.close();
+  config_file_list_.emplace(empty_rank_table_file);
   auto servable = std::make_shared<DistributedServable>();
   auto status = servable->InitConfigOnStartup(empty_rank_table_file);
   ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
@@ -64,6 +65,7 @@ TEST_F(TestParseRankTableFile, test_init_config_on_startup_success) {
   std::ofstream fp(rank_table_file);
   fp << rank_table_server_list;
   fp.close();
+  config_file_list_.emplace(rank_table_file);
   auto servable = std::make_shared<DistributedServable>();
   auto status = servable->InitConfigOnStartup(rank_table_file);
   ASSERT_EQ(status.StatusCode(), SUCCESS);

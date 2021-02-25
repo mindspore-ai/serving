@@ -115,33 +115,7 @@ Status GrpcNotifyDistributeWorker::GetAgentsConfigsFromWorker(const std::string 
     context.set_deadline(deadline);
     grpc::Status status = stub->AgentConfigAcquire(&context, request, &reply);
     if (status.ok()) {
-      MSI_LOG(INFO) << "Success to get Agents configs from Worker, and begin to parser";
-      // parser reply message:AgentConfigAcquireReply, parameter:rank_table_content
-      config->rank_table_content = reply.rank_table_content();
-      // parser reply message:AgentConfigAcquireReply, parameter:rank_list
-      for (auto &temp_rank : reply.rank_list()) {
-        OneRankConfig ome_rank_config;
-        ome_rank_config.ip = temp_rank.ip();
-        ome_rank_config.device_id = temp_rank.device_id();
-        config->rank_list.push_back(ome_rank_config);
-      }
-      // parser reply message:AgentConfigAcquireReply, parameter:common_meta
-      auto &temp_common_meta = reply.common_meta();
-      config->common_meta.servable_name = temp_common_meta.servable_name();
-      config->common_meta.with_batch_dim = temp_common_meta.with_batch_dim();
-      for (auto &temp_without_batch_dim_inputs : temp_common_meta.without_batch_dim_inputs()) {
-        config->common_meta.without_batch_dim_inputs.push_back(temp_without_batch_dim_inputs);
-      }
-      config->common_meta.inputs_count = temp_common_meta.inputs_count();
-      config->common_meta.outputs_count = temp_common_meta.outputs_count();
-
-      // parser reply message:AgentConfigAcquireReply, parameter:distributed_meta
-      auto &temp_distributed_meta = reply.distributed_meta();
-      config->distributed_meta.rank_size = temp_distributed_meta.rank_size();
-      config->distributed_meta.stage_size = temp_distributed_meta.stage_size();
-      MSI_LOG(INFO) << "Success to parser reply message and save to DistributedServableConfig";
-
-      return SUCCESS;
+      return ParseAgentConfigAcquireReply(reply, config);
     }
     MSI_LOG_INFO << "Grpc message: " << status.error_code() << ", " << status.error_message();
     std::this_thread::sleep_for(std::chrono::milliseconds(REGISTER_INTERVAL * 1000));
@@ -150,6 +124,36 @@ Status GrpcNotifyDistributeWorker::GetAgentsConfigsFromWorker(const std::string 
     return INFER_STATUS_LOG_WARNING(FAILED) << "Agent exit, stop get Agents configs from Worker";
   }
   return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Failed to get Agents configs from Worker";
+}
+Status GrpcNotifyDistributeWorker::ParseAgentConfigAcquireReply(const proto::AgentConfigAcquireReply &reply,
+                                                                DistributedServableConfig *config) {
+  MSI_LOG(INFO) << "Success to get Agents configs from Worker, and begin to parser";
+  // parser reply message:AgentConfigAcquireReply, parameter:rank_table_content
+  config->rank_table_content = reply.rank_table_content();
+  // parser reply message:AgentConfigAcquireReply, parameter:rank_list
+  for (auto &temp_rank : reply.rank_list()) {
+    OneRankConfig ome_rank_config;
+    ome_rank_config.ip = temp_rank.ip();
+    ome_rank_config.device_id = temp_rank.device_id();
+    config->rank_list.push_back(ome_rank_config);
+  }
+  // parser reply message:AgentConfigAcquireReply, parameter:common_meta
+  auto &temp_common_meta = reply.common_meta();
+  config->common_meta.servable_name = temp_common_meta.servable_name();
+  config->common_meta.with_batch_dim = temp_common_meta.with_batch_dim();
+  for (auto &temp_without_batch_dim_inputs : temp_common_meta.without_batch_dim_inputs()) {
+    config->common_meta.without_batch_dim_inputs.push_back(temp_without_batch_dim_inputs);
+  }
+  config->common_meta.inputs_count = temp_common_meta.inputs_count();
+  config->common_meta.outputs_count = temp_common_meta.outputs_count();
+
+  // parser reply message:AgentConfigAcquireReply, parameter:distributed_meta
+  auto &temp_distributed_meta = reply.distributed_meta();
+  config->distributed_meta.rank_size = temp_distributed_meta.rank_size();
+  config->distributed_meta.stage_size = temp_distributed_meta.stage_size();
+  MSI_LOG(INFO) << "Success to parser reply message and save to DistributedServableConfig";
+
+  return SUCCESS;
 }
 
 }  // namespace serving
