@@ -233,12 +233,12 @@ Status DistributedServable::StartServable(const std::string &servable_directory,
     MSI_LOG_ERROR << "Init with rank table on start up failed";
     return status;
   }
-  config_loaded_ = true;
   status = CheckRankConfig();
   if (status != SUCCESS) {
     MSI_LOG_ERROR << "Check rank config failed";
     return status;
   }
+  config_loaded_ = true;
   status = WaitAgentsReady(wait_agents_time_in_seconds);
   if (status != SUCCESS) {
     MSI_LOG_ERROR << "Waiting for ready of agents failed";
@@ -382,10 +382,7 @@ Status DistributedServable::ParserRankTableWithGroupList(const std::string &rank
         MSI_LOG_ERROR << "Convert rank_id from string to int failed";
         return status;
       }
-      if (temp_device_id > temp_rank_id) {
-        return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
-               << "device_id large than rank_id in" << rank_table_json_file.c_str();
-      }
+
       if (rank_id != temp_rank_id) {
         return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
                << "device size not match rank_id in" << rank_table_json_file.c_str();
@@ -462,10 +459,6 @@ Status DistributedServable::ParserRankTableWithServerList(const std::string &ran
         return status;
       }
 
-      if (temp_device_id > temp_rank_id) {
-        return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
-               << "device_id large than rank_id in" << rank_table_json_file.c_str();
-      }
       if (rank_id != temp_rank_id) {
         return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
                << "device size not match rank_id in" << rank_table_json_file.c_str();
@@ -614,6 +607,9 @@ Status DistributedServable::CheckRankConfig() {
       if (device_id_list.count(item.device_id) > 0) {
         return INFER_STATUS_LOG_ERROR(FAILED) << "Check rank table config failed, device id repeatedly used by rank "
                                               << i << " in device ip " << item.ip;
+      }
+      if (item.device_id >= card_count_per_machine) {
+        return INFER_STATUS_LOG_ERROR(FAILED) << "Check rank table config failed, device id cannot larger than 8";
       }
       device_id_list.emplace(item.device_id);
     }

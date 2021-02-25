@@ -72,10 +72,6 @@ grpc::Status MSDistributedImpl::AgentConfigAcquire(grpc::ServerContext *context,
     MSI_LOG(ERROR) << "Get distributed servable config failed";
     return grpc::Status::CANCELLED;
   }
-  if (agent_config.rank_list.empty()) {
-    MSI_LOG(ERROR) << "Get distributed servable config failed, config_ not init";
-    return grpc::Status::CANCELLED;
-  }
 
   MSI_LOG(INFO) << "Begin to set DistributedServableConfig info in reply message";
   // set reply message:AgentConfigAcquireReply, parameter:rank_table_content

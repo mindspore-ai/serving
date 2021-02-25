@@ -233,6 +233,46 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_with_not_device_failed
   ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
 }
 
+TEST_F(TestParseRankTableFile, test_parse_rank_table_file_with_invalid_device_failed) {
+  nlohmann::json rank_table_server_list = R"(
+  {
+      "version": "1.0",
+      "server_count": "1",
+      "server_list": [
+          {
+              "server_id": "10.155.111.140",
+              "device": "dsfds",
+               "host_nic_ip": "reserve"
+          }
+      ],
+      "status": "completed"
+  }
+  )"_json;
+  auto servable = std::make_shared<DistributedServable>();
+  auto status = servable->ParserRankTableWithServerList("rank_table_file", rank_table_server_list);
+  ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
+}
+
+TEST_F(TestParseRankTableFile, test_parse_rank_table_file_with_empty_device_failed) {
+  nlohmann::json rank_table_server_list = R"(
+  {
+      "version": "1.0",
+      "server_count": "1",
+      "server_list": [
+          {
+              "server_id": "10.155.111.140",
+              "device": [],
+               "host_nic_ip": "reserve"
+          }
+      ],
+      "status": "completed"
+  }
+  )"_json;
+  auto servable = std::make_shared<DistributedServable>();
+  auto status = servable->ParserRankTableWithServerList("rank_table_file", rank_table_server_list);
+  ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
+}
+
 TEST_F(TestParseRankTableFile, test_parse_rank_table_file_with_not_device_id_failed) {
   nlohmann::json rank_table_server_list = R"(
   {
@@ -264,27 +304,6 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_with_invalid_device_id
               "server_id": "",
               "device": [
                   {"device_id": "1wdb","device_ip": "192.1.27.6","rank_id": "0"}],
-               "host_nic_ip": "reserve"
-          }
-      ],
-      "status": "completed"
-  }
-  )"_json;
-  auto servable = std::make_shared<DistributedServable>();
-  auto status = servable->ParserRankTableWithServerList("rank_table_file", rank_table_server_list);
-  ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
-}
-
-TEST_F(TestParseRankTableFile, test_parse_rank_table_file_with_invalid_device_id_failed2) {
-  nlohmann::json rank_table_server_list = R"(
-  {
-      "version": "1.0",
-      "server_count": "1",
-      "server_list": [
-          {
-              "server_id": "",
-              "device": [
-                  {"device_id": "8","device_ip": "192.1.27.6","rank_id": "0"}],
                "host_nic_ip": "reserve"
           }
       ],
@@ -603,6 +622,54 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_with_group_list_not_de
   ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
 }
 
+TEST_F(TestParseRankTableFile, test_parse_rank_table_file_with_group_list_invalid_devices_failed) {
+  nlohmann::json rank_table_server_list = R"(
+  {
+      "board_id": "0x0000",
+      "group_list": [
+          {
+              "instance_count": "1",
+              "instance_list": [
+                  {
+                      "devices": "rtrt",
+                      "rank_id": "0",
+                      "server_id": "10.155.111.140"
+                  }
+              ]
+          }
+      ],
+      "status": "completed"
+  }
+  )"_json;
+  auto servable = std::make_shared<DistributedServable>();
+  auto status = servable->ParserRankTableWithGroupList("rank_table_file", rank_table_server_list);
+  ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
+}
+
+TEST_F(TestParseRankTableFile, test_parse_rank_table_file_with_group_list_empty_devices_failed) {
+  nlohmann::json rank_table_server_list = R"(
+  {
+      "board_id": "0x0000",
+      "group_list": [
+          {
+              "instance_count": "1",
+              "instance_list": [
+                  {
+                      "devices": [],
+                      "rank_id": "0",
+                      "server_id": "10.155.111.140"
+                  }
+              ]
+          }
+      ],
+      "status": "completed"
+  }
+  )"_json;
+  auto servable = std::make_shared<DistributedServable>();
+  auto status = servable->ParserRankTableWithGroupList("rank_table_file", rank_table_server_list);
+  ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
+}
+
 TEST_F(TestParseRankTableFile, test_parse_rank_table_file_with_group_list_not_device_id_failed) {
   nlohmann::json rank_table_server_list = R"(
   {
@@ -648,30 +715,6 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_with_group_list_invali
   )"_json;
   auto servable = std::make_shared<DistributedServable>();
   auto status = servable->ParserRankTableWithGroupList("rank_table_file", rank_table_server_list);
-  ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
-}
-
-TEST_F(TestParseRankTableFile, test_parse_rank_table_file_with_group_list_invalid_device_id_failed2) {
-  nlohmann::json rank_table_server_list = R"(
-  {
-      "board_id": "0x0000",
-      "group_list": [
-          {
-              "instance_count": "1",
-              "instance_list": [
-                  {
-                      "devices": [{"device_id": "8", "device_ip": "192.1.27.6"}],
-                      "rank_id": "0",
-                      "server_id": "10.155.111.140"
-                  }
-              ]
-          }
-      ],
-      "status": "completed"
-  }
-  )"_json;
-  auto servable = std::make_shared<DistributedServable>();
-  auto status = servable->ParserRankTableWithServerList("rank_table_file", rank_table_server_list);
   ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
 }
 
