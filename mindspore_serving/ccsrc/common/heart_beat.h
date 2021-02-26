@@ -78,7 +78,35 @@ template <class SendStub, class RecvStub>
 class MS_API Watcher {
  public:
   explicit Watcher(const std::string host_address) { host_address_ = host_address; }
+  ~Watcher() {
+    if (ping_running_) {
+      ping_cq_.Shutdown();
+      if (ping_thread_.joinable()) {
+        try {
+          ping_thread_.join();
+        } catch (const std::system_error &) {
+        } catch (...) {
+        }
+      }
+    }
+    ping_running_ = false;
+    if (pong_running_) {
+      pong_cq_.Shutdown();
+      if (pong_thread_.joinable()) {
+        try {
+          pong_thread_.join();
+        } catch (const std::system_error &) {
+        } catch (...) {
+        }
+      }
+    }
+    pong_running_ = false;
+  }
   void StartWatch(const std::string &address) {
+    if (ping_running_ == false) {
+      ping_thread_ = std::thread(&Watcher::AsyncPingRpc, this);
+      ping_running_ = true;
+    }
     auto it = watchee_map_.find(address);
     if (it != watchee_map_.end()) {
       MSI_LOG(INFO) << "watchee exist: " << address;
@@ -114,6 +142,10 @@ class MS_API Watcher {
   }
 
   void RecvPing(const std::string &address) {
+    if (pong_running_ == false) {
+      pong_thread_ = std::thread(&Watcher::AsyncPongRpc, this);
+      pong_running_ = true;
+    }
     std::unique_lock<std::mutex> lock{m_lock_};
     // recv message
     if (watcher_map_.count(address)) {
@@ -163,26 +195,42 @@ class MS_API Watcher {
   }
   void PingAsync(const std::string &address) {
     proto::PingRequest request;
-    proto::PingReply reply;
     request.set_address(host_address_);
-    grpc::ClientContext context;
-    const int32_t TIME_OUT = 100;
-    std::chrono::system_clock::time_point deadline =
-      std::chrono::system_clock::now() + std::chrono::microseconds(TIME_OUT);
-    context.set_deadline(deadline);
-    (void)watchee_map_[address].stub_->Ping(&context, request, &reply);
+    AsyncPingCall *call = new AsyncPingCall;
+    call->response_reader = watchee_map_[address].stub_->PrepareAsyncPing(&call->context, request, &ping_cq_);
+    call->response_reader->StartCall();
+    call->response_reader->Finish(&call->reply, &call->status, call);
   }
 
   void PongAsync(const std::string &address) {
     proto::PongRequest request;
-    proto::PongReply reply;
     request.set_address(host_address_);
-    grpc::ClientContext context;
-    const int32_t TIME_OUT = 100;
-    std::chrono::system_clock::time_point deadline =
-      std::chrono::system_clock::now() + std::chrono::microseconds(TIME_OUT);
-    context.set_deadline(deadline);
-    (void)watcher_map_[address].stub_->Pong(&context, request, &reply);
+    AsyncPongCall *call = new AsyncPongCall;
+    call->response_reader = watcher_map_[address].stub_->PrepareAsyncPong(&call->context, request, &pong_cq_);
+    call->response_reader->StartCall();
+    call->response_reader->Finish(&call->reply, &call->status, call);
+  }
+  void AsyncPingRpc() {
+    void *got_tag;
+    bool ok = false;
+    while (ping_cq_.Next(&got_tag, &ok)) {
+      AsyncPingCall *call = static_cast<AsyncPingCall *>(got_tag);
+      if (!call->status.ok()) {
+        MSI_LOG_DEBUG << "RPC failed: " << call->status.error_code() << ", " << call->status.error_message();
+      }
+      delete call;
+    }
+  }
+  void AsyncPongRpc() {
+    void *got_tag;
+    bool ok = false;
+    while (pong_cq_.Next(&got_tag, &ok)) {
+      AsyncPongCall *call = static_cast<AsyncPongCall *>(got_tag);
+      if (!call->status.ok()) {
+        MSI_LOG_DEBUG << "RPC failed: " << call->status.error_code() << ", " << call->status.error_message();
+      }
+      delete call;
+    }
   }
 
  private:
@@ -196,12 +244,30 @@ class MS_API Watcher {
     std::shared_ptr<Timer> timer_ = nullptr;
     std::shared_ptr<typename RecvStub::Stub> stub_ = nullptr;
   };
+  struct AsyncPingCall {
+    grpc::ClientContext context;
+    grpc::Status status;
+    proto::PingReply reply;
+    std::shared_ptr<grpc::ClientAsyncResponseReader<proto::PingReply>> response_reader;
+  };
+  struct AsyncPongCall {
+    grpc::ClientContext context;
+    grpc::Status status;
+    proto::PongReply reply;
+    std::shared_ptr<grpc::ClientAsyncResponseReader<proto::PongReply>> response_reader;
+  };
   std::string host_address_;
   uint64_t max_ping_times_ = 20;
   uint64_t max_time_out_ = 20000;  // 20s
   std::unordered_map<std::string, WatcheeContext> watchee_map_;
   std::unordered_map<std::string, WatcherContext> watcher_map_;
   std::mutex m_lock_;
+  grpc::CompletionQueue ping_cq_;
+  std::thread ping_thread_;
+  bool ping_running_ = false;
+  grpc::CompletionQueue pong_cq_;
+  std::thread pong_thread_;
+  bool pong_running_ = false;
 };
 }  // namespace mindspore::serving
 
