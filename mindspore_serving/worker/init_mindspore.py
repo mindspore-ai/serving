@@ -27,6 +27,10 @@ def _set_mindspore_cxx_env():
     if not model_spec or not model_spec.submodule_search_locations:
         logger.info(f"find mindspore failed, LD_LIBRARY_PATH will not add MindSpore lib path")
         return
+    if not isinstance(model_spec.submodule_search_locations, list):
+        logger.info(f"find mindspore failed, LD_LIBRARY_PATH will not add MindSpore lib path, "
+                    f"locations: {model_spec.submodule_search_locations}")
+        return
     ms_dir = model_spec.submodule_search_locations[0]
     if not ms_dir:
         logger.info(f"find mindspore failed, LD_LIBRARY_PATH will not add MindSpore lib path")

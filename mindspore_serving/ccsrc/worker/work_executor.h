@@ -36,7 +36,7 @@
 namespace mindspore {
 namespace serving {
 
-using WorkCallBack = std::function<void(const std::vector<InstancePtr> &instances, const Status &error_msg)>;
+using WorkCallBack = std::function<void(const std::vector<InstancePtr> &instances)>;
 
 struct InferSession {
   std::vector<InstancePtr> instances;

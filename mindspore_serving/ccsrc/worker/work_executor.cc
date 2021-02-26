@@ -324,7 +324,7 @@ bool WorkExecutor::ReplyRequest(const InstancePtr &instance) {
   auto &infer_session = it->second;
   infer_session.reply_count++;
   if (infer_session.reply_count == infer_session.instances.size()) {
-    infer_session.call_back(infer_session.instances, SUCCESS);
+    infer_session.call_back(infer_session.instances);
     infer_session_map_.erase(it);
   }
   return true;
@@ -354,7 +354,7 @@ bool WorkExecutor::ReplyError(const InstancePtr &instance, const Status &error_m
   auto &infer_session = it->second;
   infer_session.reply_count++;
   if (infer_session.reply_count == infer_session.instances.size()) {
-    infer_session.call_back(infer_session.instances, SUCCESS);
+    infer_session.call_back(infer_session.instances);
     infer_session_map_.erase(it);
   }
   return true;
@@ -636,7 +636,7 @@ void WorkExecutor::ClearInstances() {
         instance->error_msg = error_msg;
       }
     }
-    item.second.call_back(item.second.instances, SUCCESS);
+    item.second.call_back(item.second.instances);
   }
 }
 

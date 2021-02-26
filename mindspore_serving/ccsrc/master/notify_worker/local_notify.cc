@@ -27,8 +27,7 @@ Status LocalNotifyWorker::Exit() {
 
 Status LocalNotifyWorker::DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
                                         DispatchCallback callback) {
-  auto status = Worker::GetInstance().Run(request, reply, callback);
-  return status;
+  return Worker::GetInstance().RunAsync(request, reply, callback);
 }
 
 }  // namespace serving
