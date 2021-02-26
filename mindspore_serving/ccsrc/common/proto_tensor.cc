@@ -257,17 +257,9 @@ Status GrpcTensorHelper::CreateInstanceFromRequest(const proto::PredictRequest &
 }
 
 Status GrpcTensorHelper::CreateReplyFromInstances(const proto::PredictRequest &request,
-                                                  const vector<InstancePtr> &instances, const Status &error_msg,
-                                                  proto::PredictReply *reply) {
+                                                  const vector<InstancePtr> &instances, proto::PredictReply *reply) {
   MSI_EXCEPTION_IF_NULL(reply);
   *reply->mutable_servable_spec() = request.servable_spec();
-  if (error_msg != SUCCESS) {
-    reply->clear_error_msg();
-    auto proto_error_msg = reply->add_error_msg();
-    proto_error_msg->set_error_code(error_msg.StatusCode());
-    proto_error_msg->set_error_msg(error_msg.StatusMessage());
-    return SUCCESS;
-  }
   if (instances.empty()) {
     return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
            << "Result instances count invalid, cannot be 0, request instances count " << request.instances_size();

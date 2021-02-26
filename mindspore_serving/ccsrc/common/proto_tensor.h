@@ -68,8 +68,7 @@ class MS_API GrpcTensorHelper {
   static Status CreateInstanceFromRequest(const proto::PredictRequest &request, RequestSpec *request_spec,
                                           std::vector<InstanceData> *results);
   static Status CreateReplyFromInstances(const proto::PredictRequest &request,
-                                         const std::vector<InstancePtr> &instances, const Status &error_msg,
-                                         proto::PredictReply *reply);
+                                         const std::vector<InstancePtr> &instances, proto::PredictReply *reply);
   static void CopyFromAgentSpec(const proto::AgentSpec &request, WorkerAgentSpec *worker_specs);
   static void CopyFromWorkerAgentSpec(const std::vector<WorkerAgentSpec> &worker_specs,
                                       proto::AgentRegisterRequest *request);

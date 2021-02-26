@@ -41,8 +41,9 @@ Status MSServiceImpl::PredictAsync(const proto::PredictRequest *request, proto::
   MSI_EXCEPTION_IF_NULL(request);
   MSI_EXCEPTION_IF_NULL(reply);
   Status status(FAILED);
-  auto on_status = [reply](Status status) {
+  auto on_status = [request, reply](Status status) {
     if (status != SUCCESS) {
+      (*reply->mutable_servable_spec()) = request->servable_spec();
       reply->clear_error_msg();
       auto proto_error_msg = reply->add_error_msg();
       proto_error_msg->set_error_code(FAILED);

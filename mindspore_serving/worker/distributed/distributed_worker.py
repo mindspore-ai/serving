@@ -13,11 +13,23 @@
 # limitations under the License.
 # ============================================================================
 """Serving, distributed worker startup"""
+import sys
+import os
 from mindspore_serving._mindspore_serving import Worker_
 
+from mindspore_serving import log as logger
 from mindspore_serving.worker import check_type
 from mindspore_serving.worker._worker import _start_py_task, _start_wait_and_clear
 from mindspore_serving.worker._worker import stop_on_except, _load_servable_config
+
+
+def _get_rank_table_abs_path(rank_table_json_file):
+    """Get absolute path of rank table file"""
+    script_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
+    logger.info(f"input rank table file: {rank_table_json_file}")
+    rank_table_json_file = os.path.join(script_dir, rank_table_json_file)
+    logger.info(f"absolute path of rank table file: {rank_table_json_file}")
+    return rank_table_json_file
 
 
 @stop_on_except
@@ -73,6 +85,8 @@ def start_distributed_servable(servable_directory, servable_name, rank_table_jso
     check_type.check_str('worker_ip', worker_ip)
     check_type.check_ip_port('worker_port', worker_port)
 
+    rank_table_json_file = _get_rank_table_abs_path(rank_table_json_file)
+
     _load_servable_config(servable_directory, servable_name)
     Worker_.start_distributed_servable(servable_directory, servable_name, rank_table_json_file, version_number,
                                        worker_ip, worker_port, master_ip, master_port, wait_agents_time_in_seconds)
@@ -127,6 +141,8 @@ def start_distributed_servable_in_master(servable_directory, servable_name, rank
 
     check_type.check_str('worker_ip', worker_ip)
     check_type.check_ip_port('worker_port', worker_port)
+
+    rank_table_json_file = _get_rank_table_abs_path(rank_table_json_file)
 
     _load_servable_config(servable_directory, servable_name)
     Worker_.start_distributed_servable_in_master(servable_directory, servable_name, rank_table_json_file,

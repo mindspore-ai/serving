@@ -60,92 +60,42 @@ Status Worker::RemoveWorker(const ServableWorkerContext &work) {
   return notify_master_->RemoveWorker(work.worker_spec);
 }
 
-Status Worker::Run(const proto::PredictRequest &request, proto::PredictReply *reply, DispatchCallback callback) {
+Status Worker::RunAsync(const proto::PredictRequest &request, proto::PredictReply *reply, DispatchCallback callback) {
   std::shared_lock<std::shared_mutex> lock(worker_shared_lock_);
   if (!servable_started_) {
-    return INFER_STATUS_LOG_ERROR(FAILED) << "Run worker for inference failed, worker has not been started";
+    return INFER_STATUS_LOG_ERROR(FAILED) << "RunAsync worker for inference failed, worker has not been started";
   }
   MSI_EXCEPTION_IF_NULL(reply);
-  std::vector<InstanceData> inputs;
+  std::vector<InstanceData> instances_data;
   RequestSpec request_spec;
-  MSI_TIME_STAMP_START(CreateInstanceFromRequest)
-  auto status = GrpcTensorHelper::CreateInstanceFromRequest(request, &request_spec, &inputs);
-  MSI_TIME_STAMP_END(CreateInstanceFromRequest)
+  auto status = GrpcTensorHelper::CreateInstanceFromRequest(request, &request_spec, &instances_data);
   if (status != SUCCESS) {
     MSI_LOG(ERROR) << "transfer request to instances failed";
     return status;
   }
-  if (inputs.empty()) {
+  if (instances_data.empty()) {
     return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Input instances count is 0";
   }
 
-  MSI_TIME_STAMP_START(RUN_METHOD)
-  status = RunAsync(request, reply, request_spec, inputs, callback);
-  MSI_TIME_STAMP_END(RUN_METHOD)
-  if (status != SUCCESS) {
-    MSI_LOG(ERROR) << "Run servable " << request_spec.Repr() << " failed";
-    return status;
-  }
-  return SUCCESS;
-}
-
-Status Worker::RunAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
-                        const RequestSpec &request_spec, const std::vector<InstanceData> &inputs,
-                        DispatchCallback callback) {
   const auto &worker = GetServableWorker(request_spec);
   if (worker.worker_service == nullptr) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Cannot find servable match " << request_spec.Repr();
   }
-  WorkCallBack on_process_done = [request, reply, callback](const std::vector<InstancePtr> &instances,
-                                                            const Status &error_msg) {
-    auto status = GrpcTensorHelper::CreateReplyFromInstances(request, instances, error_msg, reply);
+  WorkCallBack on_process_done = [request, reply, callback](const std::vector<InstancePtr> &instances) {
+    auto status = GrpcTensorHelper::CreateReplyFromInstances(request, instances, reply);
     if (status != SUCCESS) {
       MSI_LOG_ERROR << "transfer result to reply failed";
+      reply->clear_error_msg();
+      auto proto_error = reply->add_error_msg();
+      proto_error->set_error_code(status.StatusCode());
+      proto_error->set_error_msg(status.StatusMessage());
     }
-    callback(status);
+    callback(SUCCESS);
   };
-  (void)worker.worker_service->Work(request_spec, inputs, on_process_done);
-  return SUCCESS;
+  return worker.worker_service->Work(request_spec, instances_data, on_process_done);
 }
 
-void Worker::Update() {
-  /*
-  if (version_strategy_ == kVersionStrategySpecific) {
-    return;
-  }
-
-  std::vector<uint64_t> versions;
-  GetVersions(base_spec_, &versions);
-  for (auto &version : versions) {
-    bool isfind = std::any_of(work_list_.begin(), work_list_.end(), [&](const ServableWorkerContext &work) {
-      return work.servable_spec.version_number == version;
-    });
-    if (isfind) {
-      continue;
-    }
-    ServableWorkerContext work;
-    LoadModel(&base_spec_, version, &work);
-    auto status = AddWorker(work);
-    if (status != SUCCESS) {
-      MSI_LOG_ERROR << "AddWorker failed";
-    }
-    work_list_.push_back(work);
-    MSI_LOG_INFO << "Load Model version " << version << " success";
-  }
-  for (auto iter = work_list_.begin(); iter != work_list_.end();) {
-    bool isfind = std::any_of(versions.begin(), versions.end(),
-                              [&](const uint64_t &version) { return iter->servable_spec.version_number == version; });
-    if (isfind) {
-      ++iter;
-      continue;
-    }
-    (void)RemoveWorker(*iter);
-    session_->UnloadModel(iter->model_id);
-    MSI_LOG_INFO << "UnLoad Model version " << iter->servable_spec.version_number << " success";
-    work_list_.erase(iter);
-  }
-  */
-}
+void Worker::Update() {}
 
 Status Worker::StartGrpcServer(const std::shared_ptr<MSWorkerServer> &grpc_server, const std::string &worker_ip,
                                int32_t port) {

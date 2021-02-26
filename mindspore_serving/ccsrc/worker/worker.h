@@ -53,9 +53,7 @@ class MS_API Worker {
   static Worker &GetInstance();
   void Clear();
 
-  Status Run(const proto::PredictRequest &request, proto::PredictReply *reply, DispatchCallback callback);
-  Status RunAsync(const proto::PredictRequest &request, proto::PredictReply *reply, const RequestSpec &request_spec,
-                  const std::vector<InstanceData> &inputs, DispatchCallback callback);
+  Status RunAsync(const proto::PredictRequest &request, proto::PredictReply *reply, DispatchCallback callback);
   Status StartServable(std::shared_ptr<ServableBase> servable, std::shared_ptr<BaseNotifyMaster> notify_master);
 
   Status StartGrpcServer(const std::shared_ptr<MSWorkerServer> &grpc_server, const std::string &worker_ip,
