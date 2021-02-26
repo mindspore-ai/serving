@@ -110,6 +110,7 @@ class MS_API Watcher {
     auto it = watchee_map_.find(address);
     if (it != watchee_map_.end()) {
       MSI_LOG(INFO) << "watchee exist: " << address;
+      watchee_map_[address].timeouts_ = 0;
       watchee_map_[address].timer_ = std::make_shared<Timer>();
     } else {
       WatcheeContext context;
