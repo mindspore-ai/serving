@@ -74,14 +74,12 @@ file(GLOB_RECURSE UT_SERVING_CORE_SRC RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
         "../../mindspore_serving/ccsrc/master/*.cc"
         "../../mindspore_serving/ccsrc/worker/*.cc")
 
-file(GLOB_RECURSE UT_SERVING_ASCEND_SRC RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
-        "../../mindspore_serving/ccsrc/worker/inference/mindspore_model_wrap.cc")
-
-list(REMOVE_ITEM UT_SERVING_CORE_SRC ${UT_SERVING_ASCEND_SRC})
+file(GLOB_RECURSE UT_SERVING_RMV_SRC RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+        "../../mindspore_serving/ccsrc/worker/inference/inference.cc")
+list(REMOVE_ITEM UT_SERVING_CORE_SRC ${UT_SERVING_RMV_SRC})
 
 file(GLOB_RECURSE UT_SERVING_STUB RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "stub/*.cc")
-set(UT_SERVING_COMMON ${UT_SERVING_CORE_SRC})
-set(UT_SERVING_ASCEND ${UT_SERVING_ASCEND_SRC} ${UT_SERVING_STUB})
+set(UT_SERVING_COMMON ${UT_SERVING_CORE_SRC} ${UT_SERVING_STUB})
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(stub)
@@ -93,9 +91,6 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../mindspore_serving/ccsrc)
 link_directories(${CMKAE_BINARY_DIR}/securec/src)
 
 add_library(serving_common SHARED ${UT_SERVING_COMMON})
-
-add_library(serving_ascend SHARED ${UT_SERVING_ASCEND})
-target_link_libraries(serving_ascend PRIVATE serving_common)
 
 target_link_libraries(serving_common PRIVATE PROTO_SRC_LIB)
 target_link_libraries(serving_common PRIVATE ${_REFLECTION} ${_GRPC_GRPCPP} ${_PROTOBUF_LIBPROTOBUF} pthread)
@@ -112,12 +107,7 @@ file(COPY ${GLOG_LIB_LIST} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/lib)
 
 # for cpp/serving_ut
 set(CPP_UT_SERVING_CORE ${UT_SERVING_COMMON} ${UT_SERVING_ASCEND})
-file(GLOB_RECURSE CPP_UT_SERVING_RMV_SRC RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
-        "../../mindspore_serving/ccsrc/worker/inference/inference.cc")
-list(REMOVE_ITEM CPP_UT_SERVING_CORE ${CPP_UT_SERVING_RMV_SRC})
-file(GLOB_RECURSE CPP_UT_SERVING_ADD_SRC RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
-        "cpp/stub/stub_inference.cc")
-add_library(cpp_serving_common STATIC ${CPP_UT_SERVING_CORE} ${CPP_UT_SERVING_ADD_SRC})
+add_library(cpp_serving_common STATIC ${CPP_UT_SERVING_CORE})
 target_link_libraries(cpp_serving_common PRIVATE PROTO_SRC_LIB)
 target_link_libraries(cpp_serving_common PRIVATE ${_REFLECTION} ${_GRPC_GRPCPP} ${_PROTOBUF_LIBPROTOBUF} pthread)
 target_link_libraries(cpp_serving_common PRIVATE mindspore_serving::event mindspore_serving::event_pthreads)
