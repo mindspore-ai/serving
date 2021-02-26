@@ -256,53 +256,54 @@ Status GrpcTensorHelper::CreateInstanceFromRequest(const proto::PredictRequest &
   return SUCCESS;
 }
 
-Status GrpcTensorHelper::CreateReplyFromInstances(const proto::PredictRequest &request, const vector<Instance> &outputs,
+Status GrpcTensorHelper::CreateReplyFromInstances(const proto::PredictRequest &request,
+                                                  const vector<InstancePtr> &instances, const Status &error_msg,
                                                   proto::PredictReply *reply) {
   MSI_EXCEPTION_IF_NULL(reply);
-  auto servable_name = request.servable_spec().name();
-  auto method_name = request.servable_spec().method_name();
-  Status status;
-  ServableSignature servable_signature;
-  if (!ServableStorage::Instance().GetServableDef(servable_name, &servable_signature)) {
-    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Servable " << servable_name << " is not declared";
-  }
-  MethodSignature method_signature;
-  if (!servable_signature.GetMethodDeclare(method_name, &method_signature)) {
-    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
-           << "Method " << method_name << " is not registered for servable " << servable_name;
-  }
   *reply->mutable_servable_spec() = request.servable_spec();
-
+  if (error_msg != SUCCESS) {
+    reply->clear_error_msg();
+    auto proto_error_msg = reply->add_error_msg();
+    proto_error_msg->set_error_code(error_msg.StatusCode());
+    proto_error_msg->set_error_msg(error_msg.StatusMessage());
+    return SUCCESS;
+  }
+  if (instances.empty()) {
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
+           << "Result instances count invalid, cannot be 0, request instances count " << request.instances_size();
+  }
+  Status status;
+  MethodSignature method_signature = instances[0]->context.user_context->method_def;
   size_t err_cnt = 0;
-  for (auto &output_instance : outputs) {
-    if (output_instance.error_msg != SUCCESS) {
+  for (auto &instance : instances) {
+    if (instance->error_msg != SUCCESS) {
       err_cnt++;
-    } else if (output_instance.data.size() != method_signature.outputs.size()) {
+    } else if (instance->data.size() != method_signature.outputs.size()) {
       return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
-             << "Result data tensor size " << output_instance.data.size() << " not equal outputs size "
+             << "Result data tensor size " << instance->data.size() << " not equal outputs size "
              << method_signature.outputs.size() << "defined in method signature";
     }
   }
   if (err_cnt > 0) {
-    for (auto &output_intance : outputs) {
+    for (auto &instance : instances) {
       auto proto_err_msg = reply->add_error_msg();
-      proto_err_msg->set_error_code(output_intance.error_msg.StatusCode());
-      if (output_intance.error_msg == INVALID_INPUTS) {
-        proto_err_msg->set_error_msg(output_intance.error_msg.StatusMessage());
-      } else if (output_intance.error_msg != SUCCESS) {
-        proto_err_msg->set_error_msg(output_intance.error_msg.StatusMessage());
+      proto_err_msg->set_error_code(instance->error_msg.StatusCode());
+      if (instance->error_msg == INVALID_INPUTS) {
+        proto_err_msg->set_error_msg(instance->error_msg.StatusMessage());
+      } else if (instance->error_msg != SUCCESS) {
+        proto_err_msg->set_error_msg(instance->error_msg.StatusMessage());
       }
     }
   }
   // create instance reply, same with request
-  for (auto &output_intance : outputs) {
+  for (auto &instance : instances) {
     auto proto_instance = reply->add_instances();
-    if (output_intance.data.empty()) {
+    if (instance->data.empty()) {
       continue;
     }
     auto proto_items = proto_instance->mutable_items();
     for (size_t i = 0; i < method_signature.outputs.size(); i++) {
-      auto &output_tensor = output_intance.data[i];
+      auto &output_tensor = instance->data[i];
       auto &proto_tensor = (*proto_items)[method_signature.outputs[i]];
       ProtoTensor result_tensor(&proto_tensor);
       result_tensor.assign(*output_tensor);

@@ -60,7 +60,7 @@ Status Worker::RemoveWorker(const ServableWorkerContext &work) {
   return notify_master_->RemoveWorker(work.worker_spec);
 }
 
-Status Worker::Run(const proto::PredictRequest &request, proto::PredictReply *reply) {
+Status Worker::Run(const proto::PredictRequest &request, proto::PredictReply *reply, DispatchCallback callback) {
   std::shared_lock<std::shared_mutex> lock(worker_shared_lock_);
   if (!servable_started_) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Run worker for inference failed, worker has not been started";
@@ -78,61 +78,34 @@ Status Worker::Run(const proto::PredictRequest &request, proto::PredictReply *re
   if (inputs.empty()) {
     return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Input instances count is 0";
   }
-  std::vector<Instance> outputs;
+
   MSI_TIME_STAMP_START(RUN_METHOD)
-  status = Run(request_spec, inputs, &outputs);
+  status = RunAsync(request, reply, request_spec, inputs, callback);
   MSI_TIME_STAMP_END(RUN_METHOD)
   if (status != SUCCESS) {
     MSI_LOG(ERROR) << "Run servable " << request_spec.Repr() << " failed";
     return status;
   }
-  MSI_TIME_STAMP_START(CreateReplyFromInstances)
-  status = GrpcTensorHelper::CreateReplyFromInstances(request, outputs, reply);
-  MSI_TIME_STAMP_END(CreateReplyFromInstances)
-  if (status != SUCCESS) {
-    MSI_LOG(ERROR) << "transfer result to reply failed";
-    return status;
-  }
-  MSI_LOG(INFO) << "run Predict finished";
   return SUCCESS;
 }
 
-Status Worker::Run(const RequestSpec &request_spec, const std::vector<serving::InstanceData> &inputs,
-                   std::vector<serving::Instance> *outputs) {
-  MSI_EXCEPTION_IF_NULL(outputs);
-  auto result_pair = RunAsync(request_spec, inputs);
-  if (result_pair.first != SUCCESS) {
-    return result_pair.first;
-  }
-  auto result = result_pair.second;
-  while (result->HasNext()) {
-    serving::Instance instance;
-    result->GetNext(&instance);
-    outputs->push_back(instance);
-  }
-  return SUCCESS;
-}
-
-std::pair<Status, std::shared_ptr<AsyncResult>> Worker::RunAsync(const RequestSpec &request_spec,
-                                                                 const std::vector<InstanceData> &inputs) {
-  std::shared_ptr<AsyncResult> result = std::make_shared<AsyncResult>(inputs.size());
+Status Worker::RunAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
+                        const RequestSpec &request_spec, const std::vector<InstanceData> &inputs,
+                        DispatchCallback callback) {
   const auto &worker = GetServableWorker(request_spec);
   if (worker.worker_service == nullptr) {
-    return {INFER_STATUS_LOG_ERROR(FAILED) << "Cannot find servable match " << request_spec.Repr(), nullptr};
+    return INFER_STATUS_LOG_ERROR(FAILED) << "Cannot find servable match " << request_spec.Repr();
   }
-  std::weak_ptr<AsyncResult> result_weak = result;  // avoid memory leak
-  WorkCallBack on_process_done = [result_weak](const Instance &output, const Status &error_msg) {
-    auto output_index = output.context.instance_index;
-    auto result_ptr = result_weak.lock();
-    if (result_ptr && output_index < result_ptr->result_.size()) {
-      result_ptr->result_[output_index].error_msg = error_msg;
-      if (error_msg == SUCCESS) {
-        result_ptr->result_[output_index] = output;
-      }
+  WorkCallBack on_process_done = [request, reply, callback](const std::vector<InstancePtr> &instances,
+                                                            const Status &error_msg) {
+    auto status = GrpcTensorHelper::CreateReplyFromInstances(request, instances, error_msg, reply);
+    if (status != SUCCESS) {
+      MSI_LOG_ERROR << "transfer result to reply failed";
     }
+    callback(status);
   };
-  result->future_list_ = worker.worker_service->Work(request_spec, inputs, on_process_done);
-  return {SUCCESS, result};
+  (void)worker.worker_service->Work(request_spec, inputs, on_process_done);
+  return SUCCESS;
 }
 
 void Worker::Update() {
@@ -303,51 +276,6 @@ size_t Worker::GetBatchSize() const {
     }
   }
   return batch_size_ret;
-}
-
-AsyncResult::AsyncResult(size_t size) : result_(size), next_index_(0) {}
-
-bool AsyncResult::HasNext() { return next_index_ < future_list_.size(); }
-
-Status AsyncResult::GetNext(Instance *instance_result) {
-  MSI_EXCEPTION_IF_NULL(instance_result);
-  if (next_index_ >= future_list_.size()) {
-    MSI_LOG_ERROR << "GetNext failed, index greater than instance count " << future_list_.size();
-    return FAILED;
-  }
-  auto index = next_index_;
-  next_index_++;
-  auto &future = future_list_[index];
-  if (!future.valid()) {
-    instance_result->error_msg = result_[index].error_msg;
-    return FAILED;
-  }
-  const int kWaitMaxHundredMs = 100;
-  int i;
-  for (i = 0; i < kWaitMaxHundredMs; i++) {  //
-    if (ExitSignalHandle::Instance().HasStopped() || !Worker::GetInstance().IsRunning()) {
-      instance_result->error_msg = Status(SYSTEM_ERROR, "Servable stopped");
-      return SYSTEM_ERROR;
-    }
-    if (future.wait_for(std::chrono::milliseconds(100)) == std::future_status::ready) {
-      break;
-    }
-    if (time_out_last_) {
-      MSI_LOG_ERROR << "GetNext failed, wait time out, index " << index << ", total count " << future_list_.size();
-      instance_result->error_msg = Status(FAILED, "Time out");
-      return FAILED;
-    }
-  }
-  if (i >= kWaitMaxHundredMs) {
-    MSI_LOG_ERROR << "GetNext failed, wait time out, index " << index << ", total count " << future_list_.size();
-    instance_result->error_msg = Status(FAILED, "Time out");
-    time_out_last_ = true;
-    return FAILED;
-  }
-
-  future.get();
-  *instance_result = result_[index];
-  return SUCCESS;
 }
 
 }  // namespace serving

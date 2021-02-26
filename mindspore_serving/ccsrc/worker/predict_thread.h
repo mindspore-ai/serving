@@ -26,19 +26,19 @@
 
 namespace mindspore::serving {
 
-using PredictFun = std::function<void(const std::vector<Instance> &inputs)>;
+using PredictFun = std::function<void(const std::vector<InstancePtr> &inputs)>;
 class MS_API PredictThread {
  public:
   PredictThread();
   ~PredictThread();
 
-  Status PushPredictTask(const std::vector<Instance> &inputs);
+  Status PushPredictTask(const std::vector<InstancePtr> &inputs);
   void Start(PredictFun predict_fun, uint32_t batch_size);
   void Stop();
 
  private:
   std::thread predict_thread_;
-  std::queue<Instance> predict_buffer_;
+  std::queue<InstancePtr> predict_buffer_;
   PredictFun predict_fun_;
   uint32_t batch_size_ = 0;
 

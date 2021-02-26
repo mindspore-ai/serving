@@ -24,6 +24,7 @@
 #include <string>
 #include "common/serving_common.h"
 #include "common/heart_beat.h"
+#include "common/grpc_client.h"
 #include "proto/ms_worker.pb.h"
 #include "proto/ms_worker.grpc.pb.h"
 #include "proto/ms_master.pb.h"
@@ -42,8 +43,8 @@ class MSWorkerImpl : public proto::MSWorker::Service {
     }
   }
 
-  grpc::Status Predict(grpc::ServerContext *context, const proto::PredictRequest *request,
-                       proto::PredictReply *reply) override;
+  grpc::Status PredictAsync(grpc::ServerContext *context, const proto::PredictRequest *request,
+                            proto::PredictReply *reply, DispatchCallback callback);
   grpc::Status Exit(grpc::ServerContext *context, const proto::ExitRequest *request, proto::ExitReply *reply) override;
   grpc::Status Ping(grpc::ServerContext *context, const proto::PingRequest *request, proto::PingReply *reply) override;
   grpc::Status Pong(grpc::ServerContext *context, const proto::PongRequest *request, proto::PongReply *reply) override;

@@ -23,7 +23,8 @@
 #include <string>
 #include <future>
 #include <set>
-
+#include <mutex>
+#include <map>
 #include "common/thread_pool.h"
 #include "common/serving_common.h"
 #include "common/instance.h"
@@ -35,7 +36,13 @@
 namespace mindspore {
 namespace serving {
 
-using WorkCallBack = std::function<void(const Instance &output, const Status &error_msg)>;
+using WorkCallBack = std::function<void(const std::vector<InstancePtr> &instances, const Status &error_msg)>;
+
+struct InferSession {
+  std::vector<InstancePtr> instances;
+  size_t reply_count = 0;
+  WorkCallBack call_back = nullptr;
+};
 
 class WorkExecutor {
  public:
@@ -44,8 +51,7 @@ class WorkExecutor {
   ~WorkExecutor();
 
   Status Init(const ServableSignature &servable_declare, const std::shared_ptr<ServableBase> &servable);
-  std::vector<std::future<void>> Work(const RequestSpec &request_spec, const std::vector<InstanceData> &inputs,
-                                      WorkCallBack on_process_done);
+  Status Work(const RequestSpec &request_spec, const std::vector<InstanceData> &inputs, WorkCallBack on_process_done);
 
   static uint64_t GetNextUserId();
   uint32_t GetWorkerId() const;
@@ -69,30 +75,34 @@ class WorkExecutor {
   std::shared_ptr<TaskQueue> cpp_postprocess_task_queue_;
   std::vector<TensorBasePtr> inference_inputs_;
 
+  std::map<uint64_t, InferSession> infer_session_map_;
+  std::mutex infer_session_map_mutex_;
+
+  void ClearInstances();
+
   Status CheckSevableSignature();
 
-  bool ReplyError(const std::vector<Instance> &context, const Status &error_msg);
-  bool ReplyError(const Instance &context, const Status &error_msg);
-  bool ReplyRequest(const std::vector<Instance> &outputs);
-  bool ReplyRequest(const Instance &outputs);
+  bool ReplyError(const std::vector<InstancePtr> &context, const Status &error_msg);
+  bool ReplyError(const InstancePtr &context, const Status &error_msg);
+  bool ReplyRequest(const std::vector<InstancePtr> &outputs);
+  bool ReplyRequest(const InstancePtr &outputs);
 
-  void OnRecievePreprocessInputs(const std::vector<Instance> &inputs);   //  callback
-  void OnRecievePredictInputs(const std::vector<Instance> &inputs);      //  callback
-  void OnRecievePostprocessInputs(const std::vector<Instance> &inputs);  //  callback
+  void OnReceivePreprocessInputs(const std::vector<InstancePtr> &instances);   //  callback
+  void OnReceivePredictInputs(const std::vector<InstancePtr> &instances);      //  callback
+  void OnReceivePostprocessInputs(const std::vector<InstancePtr> &instances);  //  callback
 
-  void PredictHandle(const std::vector<Instance> &inputs);
-  Status PrePredict(const std::vector<Instance> &inputs);
-  Status PostPredict(const std::vector<Instance> &inputs, const std::vector<TensorBasePtr> &predict_result,
-                     std::vector<Instance> *outputs);
-  Status Predict(const std::vector<Instance> &inputs, std::vector<Instance> *outputs);
-  Status CheckPredictInput(const Instance &instance);
+  void PredictHandle(const std::vector<InstancePtr> &instances);
+  Status PrePredict(const std::vector<InstancePtr> &instances);
+  Status PostPredict(const std::vector<InstancePtr> &instances, const std::vector<TensorBasePtr> &predict_result);
+  Status Predict(const std::vector<InstancePtr> &instances);
+  Status CheckPredictInput(const InstancePtr &instance);
   bool IsNoBatchDimInput(int input_index) const;
 
-  Instance CreateInputInstance(const Instance &instance, PredictPhaseTag phase);
-  std::vector<Instance> CreateInputInstance(const std::vector<Instance> &instance, PredictPhaseTag phase);
-  Instance CreateResultInstance(const Instance &input, const ResultInstance &result, PredictPhaseTag phase);
-  std::vector<Instance> CreateResultInstance(const std::vector<Instance> &inputs,
-                                             const std::vector<ResultInstance> &results, PredictPhaseTag phase);
+  void CreateInputInstance(const InstancePtr &instance, PredictPhaseTag phase);
+  void CreateInputInstance(const std::vector<InstancePtr> &instances, PredictPhaseTag phase);
+  void CreateResultInstance(const InstancePtr &instance, const ResultInstance &result, PredictPhaseTag phase);
+  void CreateResultInstance(std::vector<InstancePtr> instances, const std::vector<ResultInstance> &results,
+                            PredictPhaseTag phase);
   void InitPrePostprocess();
   void InitInputTensors();
 };

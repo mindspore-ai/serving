@@ -34,15 +34,15 @@ WorkExecutor::WorkExecutor(std::shared_ptr<TaskQueue> py_preprocess_task_queue,
                            std::shared_ptr<TaskQueue> py_postprocess_task_queue,
                            std::shared_ptr<TaskQueue> cpp_preprocess_task_queue,
                            std::shared_ptr<TaskQueue> cpp_postprocess_task_queue)
-    : py_preprocess_task_queue_(py_preprocess_task_queue),
-      py_postprocess_task_queue_(py_postprocess_task_queue),
-      cpp_preprocess_task_queue_(cpp_preprocess_task_queue),
-      cpp_postprocess_task_queue_(cpp_postprocess_task_queue) {
+    : py_preprocess_task_queue_(std::move(py_preprocess_task_queue)),
+      py_postprocess_task_queue_(std::move(py_postprocess_task_queue)),
+      cpp_preprocess_task_queue_(std::move(cpp_preprocess_task_queue)),
+      cpp_postprocess_task_queue_(std::move(cpp_postprocess_task_queue)) {
   static std::atomic_uint64_t g_worker_id;
   worker_id_ = ++g_worker_id;
 }
 
-WorkExecutor::~WorkExecutor() = default;
+WorkExecutor::~WorkExecutor() { ClearInstances(); }
 
 Status WorkExecutor::CheckSevableSignature() {
   Status status;
@@ -139,7 +139,7 @@ Status WorkExecutor::Init(const ServableSignature &servable_declare, const std::
   // init python preprocess and postprocess
   InitPrePostprocess();
   // init predict fun
-  auto predict_fun = [this](const std::vector<Instance> &inputs) { this->PredictHandle(inputs); };
+  auto predict_fun = [this](const std::vector<InstancePtr> &inputs) { this->PredictHandle(inputs); };
 
   predict_thread_.Start(predict_fun, model_batch_size_);
 
@@ -163,39 +163,41 @@ void WorkExecutor::InitPrePostprocess() {
     }
   }
   // init cpp preprocess and postprocess
-  auto preprocess_callback = [this](const std::vector<Instance> &inputs, const std::vector<ResultInstance> &outputs) {
-    if (inputs.empty() || inputs.size() != outputs.size()) {
-      MSI_LOG_ERROR << "Invalid inputs size " << inputs.size() << ", result size " << outputs.size();
+  auto preprocess_callback = [this](const std::vector<InstancePtr> &instances,
+                                    const std::vector<ResultInstance> &outputs) {
+    if (instances.empty() || instances.size() != outputs.size()) {
+      MSI_LOG_ERROR << "Invalid inputs size " << instances.size() << ", result size " << outputs.size();
       return;
     }
-    std::vector<Instance> outputs_real;
-    for (size_t i = 0; i < inputs.size(); i++) {
-      auto &input = inputs[i];
+    std::vector<InstancePtr> outputs_real;
+    for (size_t i = 0; i < instances.size(); i++) {
+      auto &instance = instances[i];
       auto &output = outputs[i];
       if (output.error_msg != SUCCESS) {
-        ReplyError(input, output.error_msg);
+        ReplyError(instance, output.error_msg);
         continue;
       }
-      auto output_result = CreateResultInstance(input, output, kPredictPhaseTag_Preproces);
-      outputs_real.push_back(output_result);
+      CreateResultInstance(instance, output, kPredictPhaseTag_Preproces);
+      outputs_real.push_back(instance);
     }
-    OnRecievePredictInputs(outputs_real);
+    OnReceivePredictInputs(outputs_real);
   };
-  auto postprocess_callback = [this](const std::vector<Instance> &inputs, const std::vector<ResultInstance> &outputs) {
-    if (inputs.empty() || inputs.size() != outputs.size()) {
-      MSI_LOG_ERROR << "Invalid inputs size " << inputs.size() << ", result size " << outputs.size();
+  auto postprocess_callback = [this](const std::vector<InstancePtr> &instances,
+                                     const std::vector<ResultInstance> &outputs) {
+    if (instances.empty() || instances.size() != outputs.size()) {
+      MSI_LOG_ERROR << "Invalid inputs size " << instances.size() << ", result size " << outputs.size();
       return;
     }
-    std::vector<Instance> outputs_real;
-    for (size_t i = 0; i < inputs.size(); i++) {
-      auto &input = inputs[i];
+    std::vector<InstancePtr> outputs_real;
+    for (size_t i = 0; i < instances.size(); i++) {
+      auto &instance = instances[i];
       auto &output = outputs[i];
       if (output.error_msg != SUCCESS) {
-        ReplyError(input, output.error_msg);
+        ReplyError(instance, output.error_msg);
         continue;
       }
-      auto output_result = CreateResultInstance(input, output, kPredictPhaseTag_Postprocess);
-      outputs_real.push_back(output_result);
+      CreateResultInstance(instance, output, kPredictPhaseTag_Postprocess);
+      outputs_real.push_back(instance);
     }
     ReplyRequest(outputs_real);
   };
@@ -217,140 +219,170 @@ void WorkExecutor::InitInputTensors() {
   }
 }
 
-std::vector<std::future<void>> WorkExecutor::Work(const RequestSpec &request_spec,
-                                                  const std::vector<InstanceData> &instances_data,
-                                                  WorkCallBack on_process_done) {
+Status WorkExecutor::Work(const RequestSpec &request_spec, const std::vector<InstanceData> &instances_data,
+                          WorkCallBack on_process_done) {
   if (!init_flag_) {
     MSI_LOG_EXCEPTION << "Worker service has not been initialized";
   }
-  std::vector<std::future<void>> future_list(instances_data.size());
-  std::vector<Instance> new_inputs(instances_data.size());
   auto user_id = WorkExecutor::GetNextUserId();
+  InferSession infer_session;
+  infer_session.call_back = std::move(on_process_done);
+
   auto user_context = std::make_shared<WorkerUserContext>();
-  user_context->worker_call_back = on_process_done;
   user_context->request_spec = request_spec;
 
   MethodSignature &method_def = user_context->method_def;
   Status status;
   if (!servable_declare_.GetMethodDeclare(request_spec.method_name, &method_def)) {
-    MSI_LOG_EXCEPTION << "Not support method " << request_spec.method_name;
+    return INFER_STATUS_LOG_ERROR(FAILED) << "Not support method " << request_spec.method_name;
   }
 
-  for (size_t i = 0; i < new_inputs.size(); i++) {
-    new_inputs[i].input_data = instances_data[i];
-    auto &context = new_inputs[i].context;
+  std::vector<InstancePtr> instances;
+  for (size_t i = 0; i < instances_data.size(); i++) {
+    auto instance = std::make_shared<Instance>();
+    instances.push_back(instance);
+
+    instance->input_data = instances_data[i];
+    auto &context = instance->context;
     context.user_id = user_id;
     context.instance_index = i;
     context.user_context = user_context;
-    context.promise = std::make_shared<std::promise<void>>();
-    future_list[i] = context.promise->get_future();
   }
+  infer_session.instances = instances;
+  infer_session_map_[user_id] = infer_session;
+
   if (!method_def.preprocess_name.empty()) {
-    OnRecievePreprocessInputs(new_inputs);
+    OnReceivePreprocessInputs(instances);
   } else {
-    OnRecievePredictInputs(new_inputs);
+    OnReceivePredictInputs(instances);
   }
-  return future_list;
+  return SUCCESS;
 }
 
-void WorkExecutor::OnRecievePreprocessInputs(const std::vector<Instance> &inputs) {
-  if (inputs.empty()) {
+void WorkExecutor::OnReceivePreprocessInputs(const std::vector<InstancePtr> &instances) {
+  if (instances.empty()) {
     MSI_LOG_EXCEPTION << "Inputs cannot be empty";
   }
-  const MethodSignature &method_def = inputs[0].context.user_context->method_def;
-  auto real_inputs = CreateInputInstance(inputs, kPredictPhaseTag_Preproces);
+  const MethodSignature &method_def = instances[0]->context.user_context->method_def;
+  CreateInputInstance(instances, kPredictPhaseTag_Preproces);
   if (python_preprocess_names_.count(method_def.preprocess_name) > 0) {
-    py_preprocess_task_queue_->PushTask(method_def.preprocess_name, GetWorkerId(), real_inputs);
+    py_preprocess_task_queue_->PushTask(method_def.preprocess_name, GetWorkerId(), instances);
   } else {
-    cpp_preprocess_task_queue_->PushTask(method_def.preprocess_name, GetWorkerId(), real_inputs);
+    cpp_preprocess_task_queue_->PushTask(method_def.preprocess_name, GetWorkerId(), instances);
   }
 }
 
-void WorkExecutor::OnRecievePostprocessInputs(const std::vector<Instance> &inputs) {
-  if (inputs.empty()) {
+void WorkExecutor::OnReceivePostprocessInputs(const std::vector<InstancePtr> &instances) {
+  if (instances.empty()) {
     MSI_LOG_EXCEPTION << "Inputs cannot be empty";
   }
-  const MethodSignature &method_def = inputs[0].context.user_context->method_def;
-  auto real_input = CreateInputInstance(inputs, kPredictPhaseTag_Postprocess);
+  const MethodSignature &method_def = instances[0]->context.user_context->method_def;
+  CreateInputInstance(instances, kPredictPhaseTag_Postprocess);
   if (python_postprocess_names_.count(method_def.postprocess_name) > 0) {
-    py_postprocess_task_queue_->PushTask(method_def.postprocess_name, GetWorkerId(), real_input);
+    py_postprocess_task_queue_->PushTask(method_def.postprocess_name, GetWorkerId(), instances);
   } else {
-    cpp_postprocess_task_queue_->PushTask(method_def.postprocess_name, GetWorkerId(), real_input);
+    cpp_postprocess_task_queue_->PushTask(method_def.postprocess_name, GetWorkerId(), instances);
   }
 }
 
-void WorkExecutor::OnRecievePredictInputs(const std::vector<Instance> &inputs) {
+void WorkExecutor::OnReceivePredictInputs(const std::vector<InstancePtr> &instances) {
   // create input for predict, and check
-  auto real_inputs = CreateInputInstance(inputs, kPredictPhaseTag_Predict);
-  std::vector<Instance> valid_inputs;
-  for (auto &item : real_inputs) {
-    auto status = CheckPredictInput(item);
+  CreateInputInstance(instances, kPredictPhaseTag_Predict);
+  std::vector<InstancePtr> valid_instances;
+  for (auto &instance : instances) {
+    auto status = CheckPredictInput(instance);
     if (status != SUCCESS) {
-      ReplyError(item, status);
+      ReplyError(instance, status);
       continue;
     }
-    valid_inputs.push_back(item);
+    valid_instances.push_back(instance);
   }
-  predict_thread_.PushPredictTask(valid_inputs);
+  predict_thread_.PushPredictTask(valid_instances);
 }
 
-bool WorkExecutor::ReplyRequest(const std::vector<Instance> &outputs) {
+bool WorkExecutor::ReplyRequest(const std::vector<InstancePtr> &outputs) {
   for (auto &item : outputs) {
     ReplyRequest(item);
   }
   return true;
 }
 
-bool WorkExecutor::ReplyRequest(const Instance &outputs) {
+bool WorkExecutor::ReplyRequest(const InstancePtr &instance) {
   Status status;
-  Instance trans_outputs = CreateInputInstance(outputs, kPredictPhaseTag_Output);
-  Instance real_outputs;
-  real_outputs.data = trans_outputs.data;
-  real_outputs.context = trans_outputs.context;
-  outputs.context.user_context->worker_call_back(real_outputs, Status(SUCCESS));
-  outputs.context.promise->set_value();
+  CreateInputInstance(instance, kPredictPhaseTag_Output);
+  instance->error_msg = SUCCESS;
+  instance->preprocess_data.clear();
+  instance->predict_data.clear();
+  instance->postprocess_data.clear();
+
+  std::unique_lock<std::mutex> lock(infer_session_map_mutex_);
+  auto it = infer_session_map_.find(instance->context.user_id);
+  if (it == infer_session_map_.end()) {
+    MSI_LOG_WARNING << "Cannot find user in session map, user id " << instance->context.user_id;
+    return false;
+  }
+  auto &infer_session = it->second;
+  infer_session.reply_count++;
+  if (infer_session.reply_count == infer_session.instances.size()) {
+    infer_session.call_back(infer_session.instances, SUCCESS);
+    infer_session_map_.erase(it);
+  }
   return true;
 }
 
-bool WorkExecutor::ReplyError(const std::vector<Instance> &context, const Status &error_msg) {
+bool WorkExecutor::ReplyError(const std::vector<InstancePtr> &context, const Status &error_msg) {
   for (auto &item : context) {
     ReplyError(item, error_msg);
   }
   return true;
 }
 
-bool WorkExecutor::ReplyError(const Instance &instance, const Status &error_msg) {
-  Instance error_instance;
-  error_instance.context = instance.context;
-  instance.context.user_context->worker_call_back(error_instance, error_msg);
-  instance.context.promise->set_value();
+bool WorkExecutor::ReplyError(const InstancePtr &instance, const Status &error_msg) {
+  instance->error_msg = error_msg;
+  instance->data.clear();
+  instance->preprocess_data.clear();
+  instance->predict_data.clear();
+  instance->postprocess_data.clear();
+  instance->phase = kInstancePhaseDone;
+
+  std::unique_lock<std::mutex> lock(infer_session_map_mutex_);
+  auto it = infer_session_map_.find(instance->context.user_id);
+  if (it == infer_session_map_.end()) {
+    MSI_LOG_WARNING << "Cannot find user in session map, user id " << instance->context.user_id;
+    return false;
+  }
+  auto &infer_session = it->second;
+  infer_session.reply_count++;
+  if (infer_session.reply_count == infer_session.instances.size()) {
+    infer_session.call_back(infer_session.instances, SUCCESS);
+    infer_session_map_.erase(it);
+  }
   return true;
 }
 
-void WorkExecutor::PredictHandle(const std::vector<Instance> &inputs) {
+void WorkExecutor::PredictHandle(const std::vector<InstancePtr> &instances) {
   Status status;
   try {
-    std::vector<Instance> outputs;
-    status = Predict(inputs, &outputs);
+    status = Predict(instances);
     if (status != SUCCESS) {
-      this->ReplyError(inputs, status);
+      this->ReplyError(instances, status);
       return;
     }
-    std::map<std::string, std::vector<Instance>> map_output;
-    std::vector<Instance> reply_result;
-    for (auto &output : outputs) {
-      MethodSignature &method_def = output.context.user_context->method_def;
+    std::map<std::string, std::vector<InstancePtr>> map_output;
+    std::vector<InstancePtr> reply_result;
+    for (auto &instance : instances) {
+      MethodSignature &method_def = instance->context.user_context->method_def;
       if (!method_def.postprocess_name.empty()) {
-        map_output[method_def.postprocess_name].push_back(output);
+        map_output[method_def.postprocess_name].push_back(instance);
       } else {
-        reply_result.push_back(output);
+        reply_result.push_back(instance);
       }
     }
     if (!reply_result.empty()) {
       ReplyRequest(reply_result);
     }
     for (auto &item : map_output) {
-      OnRecievePostprocessInputs(item.second);
+      OnReceivePostprocessInputs(item.second);
     }
     return;
   } catch (const std::bad_alloc &ex) {
@@ -362,11 +394,11 @@ void WorkExecutor::PredictHandle(const std::vector<Instance> &inputs) {
   } catch (...) {
     status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Serving Error: exception occurred";
   }
-  ReplyError(inputs, status);
+  ReplyError(instances, status);
 }
 
-Status WorkExecutor::PrePredict(const std::vector<Instance> &inputs) {
-  auto input_batch_size = static_cast<uint32_t>(inputs.size());
+Status WorkExecutor::PrePredict(const std::vector<InstancePtr> &instances) {
+  auto input_batch_size = static_cast<uint32_t>(instances.size());
   uint32_t model_batch_size = model_batch_size_;
   if (input_batch_size == 0 || input_batch_size > model_batch_size) {
     MSI_LOG_ERROR << "Input batch size " << input_batch_size << " invalid, model batch size " << model_batch_size;
@@ -377,36 +409,36 @@ Status WorkExecutor::PrePredict(const std::vector<Instance> &inputs) {
     auto data_size = tensor->data_size();
     auto dst_buffer = reinterpret_cast<uint8_t *>(tensor->mutable_data());
     if (IsNoBatchDimInput(i)) {
-      if (data_size != inputs[0].data[i]->data_size()) {
-        return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Input " << i << " data size " << inputs[0].data[i]->data_size()
-                                                    << "does not match size " << data_size << " defined in model";
+      if (data_size != instances[0]->data[i]->data_size()) {
+        return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
+               << "Input " << i << " data size " << instances[0]->data[i]->data_size() << "does not match size "
+               << data_size << " defined in model";
       }
-      memcpy_s(dst_buffer, data_size, inputs[0].data[i]->data(), data_size);
+      memcpy_s(dst_buffer, data_size, instances[0]->data[i]->data(), data_size);
       continue;
     }
     auto item_size = static_cast<size_t>(data_size / model_batch_size);
     for (uint32_t k = 0; k < input_batch_size; k++) {
-      if (i >= inputs[k].data.size()) {
+      if (i >= instances[k]->data.size()) {
         return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << " Batch index " << k << " does not have input " << i;
       }
-      if (item_size != inputs[k].data[i]->data_size()) {
+      if (item_size != instances[k]->data[i]->data_size()) {
         return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
-               << "Input " << i << " Batch index " << k << " input data size " << inputs[k].data[i]->data_size()
+               << "Input " << i << " Batch index " << k << " input data size " << instances[k]->data[i]->data_size()
                << "does not match size " << item_size << " defined in model";
       }
-      memcpy_s(dst_buffer + k * item_size, data_size - k * item_size, inputs[k].data[i]->data(), item_size);
+      memcpy_s(dst_buffer + k * item_size, data_size - k * item_size, instances[k]->data[i]->data(), item_size);
     }
     for (uint32_t k = input_batch_size; k < model_batch_size; k++) {
-      memcpy_s(dst_buffer + k * item_size, data_size - k * item_size, inputs[0].data[i]->data(), item_size);
+      memcpy_s(dst_buffer + k * item_size, data_size - k * item_size, instances[0]->data[i]->data(), item_size);
     }
   }
   return SUCCESS;
 }
 
-Status WorkExecutor::PostPredict(const std::vector<Instance> &inputs, const std::vector<TensorBasePtr> &predict_result,
-                                 std::vector<Instance> *outputs) {
-  MSI_EXCEPTION_IF_NULL(outputs);
-  auto input_batch_size = static_cast<uint32_t>(inputs.size());
+Status WorkExecutor::PostPredict(const std::vector<InstancePtr> &instances,
+                                 const std::vector<TensorBasePtr> &predict_result) {
+  auto input_batch_size = static_cast<uint32_t>(instances.size());
   uint32_t model_batch_size = model_batch_size_;
   if (input_batch_size == 0 || input_batch_size > model_batch_size) {
     MSI_LOG_ERROR << "Input batch size " << input_batch_size << " invalid, model batch size " << model_batch_size;
@@ -436,15 +468,14 @@ Status WorkExecutor::PostPredict(const std::vector<Instance> &inputs, const std:
       results_data[k].data.push_back(tensor);
     }
   }
-  *outputs = CreateResultInstance(inputs, results_data, kPredictPhaseTag_Predict);
+  CreateResultInstance(instances, results_data, kPredictPhaseTag_Predict);
   return SUCCESS;
 }
 
-Status WorkExecutor::Predict(const std::vector<Instance> &inputs, std::vector<Instance> *outputs) {
-  MSI_EXCEPTION_IF_NULL(outputs);
+Status WorkExecutor::Predict(const std::vector<InstancePtr> &instances) {
   Status status;
   std::vector<TensorBasePtr> predict_outputs;
-  status = PrePredict(inputs);
+  status = PrePredict(instances);
   if (status != SUCCESS) {
     MSI_LOG_ERROR << "Call Pre Predict failed, model info " << servable_declare_.servable_meta.Repr();
     return status;
@@ -454,7 +485,7 @@ Status WorkExecutor::Predict(const std::vector<Instance> &inputs, std::vector<In
     MSI_LOG_ERROR << "Predict failed, model info " << servable_declare_.servable_meta.Repr();
     return status;
   }
-  status = PostPredict(inputs, predict_outputs, outputs);
+  status = PostPredict(instances, predict_outputs);
   if (status != SUCCESS) {
     MSI_LOG_ERROR << "Call Post Predict failed, model info " << servable_declare_.servable_meta.Repr();
     return status;
@@ -472,14 +503,14 @@ bool WorkExecutor::IsNoBatchDimInput(int input_index) const {
   return no_batch_dim;
 }
 
-Status WorkExecutor::CheckPredictInput(const Instance &instance) {
+Status WorkExecutor::CheckPredictInput(const InstancePtr &instance) {
   const auto &inputs_info = input_infos_;
-  if (instance.data.size() < inputs_info.size()) {
-    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Given model inputs size " << instance.data.size()
+  if (instance->data.size() < inputs_info.size()) {
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Given model inputs size " << instance->data.size()
                                                   << " less than model inputs size " << inputs_info.size();
   }
-  for (size_t i = 0; i < instance.data.size(); i++) {
-    auto input_data = instance.data[i];
+  for (size_t i = 0; i < instance->data.size(); i++) {
+    auto input_data = instance->data[i];
     if (IsNoBatchDimInput(i)) {
       if (static_cast<size_t>(inputs_info[i].size) != input_data->data_size()) {
         return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
@@ -500,32 +531,32 @@ Status WorkExecutor::CheckPredictInput(const Instance &instance) {
   return SUCCESS;
 }
 
-std::vector<Instance> WorkExecutor::CreateInputInstance(const std::vector<Instance> &instances, PredictPhaseTag phase) {
-  std::vector<Instance> ret(instances.size());
-  for (size_t i = 0; i < instances.size(); i++) {
-    ret[i] = CreateInputInstance(instances[i], phase);
+void WorkExecutor::CreateInputInstance(const std::vector<InstancePtr> &instances, PredictPhaseTag phase) {
+  for (auto &instance : instances) {
+    CreateInputInstance(instance, phase);
   }
-  return ret;
 }
 
-Instance WorkExecutor::CreateInputInstance(const Instance &instance, PredictPhaseTag phase) {
-  Instance result = instance;
-  result.data.clear();
-
-  MethodSignature &method_def = instance.context.user_context->method_def;
+void WorkExecutor::CreateInputInstance(const InstancePtr &instance, PredictPhaseTag phase) {
+  instance->data.clear();
+  MethodSignature &method_def = instance->context.user_context->method_def;
   std::vector<std::pair<PredictPhaseTag, uint64_t>> *inputs = nullptr;
   switch (phase) {
     case kPredictPhaseTag_Preproces:
       inputs = &method_def.preprocess_inputs;
+      instance->phase = kInstancePhasePreprocess;
       break;
     case kPredictPhaseTag_Predict:
       inputs = &method_def.servable_inputs;
+      instance->phase = kInstancePhasePredict;
       break;
     case kPredictPhaseTag_Postprocess:
       inputs = &method_def.postprocess_inputs;
+      instance->phase = kInstancePhasePostprocess;
       break;
     case kPredictPhaseTag_Output:
       inputs = &method_def.returns;
+      instance->phase = kInstancePhaseDone;
       break;
     default: {
       MSI_LOG_EXCEPTION << "Invalid phase tag " << phase;
@@ -535,16 +566,16 @@ Instance WorkExecutor::CreateInputInstance(const Instance &instance, PredictPhas
     const InstanceData *data = nullptr;
     switch (item.first) {
       case kPredictPhaseTag_Input:
-        data = &instance.input_data;
+        data = &instance->input_data;
         break;
       case kPredictPhaseTag_Preproces:
-        data = &instance.preprocess_data;
+        data = &instance->preprocess_data;
         break;
       case kPredictPhaseTag_Predict:
-        data = &instance.predict_data;
+        data = &instance->predict_data;
         break;
       case kPredictPhaseTag_Postprocess:
-        data = &instance.postprocess_data;
+        data = &instance->postprocess_data;
         break;
       default: {
         MSI_LOG_EXCEPTION << "Invalid input phase tag " << item.first;
@@ -555,43 +586,37 @@ Instance WorkExecutor::CreateInputInstance(const Instance &instance, PredictPhas
                         << ", input phase tag " << item.first << ", phase " << phase << ", method "
                         << method_def.method_name;
     }
-    result.data.push_back(data->at(item.second));
+    instance->data.push_back(data->at(item.second));
   }
-  return result;
 }
 
-std::vector<Instance> WorkExecutor::CreateResultInstance(const std::vector<Instance> &inputs,
-                                                         const std::vector<ResultInstance> &results,
-                                                         PredictPhaseTag phase) {
-  std::vector<Instance> ret(inputs.size());
-  for (size_t i = 0; i < inputs.size(); i++) {
-    ret[i] = CreateResultInstance(inputs[i], results[i], phase);
+void WorkExecutor::CreateResultInstance(std::vector<InstancePtr> instances, const std::vector<ResultInstance> &results,
+                                        PredictPhaseTag phase) {
+  for (size_t i = 0; i < instances.size(); i++) {
+    CreateResultInstance(instances[i], results[i], phase);
   }
-  return ret;
 }
 
-Instance WorkExecutor::CreateResultInstance(const Instance &input, const ResultInstance &result,
-                                            PredictPhaseTag phase) {
-  Instance instance = input;
-  instance.data.clear();
+void WorkExecutor::CreateResultInstance(const InstancePtr &instance, const ResultInstance &result,
+                                        PredictPhaseTag phase) {
+  instance->data.clear();
   switch (phase) {
     case kPredictPhaseTag_Input:
-      instance.input_data = result.data;
+      instance->input_data = result.data;
       break;
     case kPredictPhaseTag_Preproces:
-      instance.preprocess_data = result.data;
+      instance->preprocess_data = result.data;
       break;
     case kPredictPhaseTag_Predict:
-      instance.predict_data = result.data;
+      instance->predict_data = result.data;
       break;
     case kPredictPhaseTag_Postprocess:
-      instance.postprocess_data = result.data;
+      instance->postprocess_data = result.data;
       break;
     default: {
       MSI_LOG_EXCEPTION << "Invalid phase tag " << phase;
     }
   }
-  return instance;
 }
 
 uint64_t WorkExecutor::GetNextUserId() {
@@ -600,6 +625,20 @@ uint64_t WorkExecutor::GetNextUserId() {
 }
 
 uint32_t WorkExecutor::GetWorkerId() const { return worker_id_; }
+
+void WorkExecutor::ClearInstances() {
+  std::unique_lock<std::mutex> lock(infer_session_map_mutex_);
+  Status error_msg = Status(FAILED, "Servable stopped");
+  for (auto &item : infer_session_map_) {
+    auto &infer_session = item.second;
+    for (auto &instance : infer_session.instances) {
+      if (instance->phase != kInstancePhaseDone) {
+        instance->error_msg = error_msg;
+      }
+    }
+    item.second.call_back(item.second.instances, SUCCESS);
+  }
+}
 
 }  // namespace serving
 }  // namespace mindspore

@@ -100,8 +100,11 @@ class WorkerPredictContext : public WorkerServiceContext {
   void HandleRequest() override {
     EnqueueRequest(service_impl_, async_service_, cq_);
     state_ = STATE::FINISH;
-    grpc::Status status = service_impl_->Predict(&ctx_, &request_, &response_);
-    responder_.Finish(response_, status, this);
+    DispatchCallback callback = [this](Status status) { responder_.Finish(response_, grpc::Status::OK, this); };
+    grpc::Status status = service_impl_->PredictAsync(&ctx_, &request_, &response_, callback);
+    if (!status.ok()) {
+      responder_.Finish(response_, status, this);
+    }
   }
 
  private:

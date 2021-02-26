@@ -143,7 +143,7 @@ void PyRegWorker(pybind11::module *m_ptr) {
                            [](const TaskItem &item) {
                              py::tuple instances(item.instance_list.size());
                              for (size_t i = 0; i < item.instance_list.size(); i++) {
-                               instances[i] = PyTensor::AsNumpyTuple(item.instance_list[i].data);
+                               instances[i] = PyTensor::AsNumpyTuple(item.instance_list[i]->data);
                              }
                              return instances;
                            })
