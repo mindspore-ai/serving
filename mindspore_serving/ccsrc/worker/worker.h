@@ -38,22 +38,6 @@
 namespace mindspore {
 namespace serving {
 
-class AsyncResult {
- public:
-  explicit AsyncResult(size_t size);
-
-  bool HasNext();
-  Status GetNext(Instance *instance_result);
-
- private:
-  std::vector<std::future<void>> future_list_;
-  std::vector<Instance> result_;
-  size_t next_index_;
-  bool time_out_last_ = false;
-
-  friend class Worker;
-};
-
 struct ServableWorkerContext {
   WorkerSpec worker_spec;
   ServableSignature servable_signature;
@@ -69,10 +53,9 @@ class MS_API Worker {
   static Worker &GetInstance();
   void Clear();
 
-  Status Run(const proto::PredictRequest &request, proto::PredictReply *reply);
-  Status Run(const RequestSpec &request_spec, const std::vector<InstanceData> &inputs, std::vector<Instance> *outputs);
-  std::pair<Status, std::shared_ptr<AsyncResult>> RunAsync(const RequestSpec &request_spec,
-                                                           const std::vector<InstanceData> &inputs);
+  Status Run(const proto::PredictRequest &request, proto::PredictReply *reply, DispatchCallback callback);
+  Status RunAsync(const proto::PredictRequest &request, proto::PredictReply *reply, const RequestSpec &request_spec,
+                  const std::vector<InstanceData> &inputs, DispatchCallback callback);
   Status StartServable(std::shared_ptr<ServableBase> servable, std::shared_ptr<BaseNotifyMaster> notify_master);
 
   Status StartGrpcServer(const std::shared_ptr<MSWorkerServer> &grpc_server, const std::string &worker_ip,

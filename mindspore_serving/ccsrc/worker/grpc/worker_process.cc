@@ -26,13 +26,13 @@ grpc::Status MSWorkerImpl::Exit(grpc::ServerContext *context, const proto::ExitR
   return grpc::Status::OK;
 }
 
-grpc::Status MSWorkerImpl::Predict(grpc::ServerContext *context, const proto::PredictRequest *request,
-                                   proto::PredictReply *reply) {
+grpc::Status MSWorkerImpl::PredictAsync(grpc::ServerContext *context, const proto::PredictRequest *request,
+                                        proto::PredictReply *reply, DispatchCallback callback) {
   Status status(FAILED);
   MSI_LOG(INFO) << "Begin call service Eval";
   try {
     MSI_TIME_STAMP_START(Predict)
-    status = Worker::GetInstance().Run(*request, reply);
+    status = Worker::GetInstance().Run(*request, reply, callback);
     MSI_TIME_STAMP_END(Predict)
   } catch (const std::bad_alloc &ex) {
     MSI_LOG(ERROR) << "Serving Error: malloc memory failed";

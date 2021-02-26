@@ -42,7 +42,7 @@ Status TaskQueue::SetWorkerCallback(uint64_t worker_id, TaskCallBack on_task_don
   return SUCCESS;
 }
 
-void TaskQueue::PushTask(const std::string &task_name, uint64_t worker_id, const std::vector<Instance> &inputs) {
+void TaskQueue::PushTask(const std::string &task_name, uint64_t worker_id, const std::vector<InstancePtr> &inputs) {
   if (inputs.empty()) {
     MSI_LOG_EXCEPTION << "Inputs cannot be empty";
   }
@@ -52,8 +52,8 @@ void TaskQueue::PushTask(const std::string &task_name, uint64_t worker_id, const
     task_list.name = task_name;
     for (auto &input : inputs) {
       TaskContext context;
-      context.user_id = input.context.user_id;
-      context.instance_index = input.context.instance_index;
+      context.user_id = input->context.user_id;
+      context.instance_index = input->context.instance_index;
       context.worker_id = worker_id;
 
       task_list.context_list.push_back(context);
@@ -64,7 +64,7 @@ void TaskQueue::PushTask(const std::string &task_name, uint64_t worker_id, const
   cond_var_->notify_one();
 }
 
-void TaskQueue::PushTaskResult(uint64_t worker_id, const Instance &input, const ResultInstance &output) {
+void TaskQueue::PushTaskResult(uint64_t worker_id, const InstancePtr &input, const ResultInstance &output) {
   auto it = callback_map_.find(worker_id);
   if (it == callback_map_.end()) {
     MSI_LOG_ERROR << "Worker service " << worker_id << " has not specified callback";
@@ -77,7 +77,7 @@ void TaskQueue::PushTaskResult(uint64_t worker_id, const Instance &input, const 
   it->second({input}, {output});
 }
 
-void TaskQueue::PushTaskResult(uint64_t worker_id, const std::vector<Instance> &inputs,
+void TaskQueue::PushTaskResult(uint64_t worker_id, const std::vector<InstancePtr> &inputs,
                                const std::vector<ResultInstance> &outputs) {
   auto it = callback_map_.find(worker_id);
   if (it == callback_map_.end()) {
@@ -98,7 +98,7 @@ Status TaskQueue::PushTaskPyResult(const std::vector<ResultInstance> &outputs) {
     return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "processing task not match result, processing size "
                                                 << context_list.size() << ", result size " << outputs.size();
   }
-  std::unordered_map<uint64_t, std::pair<std::vector<Instance>, std::vector<ResultInstance>>> worker_result_map;
+  std::unordered_map<uint64_t, std::pair<std::vector<InstancePtr>, std::vector<ResultInstance>>> worker_result_map;
   for (size_t i = 0; i < outputs.size(); i++) {
     auto &result_item = worker_result_map[context_list[i].worker_id];
     result_item.first.push_back(instance_list[i]);
@@ -325,7 +325,7 @@ Status PreprocessThreadPool::HandleTask(const TaskItem &task_item) {
     auto &context = task_item.context_list[i];
     ResultInstance result;
     try {
-      status = preprocess->Preprocess(task_item.name, instance.data, &result.data);
+      status = preprocess->Preprocess(task_item.name, instance->data, &result.data);
     } catch (const std::bad_alloc &ex) {
       status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Serving Error: malloc memory failed";
     } catch (const std::runtime_error &ex) {
@@ -355,7 +355,7 @@ Status PostprocessThreadPool::HandleTask(const TaskItem &task_item) {
     auto &context = task_item.context_list[i];
     ResultInstance result;
     try {
-      status = postprocess->Postprocess(task_item.name, instance.data, &result.data);
+      status = postprocess->Postprocess(task_item.name, instance->data, &result.data);
     } catch (const std::bad_alloc &ex) {
       status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Serving Error: malloc memory failed";
     } catch (const std::runtime_error &ex) {

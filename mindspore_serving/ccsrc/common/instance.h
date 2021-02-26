@@ -30,23 +30,28 @@ namespace mindspore::serving {
 using InstanceData = std::vector<TensorBasePtr>;
 using TensorsData = std::vector<TensorBasePtr>;
 struct Instance;
-using WorkCallBack = std::function<void(const Instance &output, const Status &error_msg)>;
+using InstancePtr = std::shared_ptr<Instance>;
 
 struct WorkerUserContext {
-  WorkCallBack worker_call_back = nullptr;
   RequestSpec request_spec;
   MethodSignature method_def;
+};
+
+enum InstancePhase {
+  kInstancePhaseNone,
+  kInstancePhasePreprocess,
+  kInstancePhasePredict,
+  kInstancePhasePostprocess,
+  kInstancePhaseDone,
 };
 
 struct InstanceContext {
   uint64_t user_id = 0;
   uint32_t instance_index = 0;
 
-  WorkCallBack worker_call_back = nullptr;
-  std::shared_ptr<std::promise<void>> promise = nullptr;
+  std::promise<void> promise;
   std::shared_ptr<WorkerUserContext> user_context = nullptr;
 
-  RequestSpec request_spec;
   bool operator==(const InstanceContext &other) const {
     return user_id == other.user_id && instance_index == other.instance_index;
   }
@@ -60,6 +65,7 @@ struct Instance {
   InstanceData predict_data;      // predict result
   InstanceData postprocess_data;  // postprocess result
   InstanceContext context;
+  InstancePhase phase = kInstancePhaseNone;
   Status error_msg = SUCCESS;
 };
 

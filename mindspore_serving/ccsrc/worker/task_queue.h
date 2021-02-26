@@ -44,11 +44,11 @@ struct TaskItem {
   std::string task_type;  // preprocess, postprocess, stop
   std::string name;       // preprocess name, postprocess name
   std::vector<TaskContext> context_list;
-  std::vector<Instance> instance_list;
+  std::vector<InstancePtr> instance_list;
 };
 
 using TaskCallBack =
-  std::function<void(const std::vector<Instance> &inputs, const std::vector<ResultInstance> &output)>;
+  std::function<void(const std::vector<InstancePtr> &inputs, const std::vector<ResultInstance> &output)>;
 // task queue for preprocess and postprocess
 class MS_API TaskQueue {
  public:
@@ -58,11 +58,11 @@ class MS_API TaskQueue {
 
   Status SetWorkerCallback(uint64_t worker_id, TaskCallBack on_task_done);
 
-  void PushTask(const std::string &task_name, uint64_t worker_id, const std::vector<Instance> &inputs);
+  void PushTask(const std::string &task_name, uint64_t worker_id, const std::vector<InstancePtr> &inputs);
   void PopTask(TaskItem *task_item);
   void TryPopTask(TaskItem *task_item);
-  void PushTaskResult(uint64_t worker_id, const Instance &input, const ResultInstance &output);
-  void PushTaskResult(uint64_t worker_id, const std::vector<Instance> &inputs,
+  void PushTaskResult(uint64_t worker_id, const InstancePtr &input, const ResultInstance &output);
+  void PushTaskResult(uint64_t worker_id, const std::vector<InstancePtr> &inputs,
                       const std::vector<ResultInstance> &outputs);
 
   void TryPopPyTask(TaskItem *task_item);

@@ -26,7 +26,7 @@ namespace mindspore::serving {
 serving::PredictThread::PredictThread() {}
 PredictThread::~PredictThread() { Stop(); }
 
-Status PredictThread::PushPredictTask(const std::vector<Instance> &inputs) {
+Status PredictThread::PushPredictTask(const std::vector<InstancePtr> &inputs) {
   if (!is_running_) {
     MSI_LOG_EXCEPTION << "Predict task thread has not been started";
   }
@@ -45,7 +45,7 @@ void PredictThread::ThreadFunc(PredictThread *queue) { queue->Predict(); }
 
 void PredictThread::Predict() {
   while (true) {
-    std::vector<Instance> instances;
+    std::vector<InstancePtr> instances;
     {
       std::unique_lock<std::mutex> lock{m_lock_};
       if (!is_running_) {  // before start, after stop
