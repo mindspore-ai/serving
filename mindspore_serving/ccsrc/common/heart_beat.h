@@ -110,19 +110,21 @@ class MS_API Watcher {
     auto it = watchee_map_.find(address);
     if (it != watchee_map_.end()) {
       MSI_LOG(INFO) << "watchee exist: " << address;
-      watchee_map_[address].timeouts_ = 0;
-      watchee_map_[address].timer_ = std::make_shared<Timer>();
+      it->second.timeouts_ = 0;
+      it->second.timer_ = std::make_shared<Timer>();
+      // add timer
+      it->second.timer_->StartTimer(max_time_out_ / max_ping_times_,
+                                    std::bind(&Watcher::RecvPongTimeOut, this, address));
     } else {
       WatcheeContext context;
       auto channel = GrpcServer::CreateChannel(address);
       context.stub_ = SendStub::NewStub(channel);
       context.timer_ = std::make_shared<Timer>();
+      // add timer
+      context.timer_->StartTimer(max_time_out_ / max_ping_times_, std::bind(&Watcher::RecvPongTimeOut, this, address));
       watchee_map_.insert(make_pair(address, context));
     }
     MSI_LOG(INFO) << "Begin to send ping to " << address;
-    // add timer
-    watchee_map_[address].timer_->StartTimer(max_time_out_ / max_ping_times_,
-                                             std::bind(&Watcher::RecvPongTimeOut, this, address));
     SendPing(address);
   }
   void StopWatch(const std::string &address) {
@@ -132,45 +134,54 @@ class MS_API Watcher {
       MSI_LOG(INFO) << "watchee not exist: " << address;
       return;
     }
-    watchee_map_[address].timer_->StopTimer();
+    it->second.timer_->StopTimer();
     watchee_map_.erase(address);
   }
 
   void SendPing(const std::string &address) {
-    watchee_map_[address].timeouts_ += 1;
+    auto it = watchee_map_.find(address);
+    if (it == watchee_map_.end()) {
+      MSI_LOG(INFO) << "watchee not exist: " << address;
+      return;
+    }
+    it->second.timeouts_ += 1;
     // send async message
     PingAsync(address);
   }
 
   void RecvPing(const std::string &address) {
+    std::unique_lock<std::mutex> lock{m_lock_};
     if (pong_running_ == false) {
       pong_thread_ = std::thread(&Watcher::AsyncPongRpc, this);
       pong_running_ = true;
     }
-    std::unique_lock<std::mutex> lock{m_lock_};
     // recv message
-    if (watcher_map_.count(address)) {
-      watcher_map_[address].timer_->StopTimer();
-      watcher_map_[address].timer_ = std::make_shared<Timer>();
+    auto it = watcher_map_.find(address);
+    if (it != watcher_map_.end()) {
+      it->second.timer_->StopTimer();
+      it->second.timer_ = std::make_shared<Timer>();
+      // add timer
+      it->second.timer_->StartTimer(max_time_out_, std::bind(&Watcher::RecvPingTimeOut, this, address));
     } else {
       WatcherContext context;
       auto channel = GrpcServer::CreateChannel(address);
       context.stub_ = RecvStub::NewStub(channel);
       context.timer_ = std::make_shared<Timer>();
+      // add timer
+      context.timer_->StartTimer(max_time_out_, std::bind(&Watcher::RecvPingTimeOut, this, address));
       watcher_map_.insert(make_pair(address, context));
       MSI_LOG(INFO) << "Begin to send pong to " << address;
     }
     // send async message
     PongAsync(address);
-    // add timer
-    watcher_map_[address].timer_->StartTimer(max_time_out_, std::bind(&Watcher::RecvPingTimeOut, this, address));
   }
 
   void RecvPong(const std::string &address) {
     std::unique_lock<std::mutex> lock{m_lock_};
     // recv message
-    if (watchee_map_.count(address)) {
-      watchee_map_[address].timeouts_ = 0;
+    auto it = watchee_map_.find(address);
+    if (it != watchee_map_.end()) {
+      it->second.timeouts_ = 0;
     } else {
       MSI_LOG(INFO) << "Recv Pong after timeout or stop";
     }
@@ -178,38 +189,55 @@ class MS_API Watcher {
 
   void RecvPongTimeOut(const std::string &address) {
     std::unique_lock<std::mutex> lock{m_lock_};
-    if (watchee_map_[address].timeouts_ >= max_ping_times_) {
-      // add exit handle
-      MSI_LOG(ERROR) << "Recv Pong Time Out from " << address << ", host address is " << host_address_;
-      watchee_map_[address].timer_->StopTimer();
-      // need erase map
-      return;
+    auto it = watchee_map_.find(address);
+    if (it != watchee_map_.end()) {
+      if (it->second.timeouts_ >= max_ping_times_) {
+        // add exit handle
+        MSI_LOG(ERROR) << "Recv Pong Time Out from " << address << ", host address is " << host_address_;
+        it->second.timer_->StopTimer();
+        // need erase map
+        return;
+      }
+      SendPing(address);
+    } else {
+      MSI_LOG(INFO) << "Recv Pong Time Out after timeout or stop";
     }
-    SendPing(address);
   }
 
   void RecvPingTimeOut(const std::string &address) {
-    MSI_LOG(ERROR) << "Recv Ping Time Out from " << address << ", host address is " << host_address_;
-    // add exit handle
-    watcher_map_[address].timer_->StopTimer();
-    // need erase map
+    std::unique_lock<std::mutex> lock{m_lock_};
+    auto it = watcher_map_.find(address);
+    if (it != watcher_map_.end()) {
+      MSI_LOG(ERROR) << "Recv Ping Time Out from " << address << ", host address is " << host_address_;
+      // add exit handle
+      it->second.timer_->StopTimer();
+      // need erase map
+    } else {
+      MSI_LOG(INFO) << "Recv Ping Time Out after timeout or stop";
+    }
   }
   void PingAsync(const std::string &address) {
-    proto::PingRequest request;
-    request.set_address(host_address_);
-    AsyncPingCall *call = new AsyncPingCall;
-    call->response_reader = watchee_map_[address].stub_->PrepareAsyncPing(&call->context, request, &ping_cq_);
-    call->response_reader->StartCall();
-    call->response_reader->Finish(&call->reply, &call->status, call);
+    auto it = watchee_map_.find(address);
+    if (it != watchee_map_.end()) {
+      proto::PingRequest request;
+      request.set_address(host_address_);
+      AsyncPingCall *call = new AsyncPingCall;
+      call->response_reader = it->second.stub_->PrepareAsyncPing(&call->context, request, &ping_cq_);
+      call->response_reader->StartCall();
+      call->response_reader->Finish(&call->reply, &call->status, call);
+    }
   }
 
   void PongAsync(const std::string &address) {
-    proto::PongRequest request;
-    request.set_address(host_address_);
-    AsyncPongCall *call = new AsyncPongCall;
-    call->response_reader = watcher_map_[address].stub_->PrepareAsyncPong(&call->context, request, &pong_cq_);
-    call->response_reader->StartCall();
-    call->response_reader->Finish(&call->reply, &call->status, call);
+    auto it = watcher_map_.find(address);
+    if (it != watcher_map_.end()) {
+      proto::PongRequest request;
+      request.set_address(host_address_);
+      AsyncPongCall *call = new AsyncPongCall;
+      call->response_reader = it->second.stub_->PrepareAsyncPong(&call->context, request, &pong_cq_);
+      call->response_reader->StartCall();
+      call->response_reader->Finish(&call->reply, &call->status, call);
+    }
   }
   void AsyncPingRpc() {
     void *got_tag;
