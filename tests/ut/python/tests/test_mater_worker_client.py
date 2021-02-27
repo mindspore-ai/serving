@@ -173,7 +173,7 @@ def test_grpc_start_restful_server_twice_failed():
 
 
 @serving_test
-def test_grpc_alone_repeat_master_and_woker_port_failed():
+def test_grpc_alone_repeat_master_and_worker_port_failed():
     base = ServingTestBase()
     base.init_servable(1, "add_servable_config.py")
     master.start_master_server(master_port=7600)
@@ -731,3 +731,370 @@ def add_common(x1, x2):
     assert result[0]["y"] == 0
     assert "Preprocess Failed" in str(result[1]["error"]) or "Servable stopped" in str(result[1]["error"])
     assert result[0]["y"] == 0
+
+
+@serving_test
+def test_servable_worker_with_master_preprocess_runtime_error():
+    # fail returned from Preprocess
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += servable_config_declare_servable
+    servable_content += r"""
+index = 0
+def preprocess(instances):
+    count = len(instances)
+    global index
+    for i in range(count):
+        ret = index
+        index += 1
+        if ret == 0:
+            raise RuntimeError("runtime error")
+        yield ret
+    
+@register.register_method(output_names=["y"])
+def add_common(x1, x2):
+    x3 = register.call_preprocess_pipeline(preprocess, x1)
+    y = register.call_servable(x1, x2)
+    return x3
+"""
+    base.init_servable_with_servable_config(1, servable_content)
+    worker.start_servable_in_master(base.servable_dir, base.servable_name)
+    master.start_grpc_server("0.0.0.0", 5500)
+    # Client
+    instance_count = 3
+
+    instances = []
+    y_data_list = []
+    for i in range(instance_count):
+        x1 = np.asarray([[1.1, 2.2], [3.3, 4.4]]).astype(np.float32) * (i + 1)
+        x2 = np.asarray([[5.5, 6.6], [7.7, 8.8]]).astype(np.float32) * (i + 1)
+        y_data_list.append(x1 + x2)
+        instances.append({"x1": x1, "x2": x2})
+
+    client = create_client("localhost", 5500, base.servable_name, "add_common")
+    result = client.infer(instances)
+    print(result)
+    assert "Preprocess Failed" in result[0]["error"]
+    assert result[1]["y"] == 1
+    assert result[2]["y"] == 2
+
+
+@serving_test
+def test_servable_worker_alone_preprocess_runtime_error():
+    # fail returned from Preprocess
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += servable_config_declare_servable
+    servable_content += r"""
+index = 0
+def preprocess(instances):
+    count = len(instances)
+    global index
+    for i in range(count):
+        ret = index
+        index += 1
+        if ret == 0:
+            raise RuntimeError("runtime error")
+        yield ret
+    
+@register.register_method(output_names=["y"])
+def add_common(x1, x2):
+    x3 = register.call_preprocess_pipeline(preprocess, x1)
+    y = register.call_servable(x1, x2)
+    return x3
+"""
+    base.init_servable_with_servable_config(1, servable_content)
+    master.start_master_server("0.0.0.0", 6100)
+    worker.start_servable(base.servable_dir, base.servable_name, worker_port=6200, master_port=6100)
+    master.start_grpc_server("0.0.0.0", 5500)
+    # Client
+    instance_count = 3
+
+    instances = []
+    y_data_list = []
+    for i in range(instance_count):
+        x1 = np.asarray([[1.1, 2.2], [3.3, 4.4]]).astype(np.float32) * (i + 1)
+        x2 = np.asarray([[5.5, 6.6], [7.7, 8.8]]).astype(np.float32) * (i + 1)
+        y_data_list.append(x1 + x2)
+        instances.append({"x1": x1, "x2": x2})
+
+    client = create_client("localhost", 5500, base.servable_name, "add_common")
+    result = client.infer(instances)
+    print(result)
+    assert "Preprocess Failed" in result[0]["error"]
+    assert result[1]["y"] == 1
+    assert result[2]["y"] == 2
+
+
+@serving_test
+def test_servable_worker_with_master_predict_check_failed():
+    # fail returned from Predict
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += servable_config_declare_servable
+    servable_content += r"""
+@register.register_method(output_names=["y"])
+def add_common(x1, x2):
+    y = register.call_servable(x1, x2)
+    return y
+"""
+    base.init_servable_with_servable_config(1, servable_content)
+    worker.start_servable_in_master(base.servable_dir, base.servable_name)
+    master.start_grpc_server("0.0.0.0", 5500)
+    # Client
+    instance_count = 3
+
+    instances = []
+    y_data_list = []
+    for i in range(instance_count):
+        if i == 0:
+            x1 = np.asarray([[1.1], [3.3]]).astype(np.float32) * (i + 1)
+        else:
+            x1 = np.asarray([[1.1, 2.2], [3.3, 4.4]]).astype(np.float32) * (i + 1)
+        x2 = np.asarray([[5.5, 6.6], [7.7, 8.8]]).astype(np.float32) * (i + 1)
+        y_data_list.append(x1 + x2)
+        instances.append({"x1": x1, "x2": x2})
+
+    client = create_client("localhost", 5500, base.servable_name, "add_common")
+    result = client.infer(instances)
+    print(result)
+    assert "Given model input 0 size 8 not match the size 16 defined in model" in result[0]["error"]
+    assert "y" in result[1]
+    assert "y" in result[2]
+
+
+@serving_test
+def test_servable_worker_alone_predict_check_failed():
+    # fail returned from Predict
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += servable_config_declare_servable
+    servable_content += r"""
+@register.register_method(output_names=["y"])
+def add_common(x1, x2):
+    y = register.call_servable(x1, x2)
+    return y
+"""
+    base.init_servable_with_servable_config(1, servable_content)
+    master.start_master_server("0.0.0.0", 6100)
+    worker.start_servable(base.servable_dir, base.servable_name, worker_port=6200, master_port=6100)
+    master.start_grpc_server("0.0.0.0", 5500)
+    # Client
+    instance_count = 3
+
+    instances = []
+    y_data_list = []
+    for i in range(instance_count):
+        if i == 0:
+            x1 = np.asarray([[1.1], [3.3]]).astype(np.float32) * (i + 1)
+        else:
+            x1 = np.asarray([[1.1, 2.2], [3.3, 4.4]]).astype(np.float32) * (i + 1)
+        x2 = np.asarray([[5.5, 6.6], [7.7, 8.8]]).astype(np.float32) * (i + 1)
+        y_data_list.append(x1 + x2)
+        instances.append({"x1": x1, "x2": x2})
+
+    client = create_client("localhost", 5500, base.servable_name, "add_common")
+    result = client.infer(instances)
+    print(result)
+    assert "Given model input 0 size 8 not match the size 16 defined in model" in result[0]["error"]
+    assert "y" in result[1]
+    assert "y" in result[2]
+
+
+@serving_test
+def test_servable_worker_with_master_postprocess_runtime_error():
+    # fail returned from Preprocess
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += servable_config_declare_servable
+    servable_content += r"""
+index = 0
+def postprocess(y):
+    global index
+    ret = index
+    index += 1
+    if ret == 0:
+        raise RuntimeError("runtime error")
+    return ret
+    
+@register.register_method(output_names=["y"])
+def add_common(x1, x2):
+    y = register.call_servable(x1, x2)
+    y = register.call_postprocess(postprocess, y)
+    return y
+"""
+    base.init_servable_with_servable_config(1, servable_content)
+    worker.start_servable_in_master(base.servable_dir, base.servable_name)
+    master.start_grpc_server("0.0.0.0", 5500)
+    # Client
+    instance_count = 3
+
+    instances = []
+    y_data_list = []
+    for i in range(instance_count):
+        x1 = np.asarray([[1.1, 2.2], [3.3, 4.4]]).astype(np.float32) * (i + 1)
+        x2 = np.asarray([[5.5, 6.6], [7.7, 8.8]]).astype(np.float32) * (i + 1)
+        y_data_list.append(x1 + x2)
+        instances.append({"x1": x1, "x2": x2})
+
+    client = create_client("localhost", 5500, base.servable_name, "add_common")
+    result = client.infer(instances)
+    print(result)
+    assert "Postprocess Failed" in result[0]["error"]
+    assert result[1]["y"] == 1
+    assert result[2]["y"] == 2
+
+
+@serving_test
+def test_servable_worker_alone_postprocess_runtime_error():
+    # fail returned from Preprocess
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += servable_config_declare_servable
+    servable_content += r"""
+index = 0
+def postprocess(y):
+    global index
+    ret = index
+    index += 1
+    if ret == 0:
+        raise RuntimeError("runtime error")
+    return ret
+    
+@register.register_method(output_names=["y"])
+def add_common(x1, x2):
+    y = register.call_servable(x1, x2)
+    y = register.call_postprocess(postprocess, y)
+    return y
+"""
+    base.init_servable_with_servable_config(1, servable_content)
+    master.start_master_server("0.0.0.0", 6100)
+    worker.start_servable(base.servable_dir, base.servable_name, worker_port=6200, master_port=6100)
+    master.start_grpc_server("0.0.0.0", 5500)
+    # Client
+    instance_count = 3
+
+    instances = []
+    y_data_list = []
+    for i in range(instance_count):
+        x1 = np.asarray([[1.1, 2.2], [3.3, 4.4]]).astype(np.float32) * (i + 1)
+        x2 = np.asarray([[5.5, 6.6], [7.7, 8.8]]).astype(np.float32) * (i + 1)
+        y_data_list.append(x1 + x2)
+        instances.append({"x1": x1, "x2": x2})
+
+    client = create_client("localhost", 5500, base.servable_name, "add_common")
+    result = client.infer(instances)
+    print(result)
+    assert "Postprocess Failed" in result[0]["error"]
+    assert result[1]["y"] == 1
+    assert result[2]["y"] == 2
+
+
+@serving_test
+def test_servable_worker_with_master_input_param_less():
+    # fail returned from Worker::RunAsync
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += servable_config_declare_servable
+    servable_content += servable_config_method_add_common
+    base.init_servable_with_servable_config(1, servable_content)
+    worker.start_servable_in_master(base.servable_dir, base.servable_name)
+    master.start_grpc_server("0.0.0.0", 5500)
+    # Client
+    instance_count = 3
+
+    instances = []
+    y_data_list = []
+    for i in range(instance_count):
+        x1 = np.asarray([[1.1], [3.3]]).astype(np.float32) * (i + 1)
+        x2 = np.asarray([[5.5], [7.7]]).astype(np.float32) * (i + 1)
+        y_data_list.append(x1 + x2)
+        instances.append({"x3": x1, "x2": x2})
+
+    client = create_client("localhost", 5500, base.servable_name, "add_common")
+    result = client.infer(instances)
+    print(result)
+    assert "Cannot find input x1 in instance input" in result["error"]
+
+
+@serving_test
+def test_servable_worker_alone_input_param_less():
+    # fail returned from Worker::RunAsync
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += servable_config_declare_servable
+    servable_content += servable_config_method_add_common
+    base.init_servable_with_servable_config(1, servable_content)
+    master.start_master_server("0.0.0.0", 6100)
+    worker.start_servable(base.servable_dir, base.servable_name, worker_port=6200, master_port=6100)
+    master.start_grpc_server("0.0.0.0", 5500)
+    # Client
+    instance_count = 3
+
+    instances = []
+    y_data_list = []
+    for i in range(instance_count):
+        x1 = np.asarray([[1.1], [3.3]]).astype(np.float32) * (i + 1)
+        x2 = np.asarray([[5.5], [7.7]]).astype(np.float32) * (i + 1)
+        y_data_list.append(x1 + x2)
+        instances.append({"x3": x1, "x2": x2})
+
+    client = create_client("localhost", 5500, base.servable_name, "add_common")
+    result = client.infer(instances)
+    print(result)
+    assert "Cannot find input x1 in instance input" in result["error"]
+
+
+@serving_test
+def test_servable_worker_with_master_servable_not_available():
+    # fail returned from Worker::RunAsync
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += servable_config_declare_servable
+    servable_content += servable_config_method_add_common
+    base.init_servable_with_servable_config(1, servable_content)
+    worker.start_servable_in_master(base.servable_dir, base.servable_name)
+    master.start_grpc_server("0.0.0.0", 5500)
+    # Client
+    instance_count = 3
+
+    instances = []
+    y_data_list = []
+    for i in range(instance_count):
+        x1 = np.asarray([[1.1], [3.3]]).astype(np.float32) * (i + 1)
+        x2 = np.asarray([[5.5], [7.7]]).astype(np.float32) * (i + 1)
+        y_data_list.append(x1 + x2)
+        instances.append({"x3": x1, "x2": x2})
+
+    client = create_client("localhost", 5500, base.servable_name + "error", "add_common")
+    result = client.infer(instances)
+    print(result)
+    assert "servable is not available" in result["error"]
+
+
+@serving_test
+def test_servable_worker_alone_servable_not_available():
+    # fail returned from Worker::RunAsync
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += servable_config_declare_servable
+    servable_content += servable_config_method_add_common
+    base.init_servable_with_servable_config(1, servable_content)
+    master.start_master_server("0.0.0.0", 6100)
+    worker.start_servable(base.servable_dir, base.servable_name, worker_port=6200, master_port=6100)
+    master.start_grpc_server("0.0.0.0", 5500)
+    # Client
+    instance_count = 3
+
+    instances = []
+    y_data_list = []
+    for i in range(instance_count):
+        x1 = np.asarray([[1.1], [3.3]]).astype(np.float32) * (i + 1)
+        x2 = np.asarray([[5.5], [7.7]]).astype(np.float32) * (i + 1)
+        y_data_list.append(x1 + x2)
+        instances.append({"x3": x1, "x2": x2})
+
+    client = create_client("localhost", 5500, base.servable_name + "error", "add_common")
+    result = client.infer(instances)
+    print(result)
+    assert "servable is not available" in result["error"]

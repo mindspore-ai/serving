@@ -41,7 +41,7 @@ class MSServiceImpl {
   explicit MSServiceImpl(std::shared_ptr<Dispatcher> dispatcher) : dispatcher_(dispatcher) {}
   ~MSServiceImpl() = default;
 
-  Status PredictAsync(const proto::PredictRequest *request, proto::PredictReply *reply, DispatchCallback callback);
+  void PredictAsync(const proto::PredictRequest *request, proto::PredictReply *reply, PredictOnFinish on_finish);
 
  private:
   std::shared_ptr<Dispatcher> dispatcher_;

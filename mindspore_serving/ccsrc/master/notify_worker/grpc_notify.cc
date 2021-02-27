@@ -20,19 +20,20 @@
 #include <thread>
 #include "common/exit_handle.h"
 #include "common/grpc_server.h"
+#include "common/proto_tensor.h"
 
 namespace mindspore {
 namespace serving {
 
-GrpcNotfiyWorker::GrpcNotfiyWorker(const std::string &worker_address) {
+GrpcNotifyWorker::GrpcNotifyWorker(const std::string &worker_address) {
   worker_address_ = worker_address;
   std::shared_ptr<grpc::Channel> channel = GrpcServer::CreateChannel(worker_address);
   stub_ = proto::MSWorker::NewStub(channel);
 }
 
-GrpcNotfiyWorker::~GrpcNotfiyWorker() = default;
+GrpcNotifyWorker::~GrpcNotifyWorker() = default;
 
-Status GrpcNotfiyWorker::Exit() {
+Status GrpcNotifyWorker::Exit() {
   if (stub_) {
     proto::ExitRequest request;
     request.set_address(worker_address_);
@@ -47,8 +48,8 @@ Status GrpcNotfiyWorker::Exit() {
   return SUCCESS;
 }
 
-Status GrpcNotfiyWorker::DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
-                                       DispatchCallback callback) {
+Status GrpcNotifyWorker::DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
+                                       PredictOnFinish on_finish) {
   if (!stub_) {
     return INFER_STATUS_LOG_ERROR(FAILED)
            << "Predict failed, worker gRPC has not been inited or has already exited, worker address "
@@ -58,6 +59,10 @@ Status GrpcNotfiyWorker::DispatchAsync(const proto::PredictRequest &request, pro
     client_ = std::make_unique<MSPredictClient>();
     client_->Start();
   }
+  AsyncPredictCallback callback = [reply, on_finish](Status status) {
+    GrpcTensorHelper::CreateReplyFromErrorMsg(status, reply);
+    on_finish();
+  };
   client_->PredictAsync(request, reply, stub_.get(), callback);
   return SUCCESS;
 }

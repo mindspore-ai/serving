@@ -16,7 +16,7 @@
 #include "include/api/serialization.h"
 #include <fstream>
 #include "cxx_api/graph/graph_data.h"
-#include "utils/utils.h"
+#include "utils/log_adapter.h"
 
 namespace mindspore {
 static Buffer ReadFile(const std::string &file) {
@@ -77,13 +77,17 @@ Graph Serialization::LoadModel(const void *model_data, size_t data_size, ModelTy
   MS_LOG(EXCEPTION) << "Unsupported ModelType " << model_type;
 }
 
-Graph Serialization::LoadModel(const std::string &file, ModelType model_type) {
-  Buffer data = ReadFile(file);
+Graph Serialization::LoadModel(const std::vector<char> &file, ModelType model_type) {
+  std::string file_path = CharToString(file);
+  Buffer data = ReadFile(file_path);
   if (data.Data() == nullptr) {
-    MS_LOG(EXCEPTION) << "Read file " << file << " failed.";
+    MS_LOG(EXCEPTION) << "Read file " << file_path << " failed.";
   }
   if (model_type == kMindIR) {
     auto anf_graph = std::make_shared<FuncGraph>();
+    if (anf_graph == nullptr) {
+      MS_LOG(EXCEPTION) << "Load model failed.";
+    }
     return Graph(std::make_shared<Graph::GraphData>(anf_graph, kMindIR));
   } else if (model_type == kOM) {
     return Graph(std::make_shared<Graph::GraphData>(data, kOM));

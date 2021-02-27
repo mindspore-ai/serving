@@ -98,7 +98,6 @@ class RestfulService {
   Status ParseScalarData(const ProtoTensor &pb_tensor, bool is_bytes, size_t index, json *const js);
   template <typename T>
   bool IsString();
-  void ParseErrorMsg(const proto::ErrorMsg &error_msg, json *const js);
 
   RequestType request_type_{kInvalidType};
   InstancesType instances_type_{kInvalidWay};

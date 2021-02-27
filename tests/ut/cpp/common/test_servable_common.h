@@ -376,11 +376,8 @@ class TestMasterWorkerClient : public TestMasterWorker {
     grpc::ServerContext context;
     auto promise = std::make_shared<std::promise<void>>();
     auto future = promise->get_future();
-    DispatchCallback callback = [promise](Status status) { promise->set_value(); };
-    auto status = impl.PredictAsync(&request, reply, callback);
-    if (!status.IsSuccess()) {
-      return grpc::Status::OK;
-    }
+    PredictOnFinish callback = [promise]() { promise->set_value(); };
+    impl.PredictAsync(&request, reply, callback);
     future.get();
     return grpc::Status::OK;
   }

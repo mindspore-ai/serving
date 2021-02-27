@@ -27,15 +27,15 @@
 namespace mindspore {
 namespace serving {
 
-class MS_API GrpcNotfiyWorker : public BaseNotifyWorker {
+class MS_API GrpcNotifyWorker : public BaseNotifyWorker {
  public:
-  explicit GrpcNotfiyWorker(const std::string &worker_address);
-  ~GrpcNotfiyWorker() override;
+  explicit GrpcNotifyWorker(const std::string &worker_address);
+  ~GrpcNotifyWorker() override;
 
   Status Exit() override;
 
   Status DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
-                       DispatchCallback callback) override;
+                       PredictOnFinish on_finish) override;
 
  private:
   std::string worker_address_;

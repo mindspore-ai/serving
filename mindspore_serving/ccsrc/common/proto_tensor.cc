@@ -256,8 +256,17 @@ Status GrpcTensorHelper::CreateInstanceFromRequest(const proto::PredictRequest &
   return SUCCESS;
 }
 
-Status GrpcTensorHelper::CreateReplyFromInstances(const proto::PredictRequest &request,
-                                                  const vector<InstancePtr> &instances, proto::PredictReply *reply) {
+void GrpcTensorHelper::CreateReplyFromInstances(const proto::PredictRequest &request,
+                                                const vector<InstancePtr> &instances, proto::PredictReply *reply) {
+  auto status = CreateReplyFromInstancesInner(request, instances, reply);
+  if (status != SUCCESS) {
+    CreateReplyFromErrorMsg(status, reply);
+  }
+}
+
+Status GrpcTensorHelper::CreateReplyFromInstancesInner(const proto::PredictRequest &request,
+                                                       const std::vector<InstancePtr> &instances,
+                                                       proto::PredictReply *reply) {
   MSI_EXCEPTION_IF_NULL(reply);
   *reply->mutable_servable_spec() = request.servable_spec();
   if (instances.empty()) {
@@ -420,6 +429,23 @@ Status GrpcTensorHelper::CheckRequestTensor(const proto::Tensor &tensor) {
     }
   }
   return SUCCESS;
+}
+
+void GrpcTensorHelper::CreateReplyFromErrorMsg(const Status &error_msg, proto::PredictReply *reply) {
+  MSI_EXCEPTION_IF_NULL(reply);
+  if (error_msg == SUCCESS) {
+    return;
+  }
+  reply->clear_error_msg();
+  reply->clear_instances();
+  auto proto_error_msg = reply->add_error_msg();
+  proto_error_msg->set_error_code(FAILED);
+  std::string error_msg_str = error_msg.StatusMessage();
+  if (error_msg_str.empty()) {
+    proto_error_msg->set_error_msg("Predict failed");
+  } else {
+    proto_error_msg->set_error_msg(error_msg_str);
+  }
 }
 
 serving::LogStream &operator<<(serving::LogStream &stream, proto::DataType data_type) {

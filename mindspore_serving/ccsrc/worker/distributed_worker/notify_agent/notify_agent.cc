@@ -55,7 +55,7 @@ Status GrpcNotifyAgent::Exit() {
 }
 
 Status GrpcNotifyAgent::DispatchAsync(const proto::DistributedPredictRequest &request,
-                                      proto::DistributedPredictReply *reply, DispatchCallback callback) {
+                                      proto::DistributedPredictReply *reply, AsyncPredictCallback callback) {
   if (!stub_) {
     return INFER_STATUS_LOG_ERROR(FAILED)
            << "Predict failed, agent gRPC has not been inited or has already exited, agent address " << agent_address_;

@@ -13,38 +13,38 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "cxx_api/graph/ms/ms_graph_impl.h"
+#include "cxx_api/graph/ascend/ascend_graph_impl.h"
 #include <algorithm>
 #include "include/api/context.h"
 #include "cxx_api/factory.h"
 #include "stub/graph_impl_stub.h"
 
 namespace mindspore {
-API_FACTORY_REG(GraphCell::GraphImpl, Ascend910, MsGraphImpl);
+API_FACTORY_REG(GraphCell::GraphImpl, Ascend910, AscendGraphImpl);
 
-std::shared_ptr<GraphCell::GraphImpl> MsGraphImpl::graph_imp_stub_ = std::make_shared<GraphImplStubAdd>();
+std::shared_ptr<GraphCell::GraphImpl> AscendGraphImpl::graph_imp_stub_ = std::make_shared<GraphImplStubAdd>();
 
-MsGraphImpl::MsGraphImpl() {}
+AscendGraphImpl::AscendGraphImpl() {}
 
-MsGraphImpl::~MsGraphImpl() {}
+AscendGraphImpl::~AscendGraphImpl() {}
 
-std::vector<MSTensor> MsGraphImpl::GetInputs() {
+std::vector<MSTensor> AscendGraphImpl::GetInputs() {
   if (!graph_imp_stub_) {
     return {};
   }
   return graph_imp_stub_->GetInputs();
 }
 
-std::vector<MSTensor> MsGraphImpl::GetOutputs() {
+std::vector<MSTensor> AscendGraphImpl::GetOutputs() {
   if (!graph_imp_stub_) {
     return {};
   }
   return graph_imp_stub_->GetOutputs();
 }
 
-Status MsGraphImpl::Load() { return kSuccess; }
+Status AscendGraphImpl::Load() { return kSuccess; }
 
-Status MsGraphImpl::Run(const std::vector<MSTensor> &inputs, std::vector<MSTensor> *outputs) {
+Status AscendGraphImpl::Run(const std::vector<MSTensor> &inputs, std::vector<MSTensor> *outputs) {
   if (!graph_imp_stub_) {
     return kMCFailed;
   }

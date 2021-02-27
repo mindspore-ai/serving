@@ -35,7 +35,7 @@ namespace mindspore {
 namespace serving {
 
 // Service Implement
-class MSWorkerImpl : public proto::MSWorker::Service {
+class MSWorkerImpl {
  public:
   explicit MSWorkerImpl(const std::string server_address) {
     if (!watcher_) {
@@ -43,11 +43,11 @@ class MSWorkerImpl : public proto::MSWorker::Service {
     }
   }
 
-  grpc::Status PredictAsync(grpc::ServerContext *context, const proto::PredictRequest *request,
-                            proto::PredictReply *reply, DispatchCallback callback);
-  grpc::Status Exit(grpc::ServerContext *context, const proto::ExitRequest *request, proto::ExitReply *reply) override;
-  grpc::Status Ping(grpc::ServerContext *context, const proto::PingRequest *request, proto::PingReply *reply) override;
-  grpc::Status Pong(grpc::ServerContext *context, const proto::PongRequest *request, proto::PongReply *reply) override;
+  void PredictAsync(grpc::ServerContext *context, const proto::PredictRequest *request, proto::PredictReply *reply,
+                    PredictOnFinish on_finish);
+  grpc::Status Exit(grpc::ServerContext *context, const proto::ExitRequest *request, proto::ExitReply *reply);
+  grpc::Status Ping(grpc::ServerContext *context, const proto::PingRequest *request, proto::PingReply *reply);
+  grpc::Status Pong(grpc::ServerContext *context, const proto::PongRequest *request, proto::PongReply *reply);
 
   std::shared_ptr<Watcher<proto::MSAgent, proto::MSMaster>> watcher_;
 };

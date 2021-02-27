@@ -36,53 +36,9 @@ std::string GetProtorWorkerSpecRepr(const proto::WorkerSpec &worker_spec) {
 }
 }  // namespace
 
-Status MSServiceImpl::PredictAsync(const proto::PredictRequest *request, proto::PredictReply *reply,
-                                   DispatchCallback callback) {
-  MSI_EXCEPTION_IF_NULL(request);
-  MSI_EXCEPTION_IF_NULL(reply);
-  Status status(FAILED);
-  auto on_status = [request, reply](Status status) {
-    if (status != SUCCESS) {
-      (*reply->mutable_servable_spec()) = request->servable_spec();
-      reply->clear_error_msg();
-      auto proto_error_msg = reply->add_error_msg();
-      proto_error_msg->set_error_code(FAILED);
-      std::string error_msg = status.StatusMessage();
-      if (error_msg.empty()) {
-        proto_error_msg->set_error_msg("Predict failed");
-      } else {
-        proto_error_msg->set_error_msg(error_msg);
-      }
-    }
-  };
-  DispatchCallback callback_with_status_handle = [callback, on_status](Status status) {
-    on_status(status);
-    callback(status);
-  };
-  try {
-    MSI_TIME_STAMP_START(Predict)
-    status = dispatcher_->DispatchAsync(*request, reply, callback_with_status_handle);
-    MSI_TIME_STAMP_END(Predict)
-  } catch (const std::bad_alloc &ex) {
-    MSI_LOG(ERROR) << "Serving Error: malloc memory failed";
-    std::cout << "Serving Error: malloc memory failed" << std::endl;
-  } catch (const std::runtime_error &ex) {
-    MSI_LOG(ERROR) << "Serving Error: runtime error occurred: " << ex.what();
-    std::cout << "Serving Error: runtime error occurred: " << ex.what() << std::endl;
-  } catch (const std::exception &ex) {
-    MSI_LOG(ERROR) << "Serving Error: exception occurred: " << ex.what();
-    std::cout << "Serving Error: exception occurred: " << ex.what() << std::endl;
-  } catch (...) {
-    MSI_LOG(ERROR) << "Serving Error: exception occurred";
-    std::cout << "Serving Error: exception occurred";
-  }
-  MSI_LOG(INFO) << "Finish call service Eval";
-
-  if (status != SUCCESS) {
-    on_status(status);
-    return status;
-  }
-  return SUCCESS;
+void MSServiceImpl::PredictAsync(const proto::PredictRequest *request, proto::PredictReply *reply,
+                                 PredictOnFinish on_finish) {
+  dispatcher_->DispatchAsync(*request, reply, on_finish);
 }
 
 grpc::Status MSMasterImpl::Register(grpc::ServerContext *context, const proto::RegisterRequest *request,
