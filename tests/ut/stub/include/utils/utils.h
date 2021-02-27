@@ -21,6 +21,7 @@
 #include <atomic>
 #include <string>
 #include <vector>
+#include <set>
 #include "utils/log_adapter.h"
 
 namespace mindspore {

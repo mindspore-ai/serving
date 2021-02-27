@@ -693,14 +693,8 @@ Status RestfulService::RunRestful(const std::shared_ptr<RestfulRequest> &restful
   }
 
   MSI_TIME_STAMP_START(Predict)
-  status = dispatcher_->Dispatch(request, &reply);
+  dispatcher_->Dispatch(request, &reply);
   MSI_TIME_STAMP_END(Predict)
-  if (status != SUCCESS) {
-    std::string error_msg = status.StatusMessage();
-    std::string msg = "Predict failed, " + error_msg;
-    status = msg;
-    return status;
-  }
 
   MSI_TIME_STAMP_START(CreateReplyJson)
   status = ParseReply(reply, out_json);
@@ -1037,11 +1031,6 @@ Status RestfulService::CheckReply(const ProtoTensor &pb_tensor) {
   return status;
 }
 
-void RestfulService::ParseErrorMsg(const proto::ErrorMsg &error, json *const js) {
-  std::string str = error.error_msg();
-  *js = str;
-}
-
 // 5.Parse reply
 Status RestfulService::ParseReply(const PredictReply &reply, json *const out_json) {
   Status status(SUCCESS);
@@ -1059,56 +1048,42 @@ Status RestfulService::ParseReply(const PredictReply &reply, json *const out_jso
 Status RestfulService::ParseInstancesReply(const PredictReply &reply, json *const out_json) {
   Status status(SUCCESS);
   auto error_size = reply.error_msg_size();
-  if (error_size != 0 && error_size != 1 && error_size != instances_nums_) {
+  auto reply_size = reply.instances().size();
+  if (error_size == 1 && reply_size == 0) {
+    (*out_json)[kErrorMsg] = reply.error_msg()[0].error_msg();
+    return SUCCESS;
+  }
+  if (error_size != 0 && error_size != instances_nums_) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "reply error size:" << error_size << " is not 0,1 or instances size";
+  }
+  if (reply_size != instances_nums_) {
+    return INFER_STATUS_LOG_ERROR(FAILED)
+           << "reply size:" << reply_size << " is not matched request size:" << instances_nums_;
   }
 
   (*out_json)[kInstancesReply] = json();
   json &instances_json = (*out_json)[kInstancesReply];
 
-  int32_t reply_num = reply.instances().size();
-  if (reply_num == 0) {
-    reply_num = error_size;
-  }
-  if (error_size == 0 && reply_num != instances_nums_) {
-    return INFER_STATUS_LOG_ERROR(FAILED)
-           << "reply size:" << reply_num << " is not matched request size:" << instances_nums_;
-  }
-
-  for (int32_t i = 0; i < reply_num; i++) {
-    bool success_flag = true;
-    if (i < error_size) {
-      auto &cur_error = reply.error_msg().at(i);
-      success_flag = (cur_error.error_code() == 0);
+  for (int32_t i = 0; i < instances_nums_; i++) {
+    instances_json.push_back(json());
+    auto &instance = instances_json.back();
+    if (error_size != 0 && reply.error_msg()[i].error_code() != 0) {
+      instance[kErrorMsg] = reply.error_msg(i).error_msg();
+      continue;
+    }
+    auto &cur_instance = reply.instances(i);
+    auto &items = cur_instance.items();
+    if (items.empty()) {
+      return INFER_STATUS_LOG_ERROR(FAILED) << "reply instance items is empty";
     }
 
-    if (success_flag) {
-      if (i >= reply.instances_size()) {
-        return INFER_STATUS_LOG_ERROR(FAILED)
-               << "index:" << i << " is more than reply instances size:" << reply.instances_size();
+    for (auto &item : items) {
+      instance[item.first] = json();
+      auto &value_json = instance[item.first];
+      status = ParseReplyDetail(item.second, &value_json);
+      if (status != SUCCESS) {
+        return status;
       }
-      auto &cur_instance = reply.instances(i);
-      auto &items = cur_instance.items();
-      if (items.empty()) {
-        return INFER_STATUS_LOG_ERROR(FAILED) << "reply instance items is empty";
-      }
-      instances_json.push_back(json());
-      auto &instance = instances_json.back();
-
-      for (auto &item : items) {
-        instance[item.first] = json();
-        auto &value_json = instance[item.first];
-        status = ParseReplyDetail(item.second, &value_json);
-        if (status != SUCCESS) {
-          return status;
-        }
-      }
-    } else {
-      instances_json.push_back(json());
-      auto &obj = instances_json.back();
-      obj[kErrorMsg] = json();
-      auto &js = obj[kErrorMsg];
-      ParseErrorMsg(reply.error_msg(i), &js);
     }
   }
   return status;

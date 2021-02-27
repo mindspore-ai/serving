@@ -67,8 +67,9 @@ class MS_API GrpcTensorHelper {
   static void GetWorkerSpec(const proto::RemoveWorkerRequest &request, WorkerSpec *worker_spec);
   static Status CreateInstanceFromRequest(const proto::PredictRequest &request, RequestSpec *request_spec,
                                           std::vector<InstanceData> *results);
-  static Status CreateReplyFromInstances(const proto::PredictRequest &request,
-                                         const std::vector<InstancePtr> &instances, proto::PredictReply *reply);
+  static void CreateReplyFromInstances(const proto::PredictRequest &request, const std::vector<InstancePtr> &instances,
+                                       proto::PredictReply *reply);
+  static void CreateReplyFromErrorMsg(const Status &error_msg, proto::PredictReply *reply);
   static void CopyFromAgentSpec(const proto::AgentSpec &request, WorkerAgentSpec *worker_specs);
   static void CopyFromWorkerAgentSpec(const std::vector<WorkerAgentSpec> &worker_specs,
                                       proto::AgentRegisterRequest *request);
@@ -78,6 +79,9 @@ class MS_API GrpcTensorHelper {
                                                    const std::vector<std::string> &input_names,
                                                    std::vector<InstanceData> *results);
   static Status CheckRequestTensor(const proto::Tensor &tensor);
+
+  static Status CreateReplyFromInstancesInner(const proto::PredictRequest &request,
+                                              const std::vector<InstancePtr> &instances, proto::PredictReply *reply);
 };
 
 extern MS_API LogStream &operator<<(serving::LogStream &stream, proto::DataType data_type);

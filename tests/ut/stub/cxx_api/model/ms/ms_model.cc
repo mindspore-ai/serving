@@ -66,6 +66,11 @@ Status MsModel::Build() {
   MS_LOG(INFO) << "Start build model.";
   MS_EXCEPTION_IF_NULL(graph_);
 
+  if (graph_cell_ != nullptr) {
+    MS_LOG(INFO) << "This model has been built, skip.";
+    return kSuccess;
+  }
+
   auto func_graph = ModelImpl::GetFuncGraph();
   MS_EXCEPTION_IF_NULL(func_graph);
 

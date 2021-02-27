@@ -41,13 +41,13 @@ class MSDistributedImpl final : public MSWorkerImpl {
       : MSWorkerImpl(server_address), servable_(servable) {}
   ~MSDistributedImpl() = default;
   grpc::Status AgentRegister(grpc::ServerContext *context, const proto::AgentRegisterRequest *request,
-                             proto::AgentRegisterReply *reply) override;
+                             proto::AgentRegisterReply *reply);
   grpc::Status AgentExit(grpc::ServerContext *context, const proto::AgentExitRequest *request,
-                         proto::AgentExitReply *reply) override;
+                         proto::AgentExitReply *reply);
   grpc::Status AgentFailed(grpc::ServerContext *context, const proto::AgentFailedRequest *request,
-                           proto::AgentFailedReply *reply) override;
+                           proto::AgentFailedReply *reply);
   grpc::Status AgentConfigAcquire(grpc::ServerContext *context, const proto::AgentConfigAcquireRequest *request,
-                                  proto::AgentConfigAcquireReply *reply) override;
+                                  proto::AgentConfigAcquireReply *reply);
 
  private:
   std::shared_ptr<DistributedServable> servable_;

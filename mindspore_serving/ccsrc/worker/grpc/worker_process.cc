@@ -16,6 +16,7 @@
 
 #include "worker/grpc/worker_process.h"
 #include "worker/worker.h"
+#include "common/proto_tensor.h"
 
 namespace mindspore {
 namespace serving {
@@ -26,13 +27,13 @@ grpc::Status MSWorkerImpl::Exit(grpc::ServerContext *context, const proto::ExitR
   return grpc::Status::OK;
 }
 
-grpc::Status MSWorkerImpl::PredictAsync(grpc::ServerContext *context, const proto::PredictRequest *request,
-                                        proto::PredictReply *reply, DispatchCallback callback) {
+void MSWorkerImpl::PredictAsync(grpc::ServerContext *context, const proto::PredictRequest *request,
+                                proto::PredictReply *reply, PredictOnFinish on_finish) {
   Status status(FAILED);
   MSI_LOG(INFO) << "Begin call service Eval";
   try {
     MSI_TIME_STAMP_START(Predict)
-    status = Worker::GetInstance().RunAsync(*request, reply, callback);
+    status = Worker::GetInstance().RunAsync(*request, reply, on_finish);
     MSI_TIME_STAMP_END(Predict)
   } catch (const std::bad_alloc &ex) {
     MSI_LOG(ERROR) << "Serving Error: malloc memory failed";
@@ -49,19 +50,12 @@ grpc::Status MSWorkerImpl::PredictAsync(grpc::ServerContext *context, const prot
   }
   MSI_LOG(INFO) << "Finish call service Eval";
 
-  if (status == INVALID_INPUTS) {
-    auto proto_error_msg = reply->add_error_msg();
-    proto_error_msg->set_error_code(status.StatusCode());
-    proto_error_msg->set_error_msg(status.StatusMessage());
-    return grpc::Status::OK;
-  } else if (status != SUCCESS) {
-    auto proto_error_msg = reply->add_error_msg();
-    proto_error_msg->set_error_code(FAILED);
-    proto_error_msg->set_error_msg("Predict failed");
-    return grpc::Status::OK;
+  if (status != SUCCESS) {
+    GrpcTensorHelper::CreateReplyFromErrorMsg(status, reply);
+    on_finish();
   }
-  return grpc::Status::OK;
 }
+
 grpc::Status MSWorkerImpl::Ping(grpc::ServerContext *context, const proto::PingRequest *request,
                                 proto::PingReply *reply) {
   MSI_EXCEPTION_IF_NULL(request);

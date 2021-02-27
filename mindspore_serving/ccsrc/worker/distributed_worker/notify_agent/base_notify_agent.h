@@ -33,7 +33,7 @@ class MS_API BaseNotifyAgent {
   virtual ~BaseNotifyAgent() = default;
   virtual Status Exit() = 0;
   virtual Status DispatchAsync(const proto::DistributedPredictRequest &request, proto::DistributedPredictReply *reply,
-                               DispatchCallback callback) = 0;
+                               AsyncPredictCallback callback) = 0;
 };
 
 }  // namespace serving

@@ -76,7 +76,7 @@ Status DistributedServable::PredictInner(const std::vector<TensorBasePtr> &input
   auto msg_list = std::make_shared<std::vector<DistributedPredictMsg>>(rank_size);
 
   for (size_t i = 0; i < rank_size; ++i) {
-    DispatchCallback callback = [msg_list, i](const Status &status) {
+    AsyncPredictCallback callback = [msg_list, i](const Status &status) {
       msg_list->at(i).status = status;
       msg_list->at(i).promise.set_value();
     };

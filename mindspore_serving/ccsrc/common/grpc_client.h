@@ -39,7 +39,7 @@ namespace serving {
 
 using PredictOnFinish = std::function<void()>;
 
-using DispatchCallback = std::function<void(Status status)>;
+using AsyncPredictCallback = std::function<void(Status status)>;
 
 template <typename Request, typename Reply, typename MSStub>
 class MSServiceClient {
@@ -80,7 +80,7 @@ class MSServiceClient {
     }
   }
 
-  void PredictAsync(const Request &request, Reply *reply, MSStub *stub, DispatchCallback callback) {
+  void PredictAsync(const Request &request, Reply *reply, MSStub *stub, AsyncPredictCallback callback) {
     AsyncClientCall *call = new AsyncClientCall;
     call->reply = reply;
     call->callback = std::move(callback);
@@ -95,7 +95,7 @@ class MSServiceClient {
     grpc::ClientContext context;
     grpc::Status status;
     Reply *reply;
-    DispatchCallback callback;
+    AsyncPredictCallback callback;
     std::shared_ptr<grpc::ClientAsyncResponseReader<Reply>> response_reader;
   };
 

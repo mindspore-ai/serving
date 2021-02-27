@@ -55,25 +55,47 @@ DispatcherWorkerContext Dispatcher::GetWorkSession(const RequestSpec &request_sp
   return context;
 }
 
-Status Dispatcher::Dispatch(const proto::PredictRequest &request, proto::PredictReply *reply) {
+void Dispatcher::Dispatch(const proto::PredictRequest &request, proto::PredictReply *reply) {
   MSI_EXCEPTION_IF_NULL(reply);
-  auto promise = std::make_shared<std::pair<std::promise<void>, Status>>(std::make_pair(std::promise<void>(), FAILED));
-  auto future = promise->first.get_future();
-  DispatchCallback callback = [promise](Status status) {
-    promise->second = status;
-    promise->first.set_value();
-  };
-  auto status = DispatchAsync(request, reply, callback);
-  if (status != SUCCESS) {
-    MSI_LOG_ERROR << "DispatchAsync failed";
-    return status;
-  }
+  auto promise = std::make_shared<std::promise<void>>();
+  auto future = promise->get_future();
+  PredictOnFinish on_finish = [promise]() { promise->set_value(); };
+  DispatchAsync(request, reply, on_finish);
   future.get();  // wait callback finish
-  return promise->second;
 }
 
-Status Dispatcher::DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
-                                 DispatchCallback callback) {
+void Dispatcher::DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
+                               PredictOnFinish on_finish) {
+  MSI_EXCEPTION_IF_NULL(reply);
+  Status status;
+  (*reply->mutable_servable_spec()) = request.servable_spec();
+  try {
+    MSI_TIME_STAMP_START(Predict)
+    status = DispatchAsyncInner(request, reply, on_finish);
+    MSI_TIME_STAMP_END(Predict)
+  } catch (const std::bad_alloc &ex) {
+    MSI_LOG(ERROR) << "Serving Error: malloc memory failed";
+    std::cout << "Serving Error: malloc memory failed" << std::endl;
+  } catch (const std::runtime_error &ex) {
+    MSI_LOG(ERROR) << "Serving Error: runtime error occurred: " << ex.what();
+    std::cout << "Serving Error: runtime error occurred: " << ex.what() << std::endl;
+  } catch (const std::exception &ex) {
+    MSI_LOG(ERROR) << "Serving Error: exception occurred: " << ex.what();
+    std::cout << "Serving Error: exception occurred: " << ex.what() << std::endl;
+  } catch (...) {
+    MSI_LOG(ERROR) << "Serving Error: exception occurred";
+    std::cout << "Serving Error: exception occurred";
+  }
+  MSI_LOG(INFO) << "Finish call service Eval";
+
+  if (status != SUCCESS) {
+    GrpcTensorHelper::CreateReplyFromErrorMsg(status, reply);
+    on_finish();
+  }
+}
+
+Status Dispatcher::DispatchAsyncInner(const proto::PredictRequest &request, proto::PredictReply *reply,
+                                      PredictOnFinish on_finish) {
   MSI_EXCEPTION_IF_NULL(reply);
   std::shared_lock<std::shared_mutex> lock(servable_shared_lock_);
   RequestSpec request_spec;
@@ -88,7 +110,7 @@ Status Dispatcher::DispatchAsync(const proto::PredictRequest &request, proto::Pr
   if (!find_method) {
     return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Request " << request_spec.Repr() << ", method is not available";
   }
-  return worker.notify_worker_->DispatchAsync(request, reply, std::move(callback));
+  return worker.notify_worker_->DispatchAsync(request, reply, std::move(on_finish));
 }
 
 Status Dispatcher::RegisterServableCommon(const std::vector<WorkerSpec> &worker_specs, CreateNotifyWorkerFunc func) {
@@ -216,7 +238,7 @@ Status Dispatcher::RegisterServable(const proto::RegisterRequest &request, proto
   std::vector<WorkerSpec> worker_specs;
   GrpcTensorHelper::GetWorkerSpec(request, &worker_specs);
   auto create_notify_worker = [](const WorkerSpec &worker_spec) {
-    std::shared_ptr<BaseNotifyWorker> notify_worker = std::make_shared<GrpcNotfiyWorker>(worker_spec.worker_address);
+    std::shared_ptr<BaseNotifyWorker> notify_worker = std::make_shared<GrpcNotifyWorker>(worker_spec.worker_address);
     return notify_worker;
   };
   return RegisterServableCommon(worker_specs, create_notify_worker);
@@ -232,7 +254,7 @@ Status Dispatcher::AddServable(const proto::AddWorkerRequest &request, proto::Ad
   GrpcTensorHelper::GetWorkerSpec(request, &worker_spec);
 
   auto create_notify_worker = [](const WorkerSpec &worker_spec) {
-    std::shared_ptr<BaseNotifyWorker> notify_worker = std::make_shared<GrpcNotfiyWorker>(worker_spec.worker_address);
+    std::shared_ptr<BaseNotifyWorker> notify_worker = std::make_shared<GrpcNotifyWorker>(worker_spec.worker_address);
     return notify_worker;
   };
   return AddServableCommon(worker_spec, create_notify_worker);

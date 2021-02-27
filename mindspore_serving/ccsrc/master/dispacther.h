@@ -40,8 +40,8 @@ class MS_API Dispatcher {
  public:
   Dispatcher();
   ~Dispatcher();
-  Status Dispatch(const proto::PredictRequest &request, proto::PredictReply *reply);
-  Status DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply, DispatchCallback callback);
+  void Dispatch(const proto::PredictRequest &request, proto::PredictReply *reply);
+  void DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply, PredictOnFinish on_finish);
 
   Status RegisterServable(const proto::RegisterRequest &request, proto::RegisterReply *reply);
   Status UnregisterServable(const proto::ExitRequest &request, proto::ExitReply *reply);
@@ -71,6 +71,9 @@ class MS_API Dispatcher {
   Status UnregisterServableCommon(const std::string &worker_address);
   Status AddServableCommon(const WorkerSpec &worker_spec, CreateNotifyWorkerFunc func);
   Status RemoveServableCommon(const WorkerSpec &worker_spec);
+
+  Status DispatchAsyncInner(const proto::PredictRequest &request, proto::PredictReply *reply,
+                            PredictOnFinish on_finish);
 };
 
 }  // namespace mindspore::serving

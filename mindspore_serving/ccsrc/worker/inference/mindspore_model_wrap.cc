@@ -141,22 +141,22 @@ std::shared_ptr<Context> MindSporeModelWrap::TransformModelContext(const std::ma
       MSI_LOG_ERROR << "Set model context output type failed, unknown data type " << val;
     }
   };
-  std::map<std::string, ContextStrFun> option_map = {
-    {"acl_option.insert_op_config_file_path", mindspore::ModelContext::SetInsertOpConfigPath},
-    {"acl_option.input_format", mindspore::ModelContext::SetInputFormat},
-    {"acl_option.input_shape", mindspore::ModelContext::SetInputShape},
-    {"acl_option.output_type", set_output_type},
-    {"acl_option.precision_mode", mindspore::ModelContext::SetPrecisionMode},
-    {"acl_option.op_select_impl_mode", mindspore::ModelContext::SetOpSelectImplMode},
-  };
   auto context = std::make_shared<mindspore::ModelContext>();
   for (auto &item : options) {
     const auto &key = item.first;
     const auto &value = item.second;
-    auto it = option_map.find(key);
-    if (it != option_map.end()) {
-      MSI_LOG_INFO << "Set context options, key: " << key << ", value: " << value;
-      it->second(context, value);
+    if (key == "acl_option.insert_op_config_file_path") {
+      mindspore::ModelContext::SetInsertOpConfigPath(context, value);
+    } else if (key == "acl_option.input_format") {
+      mindspore::ModelContext::SetInputFormat(context, value);
+    } else if (key == "acl_option.input_shape") {
+      mindspore::ModelContext::SetInputShape(context, value);
+    } else if (key == "acl_option.output_type") {
+      set_output_type(context, value);
+    } else if (key == "acl_option.precision_mode") {
+      mindspore::ModelContext::SetPrecisionMode(context, value);
+    } else if (key == "acl_option.op_select_impl_mode") {
+      mindspore::ModelContext::SetOpSelectImplMode(context, value);
     }
   }
   return context;

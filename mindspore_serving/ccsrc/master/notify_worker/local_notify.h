@@ -30,7 +30,7 @@ class MS_API LocalNotifyWorker : public BaseNotifyWorker {
   Status Exit() override;
 
   Status DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
-                       DispatchCallback callback) override;
+                       PredictOnFinish on_finish) override;
 };
 
 }  // namespace serving

@@ -94,11 +94,8 @@ class MasterPredictContext : public MasterServiceContext {
   void HandleRequest() override {
     EnqueueRequest(service_impl_, async_service_, cq_);
     state_ = STATE::FINISH;
-    DispatchCallback callback = [this](Status status) { responder_.Finish(response_, grpc::Status::OK, this); };
-    Status status = service_impl_->PredictAsync(&request_, &response_, callback);
-    if (!status.IsSuccess()) {
-      responder_.Finish(response_, grpc::Status::OK, this);
-    }
+    PredictOnFinish on_finish = [this]() { responder_.Finish(response_, grpc::Status::OK, this); };
+    service_impl_->PredictAsync(&request_, &response_, on_finish);
   }
 
   bool JudgeFinish() override { return state_ == STATE::FINISH; }

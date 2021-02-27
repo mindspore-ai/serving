@@ -60,7 +60,7 @@ Status Worker::RemoveWorker(const ServableWorkerContext &work) {
   return notify_master_->RemoveWorker(work.worker_spec);
 }
 
-Status Worker::RunAsync(const proto::PredictRequest &request, proto::PredictReply *reply, DispatchCallback callback) {
+Status Worker::RunAsync(const proto::PredictRequest &request, proto::PredictReply *reply, PredictOnFinish on_finish) {
   std::shared_lock<std::shared_mutex> lock(worker_shared_lock_);
   if (!servable_started_) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "RunAsync worker for inference failed, worker has not been started";
@@ -81,16 +81,9 @@ Status Worker::RunAsync(const proto::PredictRequest &request, proto::PredictRepl
   if (worker.worker_service == nullptr) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Cannot find servable match " << request_spec.Repr();
   }
-  WorkCallBack on_process_done = [request, reply, callback](const std::vector<InstancePtr> &instances) {
-    auto status = GrpcTensorHelper::CreateReplyFromInstances(request, instances, reply);
-    if (status != SUCCESS) {
-      MSI_LOG_ERROR << "transfer result to reply failed";
-      reply->clear_error_msg();
-      auto proto_error = reply->add_error_msg();
-      proto_error->set_error_code(status.StatusCode());
-      proto_error->set_error_msg(status.StatusMessage());
-    }
-    callback(SUCCESS);
+  WorkCallBack on_process_done = [request, reply, on_finish](const std::vector<InstancePtr> &instances) {
+    GrpcTensorHelper::CreateReplyFromInstances(request, instances, reply);
+    on_finish();
   };
   return worker.worker_service->Work(request_spec, instances_data, on_process_done);
 }

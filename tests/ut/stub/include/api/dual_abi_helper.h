@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright 2021 Huawei Technologies Co., Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,22 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#ifndef MINDSPORE_INCLUDE_API_DUAL_ABI_HELPER_H_
+#define MINDSPORE_INCLUDE_API_DUAL_ABI_HELPER_H_
 
-#include "master/notify_worker/local_notify.h"
-#include "worker/worker.h"
+#include <string>
+#include <vector>
 
 namespace mindspore {
-namespace serving {
-
-Status LocalNotifyWorker::Exit() {
-  Worker::GetInstance().Clear();
-  return SUCCESS;
-}
-
-Status LocalNotifyWorker::DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
-                                        PredictOnFinish on_finish) {
-  return Worker::GetInstance().RunAsync(request, reply, on_finish);
-}
-
-}  // namespace serving
+inline std::vector<char> StringToChar(const std::string &s) { return std::vector<char>(s.begin(), s.end()); }
+inline std::string CharToString(const std::vector<char> &c) { return std::string(c.begin(), c.end()); }
 }  // namespace mindspore
+#endif  // MINDSPORE_INCLUDE_API_DUAL_ABI_HELPER_H_

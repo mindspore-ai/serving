@@ -25,6 +25,7 @@
 #include "include/api/model.h"
 #include "include/api/graph.h"
 #include "cxx_api/graph/graph_data.h"
+#include "utils/utils.h"
 
 namespace mindspore {
 class ModelImpl {
@@ -63,7 +64,9 @@ class ModelImpl {
   friend class Model;
   void SetGraph(const std::shared_ptr<Graph> &graph) { graph_ = graph; }
   void SetContext(const std::shared_ptr<Context> &model_context) {
-    model_context_ = std::make_shared<Context>(*model_context);
+    if (model_context != nullptr) {
+      model_context_ = std::make_shared<Context>(*model_context);
+    }
   }
 };
 }  // namespace mindspore
