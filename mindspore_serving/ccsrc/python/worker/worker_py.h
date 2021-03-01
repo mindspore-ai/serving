@@ -56,6 +56,8 @@ class MS_API PyWorker {
   static void PushPostprocessPyResult(const py::tuple &output_batch);
   static void PushPostprocessPyFailed(int count);
 
+  static std::string GetDeviceType();
+
  private:
   static void OnEndStartServable(const std::string &servable_directory, const std::string &servable_name,
                                  uint32_t spec_version_number, uint32_t started_version_number);

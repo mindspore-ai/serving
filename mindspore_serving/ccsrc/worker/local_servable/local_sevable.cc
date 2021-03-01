@@ -200,27 +200,11 @@ Status LocalModelServable::InitDevice(ModelType model_type, const std::map<std::
   Status status;
   auto context = ServableContext::Instance();
   DeviceType device_type = ServableContext::Instance()->GetDeviceType();
-  auto get_support_device_type = [this, device_type, model_type]() {
-    std::vector<DeviceType> support_device_list;
-    if (device_type == kDeviceTypeNotSpecified || device_type == kDeviceTypeAscend) {
-      auto ascend_list = {kDeviceTypeAscendCL, kDeviceTypeAscendMS};
-      for (auto item : ascend_list) {
-        if (session_->CheckModelSupport(item, model_type)) {
-          return item;
-        }
-      }
-    } else if (device_type == kDeviceTypeAscendCL || device_type == kDeviceTypeAscendMS) {
-      if (session_->CheckModelSupport(device_type, model_type)) {
-        return device_type;
-      }
-    }
-    return kDeviceTypeNotSpecified;
-  };
-  auto support_device_type = get_support_device_type();
+  auto support_device_type = InferenceLoader::Instance().GetSupportDeviceType(device_type, model_type);
   if (support_device_type == kDeviceTypeNotSpecified) {
     return INFER_STATUS_LOG_ERROR(FAILED)
            << "Not support device type " << device_type << " and model type " << model_type
-           << ". Ascend 910 supports MindIR model and Ascend 310 supports OM, MindIR model";
+           << ". Ascend 910, Ascend 310 and GPU supports MindIR model, and Ascend 310 supports OM model";
   }
   context->SetDeviceType(support_device_type);
   return SUCCESS;

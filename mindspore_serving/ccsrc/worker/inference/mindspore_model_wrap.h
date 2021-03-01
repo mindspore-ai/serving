@@ -79,6 +79,7 @@ class MindSporeModelWrap : public InferenceBase {
   std::shared_ptr<Context> TransformModelContext(const std::map<std::string, std::string> &other_options);
   void GetModelBatchSize(ApiModelInfo *model_info);
   static mindspore::ModelType GetMsModelType(serving::ModelType model_type);
+  static std::string GetMsDeviceType(serving::DeviceType device_type);
 };
 
 class ApiBufferTensorWrap : public TensorBase {

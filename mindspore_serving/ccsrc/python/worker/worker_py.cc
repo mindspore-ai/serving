@@ -25,6 +25,7 @@
 #include "worker/distributed_worker/distributed_servable.h"
 #include "worker/grpc/worker_server.h"
 #include "worker/distributed_worker/distributed_process/distributed_server.h"
+#include "worker/inference/inference.h"
 
 namespace mindspore::serving {
 
@@ -219,5 +220,19 @@ void PyWorker::StopAndClear() {
 }
 
 int PyWorker::GetBatchSize() { return Worker::GetInstance().GetBatchSize(); }
+
+std::string PyWorker::GetDeviceType() {
+  auto device_type = InferenceLoader::Instance().GetSupportDeviceType(kDeviceTypeNotSpecified, kUnknownType);
+  if (device_type == kDeviceTypeAscend || device_type == kDeviceTypeAscendMS || device_type == kDeviceTypeAscendCL) {
+    return "Ascend";
+  }
+  if (device_type == kDeviceTypeGpu) {
+    return "Gpu";
+  }
+  if (device_type == kDeviceTypeCpu) {
+    return "Cpu";
+  }
+  return std::string();
+}
 
 }  // namespace mindspore::serving
