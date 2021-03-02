@@ -58,7 +58,7 @@ start_service()
   python3 master_with_worker.py > service.log 2>&1 &
   if [ $? -ne 0 ]
   then
-    echo "server faile to start."
+    echo "server failed to start."
   fi
 
   result=`grep -E 'Serving gRPC server start success, listening on 127.0.0.1:5500' service.log | wc -l`
@@ -88,7 +88,7 @@ pytest_serving()
   then
     clean_pid
     cat client.log
-    echo "client faile to start." && exit 1
+    echo "client failed to start." && exit 1
   fi
   echo "### client end ###"
 }
@@ -107,3 +107,4 @@ rm -rf client.py  export_model  master_with_worker.py  resnet50  test_image
 cp -r ../../../example/resnet/* .
 prepare_model
 test_renet_model
+echo "### end to serving test ###"
