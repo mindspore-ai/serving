@@ -32,4 +32,35 @@ std::shared_ptr<InferenceBase> InferenceLoader::CreateMindSporeInfer() {
 }
 
 Status InferenceLoader::LoadMindSporeModelWrap() { return SUCCESS; }
+
+DeviceType InferenceLoader::GetSupportDeviceType(DeviceType device_type, ModelType model_type) {
+  auto mindspore_infer = CreateMindSporeInfer();
+  if (mindspore_infer == nullptr) {
+    MSI_LOG_ERROR << "Create MindSpore infer failed";
+    return kDeviceTypeNotSpecified;
+  }
+  if (model_type == kUnknownType) {
+    model_type = kMindIR;
+  }
+  if (device_type == kDeviceTypeNotSpecified) {
+    auto ascend_list = {kDeviceTypeAscendCL, kDeviceTypeAscendMS, kDeviceTypeGpu};
+    for (auto item : ascend_list) {
+      if (mindspore_infer->CheckModelSupport(item, model_type)) {
+        return item;
+      }
+    }
+  } else if (device_type == kDeviceTypeAscend) {
+    auto ascend_list = {kDeviceTypeAscendCL, kDeviceTypeAscendMS};
+    for (auto item : ascend_list) {
+      if (mindspore_infer->CheckModelSupport(item, model_type)) {
+        return item;
+      }
+    }
+  } else {
+    if (mindspore_infer->CheckModelSupport(device_type, model_type)) {
+      return device_type;
+    }
+  }
+  return kDeviceTypeNotSpecified;
+}
 }  // namespace mindspore::serving

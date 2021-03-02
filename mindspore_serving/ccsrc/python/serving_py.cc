@@ -163,7 +163,8 @@ void PyRegWorker(pybind11::module *m_ptr) {
     .def_static("push_preprocess_result", &PyWorker::PushPreprocessPyResult)
     .def_static("push_preprocess_failed", &PyWorker::PushPreprocessPyFailed)
     .def_static("push_postprocess_result", &PyWorker::PushPostprocessPyResult)
-    .def_static("push_postprocess_failed", &PyWorker::PushPostprocessPyFailed);
+    .def_static("push_postprocess_failed", &PyWorker::PushPostprocessPyFailed)
+    .def_static("get_device_type", &PyWorker::GetDeviceType);
 
   py::class_<ServableContext, std::shared_ptr<ServableContext>>(m, "Context_")
     .def(py::init<>())

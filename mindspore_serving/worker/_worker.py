@@ -197,6 +197,7 @@ def start_servable_in_master(servable_directory, servable_name, version_number=0
             "Ascend" means the device type can be Ascend910 or Ascend310, etc.
             "Davinci" has the same meaning as "Ascend".
             None means the device type is determined by the MindSpore environment.
+        device_id (int): The id of the device the model loads into and runs in.
 
     Examples:
         >>> import os

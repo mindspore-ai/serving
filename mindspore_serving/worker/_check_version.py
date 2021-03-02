@@ -127,6 +127,19 @@ class AscendEnvChecker:
             logger.warning(f"No such directory: {self.op_path}, Please check if Ascend 910 AI software package is "
                            f"installed correctly.")
 
+    def try_set_env_lib(self):
+        """try set env but with no warning: LD_LIBRARY_PATH"""
+        try:
+            # pylint: disable=unused-import
+            import te
+        # pylint: disable=broad-except
+        except Exception:
+            if Path(self.tbe_path).is_dir():
+                if os.getenv('LD_LIBRARY_PATH'):
+                    os.environ['LD_LIBRARY_PATH'] = self.tbe_path + ":" + os.environ['LD_LIBRARY_PATH']
+                else:
+                    os.environ['LD_LIBRARY_PATH'] = self.tbe_path
+
     def _check_env(self):
         """ascend dependence path check"""
         if self.path is None or self.path_check not in self.path:
@@ -151,11 +164,21 @@ class AscendEnvChecker:
                 "you can reference to the installation guidelines https://www.mindspore.cn/install")
 
 
-def check_version_and_env_config():
+def check_version_and_env_config(device_type):
     """check version and env config"""
-    env_checker = AscendEnvChecker()
+    if device_type == "Ascend":
+        env_checker = AscendEnvChecker()
+        try:
+            env_checker.set_env()
+        except ImportError as e:
+            env_checker.check_env(e)
+    elif device_type == "Gpu":
+        pass
+    elif device_type == "Cpu":
+        pass
 
-    try:
-        env_checker.set_env()
-    except ImportError as e:
-        env_checker.check_env(e)
+
+def check_version_and_try_set_env_lib():
+    """check version and try set env LD_LIBRARY_PATH"""
+    env_checker = AscendEnvChecker()
+    env_checker.try_set_env_lib()

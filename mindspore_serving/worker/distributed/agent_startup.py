@@ -18,7 +18,9 @@ import os
 import time
 import sys
 import traceback
+import signal
 from multiprocessing import Process, Pipe
+import psutil
 
 from mindspore_serving._mindspore_serving import ExitSignalHandle_
 from mindspore_serving._mindspore_serving import WorkerAgent_, AgentStartUpConfig_
@@ -163,23 +165,52 @@ def _send_exit_msg_to_children(send_pipe_list, subprocess_list):
             logger.warning(f"Child {index} is not alive")
         index += 1
 
-    wait_seconds = 10
-    for i in range(wait_seconds):
-        all_exit = True
-        for process in subprocess_list:
-            if process.is_alive():
-                logger.warning(f"There are still child processes that have not exited and will be forcibly killed in "
-                               f"{wait_seconds - i} seconds.")
-                time.sleep(1)
-                all_exit = False
-                break
-        if all_exit:
-            logger.info(f"All Child process exited")
-            return
+    def wait_exit(wait_seconds, msg):
+        for i in range(wait_seconds):
+            all_exit = True
+            for process in subprocess_list:
+                if process.is_alive():
+                    logger.warning(f"There are still child processes that have not exited and {msg} in "
+                                   f"{wait_seconds - i} seconds.")
+                    time.sleep(1)
+                    all_exit = False
+                    break
+            if all_exit:
+                logger.info(f"All Child process exited")
+                return True
+        return False
+
+    if wait_exit(3, "SIGINT will be sent"):
+        return
+    # Send signal SIGINT
+    for index, process in enumerate(subprocess_list):
+        if process.is_alive():
+            logger.warning(f"Send signal SIGINT to {index}")
+            try:
+                child_process = psutil.Process(process.pid)
+                children_of_child = child_process.children(recursive=True)
+                for item in children_of_child:
+                    os.kill(item.pid, signal.SIGINT)
+            # pylint: disable=broad-except
+            except Exception as e:
+                logger.warning(f"Get exception when send signal SIGINT to children of child {index}, exception: {e}")
+            os.kill(process.pid, signal.SIGINT)
+
+    if wait_exit(10, "will be forcibly killed"):
+        return
+
     for index, process in enumerate(subprocess_list):
         if process.is_alive():
             logger.warning(f"Kill Child process {index}")
-            process.kill()
+            try:
+                child_process = psutil.Process(process.pid)
+                children_of_child = child_process.children(recursive=True)
+                for item in children_of_child:
+                    os.kill(item.pid, signal.SIGKILL)
+            # pylint: disable=broad-except
+            except Exception as e:
+                logger.warning(f"Get exception when send signal SIGINT to children of child {index}, exception: {e}")
+            os.kill(process.pid, signal.SIGKILL)
 
 
 def _start_listening_child_processes(p_recv_pipe, send_pipe_list, subprocess_list):

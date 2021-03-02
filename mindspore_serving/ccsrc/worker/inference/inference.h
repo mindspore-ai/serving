@@ -135,6 +135,7 @@ class MS_API InferenceLoader {
   ~InferenceLoader();
   static InferenceLoader &Instance();
   std::shared_ptr<InferenceBase> CreateMindSporeInfer();
+  DeviceType GetSupportDeviceType(DeviceType device_type, ModelType model_type);
 
  private:
   typedef InferenceBase *(*CreateInferHandle)();
