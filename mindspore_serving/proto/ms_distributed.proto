@@ -56,8 +56,10 @@ message AgentRegisterReply {
 }
 
 message AgentExitRequest {
-  repeated AgentSpec agent_spec = 1;
-  string address = 2;
+  oneof address_choice {
+    string address = 1; // by agent process
+    string agent_ip = 2; // by agent start up process
+  }
 }
 
 message AgentExitReply {

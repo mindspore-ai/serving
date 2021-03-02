@@ -39,6 +39,7 @@ class MS_API GrpcNotifyDistributeWorker {
   static Status NotifyFailed(const std::string &worker_ip, uint32_t worker_port);
   static Status GetAgentsConfigsFromWorker(const std::string &worker_ip, uint32_t worker_port,
                                            DistributedServableConfig *config);
+  static void StartupNotifyExit(const std::string &worker_ip, uint32_t worker_port, const std::string &agent_ip);
 
  private:
   static Status ParseAgentConfigAcquireReply(const proto::AgentConfigAcquireReply &reply,

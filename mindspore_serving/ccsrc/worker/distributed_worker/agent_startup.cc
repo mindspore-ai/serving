@@ -43,5 +43,10 @@ Status WorkerAgentStartUp::NotifyFailed(const std::string &worker_ip, uint32_t w
   return GrpcNotifyDistributeWorker::NotifyFailed(worker_ip, worker_port);
 }
 
+void WorkerAgentStartUp::StartupNotifyExit(const std::string &worker_ip, uint32_t worker_port,
+                                           const std::string &agent_ip) {
+  GrpcNotifyDistributeWorker::StartupNotifyExit(worker_ip, worker_port, agent_ip);
+}
+
 }  // namespace serving
 }  // namespace mindspore

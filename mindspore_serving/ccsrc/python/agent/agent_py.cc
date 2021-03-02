@@ -60,4 +60,8 @@ void PyAgent::StopAndClear() {
   WorkerAgent::Instance().Clear();
 }
 
+void PyAgent::StartupNotifyExit(const std::string &worker_ip, uint32_t worker_port, const std::string &agent_ip) {
+  WorkerAgentStartUp::Instance().StartupNotifyExit(worker_ip, worker_port, agent_ip);
+}
+
 }  // namespace mindspore::serving
