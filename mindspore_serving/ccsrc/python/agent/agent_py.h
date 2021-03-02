@@ -39,6 +39,7 @@ class MS_API PyAgent {
   static void StopAndClear();
   // from start up, not agent
   static void NotifyFailed(const std::string &worker_ip, uint32_t worker_port);
+  static void StartupNotifyExit(const std::string &worker_ip, uint32_t worker_port, const std::string &agent_ip);
 };
 
 }  // namespace serving

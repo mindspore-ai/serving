@@ -43,11 +43,12 @@ grpc::Status MSDistributedImpl::AgentExit(grpc::ServerContext *context, const pr
                                           proto::AgentExitReply *reply) {
   MSI_EXCEPTION_IF_NULL(request);
   MSI_EXCEPTION_IF_NULL(reply);
-  watcher_->StopWatch(request->address());
-  servable_->OnAgentExit();
-  if (Worker::GetInstance().IsRunning()) {
-    Worker::GetInstance().StopServable();
+  if (request->address_choice_case() == proto::AgentExitRequest::kAddress) {
+    watcher_->StopWatch(request->address());
   }
+  MSI_LOG_INFO << "Agent exit, address: '" << request->address() << "', agent ip: '" << request->agent_ip() << "'";
+  servable_->OnAgentExit();
+  Worker::GetInstance().StopServable();
   return grpc::Status::OK;
 }
 

@@ -97,6 +97,24 @@ Status GrpcNotifyDistributeWorker::NotifyFailed(const std::string &worker_ip, ui
   return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Failed to notify failure of agent";
 }
 
+void GrpcNotifyDistributeWorker::StartupNotifyExit(const std::string &worker_ip, uint32_t worker_port,
+                                                   const std::string &agent_ip) {
+  auto address = worker_ip + ":" + std::to_string(worker_port);
+  auto channel = GrpcServer::CreateChannel(address);
+  auto stub = proto::MSWorker::NewStub(channel);
+
+  grpc::ClientContext context;
+  proto::AgentExitRequest request;
+  request.set_agent_ip(agent_ip);
+  proto::AgentExitReply reply;
+  grpc::Status status = stub->AgentExit(&context, request, &reply);
+  if (status.ok()) {
+    MSI_LOG(INFO) << "Success to notify exit of agent start up process";
+  } else {
+    MSI_LOG(INFO) << "Failed to notify exit of agent start up process";
+  }
+}
+
 Status GrpcNotifyDistributeWorker::GetAgentsConfigsFromWorker(const std::string &worker_ip, uint32_t worker_port,
                                                               DistributedServableConfig *config) {
   const int32_t REGISTER_TIME_OUT = 60;

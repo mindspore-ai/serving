@@ -186,6 +186,7 @@ void PyRegWorkerAgent(pybind11::module *m_ptr) {
     .def_static("wait_and_clear", &PyAgent::WaitAndClear)
     .def_static("stop_and_clear", &PyAgent::StopAndClear)
     .def_static("notify_failed", &PyAgent::NotifyFailed)
+    .def_static("startup_notify_exit", &PyAgent::StartupNotifyExit)
     .def_static("start_agent", &PyAgent::StartAgent);
 
   py::class_<AgentStartUpConfig>(m, "AgentStartUpConfig_")

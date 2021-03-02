@@ -36,6 +36,7 @@ class MS_API WorkerAgentStartUp {
   Status GetDistributedServableConfig(DistributedServableConfig *config);
 
   Status NotifyFailed(const std::string &worker_ip, uint32_t worker_port);
+  void StartupNotifyExit(const std::string &worker_ip, uint32_t worker_port, const std::string &agent_ip);
 
  private:
   DistributedServableConfig config_;
