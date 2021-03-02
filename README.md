@@ -43,9 +43,9 @@ MindSpore Serving depends on the MindSpore training and inference framework. The
 
 ### Installing Serving
 
-Use the pip command to install Serving. Perform the following steps:
+Perform the following steps to install Serving:
 
-- Download the .whl package from the [MindSpore Serving page](https://www.mindspore.cn/versions/en) and install it.
+- If use the pip command, download the .whl package from the [MindSpore Serving page](https://www.mindspore.cn/versions/en) and install it.
 
     ```python
     pip install mindspore_serving-{version}-cp37-cp37m-linux_{arch}.whl

@@ -43,9 +43,9 @@ MindSpore Serving依赖MindSpore训练推理框架，安装完[MindSpore](https:
 
 ### 安装Serving
 
-使用pip命令安装，安装方式如下：
+安装方式如下：
 
-- 请从[MindSpore Serving下载页面](https://www.mindspore.cn/versions)下载并安装whl包。
+- 使用pip命令安装，请从[MindSpore Serving下载页面](https://www.mindspore.cn/versions)下载并安装whl包。
 
     ```python
     pip install mindspore_serving-{version}-cp37-cp37m-linux_{arch}.whl
