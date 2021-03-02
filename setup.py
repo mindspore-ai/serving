@@ -23,7 +23,7 @@ from setuptools import setup, find_packages
 from setuptools.command.egg_info import egg_info
 from setuptools.command.build_py import build_py
 
-version = '1.1.0'
+version = '1.2.0'
 
 backend_policy = os.getenv('BACKEND_POLICY')
 commit_id = os.getenv('COMMIT_ID').replace("\n", "")
@@ -99,7 +99,7 @@ required_package = [
     'numpy >= 1.17.0',
     'protobuf >= 3.8.0',
     'grpcio >= 1.27.3',
-    'psutil >= 5.8.0'
+    'psutil >= 5.6.1'
 ]
 
 package_data = {
