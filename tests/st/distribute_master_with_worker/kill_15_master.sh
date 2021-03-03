@@ -27,18 +27,12 @@ ls -l /usr/local/python/python375/lib/
 clean_pid()
 {
   is_sleep=0
-  num=`ps -ef | grep master.py | grep -v grep | wc -l`
+  num=`ps -ef | grep master_with_worker.py | grep -v grep | wc -l`
   if [ $num -ne 0 ]
   then
-    ps aux | grep 'master.py' | grep ${CURRUSER} | grep -v grep | awk '{print $2}' | xargs kill -9
+    ps aux | grep 'master_with_worker.py' | grep ${CURRUSER} | grep -v grep | awk '{print $2}' | xargs kill -9
     is_sleep=1
   fi
-  num=`ps -ef | grep worker.py | grep -v grep | wc -l`
-  if [ $num -ne 0 ]
-  then
-    ps aux | grep 'worker.py' | grep ${CURRUSER} | grep -v grep | awk '{print $2}' | xargs kill -9
-    is_sleep=1
-  fi 
   num=`ps -ef | grep agent.py | grep -v grep | wc -l`
   if [ $num -ne 0 ]
   then
@@ -75,60 +69,32 @@ prepare_model()
     cp -r model ../
   fi
 }
-
-start_master()
+start_master_with_worker()
 {
-  echo "### start serving master ###"
+  echo "### start serving master_with_worker ###"
   unset http_proxy https_proxy
-  python3 master.py > master.log 2>&1 &
+  python3 master_with_worker.py > master_with_worker.log 2>&1 &
   if [ $? -ne 0 ]
   then
-    echo "server master failed to start."
+    echo "server master_with_worker failed to start."
   fi
 
-  result=`grep -E 'Serving gRPC server start success, listening on 127.0.0.1:5500' master.log | wc -l`
-  count=0
-  while [[ ${result} -ne 1 && ${count} -lt 50 ]]
-  do
-    sleep 1
-    count=$(($count+1))
-    result=`grep -E 'Serving gRPC server start success, listening on 127.0.0.1:5500' master.log | wc -l`
-  done
-
-  if [ ${count} -eq 50 ]
-  then
-    clean_pid
-    cat master.log 
-    echo "start serving master failed!" && exit 1
-  fi
-  echo "### start serving master end ###"
-}
-start_worker()
-{
-  echo "### start serving worker ###"
-  unset http_proxy https_proxy
-  python3 worker.py > worker.log 2>&1 &
-  if [ $? -ne 0 ]
-  then
-    echo "server worker failed to start."
-  fi
-
-  result=`grep -E 'Begin waiting ready of all agents' worker.log | wc -l`
+  result=`grep -E 'Begin waiting ready of all agents' master_with_worker.log | wc -l`
   count=0
   while [[ ${result} -ne 1 && ${count} -lt 100 ]]
   do
     sleep 1
     count=$(($count+1))
-    result=`grep -E 'Begin waiting ready of all agents' worker.log | wc -l`
+    result=`grep -E 'Begin waiting ready of all agents' master_with_worker.log | wc -l`
   done
 
   if [ ${count} -eq 100 ]
   then
     clean_pid
-    cat worker.log 
-    echo "start serving worker failed!" && exit 1
+    cat master_with_worker.log 
+    echo "start serving master_with_worker failed!" && exit 1
   fi
-  echo "### start serving worker end ###"
+  echo "### start serving master_with_worker end ###"
 }
 start_agent()
 {
@@ -157,19 +123,12 @@ start_agent()
   fi
   echo "### start serving agent end ###"
 }
-kill_master()
+kill_master_with_worker()
 {
-  num=`ps -ef | grep master.py | grep -v grep | wc -l`
+  num=`ps -ef | grep master_with_worker.py | grep -v grep | wc -l`
   if [ $num -ne 1 ]
   then
-    echo "master start failed"
-    echo $num
-    clean_pid && exit 1
-  fi
-  num=`ps -ef | grep worker.py | grep -v grep | wc -l`
-  if [ $num -ne 1 ]
-  then
-    echo "worker start failed"
+    echo "master_with_worker start failed"
     echo $num
     clean_pid && exit 1
   fi
@@ -180,41 +139,33 @@ kill_master()
     echo $num
     clean_pid && exit 1
   fi
-  num=`grep -E 'Recv Ping Time Out from' worker.log | wc -l`
-  if [ $num -ne 0 ]
-  then
-    echo "worker has exited"
-    echo $num
-    clean_pid && exit 1
-  fi
-  ps aux | grep 'master.py' | grep ${CURRUSER} | grep -v grep | awk '{print $2}' | xargs kill -9
+  ps aux | grep 'master_with_worker.py' | grep ${CURRUSER} | grep -v grep | awk '{print $2}' | xargs kill -15
   if [ $? -ne 0 ]
   then
-    echo "kill master failed"
+    echo "kill master_with_worker failed"
   fi
-  sleep 25
-  num=`ps -ef | grep master.py | grep -v grep | wc -l`
+  sleep 5
+  num=`ps -ef | grep agent.py | grep -v grep | wc -l`
   if [ $num -ne 0 ]
   then
-    echo "master exit failed"
+    echo "agent exit failed"
     echo $num
     clean_pid && exit 1
   fi
-  num=`grep -E 'Recv Ping Time Out from' worker.log | wc -l`
-  if [ $num -ne 1 ]
+  num=`ps -ef | grep master_with_worker.py | grep -v grep | wc -l`
+  if [ $num -ne 0 ]
   then
-    echo "catch master exit failed"
+    echo "master_with_worker exit failed"
     echo $num
     clean_pid && exit 1
   fi
 }
 
-test_master_fault_model()
+test_master_with_worker_fault_model()
 {
-  start_master
-  start_worker
+  start_master_with_worker
   start_agent
-  kill_master
+  kill_master_with_worker
   clean_pid
 }
 
@@ -223,5 +174,5 @@ rm -rf serving *.log *.mindir *.dat ${CURRPATH}/matmul ${CURRPATH}/kernel_meta
 rm -rf client.py *.json export_model  master_with_worker.py master.py worker.py agent.py
 cp -r ../../../example/matmul_distributed/* .
 prepare_model
-test_master_fault_model
+test_master_with_worker_fault_model
 echo "### end to serving test ###"
