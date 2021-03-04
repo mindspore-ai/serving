@@ -26,18 +26,23 @@ ls -l /usr/local/python/python375/lib/
 
 clean_pid()
 {
+  is_sleep=0
   num=`ps -ef | grep master.py | grep -v grep | wc -l`
   if [ $num -ne 0 ]
   then
     ps aux | grep 'master.py' | grep ${CURRUSER} | grep -v grep | awk '{print $2}' | xargs kill -9
-    sleep 6
+    is_sleep=1
   fi
   num=`ps -ef | grep worker.py | grep -v grep | wc -l`
   if [ $num -ne 0 ]
   then
     ps aux | grep 'worker.py' | grep ${CURRUSER} | grep -v grep | awk '{print $2}' | xargs kill -9
-    sleep 6
-  fi  
+    is_sleep=1
+  fi 
+  if [ $is_sleep -ne 0 ]
+  then
+    sleep 5
+  fi
 }
 
 prepare_model()

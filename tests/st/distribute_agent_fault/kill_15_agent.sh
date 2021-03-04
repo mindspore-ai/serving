@@ -26,43 +26,55 @@ ls -l /usr/local/python/python375/lib/
 
 clean_pid()
 {
+  is_sleep=0
   num=`ps -ef | grep master.py | grep -v grep | wc -l`
   if [ $num -ne 0 ]
   then
     ps aux | grep 'master.py' | grep ${CURRUSER} | grep -v grep | awk '{print $2}' | xargs kill -9
-    sleep 6
+    is_sleep=1
   fi
   num=`ps -ef | grep worker.py | grep -v grep | wc -l`
   if [ $num -ne 0 ]
   then
     ps aux | grep 'worker.py' | grep ${CURRUSER} | grep -v grep | awk '{print $2}' | xargs kill -9
-    sleep 6
+    is_sleep=1
   fi 
   num=`ps -ef | grep agent.py | grep -v grep | wc -l`
   if [ $num -ne 0 ]
   then
     ps aux | grep 'agent.py' | grep ${CURRUSER} | grep -v grep | awk '{print $2}' | xargs kill -9
-    sleep 6
+    is_sleep=1
+  fi 
+  if [ $is_sleep -ne 0 ]
+  then
+    sleep 5
   fi 
 }
-
 prepare_model()
 {
-  echo "### begin to generate mode for serving test ###"
-  cd export_model
-  sh export_model.sh &> model.log
-  echo "### end to generate mode for serving test ###"
-  result=`find . -name  matmul.mindir | wc -l`
-  if [ ${result} -ne 8 ]
+  model_path=${CURRPATH}/../model
+  if [ -d $model_path ]
   then
-    cat model.log
-    echo "### generate model for serving test failed ###" && exit 1
-    clean_pid
+    echo "copy model path"
+    cp -r ../model .
+  else
+    echo "### begin to generate mode for serving test ###"
+    cd export_model
+    sh export_model.sh &> model.log
+    echo "### end to generate mode for serving test ###"
+    result=`find ../ -name  model | wc -l`
+    if [ ${result} -ne 1 ]
+    then
+      cat device0/inference.log0
+      cat model.log
+      echo "### generate model for serving test failed ###" && exit 1
+      clean_pid
+      cd -
+    fi
     cd -
+    cp -r model ../
   fi
-  cd -
 }
-
 start_master()
 {
   echo "### start serving master ###"
@@ -172,7 +184,7 @@ kill_agent()
   then
     echo "kill agent failed"
   fi
-  sleep 25
+  sleep 5
   num=`ps -ef | grep master.py | grep -v grep | wc -l`
   if [ $num -ne 1 ]
   then
