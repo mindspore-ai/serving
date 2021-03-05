@@ -15,12 +15,13 @@
 """Start Servable add"""
 
 import os
+import sys
 from mindspore_serving import master
 from mindspore_serving import worker
 
 
 def start():
-    servable_dir = os.path.abspath(".")
+    servable_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
     worker.start_servable_in_master(servable_dir, "add", device_id=0)
 
     master.start_grpc_server("127.0.0.1", 5500)

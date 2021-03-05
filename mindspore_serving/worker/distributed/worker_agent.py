@@ -16,9 +16,11 @@
 
 import os
 import threading
-from mindspore_serving.worker import init_mindspore
-from mindspore_serving._mindspore_serving import WorkerAgent_, AgentStartUpConfig_
+
+from mindspore_serving._mindspore_serving import WorkerAgent_, AgentStartUpConfig_, ExitSignalHandle_
+
 from mindspore_serving import log as logger
+from mindspore_serving.worker import init_mindspore
 
 
 def start_worker_agent(start_config):
@@ -26,6 +28,15 @@ def start_worker_agent(start_config):
     """
     if not isinstance(start_config, AgentStartUpConfig_):
         raise RuntimeError("Parameter 'start_config' should be instance of AgentStartUpConfig_")
+    logger.info(f"rank_id={start_config.rank_id}, device_id={start_config.device_id}, "
+                f"model_file='{start_config.model_file_name}', group_file='{start_config.group_file_name}', "
+                f"rank_table_file='{start_config.rank_table_json_file_name}',"
+                f"agent_ip='{start_config.agent_ip}', agent_port={start_config.agent_port}, "
+                f"worker_ip='{start_config.worker_ip}', worker_port={start_config.worker_port},"
+                f"with_batch_dim={start_config.common_meta.with_batch_dim}, "
+                f"without_batch_dim_inputs={start_config.common_meta.without_batch_dim_inputs}")
+
+    ExitSignalHandle_.start()  # Set flag to running and receive Ctrl+C message
 
     init_mindspore.init_mindspore_cxx_env()
     os.environ["RANK_ID"] = str(start_config.rank_id)
