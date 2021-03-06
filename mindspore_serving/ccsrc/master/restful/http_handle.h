@@ -25,7 +25,7 @@
 using nlohmann::json;
 namespace mindspore {
 namespace serving {
-Status HandleRestfulRequest(const std::shared_ptr<RestfulRequest> &restful_request, json *const out_json);
+Status HandleRestfulRequest(const std::shared_ptr<RestfulRequest> &restful_request);
 
 size_t Base64Encode(const uint8_t *input, size_t length, uint8_t *output);
 size_t Base64Decode(const uint8_t *target, size_t target_length, uint8_t *origin);

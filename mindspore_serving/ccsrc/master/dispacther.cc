@@ -55,15 +55,6 @@ DispatcherWorkerContext Dispatcher::GetWorkSession(const RequestSpec &request_sp
   return context;
 }
 
-void Dispatcher::Dispatch(const proto::PredictRequest &request, proto::PredictReply *reply) {
-  MSI_EXCEPTION_IF_NULL(reply);
-  auto promise = std::make_shared<std::promise<void>>();
-  auto future = promise->get_future();
-  PredictOnFinish on_finish = [promise]() { promise->set_value(); };
-  DispatchAsync(request, reply, on_finish);
-  future.get();  // wait callback finish
-}
-
 void Dispatcher::DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
                                PredictOnFinish on_finish) {
   MSI_EXCEPTION_IF_NULL(reply);

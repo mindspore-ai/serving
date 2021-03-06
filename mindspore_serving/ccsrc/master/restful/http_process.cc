@@ -676,35 +676,35 @@ Status RestfulService::GetScalarData(const json &js, size_t index, bool is_bytes
 
   return status;
 }
-
 // 2.main
-Status RestfulService::RunRestful(const std::shared_ptr<RestfulRequest> &restful_request, json *const out_json) {
-  PredictRequest request;
-  PredictReply reply;
-
-  MSI_TIME_STAMP_START(ParseRequest)
-  auto status = ParseRequest(restful_request, &request);
-  MSI_TIME_STAMP_END(ParseRequest)
+Status RestfulService::RunRestful(const std::shared_ptr<RestfulRequest> &restful_request,
+                                  const std::shared_ptr<RestfulService> &restful_service) {
+  MSI_TIME_STAMP_START(RunRestful)
+  auto status = ParseRequest(restful_request, &request_);
   if (status != SUCCESS) {
     std::string error_msg = status.StatusMessage();
     std::string msg = "Parser request failed, " + error_msg;
+    nlohmann::json js;
+    js["error_msg"] = msg;
+    restful_request->RestfulReplay(js.dump());
     status = msg;
     return status;
   }
-
-  MSI_TIME_STAMP_START(Predict)
-  dispatcher_->Dispatch(request, &reply);
-  MSI_TIME_STAMP_END(Predict)
-
-  MSI_TIME_STAMP_START(CreateReplyJson)
-  status = ParseReply(reply, out_json);
-  MSI_TIME_STAMP_END(CreateReplyJson)
-  if (status != SUCCESS) {
-    std::string error_msg = status.StatusMessage();
-    std::string msg = "Parse reply failed, " + error_msg;
-    status = msg;
-    return status;
-  }
+  auto callback = [restful_service, restful_request, time_start_RunRestful]() {
+    nlohmann::json predict_json;
+    auto status = restful_service->ParseReply(restful_service->reply_, &predict_json);
+    if (status != SUCCESS) {
+      std::string error_msg = status.StatusMessage();
+      std::string msg = "Parse reply failed, " + error_msg;
+      nlohmann::json js;
+      js["error_msg"] = msg;
+      restful_request->RestfulReplay(js.dump());
+    } else {
+      restful_request->RestfulReplay(predict_json.dump());
+    }
+    MSI_TIME_STAMP_END(RunRestful)
+  };
+  dispatcher_->DispatchAsync(request_, &reply_, callback);
   return SUCCESS;
 }
 

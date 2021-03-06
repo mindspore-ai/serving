@@ -45,7 +45,8 @@ class RestfulService {
  public:
   explicit RestfulService(const std::shared_ptr<Dispatcher> &dispatcher) : dispatcher_(dispatcher) {}
   ~RestfulService() = default;
-  Status RunRestful(const std::shared_ptr<RestfulRequest> &restful_request, json *const out_json);
+  Status RunRestful(const std::shared_ptr<RestfulRequest> &restful_request,
+                    const std::shared_ptr<RestfulService> &restful_service);
 
  private:
   Status CheckObjTypeMatchShape(DataType data_type, const std::vector<int64_t> &shape);
@@ -104,6 +105,8 @@ class RestfulService {
   int64_t instances_nums_{0};
   std::shared_ptr<Dispatcher> dispatcher_;
   std::vector<std::string> request_type_list_ = {kInstancesRequest};
+  proto::PredictRequest request_;
+  proto::PredictReply reply_;
 };
 
 }  // namespace serving
