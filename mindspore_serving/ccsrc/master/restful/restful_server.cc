@@ -22,20 +22,7 @@
 namespace mindspore::serving {
 
 Status RestfulServer::Run(const std::shared_ptr<RestfulRequest> &restful_request) {
-  Status status(SUCCESS);
-  nlohmann::json predict_json;
-  std::string predict_str;
-  status = HandleRestfulRequest(restful_request, &predict_json);
-  if (status != SUCCESS) {
-    predict_str = status.StatusMessage();
-    nlohmann::json js;
-    js["error_msg"] = predict_str;
-    predict_str = js.dump();
-  } else {
-    predict_str = predict_json.dump();
-  }
-  restful_request->RestfulReplay(predict_str);
-  return status;
+  return HandleRestfulRequest(restful_request);
 }
 
 void RestfulServer::Committer(const std::shared_ptr<RestfulRequest> &restful_request) {
