@@ -483,7 +483,7 @@ Status DistributedServable::WaitAgentsReady(uint64_t wait_agents_time_in_seconds
   uint64_t i;
   for (i = 0; i < kWaitMaxHundredMs; i++) {  //
     if (ExitSignalHandle::Instance().HasStopped()) {
-      return INFER_STATUS_LOG_ERROR(FAILED) << "Agents has stopped";
+      return INFER_STATUS_LOG_ERROR(FAILED) << "Worker or Agents has stopped";
     }
     // waiting for 100ms
     if (future.wait_for(std::chrono::milliseconds(100)) == std::future_status::ready) {
@@ -560,20 +560,25 @@ Status DistributedServable::CheckAgentsInfosAndInitTensorInfos() {
       return INFER_STATUS_LOG_ERROR(FAILED) << "Expect rank " << i << " input count equal to 0";
     }
   }
-  for (size_t i = 0; i < rank_size; i++) {
+  for (size_t i = 0; i < rank_size; i += parallel_count) {
     auto &first_item = agent_spec_map_[i];
     for (size_t k = 0; k < parallel_count && i + k < rank_size; k++) {
       auto rank_id = i + k;
       auto &agent_spec = agent_spec_map_[i + k];
       status = CompareTensorInfos(agent_spec.agent_spec_.output_infos, first_item.agent_spec_.output_infos);
       if (status != SUCCESS) {
-        status = INFER_STATUS_LOG_ERROR(FAILED) << "Rank " << rank_size << " output infos not match rank " << i
+        status = INFER_STATUS_LOG_ERROR(FAILED) << "Rank " << rank_id << " output infos not match rank " << i
                                                 << ", details: " << status.StatusMessage();
         return status;
       }
       if (agent_spec.agent_spec_.batch_size != 0 && agent_spec.agent_spec_.batch_size != batch_size_) {
+        if (!agent_spec.agent_spec_.output_infos.empty()) {
+          MSI_LOG_WARNING << "Rank " << rank_id << " output 0 shape: " << agent_spec.agent_spec_.output_infos[0].shape
+                          << ", batch size " << agent_spec.agent_spec_.batch_size;
+        }
         return INFER_STATUS_LOG_ERROR(FAILED)
-               << "Expect rank " << rank_id << " batch size equal to 0 or rank 0 batch size " << batch_size_;
+               << "Expect rank " << rank_id << " batch size  " << agent_spec.agent_spec_.batch_size
+               << " equal to 0 or rank 0's batch size " << batch_size_;
       }
     }
   }
