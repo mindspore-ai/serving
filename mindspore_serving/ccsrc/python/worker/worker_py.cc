@@ -46,6 +46,7 @@ void PyWorker::StartServable(const std::string &model_directory, const std::stri
   auto servable = std::make_shared<LocalModelServable>();
   auto status = servable->StartServable(model_directory, model_name, version_number);
   if (status != SUCCESS) {
+    servable->Clear();
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
   status = Worker::GetInstance().StartServable(servable, notify_master);
@@ -72,6 +73,7 @@ void PyWorker::StartServableInMaster(const std::string &model_directory, const s
   auto servable = std::make_shared<LocalModelServable>();
   auto status = servable->StartServable(model_directory, model_name, version_number);
   if (status != SUCCESS) {
+    servable->Clear();
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
   status = Worker::GetInstance().StartServable(servable, notify_master);
@@ -102,6 +104,7 @@ void PyWorker::StartDistributedServable(const std::string &servable_directory, c
   status = servable->StartServable(servable_directory, servable_name, rank_table_json_file, version_number,
                                    wait_agents_time_in_seconds);
   if (status != SUCCESS) {
+    servable->Clear();
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
   status = Worker::GetInstance().StartServable(servable, notify_master);
@@ -131,6 +134,7 @@ void PyWorker::StartDistributedServableInMaster(const std::string &servable_dire
   status = servable->StartServable(servable_directory, servable_name, rank_table_json_file, version_number,
                                    wait_agents_time_in_seconds);
   if (status != SUCCESS) {
+    servable->Clear();
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
   status = Worker::GetInstance().StartServable(servable, notify_master);
