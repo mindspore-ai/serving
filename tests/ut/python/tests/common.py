@@ -72,7 +72,55 @@ class ServingTestBase:
             with open(config_file, "w") as fp:
                 fp.write(servable_config_content)
 
+    def init_distributed_servable(self, servable_config_content, rank_size, rank_table_content):
+        global servable_index
+        self.servable_name = "add_" + str(servable_index)
+        servable_index += 1
+        self.version_number = 1
+        self.servable_name_path = os.path.join(self.servable_dir, self.servable_name)
+        self.model_dir = os.path.join(self.servable_dir, "model_"+self.servable_name)
+        self.rank_table_content_path = os.path.join(self.servable_dir, self.servable_name + "_hccl.json")
+        try:
+            os.mkdir(self.servable_dir)
+        except FileExistsError:
+            pass
+        try:
+            os.mkdir(self.servable_name_path)
+        except FileExistsError:
+            pass
+        try:
+            os.mkdir(self.model_dir)
+        except FileExistsError:
+            pass
+        self.model_file_list = []
+        for i in range(rank_size):
+            model_file_path = os.path.join(self.model_dir, f"model{i}.mindir")
+            self.model_file_list.append(model_file_path)
+            with open(model_file_path, "w") as fp:
+                print("model content", file=fp)
+        self.group_config_list = []
+        for i in range(rank_size):
+            group_config = os.path.join(self.model_dir, f"group{i}.pb")
+            self.group_config_list.append(group_config)
+            with open(group_config, "w") as fp:
+                print("group config content", file=fp)
 
+        if servable_config_content is not None:
+            config_file = os.path.join(self.servable_name_path, "servable_config.py")
+            with open(config_file, "w") as fp:
+                fp.write(servable_config_content)
+
+        if rank_table_content is not None:
+            with open(self.rank_table_content_path, "w") as fp:
+                fp.write(rank_table_content)
+
+    @staticmethod
+    def add_on_exit(fun):
+        global exit_fun_list
+        exit_fun_list.append(fun)
+
+
+exit_fun_list = []
 client_create_list = []
 
 
@@ -91,6 +139,10 @@ def serving_test(func):
                 del client.stub
                 client.stub = None
             client_create_list = []
+            global exit_fun_list
+            for fun in exit_fun_list:
+                fun()
+            exit_fun_list = []
 
     return wrap_test
 

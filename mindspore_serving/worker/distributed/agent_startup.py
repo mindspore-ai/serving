@@ -20,6 +20,7 @@ import sys
 import traceback
 import signal
 from multiprocessing import Process, Pipe
+import threading
 import psutil
 
 from mindspore_serving._mindspore_serving import ExitSignalHandle_
@@ -47,6 +48,22 @@ def _get_local_ip(rank_list, port):
             except:
                 pass
     raise RuntimeError(f"Get local machine ip failed, rank table ips: {ip_list}, bind port {port}")
+
+
+def _check_local_ip(agent_ip, port):
+    """Check the local ip"""
+    import socket
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        for i in range(8):
+            try:
+                s.bind((agent_ip, port + i))
+                logger.info(f"Check local machine ip success, ip {agent_ip}")
+                return True
+            # pylint: disable=bare-except
+            except:
+                pass
+    return False
 
 
 def _update_model_files_path(model_files, group_config_files):
@@ -126,7 +143,6 @@ def _agent_process(send_pipe, recv_pipe, index, start_config):
     parent_process = psutil.Process(os.getppid())
     try:
         # listening success or failed message from parent process
-        ExitSignalHandle_.start()  # Set flag to running and receive Ctrl+C message
         worker_agent.start_worker_agent(start_config=start_config)
         send_pipe.send((index, signal_success))
         success_msg = _recv_parent(parent_process, index, recv_pipe)
@@ -232,6 +248,10 @@ def _listening_agents_when_startup(p_recv_pipe, send_pipe_list, subprocess_list)
         while True:
             if p_recv_pipe.poll(0.1):
                 break
+            if ExitSignalHandle_.has_stopped():
+                logger.warning("Fail to start agents because of Ctrl+C")
+                _send_exit_msg_to_children(send_pipe_list, subprocess_list)
+                return False
             for send_pipe, process in zip(send_pipe_list, subprocess_list):
                 if process.is_alive():
                     continue
@@ -251,14 +271,24 @@ def _listening_agents_when_startup(p_recv_pipe, send_pipe_list, subprocess_list)
     return True
 
 
-def _listening_agents_after_startup(subprocess_list):
+def _listening_agents_after_startup(subprocess_list, worker_ip, worker_port, agent_ip):
     """Listening agent status after success start up of agents"""
-    while not ExitSignalHandle_.has_stopped():
-        for index, process in enumerate(subprocess_list):
-            if not process.is_alive():
-                logger.warning(f"Child {index}, pid={process.pid} has exited")
-                return
-        time.sleep(0.1)
+
+    def wait_child_exit():
+        while not ExitSignalHandle_.has_stopped():
+            for index, process in enumerate(subprocess_list):
+                if not process.is_alive():
+                    logger.warning(f"Child {index}, pid={process.pid} has exited")
+                    return
+            time.sleep(0.1)
+
+    def listening_thread_fun():
+        wait_child_exit()
+        WorkerAgent_.startup_notify_exit(worker_ip, worker_port, agent_ip)
+        _send_exit_signal_to_children(subprocess_list)
+
+    thread = threading.Thread(target=listening_thread_fun)
+    thread.start()
 
 
 def _startup_agents(common_meta, worker_ip, worker_port,
@@ -311,12 +341,11 @@ def _startup_agents(common_meta, worker_ip, worker_port,
 
     logger.info(f"Success to start agents, {msg}")
     print(f"Success to start agents, {msg}")
-    _listening_agents_after_startup(subprocess_list)
-    WorkerAgent_.startup_notify_exit(worker_ip, worker_port, agent_ip)
-    _send_exit_signal_to_children(subprocess_list)
+    _listening_agents_after_startup(subprocess_list, worker_ip, worker_port, agent_ip)
 
 
-def startup_worker_agents(worker_ip, worker_port, model_files, group_config_files=None, agent_start_port=7000):
+def startup_worker_agents(worker_ip, worker_port, model_files, group_config_files=None,
+                          agent_start_port=7000, agent_ip=None, rank_start=None):
     r"""
     Start up all needed worker agenton current machine.
 
@@ -334,6 +363,13 @@ def startup_worker_agents(worker_ip, worker_port, model_files, group_config_file
             this startup python script.
         group_config_files (None, list or tuple of str): All group config files need in current machine, absolute path
             or path relative to this startup python script, default None, which means there are no configuration files.
+        agent_start_port (int): The starting agent port of the agents link to worker.
+        agent_ip (str or None): The local agent ip, if it's None, the agent ip will be obtained from rank table file.
+            Default None. Parameter agent_ip and parameter rank_start must have values at the same time,
+            or both None at the same time.
+        rank_start (int or None): The starting rank id of this machine, if it's None, the rank ip will be obtained from
+            rank table file. Default None. Parameter agent_ip and parameter rank_start must have values at the same
+            time, or both None at the same time.
 
     Examples:
         >>> import os
@@ -355,14 +391,34 @@ def startup_worker_agents(worker_ip, worker_port, model_files, group_config_file
 
     # get machine ip
     rank_list = distributed_config.rank_list
-    local_ip = _get_local_ip(rank_list, agent_start_port)
-    # get all device_id and rank_id
     local_device_id_list = []
     local_rank_id_list = []
-    for rank_id, item in enumerate(rank_list):
-        if item.ip == local_ip:
-            local_device_id_list.append(item.device_id)
-            local_rank_id_list.append(rank_id)
+    if agent_ip is None:
+        if rank_start is not None:
+            raise RuntimeError("Parameter 'agent_ip' and parameter 'rank_start' must have values at the same time, "
+                               "or both None at the same time.")
+        local_ip = _get_local_ip(rank_list, agent_start_port)
+        # get all device_id and rank_id
+        for rank_id, item in enumerate(rank_list):
+            if item.ip == local_ip:
+                local_device_id_list.append(item.device_id)
+                local_rank_id_list.append(rank_id)
+    else:
+        if rank_start is None:
+            raise RuntimeError("Parameter 'agent_ip' and parameter 'rank_start' must have values at the same time, "
+                               "or both None at the same time.")
+        check_type.check_str("agent_ip", agent_ip)
+        check_type.check_int("rank_start", rank_start, 0)
+        if rank_start >= len(rank_list):
+            raise RuntimeError(f"Parameter 'rank_start' cannot equal or larger than rank size {len(rank_list)}.")
+        if not _check_local_ip(agent_ip, agent_start_port):
+            raise RuntimeError(f"Check ip 'agent_ip' valid failed, agent_ip: {agent_ip}")
+        local_ip = agent_ip
+        rank_table_ip = rank_list[rank_start].ip
+        for rank_id, item in enumerate(rank_list):
+            if item.ip == rank_table_ip:
+                local_device_id_list.append(item.device_id)
+                local_rank_id_list.append(rank_id)
 
     # handle model files and group config files
     if len(local_device_id_list) != len(model_files):
