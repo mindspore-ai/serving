@@ -73,7 +73,7 @@ def _update_model_files_path(model_files, group_config_files):
     logger.info(f"input group config files: {group_config_files}")
     model_files_temp = []
     for item in model_files:
-        file_name = os.path.join(script_dir, item)
+        file_name = os.path.realpath(os.path.join(script_dir, item))
         if not os.access(file_name, os.R_OK):
             raise RuntimeError(f"Cannot access model file '{file_name}'")
         model_files_temp.append(file_name)
@@ -81,7 +81,7 @@ def _update_model_files_path(model_files, group_config_files):
     if group_config_files is not None:
         group_files_temp = []
         for item in group_config_files:
-            file_name = os.path.join(script_dir, item)
+            file_name = os.path.realpath(os.path.join(script_dir, item))
             if not os.access(file_name, os.R_OK):
                 raise RuntimeError(f"Cannot access group config file '{file_name}'")
             group_files_temp.append(file_name)
@@ -335,9 +335,9 @@ def _startup_agents(common_meta, worker_ip, worker_port,
           f"rank table file: {rank_table_file}, model files: {model_files}, group config files: {group_config_files}"
     if not ret:
         WorkerAgent_.notify_failed(worker_ip, worker_port)
-        logger.info(f"Failed to start agents, {msg}")
+        logger.error(f"Failed to start agents, {msg}")
         print(f"Failed to start agents, {msg}")
-        return
+        raise RuntimeError("Failed to start agents")
 
     logger.info(f"Success to start agents, {msg}")
     print(f"Success to start agents, {msg}")
