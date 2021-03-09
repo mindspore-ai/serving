@@ -30,7 +30,7 @@
 #include "common/grpc_client.h"
 
 namespace mindspore::serving {
-
+constexpr uint32_t g_max_infer_num_ = 10000;
 struct DispatcherWorkerContext {
   WorkerSpec worker_spec;
   std::shared_ptr<BaseNotifyWorker> notify_worker_ = nullptr;
@@ -54,6 +54,7 @@ class MS_API Dispatcher {
   Status UnregisterLocalServable();
   Status AddLocalServable(const WorkerSpec &worker_spec);
   Status RemoveLocalServable(const WorkerSpec &worker_spec);
+  void SetMaxInferNum(uint32_t max_infer_num);
 
  private:
   std::unordered_map<std::string, std::vector<DispatcherWorkerContext>> servable_map_{};
@@ -61,7 +62,10 @@ class MS_API Dispatcher {
   std::shared_mutex servable_shared_lock_;
   // avoid invoke Clear and then UnregisterServable is invoked by Clear in other thread
   std::atomic_bool clearing_flag = false;
+  std::atomic_uint32_t infer_num_ = 0;
+  uint32_t max_infer_num_ = g_max_infer_num_;
 
+  Status JudgeInferNum();
   DispatcherWorkerContext GetWorkSession(const RequestSpec &request_spec) const;
 
   using CreateNotifyWorkerFunc = std::function<std::shared_ptr<BaseNotifyWorker>(const WorkerSpec &worker_spec)>;

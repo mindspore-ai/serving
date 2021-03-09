@@ -20,8 +20,8 @@
 
 namespace mindspore::serving {
 
-void PyMaster::StartGrpcServer(const std::string &ip, uint32_t grpc_port, int max_msg_mb_size) {
-  auto status = Server::Instance().StartGrpcServer(ip, grpc_port, max_msg_mb_size);
+void PyMaster::StartGrpcServer(const std::string &ip, uint32_t grpc_port, int max_msg_mb_size, uint32_t max_infer_num) {
+  auto status = Server::Instance().StartGrpcServer(ip, grpc_port, max_msg_mb_size, max_infer_num);
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
@@ -34,8 +34,9 @@ void PyMaster::StartGrpcMasterServer(const std::string &ip, uint32_t grpc_port) 
   }
 }
 
-void PyMaster::StartRestfulServer(const std::string &ip, uint32_t grpc_port, int max_msg_mb_size) {
-  auto status = Server::Instance().StartRestfulServer(ip, grpc_port, max_msg_mb_size);
+void PyMaster::StartRestfulServer(const std::string &ip, uint32_t grpc_port, int max_msg_mb_size,
+                                  uint32_t max_infer_num) {
+  auto status = Server::Instance().StartRestfulServer(ip, grpc_port, max_msg_mb_size, max_infer_num);
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }

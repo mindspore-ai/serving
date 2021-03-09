@@ -54,15 +54,36 @@ DispatcherWorkerContext Dispatcher::GetWorkSession(const RequestSpec &request_sp
   }
   return context;
 }
+void Dispatcher::SetMaxInferNum(uint32_t max_infer_num) {
+  if (max_infer_num != 0) {
+    max_infer_num_ = max_infer_num;
+  }
+}
+Status Dispatcher::JudgeInferNum() {
+  if (infer_num_ >= max_infer_num_) {
+    return INFER_STATUS_LOG_ERROR(FAILED) << "Serving Error: infer number exceeds the limit " << max_infer_num_;
+  }
+  return SUCCESS;
+}
 
 void Dispatcher::DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
                                PredictOnFinish on_finish) {
   MSI_EXCEPTION_IF_NULL(reply);
-  Status status;
   (*reply->mutable_servable_spec()) = request.servable_spec();
+  Status status = JudgeInferNum();
+  if (status != SUCCESS) {
+    GrpcTensorHelper::CreateReplyFromErrorMsg(status, reply);
+    on_finish();
+    return;
+  }
   try {
+    auto callback = [this, on_finish]() {
+      on_finish();
+      this->infer_num_--;
+    };
+    infer_num_++;
     MSI_TIME_STAMP_START(Predict)
-    status = DispatchAsyncInner(request, reply, on_finish);
+    status = DispatchAsyncInner(request, reply, callback);
     MSI_TIME_STAMP_END(Predict)
   } catch (const std::bad_alloc &ex) {
     MSI_LOG(ERROR) << "Serving Error: malloc memory failed";
@@ -82,6 +103,7 @@ void Dispatcher::DispatchAsync(const proto::PredictRequest &request, proto::Pred
   if (status != SUCCESS) {
     GrpcTensorHelper::CreateReplyFromErrorMsg(status, reply);
     on_finish();
+    infer_num_--;
   }
 }
 

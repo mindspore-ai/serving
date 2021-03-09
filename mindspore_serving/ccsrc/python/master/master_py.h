@@ -36,9 +36,11 @@ namespace serving {
 
 class MS_API PyMaster {
  public:
-  static void StartGrpcServer(const std::string &ip, uint32_t grpc_port, int max_msg_mb_size = 100);
+  static void StartGrpcServer(const std::string &ip, uint32_t grpc_port, int max_msg_mb_size = 100,
+                              uint32_t max_infer_num = 10000);
   static void StartGrpcMasterServer(const std::string &ip, uint32_t grpc_port);
-  static void StartRestfulServer(const std::string &ip, uint32_t grpc_port, int max_msg_mb_size = 100);
+  static void StartRestfulServer(const std::string &ip, uint32_t grpc_port, int max_msg_mb_size = 100,
+                                 uint32_t max_infer_num = 10000);
   static void WaitAndClear();
   static void StopAndClear();
 };
