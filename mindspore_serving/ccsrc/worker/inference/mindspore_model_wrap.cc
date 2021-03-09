@@ -153,6 +153,8 @@ std::shared_ptr<Context> MindSporeModelWrap::TransformModelContext(const std::ma
       mindspore::ModelContext::SetPrecisionMode(context, value);
     } else if (key == "acl_option.op_select_impl_mode") {
       mindspore::ModelContext::SetOpSelectImplMode(context, value);
+    } else if (key == "gpu_option.enable_trt_infer") {
+      mindspore::ModelContext::SetGpuTrtInferMode(context, value);
     }
   }
   return context;
@@ -397,6 +399,5 @@ ApiBufferTensorWrap::ApiBufferTensorWrap() = default;
 ApiBufferTensorWrap::ApiBufferTensorWrap(const mindspore::MSTensor &tensor) : tensor_(tensor) {}
 
 ApiBufferTensorWrap::~ApiBufferTensorWrap() = default;
-
 }  // namespace serving
 }  // namespace mindspore
