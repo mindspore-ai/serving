@@ -29,7 +29,7 @@ def declare_servable(servable_file, model_format, with_batch_dim=True, options=N
         model_format (str): Model format, "OM" or "MindIR", case ignored.
         with_batch_dim (bool): Whether the first shape dim of the inputs and outputs of model is batch dim,
              default True.
-        options (None, AclOptions, map): Options of model, currently AclOptions works.
+        options (None, AclOptions, GpuOptions, map): Options of model, currently AclOptions, GpuOptions works.
         without_batch_dim_inputs (None, int, tuple or list of int): Index of inputs that without batch dim
             when with_batch_dim is True.
     Raises:
@@ -59,7 +59,7 @@ def declare_servable(servable_file, model_format, with_batch_dim=True, options=N
         for k, w in options.items():
             check_type.check_str("options key", k)
             check_type.check_str(k + " value", w)
-    elif isinstance(options, AclOptions):
+    elif isinstance(options, _Options):
         # pylint: disable=protected-access
         options = options._as_options_map()
     elif options is not None:
@@ -74,7 +74,17 @@ def declare_servable(servable_file, model_format, with_batch_dim=True, options=N
                 f", options: {options}, without_batch_dim_inputs: {without_batch_dim_inputs}")
 
 
-class AclOptions:
+class _Options:
+    """ Abstract base class used to build a Options class. """
+
+    def __init__(self, **kwargs):
+        """ Initialize Options"""
+
+    def _as_options_map(self):
+        """Transfer Options to dict of str,str"""
+
+
+class AclOptions(_Options):
     """
     Helper class to set acl options.
 
@@ -101,6 +111,7 @@ class AclOptions:
     """
 
     def __init__(self, **kwargs):
+        super(AclOptions, self).__init__()
         self.insert_op_cfg_path = ""
         self.input_format = ""
         self.input_shape = ""
@@ -192,7 +203,6 @@ class AclOptions:
     def set_op_select_impl_mode(self, val):
         """Set option 'op_select_impl_mode', which means model precision mode, and the value can be "high_performance"
         or "high_precision",  default "high_performance".
-
         Args:
             val (str): Value of option 'op_select_impl_mode'，which can be "high_performance" or "high_precision",
                 default "high_performance".
@@ -220,4 +230,48 @@ class AclOptions:
             options['acl_option.precision_mode'] = self.precision_mode
         if self.op_select_impl_mode:
             options['acl_option.op_select_impl_mode'] = self.op_select_impl_mode
+        return options
+
+
+class GpuOptions(_Options):
+    """
+    Helper class to set gpu options.
+
+    Args:
+        enable_trt_infer (bool): Whether enable inference with TensorRT.
+
+    Raises:
+        RuntimeError: Gpu option is invalid, or value is not str.
+
+    Examples:
+        >>> from mindspore_serving.worker import register
+        >>> options = register.GpuOptions(enable_trt_infer=True)
+        >>> register.declare_servable(servable_file="deeptext.mindir", model_format="MindIR", options=options)
+    """
+
+    def __init__(self, **kwargs):
+        super(GpuOptions, self).__init__()
+        self.enable_trt_infer = False
+        val_set_fun = {"enable_trt_infer": self.set_trt_infer_mode}
+        for k, w in kwargs.items():
+            if k not in val_set_fun:
+                raise RuntimeError("Set gpu option failed, unsupported option " + k)
+            val_set_fun[k](w)
+
+    def set_trt_infer_mode(self, val):
+        """Set option 'enable_trt_infer'
+
+        Args:
+            val (bool): Value of option 'enable_trt_infer'.
+        Raises:
+            RuntimeError: The type of value is not bool.
+        """
+        check_type.check_bool('enable_trt_infer', val)
+        self.enable_trt_infer = val
+
+    def _as_options_map(self):
+        """Transfer GpuOptions to dict of str,str"""
+        options = {}
+        if self.enable_trt_infer:
+            options['gpu_option.enable_trt_infer'] = str(self.enable_trt_infer)
         return options

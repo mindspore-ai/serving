@@ -14,7 +14,7 @@
 # ============================================================================
 """MindSpore Serving Worker, for servable config."""
 
-from .servable import declare_servable, AclOptions
+from .servable import declare_servable, AclOptions, GpuOptions
 from .method import register_method, call_preprocess, call_servable, call_postprocess
 from .method import call_preprocess_pipeline, call_postprocess_pipeline
 
@@ -22,6 +22,7 @@ __all__ = []
 __all__.extend([
     "declare_servable",
     "AclOptions",
+    "GpuOptions",
     'register_method',
     'call_preprocess',
     'call_preprocess_pipeline',
