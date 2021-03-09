@@ -134,6 +134,7 @@ class AclOptions(_Options):
 
         Args:
             val (str): Value of option 'insert_op_cfg_path'.
+
         Raises:
             RuntimeError: The type of value is not str.
         """
@@ -147,6 +148,7 @@ class AclOptions(_Options):
         Args:
             val (str): Value of option 'input_format', and the value can be "ND", "NCHW", "NHWC",
                 "CHWN", "NC1HWC0", or "NHWC1C0".
+
         Raises:
             RuntimeError: The type of value is not str, or the value is invalid.
         """
@@ -162,6 +164,7 @@ class AclOptions(_Options):
 
         Args:
             val (str): Value of option 'input_shape'.
+
         Raises:
             RuntimeError: The type of value is not str, or the value is invalid.
         """
@@ -174,6 +177,7 @@ class AclOptions(_Options):
 
         Args:
             val (str): Value of option 'output_type', and the value can be "FP16", "UINT8", or "FP32", default "FP32".
+
         Raises:
             RuntimeError: The type of value is not str, or the value is invalid.
         """
@@ -190,6 +194,7 @@ class AclOptions(_Options):
         Args:
             val (str): Value of option 'precision_mode', and the value can be "force_fp16"， "force_fp16",
                 "must_keep_origin_dtype", or "allow_mix_precision", default "force_fp16".
+
         Raises:
             RuntimeError: The type of value is not str, or the value is invalid.
         """
@@ -203,9 +208,11 @@ class AclOptions(_Options):
     def set_op_select_impl_mode(self, val):
         """Set option 'op_select_impl_mode', which means model precision mode, and the value can be "high_performance"
         or "high_precision",  default "high_performance".
+
         Args:
             val (str): Value of option 'op_select_impl_mode'，which can be "high_performance" or "high_precision",
                 default "high_performance".
+
         Raises:
             RuntimeError: The type of value is not str, or the value is invalid.
         """
@@ -263,6 +270,7 @@ class GpuOptions(_Options):
 
         Args:
             val (bool): Value of option 'enable_trt_infer'.
+
         Raises:
             RuntimeError: The type of value is not bool.
         """

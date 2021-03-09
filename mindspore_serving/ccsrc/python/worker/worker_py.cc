@@ -174,7 +174,7 @@ void PyWorker::PushPreprocessPyResult(const py::tuple &output_batch) {
     instance.data = PyTensor::AsInstanceData(py::cast<py::tuple>(output));
     outputs.push_back(instance);
   }
-  Worker::GetInstance().GetPyTaskQueuePreprocess()->PushTaskPyResult(outputs);
+  Worker::GetInstance().PushPyPreprocessResult(outputs);
   MSI_TIME_STAMP_END(PushPreprocessPyResult)
 }
 
@@ -186,7 +186,7 @@ void PyWorker::PushPreprocessPyFailed(int count) {
     result_instance.error_msg = error_msg;
     results.push_back(result_instance);
   }
-  Worker::GetInstance().GetPyTaskQueuePreprocess()->PushTaskPyResult(results);
+  Worker::GetInstance().PushPyPreprocessResult(results);
 }
 
 void PyWorker::PushPostprocessPyResult(const py::tuple &output_batch) {
@@ -196,7 +196,7 @@ void PyWorker::PushPostprocessPyResult(const py::tuple &output_batch) {
     instance.data = PyTensor::AsInstanceData(py::cast<py::tuple>(output));
     outputs.push_back(instance);
   }
-  Worker::GetInstance().GetPyTaskQueuePostprocess()->PushTaskPyResult(outputs);
+  Worker::GetInstance().PushPyPostprocessResult(outputs);
 }
 
 void PyWorker::PushPostprocessPyFailed(int count) {
@@ -207,7 +207,7 @@ void PyWorker::PushPostprocessPyFailed(int count) {
     result_instance.error_msg = error_msg;
     results.push_back(result_instance);
   }
-  Worker::GetInstance().GetPyTaskQueuePostprocess()->PushTaskPyResult(results);
+  Worker::GetInstance().PushPyPostprocessResult(results);
 }
 
 void PyWorker::WaitAndClear() {

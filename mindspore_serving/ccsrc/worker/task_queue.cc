@@ -35,6 +35,7 @@ TaskQueue::TaskQueue(std::shared_ptr<std::mutex> lock, std::shared_ptr<std::cond
 TaskQueue::~TaskQueue() = default;
 
 Status TaskQueue::SetWorkerCallback(uint64_t worker_id, TaskCallBack on_task_done) {
+  std::unique_lock<std::mutex> lock{*lock_};
   if (!is_running) {
     return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Task queue has not been started";
   }
@@ -65,6 +66,11 @@ void TaskQueue::PushTask(const std::string &task_name, uint64_t worker_id, const
 }
 
 void TaskQueue::PushTaskResult(uint64_t worker_id, const InstancePtr &input, const ResultInstance &output) {
+  std::unique_lock<std::mutex> lock{*lock_};
+  if (!is_running) {
+    MSI_LOG_INFO << "Task queue has exited";
+    return;
+  }
   auto it = callback_map_.find(worker_id);
   if (it == callback_map_.end()) {
     MSI_LOG_ERROR << "Worker service " << worker_id << " has not specified callback";
@@ -79,6 +85,11 @@ void TaskQueue::PushTaskResult(uint64_t worker_id, const InstancePtr &input, con
 
 void TaskQueue::PushTaskResult(uint64_t worker_id, const std::vector<InstancePtr> &inputs,
                                const std::vector<ResultInstance> &outputs) {
+  std::unique_lock<std::mutex> lock{*lock_};
+  if (!is_running) {
+    MSI_LOG_INFO << "Task queue has exited";
+    return;
+  }
   auto it = callback_map_.find(worker_id);
   if (it == callback_map_.end()) {
     MSI_LOG_ERROR << "Worker service " << worker_id << " has not specified callback";

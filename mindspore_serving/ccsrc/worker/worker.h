@@ -68,11 +68,9 @@ class MS_API Worker {
   Status RemoveWorker(const ServableWorkerContext &work);
 
   PyTaskQueueGroup &GetPyTaskQueueGroup() { return py_task_queue_group_; }
-  std::shared_ptr<TaskQueue> GetPyTaskQueuePreprocess() { return py_task_queue_group_.GetPreprocessTaskQueue(); }
-  std::shared_ptr<TaskQueue> GetPyTaskQueuePostprocess() { return py_task_queue_group_.GetPostprocessTaskQueue(); }
-  std::shared_ptr<TaskQueue> GetCppTaskQueuePreprocess() { return cpp_preprocess_.GetTaskQueue(); }
-  std::shared_ptr<TaskQueue> GetCppTaskQueuePostprocess() { return cpp_postprocess_.GetTaskQueue(); }
   size_t GetBatchSize() const;
+  void PushPyPreprocessResult(std::vector<ResultInstance> outputs);
+  void PushPyPostprocessResult(std::vector<ResultInstance> outputs);
 
  private:
   std::vector<ServableWorkerContext> work_list_;
@@ -90,6 +88,10 @@ class MS_API Worker {
   std::shared_mutex worker_shared_lock_;
 
   ServableWorkerContext GetServableWorker(const RequestSpec &request_spec);
+  std::shared_ptr<TaskQueue> GetPyTaskQueuePreprocess() { return py_task_queue_group_.GetPreprocessTaskQueue(); }
+  std::shared_ptr<TaskQueue> GetPyTaskQueuePostprocess() { return py_task_queue_group_.GetPostprocessTaskQueue(); }
+  std::shared_ptr<TaskQueue> GetCppTaskQueuePreprocess() { return cpp_preprocess_.GetTaskQueue(); }
+  std::shared_ptr<TaskQueue> GetCppTaskQueuePostprocess() { return cpp_postprocess_.GetTaskQueue(); }
 };
 
 }  // namespace serving

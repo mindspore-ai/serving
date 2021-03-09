@@ -134,6 +134,8 @@ def serving_test(func):
             worker.stop()
             servable_dir = os.path.join(os.getcwd(), "serving_python_ut_servables")
             rmtree(servable_dir, True)
+            temp_rank_dir = os.path.join(os.getcwd(), "temp_rank_table")
+            rmtree(temp_rank_dir, True)
             global client_create_list
             for client in client_create_list:
                 del client.stub

@@ -87,7 +87,6 @@ class MSServiceClient {
     call->response_reader = stub->PrepareAsyncPredict(&call->context, request, &cq_);
     call->response_reader->StartCall();
     call->response_reader->Finish(call->reply, &call->status, call);
-    MSI_LOG(INFO) << "Finish send Predict";
   }
 
  private:

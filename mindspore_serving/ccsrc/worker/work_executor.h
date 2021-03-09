@@ -44,7 +44,7 @@ struct InferSession {
   WorkCallBack call_back = nullptr;
 };
 
-class WorkExecutor {
+class WorkExecutor : public std::enable_shared_from_this<WorkExecutor> {
  public:
   WorkExecutor(std::shared_ptr<TaskQueue> py_preprocess, std::shared_ptr<TaskQueue> py_postprocess,
                std::shared_ptr<TaskQueue> cpp_preprocess, std::shared_ptr<TaskQueue> cpp_postprocess);
@@ -80,7 +80,7 @@ class WorkExecutor {
 
   void ClearInstances();
 
-  Status CheckSevableSignature();
+  Status CheckServableSignature();
 
   bool ReplyError(const std::vector<InstancePtr> &context, const Status &error_msg);
   bool ReplyError(const InstancePtr &context, const Status &error_msg);
