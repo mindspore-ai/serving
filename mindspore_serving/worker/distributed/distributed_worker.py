@@ -27,7 +27,7 @@ def _get_rank_table_abs_path(rank_table_json_file):
     """Get absolute path of rank table file"""
     script_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
     logger.info(f"input rank table file: {rank_table_json_file}")
-    rank_table_json_file = os.path.join(script_dir, rank_table_json_file)
+    rank_table_json_file = os.path.realpath(os.path.join(script_dir, rank_table_json_file))
     logger.info(f"absolute path of rank table file: {rank_table_json_file}")
     return rank_table_json_file
 

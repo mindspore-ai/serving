@@ -529,7 +529,7 @@ Status DistributedServable::CheckAgentsInfosAndInitTensorInfos() {
   auto stage_size = config_.distributed_meta.stage_size;
   auto parallel_count = rank_size / stage_size;
   MSI_LOG_INFO << "Check agents infos, rank size :" << rank_size << ", stage size: " << stage_size
-               << ", parallel count: " << parallel_count;
+               << ", parallel count(rank size/stage size): " << parallel_count;
   if (agent_spec_map_.size() != rank_size) {
     return INFER_STATUS_LOG_ERROR(FAILED)
            << "Registered agents size " << agent_spec_map_.size() << " not match rank size " << rank_size;
@@ -626,8 +626,9 @@ Status DistributedServable::CheckRankConfig() {
     }
     if (parallel_count % card_count_per_machine != 0) {
       return INFER_STATUS_LOG_ERROR(FAILED)
-             << "Parallel count " << parallel_count << " in one stage must be N * " << card_count_per_machine
-             << "(card count of one machine), rank size: " << rank_size << ", stage size: " << stage_size;
+             << "Parallel count(rank size/stage size) " << parallel_count << " in one stage must be N * "
+             << card_count_per_machine << "(card count of one machine) when rank size >= 8, rank size: " << rank_size
+             << ", stage size: " << stage_size;
     }
     for (size_t i = 0; i < rank_size; i += card_count_per_machine) {
       const auto &first_item = config_.rank_list[i];
