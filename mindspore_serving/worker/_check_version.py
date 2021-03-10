@@ -250,12 +250,13 @@ class GPUEnvChecker():
         """Get gpu lib path by ldd command."""
         path_list = []
         current_path = os.path.split(os.path.realpath(__file__))[0]
-        ldd_result = subprocess.run(["ldd " + current_path + "/_c_expression*.so* | grep " + lib_name],
+        mindspore_path = os.path.dirname(os.path.dirname(current_path)) + "/mindspore"
+        ldd_result = subprocess.run(["ldd " + mindspore_path + "/_c_expression*.so* | grep " + lib_name],
                                     timeout=3, text=True, capture_output=True, check=False, shell=True)
         if ldd_result.returncode:
             logger.warning(f"{lib_name} so(need by mndspore-gpu) is not found, please confirm that "
                            f"_c_experssion.so depend on {lib_name}, "
-                           f"and _c_expression.so in directory:{current_path}")
+                           f"and _c_expression.so in directory:{mindspore_path}")
             return path_list
         result = ldd_result.stdout
         for i in result.split('\n'):
