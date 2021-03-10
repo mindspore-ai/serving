@@ -141,7 +141,7 @@ Status GrpcNotifyDistributeWorker::GetAgentsConfigsFromWorker(const std::string 
   if (ExitSignalHandle::Instance().HasStopped()) {
     return INFER_STATUS_LOG_WARNING(FAILED) << "Agent exit, stop get Agents configs from Worker";
   }
-  return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Failed to get Agents configs from Worker";
+  return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Failed to get Agents configs from Worker, worker is not available.";
 }
 Status GrpcNotifyDistributeWorker::ParseAgentConfigAcquireReply(const proto::AgentConfigAcquireReply &reply,
                                                                 DistributedServableConfig *config) {
