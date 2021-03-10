@@ -84,9 +84,8 @@ Status WorkerAgent::StartAgent(const AgentStartUpConfig &config) {
 
 Status WorkerAgent::StartGrpcServer() {
   std::string server_address = config_.agent_ip + ":" + std::to_string(config_.agent_port);
-  grpc_server_.Start(std::make_shared<MSAgentImpl>(server_address), config_.agent_ip, config_.agent_port,
-                     gRpcMaxMBMsgSize, "Agent");
-  return SUCCESS;
+  return grpc_server_.Start(std::make_shared<MSAgentImpl>(server_address), config_.agent_ip, config_.agent_port,
+                            gRpcMaxMBMsgSize, "Agent");
 }
 
 Status WorkerAgent::RegisterAgent() {
