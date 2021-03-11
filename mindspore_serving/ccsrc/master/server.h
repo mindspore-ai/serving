@@ -30,10 +30,11 @@ class MS_API Server {
  public:
   Server();
   ~Server();
-  Status StartGrpcServer(const std::string &ip, uint32_t grpc_port, int max_msg_mb_size = gRpcDefaultMsgMBSize);
+  Status StartGrpcServer(const std::string &ip, uint32_t grpc_port, int max_msg_mb_size = gRpcDefaultMsgMBSize,
+                         uint32_t max_infer_num = g_max_infer_num_);
   Status StartGrpcMasterServer(const std::string &ip, uint32_t grpc_port);
   Status StartRestfulServer(const std::string &ip, uint32_t restful_port, int max_msg_mb_size = gRpcDefaultMsgMBSize,
-                            int time_out_second = 100);
+                            uint32_t max_infer_num = g_max_infer_num_, int time_out_second = 100);
   void Clear();
 
   std::shared_ptr<Dispatcher> GetDispatcher() { return dispatcher_; }

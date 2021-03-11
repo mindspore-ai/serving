@@ -35,7 +35,7 @@
 namespace mindspore {
 namespace serving {
 
-Status Server::StartGrpcServer(const std::string &ip, uint32_t grpc_port, int max_msg_mb_size) {
+Status Server::StartGrpcServer(const std::string &ip, uint32_t grpc_port, int max_msg_mb_size, uint32_t max_infer_num) {
   if (grpc_async_server_ != nullptr) {
     return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Serving Error: Serving gRPC server is already running";
   }
@@ -45,6 +45,7 @@ Status Server::StartGrpcServer(const std::string &ip, uint32_t grpc_port, int ma
     max_msg_mb_size = gRpcMaxMBMsgSize;
   }
   grpc_async_server_ = std::make_unique<MSServiceServer>(std::make_shared<MSServiceImpl>(dispatcher_), ip, grpc_port);
+  dispatcher_->SetMaxInferNum(max_infer_num);
   return grpc_async_server_->Init(max_msg_mb_size);
 }
 
@@ -55,7 +56,8 @@ Status Server::StartGrpcMasterServer(const std::string &ip, uint32_t grpc_port) 
 }
 
 Status Server::StartRestfulServer(const std::string &ip, uint32_t restful_port, int max_msg_mb_size,
-                                  int time_out_second) {
+                                  uint32_t max_infer_num, int time_out_second) {
+  dispatcher_->SetMaxInferNum(max_infer_num);
   return restful_server_.Start(ip, restful_port, max_msg_mb_size, time_out_second);
 }
 
