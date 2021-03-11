@@ -166,6 +166,7 @@ class AscendEnvChecker:
                 "Can not find opp path (need by mindspore-ascend), please check if you have set env ASCEND_OPP_PATH, "
                 "you can reference to the installation guidelines https://www.mindspore.cn/install")
 
+
 class GPUEnvChecker():
     """GPU environment check."""
 
@@ -190,7 +191,7 @@ class GPUEnvChecker():
         """Get cuda bin path by lib path."""
         path_list = []
         for path in self.cuda_lib_path:
-            path = os.path.abspath(path.strip()+"/bin/")
+            path = os.path.abspath(path.strip() + "/bin/")
             if Path(path).is_dir():
                 path_list.append(path)
         return np.unique(path_list)

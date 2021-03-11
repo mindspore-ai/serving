@@ -205,6 +205,11 @@ void TaskQueue::Stop() {
   if (!is_running) {
     return;
   }
+  task_map_.clear();
+  task_priority_list_ = std::queue<std::string>();
+  task_item_processing_ = TaskItem();
+  callback_map_.clear();
+
   is_running = false;
   cond_var_->notify_all();
 }
