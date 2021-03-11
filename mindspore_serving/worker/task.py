@@ -18,12 +18,15 @@ import threading
 import time
 import logging
 from mindspore_serving._mindspore_serving import Worker_
+from mindspore_serving._mindspore_serving import ExitSignalHandle_
 from mindspore_serving.worker.register.preprocess import preprocess_storage
 from mindspore_serving.worker.register.postprocess import postprocess_storage
 from mindspore_serving import log as logger
 
 
 class ServingSystemException(Exception):
+    """Exception notify system error of worker, and need to exit py task"""
+
     def __init__(self, msg):
         super(ServingSystemException, self).__init__()
         self.msg = msg
@@ -32,10 +35,22 @@ class ServingSystemException(Exception):
         return "Serving system error: " + self.msg
 
 
+class ServingExitException(Exception):
+    """Exception notify exit of worker, and need to exit py task"""
+
+    def __str__(self):
+        return "Serving has exited"
+
+
 task_type_stop = "stop"
 task_type_empty = "empty"
 task_type_preprocess = "preprocess"
 task_type_postprocess = "postprocess"
+
+
+def has_worker_stopped():
+    """Whether worker has stopped"""
+    return ExitSignalHandle_.has_stopped()
 
 
 class PyTask:
@@ -119,6 +134,10 @@ class PyTask:
                 last_index = self.index
 
                 for _ in range(self.index, min(self.index + self.switch_batch, instances_size)):
+                    if has_worker_stopped():
+                        logger.info("Worker has exited, exit py task")
+                        raise ServingExitException()
+
                     output = next(result)
                     output = self._handle_result(output)
                     self.result_batch.append(output)
@@ -140,6 +159,8 @@ class PyTask:
             except ServingSystemException as e:
                 result_count = self.index + len(self.result_batch)
                 self.push_failed(instances_size - result_count)
+                raise e
+            except ServingExitException as e:
                 raise e
             except Exception as e:  # catch exception and try next
                 logger.warning(f"{self.task_name} get result catch exception: {e}")
@@ -226,6 +247,9 @@ class PyTaskThread(threading.Thread):
         preprocess_turn = True
         while True:
             try:
+                if has_worker_stopped():
+                    logger.info("Worker has exited, exit py task")
+                    break
                 if not self.preprocess.has_next() and not self.postprocess.has_next():
                     task = Worker_.get_py_task()
                     if task.task_type == task_type_stop:
@@ -260,7 +284,9 @@ class PyTaskThread(threading.Thread):
                         if task.task_type != task_type_empty:
                             self.postprocess.run(task)
                     preprocess_turn = True
-
+            except ServingExitException:
+                logger.info("Catch ServingExitException and exit py task")
+                break
             except Exception as e:
                 logger.error(f"py task catch exception and exit: {e}")
                 logging.exception(e)
