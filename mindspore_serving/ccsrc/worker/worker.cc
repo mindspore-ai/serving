@@ -158,11 +158,6 @@ void Worker::StopServable(bool notify_master) {
 
 void Worker::Clear() {
   std::unique_lock<std::shared_mutex> lock(worker_shared_lock_);
-  ServableStorage::Instance().Clear();
-  worker_grpc_server_ = nullptr;
-  if (clear_flag_.test_and_set()) {
-    return;
-  }
   MSI_LOG_INFO << "Start clear worker session";
   version_controller_.StopPollModelPeriodic();
   if (exit_notify_master_ && servable_started_) {
@@ -176,6 +171,10 @@ void Worker::Clear() {
   py_task_queue_group_.Stop();
   cpp_preprocess_.Stop();
   cpp_postprocess_.Stop();
+
+  ServableStorage::Instance().Clear();
+  worker_grpc_server_ = nullptr;
+
   servable_started_ = false;
   MSI_LOG_INFO << "End clear worker session";
 }
@@ -219,6 +218,24 @@ size_t Worker::GetBatchSize() const {
     }
   }
   return batch_size_ret;
+}
+
+void Worker::PushPyPreprocessResult(std::vector<ResultInstance> outputs) {
+  std::shared_lock<std::shared_mutex> lock(worker_shared_lock_);
+  if (!servable_started_) {
+    MSI_LOG_INFO << "Worker has not started or has exited";
+    return;
+  }
+  GetPyTaskQueuePreprocess()->PushTaskPyResult(outputs);
+}
+
+void Worker::PushPyPostprocessResult(std::vector<ResultInstance> outputs) {
+  std::shared_lock<std::shared_mutex> lock(worker_shared_lock_);
+  if (!servable_started_) {
+    MSI_LOG_INFO << "Worker has not started or has exited";
+    return;
+  }
+  GetPyTaskQueuePostprocess()->PushTaskPyResult(outputs);
 }
 
 }  // namespace serving

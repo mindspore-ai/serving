@@ -42,9 +42,12 @@ WorkExecutor::WorkExecutor(std::shared_ptr<TaskQueue> py_preprocess_task_queue,
   worker_id_ = ++g_worker_id;
 }
 
-WorkExecutor::~WorkExecutor() { ClearInstances(); }
+WorkExecutor::~WorkExecutor() {
+  predict_thread_.Stop();
+  ClearInstances();
+}
 
-Status WorkExecutor::CheckSevableSignature() {
+Status WorkExecutor::CheckServableSignature() {
   Status status;
   const auto &input_infos = input_infos_;
   if (servable_declare_.methods.empty()) {
@@ -130,7 +133,7 @@ Status WorkExecutor::Init(const ServableSignature &servable_declare, const std::
     MSI_LOG_ERROR << "Check servable declare failed";
     return status;
   }
-  status = CheckSevableSignature();
+  status = CheckServableSignature();
   if (status != SUCCESS) {
     MSI_LOG_ERROR << "Check servable definition failed";
     return status;
@@ -209,8 +212,7 @@ void WorkExecutor::InitPrePostprocess() {
 
 void WorkExecutor::InitInputTensors() {
   inference_inputs_.clear();
-  for (size_t i = 0; i < input_infos_.size(); i++) {
-    auto &input_info = input_infos_[i];
+  for (auto &input_info : input_infos_) {
     auto tensor = std::make_shared<Tensor>();
     tensor->set_data_type(input_info.data_type);
     tensor->set_shape(input_info.shape);
