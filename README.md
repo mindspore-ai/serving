@@ -27,7 +27,7 @@ MindSpore Serving is a lightweight and high-performance service module that help
 
 MindSpore Serving architecture:
 
-Currently, the MindSpore Serving nodes include client, master, and worker. On a client node, you can directly deliver inference service commands through the gRPC or RESTful API. Servable model service is deployed on a worker node. Servable indicates a single model or a combination of multiple models and provides different services in various methods. A master node manages all worker nodes and their model information, as well as managing and distributing tasks. The master and worker nodes can be deployed in the same process or in different processes. Currently, the client and master nodes do not depend on specific hardware platforms. The worker node supports only the Ascend 310 and Ascend 910 platforms. GPUs and CPUs will be supported in the future.  
+Currently, the MindSpore Serving nodes include client, master, and worker. On a client node, you can directly deliver inference service commands through the gRPC or RESTful API. Servable model service is deployed on a worker node. Servable indicates a single model or a combination of multiple models and provides different services in various methods. A master node manages all worker nodes and their model information, as well as managing and distributing tasks. The master and worker nodes can be deployed in the same process or in different processes. Currently, the client and master nodes do not depend on specific hardware platforms. The worker node supports GPUs, the Ascend 310 and Ascend 910 platforms. CPUs will be supported in the future.  
 <img src="docs/architecture.png" alt="MindSpore Architecture" width="600"/>
 
 MindSpore Serving provides the following functions:
@@ -36,6 +36,7 @@ MindSpore Serving provides the following functions:
 - Pre-processing and post-processing of assembled models
 - Batch. Multiple instance requests are split and combined to meet the `batch size` requirement of the model.
 - Simple Python APIs on clients
+- Distributed model inference
 
 ## Installation
 
@@ -69,6 +70,8 @@ Perform the following steps to install Serving:
     Method 2: Directly build Serving. The MindSpore package is built together with Serving. You need to configure the [environment variables](https://gitee.com/mindspore/docs/blob/master/install/mindspore_ascend_install_source_en.md#configuring-environment-variables) for MindSpore building.
 
     ```shell
+    # GPU
+    sh build.sh -e gpu
     # Ascend 310
     sh build.sh -e ascend -V 310
     # Ascend 910
