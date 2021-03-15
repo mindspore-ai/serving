@@ -114,6 +114,7 @@ MindSpore Serving运行需要配置以下环境变量：
 - [基于gRPC接口访问MindSpore Serving服务](https://www.mindspore.cn/tutorial/inference/zh-CN/master/serving_grpc.html)
 - [基于RESTful接口访问MindSpore Serving服务](https://www.mindspore.cn/tutorial/inference/zh-CN/master/serving_restful.html)
 - [通过配置模型提供Servable](https://www.mindspore.cn/tutorial/inference/zh-CN/master/serving_model.html)
+- [基于MindSpore Serving部署分布式推理服务](https://www.mindspore.cn/tutorial/inference/zh-CN/master/serving_distributed_example.html)
 
 有关安装指南、教程和API的更多详细信息，请参阅[用户文档](https://www.mindspore.cn/doc/api_python/zh-CN/master/index.html)。
 
