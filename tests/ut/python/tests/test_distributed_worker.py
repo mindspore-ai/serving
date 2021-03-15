@@ -104,11 +104,11 @@ def start_agents(model_file_list, group_config_list):
     agent = Process(target=agent_process, args=(send_pipe,))
     agent.start()
     index = 0
-    while index < 30 and agent.is_alive():  # wait max 3 s
+    while index < 50 and agent.is_alive():  # wait max 5 s
         index += 1
         if recv_pipe.poll(0.1):
             break
-    assert index < 30
+    assert index < 50
     assert agent.is_alive()
     return agent
 

@@ -46,11 +46,19 @@ echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
 unset http_proxy
 unset https_proxy
 
-PROCESS=`netstat -nlp | grep :5500 | awk '{print $7}' | awk -F"/" '{print $1}'`
-for i in $PROCESS
-   do
-   echo "Kill the process [ $i ]"
-   kill -9 $i
+function clear_port()
+{
+  PROCESS=`netstat -nlp | grep :$1 | awk '{print $7}' | awk -F"/" '{print $1}'`
+  for i in $PROCESS
+     do
+     echo "Kill the process [ $i ]"
+     kill -9 $i
+  done
+}
+
+port_list=(5500 6200 7000 7001 7002 7003 7004 7005 7006 7007)
+for port in ${port_list[*]}; do
+  clear_port ${port}
 done
 
 cd -
