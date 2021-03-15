@@ -47,6 +47,12 @@ clean_master_pid()
       ps aux | grep 'worker.py' | grep ${CURRUSER} | grep -v grep | awk '{print $2}' | xargs kill -9
       echo "### master pid is killed but worker pid exist ###" & exit 1
     fi
+    ps aux | grep 'agent.py' | grep ${CURRUSER} | grep -v grep
+    if [ $? -eq 0 ]
+    then
+      ps aux | grep 'agent.py' | grep ${CURRUSER} | grep -v grep | awk '{print $2}' | xargs kill -9
+      echo "### worker pid is killed but agent pid exist ###" & exit 1
+    fi
   fi
 }
 
