@@ -1,4 +1,4 @@
-# Copyright 2020 Huawei Technologies Co., Ltd
+# Copyright 2021 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,16 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-"""MindSpore Serving Master"""
-
-from ._master import start_grpc_server, start_restful_server, start_master_server, stop
-from . import context
-
-__all__ = []
-__all__.extend([
-    "start_grpc_server",
-    'start_restful_server',
-    'start_master_server',
-    'stop',
-    'context'
-])
+"""MindSpore Serving."""

@@ -1089,12 +1089,106 @@ def test_servable_worker_alone_servable_not_available():
     instances = []
     y_data_list = []
     for i in range(instance_count):
-        x1 = np.asarray([[1.1], [3.3]]).astype(np.float32) * (i + 1)
-        x2 = np.asarray([[5.5], [7.7]]).astype(np.float32) * (i + 1)
+        x1 = np.asarray([[1.1, 2.2], [3.3, 4.4]]).astype(np.float32) * (i + 1)
+        x2 = np.asarray([[5.5, 6.6], [7.7, 8.8]]).astype(np.float32) * (i + 1)
         y_data_list.append(x1 + x2)
-        instances.append({"x3": x1, "x2": x2})
+        instances.append({"x1": x1, "x2": x2})
 
     client = create_client("localhost", 5500, base.servable_name + "error", "add_common")
     result = client.infer(instances)
     print(result)
     assert "servable is not available" in result["error"]
+
+
+@serving_test
+def test_servable_worker_with_master_max_request_count():
+    # fail returned from Worker::RunAsync
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += servable_config_declare_servable
+    servable_content += r"""
+import time
+def preprocess(x1, x2):
+    time.sleep(1)    
+    return x1, x2
+    
+@register.register_method(output_names=["y"])
+def add_common(x1, x2):
+    x1, x2 = register.call_preprocess(preprocess, x1, x2)
+    y = register.call_servable(x1, x2)
+    return y
+"""
+    base.init_servable_with_servable_config(1, servable_content)
+    master.context.set_max_request_buffer_count(1)
+    worker.start_servable_in_master(base.servable_dir, base.servable_name)
+    master.start_grpc_server("0.0.0.0", 5500)
+    # Client
+    x1 = np.asarray([[1.1, 2.2], [3.3, 4.4]]).astype(np.float32)
+    x2 = np.asarray([[5.5, 6.6], [7.7, 8.8]]).astype(np.float32)
+    instance = {"x1": x1, "x2": x2}
+
+    client = create_client("localhost", 5500, base.servable_name, "add_common")
+    result_list = []
+    for _ in range(2):
+        result = client.infer_async(instance)
+        result_list.append(result)
+
+    result0 = result_list[0].result()
+    result1 = result_list[1].result()
+    print(result0)
+    print(result1)
+    assert "error" in result0 or "error" in result1
+    if "error" in result0:
+        assert "error" not in result1
+        assert "Serving Error: request buffer number exceeds the limit 1" in result0["error"]
+    else:
+        assert "error" not in result0
+        assert "Serving Error: request buffer number exceeds the limit 1" in result1["error"]
+
+
+@serving_test
+def test_servable_worker_alone_max_request_count():
+    # fail returned from Worker::RunAsync
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += servable_config_declare_servable
+    servable_content += r"""
+import time
+def preprocess(x1, x2):
+    time.sleep(1)    
+    return x1, x2
+    
+@register.register_method(output_names=["y"])
+def add_common(x1, x2):
+    x1, x2 = register.call_preprocess(preprocess, x1, x2)
+    y = register.call_servable(x1, x2)
+    return y
+"""
+    base.init_servable_with_servable_config(1, servable_content)
+    master.context.set_max_request_buffer_count(1)
+
+    master.start_master_server("0.0.0.0", 6100)
+    worker.start_servable(base.servable_dir, base.servable_name, worker_port=6200, master_port=6100)
+    master.start_grpc_server("0.0.0.0", 5500)
+    # Client
+    x1 = np.asarray([[1.1, 2.2], [3.3, 4.4]]).astype(np.float32)
+    x2 = np.asarray([[5.5, 6.6], [7.7, 8.8]]).astype(np.float32)
+    instance = {"x1": x1, "x2": x2}
+
+    client = create_client("localhost", 5500, base.servable_name, "add_common")
+    result_list = []
+    for _ in range(2):
+        result = client.infer_async(instance)
+        result_list.append(result)
+
+    result0 = result_list[0].result()
+    result1 = result_list[1].result()
+    print(result0)
+    print(result1)
+    assert "error" in result0 or "error" in result1
+    if "error" in result0:
+        assert "error" not in result1
+        assert "Serving Error: request buffer number exceeds the limit 1" in result0["error"]
+    else:
+        assert "error" not in result0
+        assert "Serving Error: request buffer number exceeds the limit 1" in result1["error"]

@@ -21,7 +21,7 @@ from easydict import EasyDict
 
 from mindspore_serving._mindspore_serving import ServableStorage_, MethodSignature_, PredictPhaseTag_
 from mindspore_serving.worker.common import get_func_name, get_servable_dir
-from mindspore_serving.worker import check_type
+from mindspore_serving.common import check_type
 from mindspore_serving import log as logger
 from .preprocess import register_preprocess, check_preprocess
 from .postprocess import register_postprocess, check_postprocess

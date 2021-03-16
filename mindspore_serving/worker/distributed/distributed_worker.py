@@ -18,7 +18,7 @@ import os
 from mindspore_serving._mindspore_serving import Worker_
 
 from mindspore_serving import log as logger
-from mindspore_serving.worker import check_type
+from mindspore_serving.common import check_type
 from mindspore_serving.worker._worker import _start_py_task, _start_wait_and_clear
 from mindspore_serving.worker._worker import stop_on_except, _load_servable_config
 

@@ -30,7 +30,6 @@
 #include "common/grpc_client.h"
 
 namespace mindspore::serving {
-constexpr uint32_t g_max_infer_num_ = 10000;
 struct DispatcherWorkerContext {
   WorkerSpec worker_spec;
   std::shared_ptr<BaseNotifyWorker> notify_worker_ = nullptr;
@@ -63,7 +62,6 @@ class MS_API Dispatcher {
   // avoid invoke Clear and then UnregisterServable is invoked by Clear in other thread
   std::atomic_bool clearing_flag = false;
   std::atomic_uint32_t infer_num_ = 0;
-  uint32_t max_infer_num_ = g_max_infer_num_;
 
   Status JudgeInferNum();
   DispatcherWorkerContext GetWorkSession(const RequestSpec &request_spec) const;

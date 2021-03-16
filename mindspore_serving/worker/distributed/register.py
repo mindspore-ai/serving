@@ -15,7 +15,7 @@
 """Serving, distributed worker register"""
 
 from mindspore_serving._mindspore_serving import ServableMeta_, ServableStorage_
-from mindspore_serving.worker import check_type
+from mindspore_serving.common import check_type
 from mindspore_serving.worker.common import get_servable_dir
 from mindspore_serving import log as logger
 
