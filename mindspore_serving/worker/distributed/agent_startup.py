@@ -27,7 +27,7 @@ from mindspore_serving._mindspore_serving import ExitSignalHandle_
 from mindspore_serving._mindspore_serving import WorkerAgent_, AgentStartUpConfig_
 
 from mindspore_serving import log as logger
-from mindspore_serving.worker import check_type
+from mindspore_serving.common import check_type
 from mindspore_serving.worker.distributed import worker_agent
 
 
@@ -160,7 +160,8 @@ def _agent_process(send_pipe, recv_pipe, index, start_config):
     except Exception as e:
         traceback.print_exc()
         logger.error(f"Child {index}: Catch exception and notify exit of others")
-        send_pipe.send((index, e))
+        exception = RuntimeError(f"Child {index} exception happen: {e}")
+        send_pipe.send((index, exception))
         _recv_parent(parent_process, index, recv_pipe, False)
         logger.error(f"Child {index}: end send message to parent")
 
@@ -251,24 +252,23 @@ def _listening_agents_when_startup(p_recv_pipe, send_pipe_list, subprocess_list)
             if ExitSignalHandle_.has_stopped():
                 logger.warning("Fail to start agents because of Ctrl+C")
                 _send_exit_msg_to_children(send_pipe_list, subprocess_list)
-                return False
+                raise RuntimeError("Fail to start agents because of Ctrl+C")
             for send_pipe, process in zip(send_pipe_list, subprocess_list):
                 if process.is_alive():
                     continue
                 logger.warning("Fail to start agents because of death of one agent")
                 _send_exit_msg_to_children(send_pipe_list, subprocess_list)
-                return False
+                raise RuntimeError("Fail to start agents because of death of one agent")
 
         index, msg = p_recv_pipe.recv()
         logger.info(f"Receive msg from Child {index}: {msg}")
         if isinstance(msg, Exception):
             logger.warning("Fail to start agents because of exception raise by one agent")
             _send_exit_msg_to_children(send_pipe_list, subprocess_list)
-            return False
+            raise msg
 
     for send_pipe in send_pipe_list:
         _send_pipe_msg(send_pipe, signal_success)
-    return True
 
 
 def _listening_agents_after_startup(subprocess_list, worker_ip, worker_port, agent_ip):
@@ -328,16 +328,19 @@ def _startup_agents(common_meta, worker_ip, worker_port,
                           name=f"{servable_name}_worker_agent_rank{rank_id}_device{device_id}")
         process.start()
         subprocess_list.append(process)
-    ret = _listening_agents_when_startup(p_recv_pipe, send_pipe_list, subprocess_list)
 
     msg = f"worker_ip: {worker_ip}, worker_port: {worker_port}, agent_ip: {agent_ip}, " \
           f"agent_start_port: {agent_start_port}, device ids: {device_id_list}, rank ids: {rank_id_list}, " \
           f"rank table file: {rank_table_file}, model files: {model_files}, group config files: {group_config_files}"
-    if not ret:
+
+    try:
+        _listening_agents_when_startup(p_recv_pipe, send_pipe_list, subprocess_list)
+    # pylint: disable=broad-except
+    except Exception as e:
         WorkerAgent_.notify_failed(worker_ip, worker_port)
         logger.error(f"Failed to start agents, {msg}")
         print(f"Failed to start agents, {msg}")
-        raise RuntimeError("Failed to start agents")
+        raise e
 
     logger.info(f"Success to start agents, {msg}")
     print(f"Success to start agents, {msg}")

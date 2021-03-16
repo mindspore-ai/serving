@@ -18,6 +18,7 @@
 
 #include <utility>
 #include "common/proto_tensor.h"
+#include "master/master_context.h"
 #include "master/notify_worker/grpc_notify.h"
 #include "master/notify_worker/local_notify.h"
 
@@ -54,14 +55,11 @@ DispatcherWorkerContext Dispatcher::GetWorkSession(const RequestSpec &request_sp
   }
   return context;
 }
-void Dispatcher::SetMaxInferNum(uint32_t max_infer_num) {
-  if (max_infer_num != 0) {
-    max_infer_num_ = max_infer_num;
-  }
-}
+
 Status Dispatcher::JudgeInferNum() {
-  if (infer_num_ >= max_infer_num_) {
-    return INFER_STATUS_LOG_ERROR(FAILED) << "Serving Error: infer number exceeds the limit " << max_infer_num_;
+  auto max_infer_num = MasterContext::Instance()->GetMaxRequestBufferCount();
+  if (infer_num_ >= max_infer_num) {
+    return INFER_STATUS_LOG_ERROR(FAILED) << "Serving Error: request buffer number exceeds the limit " << max_infer_num;
   }
   return SUCCESS;
 }

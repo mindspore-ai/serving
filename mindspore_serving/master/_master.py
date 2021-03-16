@@ -16,7 +16,7 @@
 
 import threading
 from functools import wraps
-from mindspore_serving.worker import check_type
+from mindspore_serving.common import check_type
 from mindspore_serving import log as logger
 from mindspore_serving._mindspore_serving import ExitSignalHandle_
 from mindspore_serving._mindspore_serving import Master_
@@ -70,7 +70,7 @@ def stop_on_except(func):
 
 
 @stop_on_except
-def start_grpc_server(ip="0.0.0.0", grpc_port=5500, max_msg_mb_size=100, max_infer_num=10000):
+def start_grpc_server(ip="0.0.0.0", grpc_port=5500, max_msg_mb_size=100):
     r"""
     Start gRPC server for the communication between client and serving.
 
@@ -79,8 +79,6 @@ def start_grpc_server(ip="0.0.0.0", grpc_port=5500, max_msg_mb_size=100, max_inf
         grpc_port (int): gRPC port ip, default 5500, ip port range [1, 65535].
         max_msg_mb_size (int): The maximum acceptable gRPC message size in megabytes(MB), default 100,
             value range [1, 512].
-        max_infer_num (int): The maximum acceptable infer message size in number, default 10000,
-            Max infer number should be a positive integer.
     Raises:
         RuntimeError: Fail to start the gRPC server.
 
@@ -93,9 +91,8 @@ def start_grpc_server(ip="0.0.0.0", grpc_port=5500, max_msg_mb_size=100, max_inf
     check_type.check_str('ip', ip)
     check_type.check_ip_port('grpc_port', grpc_port)
     check_type.check_int('max_msg_mb_size', max_msg_mb_size, 1, 512)
-    check_type.check_int('max_infer_num', max_infer_num, 0)
 
-    Master_.start_grpc_server(ip, grpc_port, max_msg_mb_size, max_infer_num)
+    Master_.start_grpc_server(ip, grpc_port, max_msg_mb_size)
     _start_wait_and_clear()
 
 
@@ -129,7 +126,7 @@ def start_master_server(ip="127.0.0.1", master_port=6100):
 
 
 @stop_on_except
-def start_restful_server(ip="0.0.0.0", restful_port=5900, max_msg_mb_size=100, max_infer_num=10000):
+def start_restful_server(ip="0.0.0.0", restful_port=5900, max_msg_mb_size=100):
     r"""
     Start RESTful server for the communication between client and serving.
 
@@ -138,8 +135,6 @@ def start_restful_server(ip="0.0.0.0", restful_port=5900, max_msg_mb_size=100, m
         restful_port (int): gRPC port ip, default 5900, ip port range [1, 65535].
         max_msg_mb_size (int): The maximum acceptable RESTful message size in megabytes(MB), default 100,
             value range [1, 512].
-        max_infer_num (int): The maximum acceptable infer message size in number, default 10000,
-            Max infer number should be a positive integer.
     Raises:
         RuntimeError: Fail to start the RESTful server.
 
@@ -151,7 +146,6 @@ def start_restful_server(ip="0.0.0.0", restful_port=5900, max_msg_mb_size=100, m
     check_type.check_str('ip', ip)
     check_type.check_ip_port('restful_port', restful_port)
     check_type.check_int('max_msg_mb_size', max_msg_mb_size, 1, 512)
-    check_type.check_int('max_infer_num', max_infer_num, 0)
 
-    Master_.start_restful_server(ip, restful_port, max_msg_mb_size, max_infer_num)
+    Master_.start_restful_server(ip, restful_port, max_msg_mb_size)
     _start_wait_and_clear()

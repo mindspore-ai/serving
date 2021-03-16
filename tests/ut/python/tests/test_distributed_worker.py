@@ -92,23 +92,37 @@ def start_distributed_worker(base):
     return worker
 
 
-def start_agents(model_file_list, group_config_list):
+def start_agents(model_file_list, group_config_list, start_port):
     send_pipe, recv_pipe = Pipe()
 
     def agent_process(send_pipe):
-        distributed.startup_worker_agents(worker_ip="127.0.0.1", worker_port=6200, model_files=model_file_list,
-                                          group_config_files=group_config_list)
-        send_pipe.send("Success")
+        try:
+            distributed.startup_worker_agents(worker_ip="127.0.0.1", worker_port=6200, model_files=model_file_list,
+                                              group_config_files=group_config_list, agent_start_port=start_port)
+            send_pipe.send("Success")
+        # pylint: disable=broad-except
+        except Exception as e:
+            send_pipe.send(e)
         send_pipe.close()
 
     agent = Process(target=agent_process, args=(send_pipe,))
     agent.start()
     index = 0
-    while index < 50 and agent.is_alive():  # wait max 5 s
+    while index < 100 and agent.is_alive():  # wait max 10 s
         index += 1
         if recv_pipe.poll(0.1):
+            msg = recv_pipe.recv()
+            print(f"Receive agent process msg: {msg} {agent.is_alive()}")
+            if isinstance(msg, Exception):
+                raise msg
             break
-    assert index < 50
+
+    if recv_pipe.poll(0.1):
+        msg = recv_pipe.recv()
+        print(f"Receive agent process msg: {msg} {agent.is_alive()}")
+        if isinstance(msg, Exception):
+            raise msg
+    assert index < 100
     assert agent.is_alive()
     return agent
 
@@ -138,7 +152,7 @@ def test_distributed_worker_worker_exit_success():
     base = start_distributed_grpc_server()
     worker_process = start_distributed_worker(base)
     base.add_on_exit(lambda: send_exit(worker_process))
-    agent_process = start_agents(base.model_file_list, base.group_config_list)
+    agent_process = start_agents(base.model_file_list, base.group_config_list, 7000)
     base.add_on_exit(lambda: send_exit(agent_process))
 
     client = create_client("localhost", 5500, base.servable_name, "predict")
@@ -179,7 +193,7 @@ def test_distributed_worker_agent_exit_success():
     base = start_distributed_grpc_server()
     worker_process = start_distributed_worker(base)
     base.add_on_exit(lambda: send_exit(worker_process))
-    agent_process = start_agents(base.model_file_list, base.group_config_list)
+    agent_process = start_agents(base.model_file_list, base.group_config_list, 7008)
     base.add_on_exit(lambda: send_exit(agent_process))
 
     client = create_client("localhost", 5500, base.servable_name, "predict")
@@ -217,7 +231,7 @@ def test_distributed_worker_agent_startup_killed_exit_success():
     base = start_distributed_grpc_server()
     worker_process = start_distributed_worker(base)
     base.add_on_exit(lambda: send_exit(worker_process))
-    agent_process = start_agents(base.model_file_list, base.group_config_list)
+    agent_process = start_agents(base.model_file_list, base.group_config_list, 7016)
     base.add_on_exit(lambda: send_exit(agent_process))
 
     client = create_client("localhost", 5500, base.servable_name, "predict")
@@ -256,7 +270,7 @@ def test_distributed_worker_agent_killed_exit_success():
     base = start_distributed_grpc_server()
     worker_process = start_distributed_worker(base)
     base.add_on_exit(lambda: send_exit(worker_process))
-    agent_process = start_agents(base.model_file_list, base.group_config_list)
+    agent_process = start_agents(base.model_file_list, base.group_config_list, 7024)
     base.add_on_exit(lambda: send_exit(agent_process))
 
     client = create_client("localhost", 5500, base.servable_name, "predict")
@@ -289,3 +303,17 @@ def test_distributed_worker_agent_killed_exit_success():
     assert not worker_process.is_alive()
     assert not agent_process.is_alive()
     assert not agents_alive()
+
+
+@serving_test
+def test_distributed_worker_agent_invalid_model_files_failed():
+    base = start_distributed_grpc_server()
+    worker_process = start_distributed_worker(base)
+    base.add_on_exit(lambda: send_exit(worker_process))
+    base.model_file_list[0] = base.model_file_list[0] + "_error"
+    try:
+        start_agents(base.model_file_list, base.group_config_list, 7036)
+        assert False
+    # pylint: disable=broad-except
+    except Exception as e:
+        assert "Cannot access model file" in str(e)

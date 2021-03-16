@@ -17,21 +17,36 @@
 import threading
 from functools import wraps
 from mindspore_serving import log as logger
+from mindspore_serving.common import check_type
 from mindspore_serving.worker import init_mindspore
 from mindspore_serving._mindspore_serving import ExitSignalHandle_
 from mindspore_serving._mindspore_serving import Worker_
+from mindspore_serving._mindspore_serving import ServableContext_
 from .register.preprocess import preprocess_storage
 from .register.postprocess import postprocess_storage
-from . import context
 from .task import _start_py_task, _join_py_task
-from . import check_type
 
 _wait_and_clear_thread = None
 
 
 def _clear_python():
+    """Clear python storage data"""
     preprocess_storage.clear()
     postprocess_storage.clear()
+
+
+def _set_device_id(device_id):
+    """Set device id, default 0"""
+    ServableContext_.get_instance().set_device_id(device_id)
+
+
+def _set_device_type(device_type):
+    """Set device type, now can be 'None'(default), 'GPU' and 'Ascend', 'Davinci'(same as 'Ascend'), case ignored. """
+    if device_type is not None:
+        check_type.check_str('device_type', device_type)
+        ServableContext_.get_instance().set_device_type_str(device_type)
+    else:
+        ServableContext_.get_instance().set_device_type_str('None')  # depend on MindSpore build target
 
 
 def _start_wait_and_clear():
@@ -162,13 +177,8 @@ def start_servable(servable_directory, servable_name, version_number=0,
     init_mindspore.init_mindspore_cxx_env()
     _load_servable_config(servable_directory, servable_name)
 
-    if device_type is not None:
-        check_type.check_str('device_type', device_type)
-        context.set_context(device_type=device_type)
-    else:
-        context.set_context(device_type='None')  # depend on register implement
-
-    context.set_context(device_id=device_id)
+    _set_device_type(device_type)
+    _set_device_id(device_id)
     Worker_.start_servable(servable_directory, servable_name, version_number, master_ip, master_port,
                            worker_ip, worker_port)
     _start_py_task(Worker_.get_batch_size())
@@ -219,13 +229,8 @@ def start_servable_in_master(servable_directory, servable_name, version_number=0
     init_mindspore.init_mindspore_cxx_env()
     _load_servable_config(servable_directory, servable_name)
 
-    if device_type is not None:
-        check_type.check_str('device_type', device_type)
-        context.set_context(device_type=device_type)
-    else:
-        context.set_context(device_type='None')  # depend on register implement
-
-    context.set_context(device_id=device_id)
+    _set_device_type(device_type)
+    _set_device_id(device_id)
     Worker_.start_servable_in_master(servable_directory, servable_name, version_number)
     _start_py_task(Worker_.get_batch_size())
     _start_wait_and_clear()

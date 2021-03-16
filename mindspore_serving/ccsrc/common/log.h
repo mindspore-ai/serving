@@ -130,8 +130,8 @@ class MS_API LogWriter {
 
   std::string GetOutputMsg(const std::ostringstream &msg) const {
     std::string msg_str = msg.str();
-    constexpr int max_log_size = 256;
-    constexpr int msg_log_start_size = 128;
+    constexpr int max_log_size = 384;
+    constexpr int msg_log_start_size = 192;
     if (msg_str.length() > max_log_size) {
       msg_str = msg_str.substr(0, msg_log_start_size) + "..." + msg_str.substr(msg_str.length() - msg_log_start_size);
     }

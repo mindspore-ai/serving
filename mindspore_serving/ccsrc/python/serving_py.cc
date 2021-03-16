@@ -21,6 +21,7 @@
 #include "python/worker/servable_py.h"
 #include "python/tensor_py.h"
 #include "common/servable.h"
+#include "master/master_context.h"
 #include "worker/context.h"
 #include "python/master/master_py.h"
 #include "python/agent/agent_py.h"
@@ -166,7 +167,7 @@ void PyRegWorker(pybind11::module *m_ptr) {
     .def_static("push_postprocess_failed", &PyWorker::PushPostprocessPyFailed)
     .def_static("get_device_type", &PyWorker::GetDeviceType);
 
-  py::class_<ServableContext, std::shared_ptr<ServableContext>>(m, "Context_")
+  py::class_<ServableContext, std::shared_ptr<ServableContext>>(m, "ServableContext_")
     .def(py::init<>())
     .def_static("get_instance", &ServableContext::Instance)
     .def("set_device_type_str",
@@ -177,6 +178,11 @@ void PyRegWorker(pybind11::module *m_ptr) {
            }
          })
     .def("set_device_id", &ServableContext::SetDeviceId);
+
+  py::class_<MasterContext, std::shared_ptr<MasterContext>>(m, "MasterContext_")
+    .def(py::init<>())
+    .def_static("get_instance", &MasterContext::Instance)
+    .def("set_max_request_buffer_count", &MasterContext::SetMaxRequestBufferCount);
 }
 
 void PyRegWorkerAgent(pybind11::module *m_ptr) {
