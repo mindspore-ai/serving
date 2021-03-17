@@ -52,10 +52,12 @@ class FakeNotifyAgent : public BaseNotifyAgent {
       error_msg->set_error_msg(error_msg_);
     }
 
-    auto predict = [=]() {
-      std::chrono::milliseconds dura(prediction_time_);
+    auto prediction_time = prediction_time_;
+    auto status = status_;
+    auto predict = [prediction_time, status, callback]() {
+      std::chrono::milliseconds dura(prediction_time);
       std::this_thread::sleep_for(dura);
-      callback(status_);
+      callback(status);
     };
     std::thread t1(predict);
     t1.detach();
