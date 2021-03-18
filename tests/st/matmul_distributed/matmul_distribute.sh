@@ -34,7 +34,28 @@ clean_master_pid()
     then
       echo "clean master pip failed"
     fi
-    sleep 6
+
+    num=`ps -ef | grep agent.py | grep -v grep | wc -l`
+    count=0
+    while [[ ${num} -ne 0 && ${count} -lt 10 ]]
+    do
+      sleep 1
+      count=$(($count+1))
+      num=`ps -ef | grep agent.py | grep -v grep | wc -l`
+    done
+
+    if [ ${count} -eq 10 ]
+    then
+      echo "agent exit failed"
+      echo $num
+      ps -ef | grep agent.py | grep -v grep
+      echo "------------------------------ agent failed log begin: "
+      cat agent.log
+      echo "------------------------------ agent failed log end"
+      clean_pid && exit 1
+    fi
+    sleep 1
+
     ps aux | grep 'master.py' | grep ${CURRUSER} | grep -v grep
     if [ $? -eq 0 ]
     then

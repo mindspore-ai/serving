@@ -141,6 +141,7 @@ class MS_API InferenceLoader {
   typedef InferenceBase *(*CreateInferHandle)();
   void *ms_lib_handle_ = nullptr;
   void *ms_cxx_lib_handle_ = nullptr;
+  void *gomp_handler_ = nullptr;
   CreateInferHandle ms_create_handle_ = nullptr;
   Status LoadMindSporeModelWrap();
 };
