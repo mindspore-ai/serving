@@ -50,7 +50,7 @@ def start_distributed_servable(servable_directory, servable_name, rank_table_jso
     Args:
         servable_directory (str): The directory where the servable is located in. There expects to has a directory
             named `servable_name`. For more detail:
-            `How to config Servable <https://www.mindspore.cn/tutorial/inference/zh-CN/master/serving_model.html>`_ .
+            `How to config Servable <https://www.mindspore.cn/tutorial/inference/zh-CN/r1.2/serving_model.html>`_ .
 
         servable_name (str): The servable name.
         version_number (int): Servable version number to be loaded. The version number should be a positive integer,
@@ -107,7 +107,7 @@ def start_distributed_servable_in_master(servable_directory, servable_name, rank
     Args:
         servable_directory (str): The directory where the servable is located in. There expects to has a directory named
             `servable_name`. For more detail:
-            `How to config Servable <https://www.mindspore.cn/tutorial/inference/zh-CN/master/serving_model.html>`_ .
+            `How to config Servable <https://www.mindspore.cn/tutorial/inference/zh-CN/r1.2/serving_model.html>`_ .
 
         servable_name (str): The servable name.
         version_number (int): Servable version number to be loaded. The version number should be a positive integer,
