@@ -33,6 +33,9 @@ InferenceLoader::~InferenceLoader() {
   if (ms_cxx_lib_handle_ != nullptr) {
     dlclose(ms_cxx_lib_handle_);
   }
+  if (gomp_handler_ != nullptr) {
+    dlclose(gomp_handler_);
+  }
 }
 
 InferenceLoader &InferenceLoader::Instance() {
@@ -74,6 +77,17 @@ std::vector<std::string> SplitString(const std::string &s, const std::string &de
 
 Status InferenceLoader::LoadMindSporeModelWrap() {
   MSI_LOG_INFO << "Start Initialize MindSpore Model Wrap so";
+  std::vector<std::string> gomp_list = {"libgomp.so.1"};
+  for (auto &item : gomp_list) {
+    gomp_handler_ = dlopen(item.c_str(), RTLD_NOW | RTLD_GLOBAL);
+    if (gomp_handler_ != nullptr) {
+      MSI_LOG_INFO << "dlopen libgomp so: " << item << " success";
+    }
+  }
+  if (gomp_handler_ == nullptr) {
+    MSI_LOG_WARNING << "dlopen libgomp library failed, try dlopen list: " << gomp_list;
+  }
+
   auto get_dlerror = []() -> std::string {
     auto error = dlerror();
     if (error == nullptr) {

@@ -144,14 +144,28 @@ kill_master_with_worker()
   then
     echo "kill master_with_worker failed"
   fi
-  sleep 5
+
   num=`ps -ef | grep agent.py | grep -v grep | wc -l`
-  if [ $num -ne 0 ]
+  count=0
+  while [[ ${num} -ne 0 && ${count} -lt 10 ]]
+  do
+    sleep 1
+    count=$(($count+1))
+    num=`ps -ef | grep agent.py | grep -v grep | wc -l`
+  done
+
+  if [ ${count} -eq 10 ]
   then
     echo "agent exit failed"
     echo $num
+    ps -ef | grep agent.py | grep -v grep
+    echo "------------------------------ agent failed log begin: "
+    cat agent.log
+    echo "------------------------------ agent failed log end"
     clean_pid && exit 1
   fi
+  sleep 1
+
   num=`ps -ef | grep master_with_worker.py | grep -v grep | wc -l`
   if [ $num -ne 0 ]
   then

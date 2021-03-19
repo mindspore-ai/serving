@@ -25,6 +25,7 @@ import psutil
 
 from mindspore_serving._mindspore_serving import ExitSignalHandle_
 from mindspore_serving._mindspore_serving import WorkerAgent_, AgentStartUpConfig_
+from mindspore_serving._mindspore_serving import DistributedServableConfig_, OneRankConfig_
 
 from mindspore_serving import log as logger
 from mindspore_serving.common import check_type
@@ -347,6 +348,79 @@ def _startup_agents(common_meta, worker_ip, worker_port,
     _listening_agents_after_startup(subprocess_list, worker_ip, worker_port, agent_ip)
 
 
+class DistributedServableConfig:
+    """Python DistributedServableConfig"""
+    def __init__(self):
+        self.rank_table_content = ""
+        self.rank_list = None
+        self.common_meta = None
+        self.distributed_meta = None
+
+    def set(self, config):
+        """Set from C++ DistributedServableConfig_ obj"""
+        self.rank_table_content = config.rank_table_content
+        self.rank_list = []
+        for item in config.rank_list:
+            new_item = {"device_id": item.device_id, "ip": item.ip}
+            self.rank_list.append(new_item)
+        self.common_meta = {"servable_name": config.common_meta.servable_name,
+                            "with_batch_dim": config.common_meta.with_batch_dim,
+                            "without_batch_dim_inputs": config.common_meta.without_batch_dim_inputs,
+                            "inputs_count": config.common_meta.inputs_count,
+                            "outputs_count": config.common_meta.outputs_count}
+
+        self.distributed_meta = {"rank_size": config.distributed_meta.rank_size,
+                                 "stage_size": config.distributed_meta.stage_size}
+
+    def get(self):
+        """Get as C++ DistributedServableConfig_ obj"""
+        config = DistributedServableConfig_()
+        config.rank_table_content = self.rank_table_content
+        rank_list = []
+        for item in self.rank_list:
+            new_item = OneRankConfig_()
+            new_item.device_id = item["device_id"]
+            new_item.ip = item["ip"]
+            rank_list.append(new_item)
+        config.rank_list = rank_list
+        config.common_meta.servable_name = self.common_meta["servable_name"]
+        config.common_meta.with_batch_dim = self.common_meta["with_batch_dim"]
+        config.common_meta.without_batch_dim_inputs = self.common_meta["without_batch_dim_inputs"]
+        config.common_meta.inputs_count = self.common_meta["inputs_count"]
+        config.common_meta.outputs_count = self.common_meta["outputs_count"]
+
+        config.distributed_meta.rank_size = self.distributed_meta["rank_size"]
+        config.distributed_meta.stage_size = self.distributed_meta["stage_size"]
+        return config
+
+
+def _get_worker_distributed_config(worker_ip, worker_port):
+    """Get worker distributed config from worker through sub process"""
+    c_send_pipe, p_recv_pipe = Pipe()
+
+    def process_fun(c_send_pipe):
+        try:
+            distributed_config = WorkerAgent_.get_agents_config_from_worker(worker_ip, worker_port)
+            config = DistributedServableConfig()
+            config.set(distributed_config)
+            c_send_pipe.send(config)
+        # pylint: disable=broad-except
+        except Exception as e:
+            c_send_pipe.send(e)
+    process = Process(target=process_fun, args=(c_send_pipe,),
+                      name=f"worker_agent_get_agents_config_from_worker")
+    process.start()
+    process.join()
+    assert not process.is_alive()
+    if p_recv_pipe.poll(0.1):
+        config = p_recv_pipe.recv()
+        if isinstance(config, Exception):
+            raise config
+        distributed_config = config.get()
+        return distributed_config
+    raise RuntimeError(f"Failed to get agents config from worker")
+
+
 def startup_worker_agents(worker_ip, worker_port, model_files, group_config_files=None,
                           agent_start_port=7000, agent_ip=None, rank_start=None):
     r"""
@@ -390,7 +464,8 @@ def startup_worker_agents(worker_ip, worker_port, model_files, group_config_file
         group_config_files = check_type.check_and_as_str_tuple_list("group_config_files", group_config_files)
 
     ExitSignalHandle_.start()
-    distributed_config = WorkerAgent_.get_agents_config_from_worker(worker_ip, worker_port)
+    distributed_config = _get_worker_distributed_config(worker_ip, worker_port)
+    # distributed_config = WorkerAgent_.get_agents_config_from_worker(worker_ip, worker_port)
 
     # get machine ip
     rank_list = distributed_config.rank_list
