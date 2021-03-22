@@ -42,7 +42,7 @@ std::vector<MSTensor> AscendGraphImpl::GetOutputs() {
   return graph_imp_stub_->GetOutputs();
 }
 
-Status AscendGraphImpl::Load() { return kSuccess; }
+Status AscendGraphImpl::Load(uint32_t device_id) { return kSuccess; }
 
 Status AscendGraphImpl::Run(const std::vector<MSTensor> &inputs, std::vector<MSTensor> *outputs) {
   if (!graph_imp_stub_) {
