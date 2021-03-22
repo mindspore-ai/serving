@@ -3,7 +3,7 @@
 
 # Find Protobuf installation
 # Looks for protobuf-config.cmake file installed by Protobuf's cmake installation.
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,-rpath,$ORIGIN:$ORIGIN/lib")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,-rpath,$ORIGIN:$ORIGIN/lib -Wl,--no-as-needed")
 
 add_library(protobuf::libprotobuf ALIAS protobuf::protobuf)
 add_executable(protobuf::libprotoc ALIAS protobuf::protoc)
@@ -102,9 +102,12 @@ set_property(TARGET serving_ascend PROPERTY POSITION_INDEPENDENT_CODE TRUE)
 target_link_libraries(serving_common PRIVATE PROTO_SRC_LIB)
 target_link_libraries(serving_common PRIVATE ${_REFLECTION} ${_GRPC_GRPCPP} ${_PROTOBUF_LIBPROTOBUF} pthread)
 target_link_libraries(serving_common PRIVATE mindspore_serving::event mindspore_serving::event_pthreads)
+target_link_libraries(serving_common PRIVATE mindspore_serving::event_core)
 target_link_libraries(serving_common PRIVATE mindspore_serving::glog)
 target_link_libraries(serving_common PRIVATE mindspore_serving::eigen)
 target_link_libraries(serving_common PRIVATE ${SECUREC_LIBRARY})
+
+set_target_properties(serving_common PROPERTIES SKIP_BUILD_RPATH TRUE)
 
 # python
 add_compile_definitions(ENABLE_PYTHON)

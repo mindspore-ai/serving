@@ -42,6 +42,10 @@ void PyWorker::OnEndStartServable(const std::string &servable_directory, const s
 void PyWorker::StartServable(const std::string &model_directory, const std::string &model_name, uint32_t version_number,
                              const std::string &master_ip, uint32_t master_port, const std::string &worker_ip,
                              uint32_t worker_port) {
+  if (Worker::GetInstance().IsRunning()) {
+    MSI_LOG_EXCEPTION << "A servable has been started, only one servable can run in a process currently.";
+  }
+
   auto notify_master = std::make_shared<GrpcNotfiyMaster>(master_ip, master_port, worker_ip, worker_port);
   auto servable = std::make_shared<LocalModelServable>();
   auto status = servable->StartServable(model_directory, model_name, version_number);
@@ -69,6 +73,10 @@ void PyWorker::StartServable(const std::string &model_directory, const std::stri
 
 void PyWorker::StartServableInMaster(const std::string &model_directory, const std::string &model_name,
                                      uint32_t version_number) {
+  if (Worker::GetInstance().IsRunning()) {
+    MSI_LOG_EXCEPTION << "A servable has been started, only one servable can run in a process currently.";
+  }
+
   auto notify_master = std::make_shared<LocalNotifyMaster>();
   auto servable = std::make_shared<LocalModelServable>();
   auto status = servable->StartServable(model_directory, model_name, version_number);
@@ -92,6 +100,10 @@ void PyWorker::StartDistributedServable(const std::string &servable_directory, c
                                         const std::string &worker_ip, uint32_t worker_port,
                                         const std::string &master_ip, uint32_t master_port,
                                         uint32_t wait_agents_time_in_seconds) {
+  if (Worker::GetInstance().IsRunning()) {
+    MSI_LOG_EXCEPTION << "A servable has been started, only one servable can run in a process currently.";
+  }
+
   Status status;
   auto servable = std::make_shared<DistributedServable>();
   auto grpc_sever = std::make_shared<MSDistributedWorkerServer>(servable);
@@ -122,6 +134,10 @@ void PyWorker::StartDistributedServableInMaster(const std::string &servable_dire
                                                 const std::string &rank_table_json_file, uint32_t version_number,
                                                 const std::string &worker_ip, uint32_t worker_port,
                                                 uint32_t wait_agents_time_in_seconds) {
+  if (Worker::GetInstance().IsRunning()) {
+    MSI_LOG_EXCEPTION << "A servable has been started, only one servable can run in a process currently.";
+  }
+
   Status status;
   auto servable = std::make_shared<DistributedServable>();
   auto grpc_sever = std::make_shared<MSDistributedWorkerServer>(servable);

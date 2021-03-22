@@ -350,6 +350,7 @@ def _startup_agents(common_meta, worker_ip, worker_port,
 
 class DistributedServableConfig:
     """Python DistributedServableConfig"""
+
     def __init__(self):
         self.rank_table_content = ""
         self.rank_list = None
@@ -407,6 +408,7 @@ def _get_worker_distributed_config(worker_ip, worker_port):
         # pylint: disable=broad-except
         except Exception as e:
             c_send_pipe.send(e)
+
     process = Process(target=process_fun, args=(c_send_pipe,),
                       name=f"worker_agent_get_agents_config_from_worker")
     process.start()
