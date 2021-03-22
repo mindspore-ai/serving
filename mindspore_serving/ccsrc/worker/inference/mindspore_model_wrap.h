@@ -40,7 +40,7 @@ struct ApiModelInfo {
   std::vector<serving::TensorInfo> output_tensor_infos;
   std::shared_ptr<mindspore::Model> model = nullptr;
   uint32_t batch_size = 0;
-  std::string device_type;
+  serving::DeviceType device_type;
   uint32_t device_id = 0;
   bool with_batch_dim = false;
   std::vector<int> without_batch_dim_inputs;
@@ -71,15 +71,24 @@ class MindSporeModelWrap : public InferenceBase {
  private:
   ApiModelInfo model_;
 
-  using FuncMakeInBuffer = std::function<mindspore::MSTensor(size_t index, const std::string &name)>;
+  using FuncMakeInBuffer = std::function<mindspore::MSTensor *(size_t index, const std::string &name)>;
   using FuncMakeOutTensor =
     std::function<void(const mindspore::MSTensor, DataType data_type, const std::vector<int64_t> &shape)>;
   Status ExecuteModelCommon(size_t request_size, const FuncMakeInBuffer &in_func, const FuncMakeOutTensor &out_func);
   Status GetModelInfos(ApiModelInfo *model_info);
-  std::shared_ptr<Context> TransformModelContext(const std::map<std::string, std::string> &other_options);
+  std::shared_ptr<Context> TransformModelContext(serving::DeviceType device_type, uint32_t device_id,
+                                                 const std::map<std::string, std::string> &other_options);
+
+  std::shared_ptr<DeviceInfoContext> TransformAscend310ModelContext(uint32_t device_id,
+                                                                    const std::map<std::string, std::string> &options);
+  std::shared_ptr<DeviceInfoContext> TransformAscend910ModelContext(uint32_t device_id,
+                                                                    const std::map<std::string, std::string> &options);
+  std::shared_ptr<DeviceInfoContext> TransformNvidiaGPUModelContext(uint32_t device_id,
+                                                                    const std::map<std::string, std::string> &options);
+
   void GetModelBatchSize(ApiModelInfo *model_info);
   static mindspore::ModelType GetMsModelType(serving::ModelType model_type);
-  static std::string GetMsDeviceType(serving::DeviceType device_type);
+  static mindspore::DeviceType GetMsDeviceType(serving::DeviceType device_type);
 };
 
 class ApiBufferTensorWrap : public TensorBase {

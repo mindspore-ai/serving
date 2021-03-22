@@ -57,7 +57,13 @@ Status GraphImplStubAdd::Run(const std::vector<MSTensor> &inputs, std::vector<MS
   }
   auto x1 = reinterpret_cast<const float *>(inputs[0].Data().get());
   auto x2 = reinterpret_cast<const float *>(inputs[1].Data().get());
-  MSTensor output = outputs_[0].Clone();
+  MSTensor* output_ptr = outputs_[0].Clone();
+  if (output_ptr == nullptr) {
+    return mindspore::kCoreFailed;
+  }
+  MSTensor output = *output_ptr;
+  mindspore::MSTensor::DestroyTensorPtr(output_ptr);
+
   auto y = reinterpret_cast<float *>(output.MutableData());
   for (size_t i = 0; i < outputs_[0].DataSize() / sizeof(float); i++) {
     y[i] = x1[i] + x2[i];
@@ -66,7 +72,7 @@ Status GraphImplStubAdd::Run(const std::vector<MSTensor> &inputs, std::vector<MS
   return mindspore::kSuccess;
 }
 
-Status GraphImplStubAdd::Load() { return kSuccess; }
+Status GraphImplStubAdd::Load(uint32_t device_id) { return kSuccess; }
 
 std::vector<MSTensor> GraphImplStubAdd::GetInputs() { return inputs_; }
 
