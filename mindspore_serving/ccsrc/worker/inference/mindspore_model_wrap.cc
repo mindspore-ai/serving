@@ -99,7 +99,8 @@ Status MindSporeModelWrap::LoadModelFromFile(serving::DeviceType device_type, ui
   } catch (std::runtime_error &ex) {
     return INFER_STATUS_LOG_ERROR(FAILED)
            << "Load model from file failed, model file: " << file_name << ", device_type: '" << device_type
-           << "', device_id: " << device_id << ", model type: " << model_type << ", options: " << other_options;
+           << "', device_id: " << device_id << ", model type: " << model_type << ", options: " << other_options
+           << ", build error detail: " << ex.what();
   }
 
   ApiModelInfo api_model_info;
