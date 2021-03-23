@@ -80,9 +80,7 @@ void Dispatcher::DispatchAsync(const proto::PredictRequest &request, proto::Pred
       this->infer_num_--;
     };
     infer_num_++;
-    MSI_TIME_STAMP_START(Predict)
     status = DispatchAsyncInner(request, reply, callback);
-    MSI_TIME_STAMP_END(Predict)
   } catch (const std::bad_alloc &ex) {
     MSI_LOG(ERROR) << "Serving Error: malloc memory failed";
     std::cout << "Serving Error: malloc memory failed" << std::endl;

@@ -32,9 +32,7 @@ void MSWorkerImpl::PredictAsync(grpc::ServerContext *context, const proto::Predi
   Status status(FAILED);
   MSI_LOG(INFO) << "Begin call service Eval";
   try {
-    MSI_TIME_STAMP_START(Predict)
     status = Worker::GetInstance().RunAsync(*request, reply, on_finish);
-    MSI_TIME_STAMP_END(Predict)
   } catch (const std::bad_alloc &ex) {
     MSI_LOG(ERROR) << "Serving Error: malloc memory failed";
     std::cout << "Serving Error: malloc memory failed" << std::endl;
