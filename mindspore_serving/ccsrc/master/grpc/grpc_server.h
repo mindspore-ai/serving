@@ -94,7 +94,12 @@ class MasterPredictContext : public MasterServiceContext {
   void HandleRequest() override {
     EnqueueRequest(service_impl_, async_service_, cq_);
     state_ = STATE::FINISH;
-    PredictOnFinish on_finish = [this]() { responder_.Finish(response_, grpc::Status::OK, this); };
+
+    MSI_TIME_STAMP_START(RequestHandle)
+    PredictOnFinish on_finish = [this, time_start_RequestHandle]() {
+      responder_.Finish(response_, grpc::Status::OK, this);
+      MSI_TIME_STAMP_END(RequestHandle)
+    };
     service_impl_->PredictAsync(&request_, &response_, on_finish);
   }
 
