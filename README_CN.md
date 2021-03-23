@@ -122,7 +122,7 @@ MindSpore Serving运行需要配置以下环境变量：
 
 ### 治理
 
-查看MindSpore如何进行[开放治理](https://gitee.com/mindspore/community/blob/r1.2/governance.md)。
+查看MindSpore如何进行[开放治理](https://gitee.com/mindspore/community/blob/master/governance.md)。
 
 ### 交流
 

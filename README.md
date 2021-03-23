@@ -121,7 +121,7 @@ For more details about the installation guide, tutorials, and APIs, see [MindSpo
 
 ### Governance
 
-[MindSpore Open Governance](https://gitee.com/mindspore/community/blob/r1.2/governance.md)
+[MindSpore Open Governance](https://gitee.com/mindspore/community/blob/master/governance.md)
 
 ### Communication
 
