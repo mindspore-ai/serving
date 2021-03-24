@@ -42,6 +42,7 @@ class MSWorkerImpl {
       watcher_ = std::make_shared<Watcher<proto::MSAgent, proto::MSMaster>>(server_address);
     }
   }
+  virtual ~MSWorkerImpl() = default;
 
   void PredictAsync(grpc::ServerContext *context, const proto::PredictRequest *request, proto::PredictReply *reply,
                     PredictOnFinish on_finish);
