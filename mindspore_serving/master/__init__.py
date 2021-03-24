@@ -22,6 +22,5 @@ __all__.extend([
     "start_grpc_server",
     'start_restful_server',
     'start_master_server',
-    'stop',
-    'context'
+    'stop'
 ])

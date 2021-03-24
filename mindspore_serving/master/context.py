@@ -16,6 +16,8 @@
 from mindspore_serving._mindspore_serving import MasterContext_
 from mindspore_serving.common import check_type
 
+__all__ = ["set_max_request_buffer_count"]
+
 _context = MasterContext_.get_instance()
 
 
