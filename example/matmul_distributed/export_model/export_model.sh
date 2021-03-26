@@ -27,6 +27,7 @@ pytest -sv ./distributed_inference.py::test_inference >inference.log0 2>&1
 if [ $? -eq 0 ]; then
   echo "inference success"
 else
+  cat inference.log0
   echo "inference failed"
   exit 2
 fi
