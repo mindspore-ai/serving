@@ -28,11 +28,11 @@ class MS_API MasterContext {
  public:
   static std::shared_ptr<MasterContext> Instance();
 
-  void SetMaxRequestBufferCount(uint32_t max_request_buffer_count);
-  uint32_t GetMaxRequestBufferCount() const;
+  void SetMaxEnqueuedRequests(uint32_t max_enqueued_requests);
+  uint32_t GetMaxEnqueuedRequests() const;
 
  private:
-  uint32_t max_request_buffer_count_ = 10000;  // default 10000
+  uint32_t max_enqueued_requests_ = 10000;  // default 10000
 };
 
 }  // namespace mindspore::serving
