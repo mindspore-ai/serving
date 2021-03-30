@@ -61,7 +61,7 @@ class MS_API Dispatcher {
   std::shared_mutex servable_shared_lock_;
   // avoid invoke Clear and then UnregisterServable is invoked by Clear in other thread
   std::atomic_bool clearing_flag = false;
-  std::atomic_uint32_t infer_num_ = 0;
+  std::atomic_uint32_t enqueued_requests_ = 0;
 
   Status JudgeInferNum();
   DispatcherWorkerContext GetWorkSession(const RequestSpec &request_spec) const;

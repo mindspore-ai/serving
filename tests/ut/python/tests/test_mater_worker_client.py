@@ -1119,7 +1119,7 @@ def add_common(x1, x2):
     return y
 """
     base.init_servable_with_servable_config(1, servable_content)
-    master.context.set_max_request_buffer_count(1)
+    master.context.set_max_enqueued_requests(1)
     worker.start_servable_in_master(base.servable_dir, base.servable_name)
     master.start_grpc_server("0.0.0.0", 5500)
     # Client
@@ -1140,10 +1140,10 @@ def add_common(x1, x2):
     assert "error" in result0 or "error" in result1
     if "error" in result0:
         assert "error" not in result1
-        assert "Serving Error: request buffer number exceeds the limit 1" in result0["error"]
+        assert "Serving Error: enqueued requests count exceeds the limit 1" in result0["error"]
     else:
         assert "error" not in result0
-        assert "Serving Error: request buffer number exceeds the limit 1" in result1["error"]
+        assert "Serving Error: enqueued requests count exceeds the limit 1" in result1["error"]
 
 
 @serving_test
@@ -1165,7 +1165,7 @@ def add_common(x1, x2):
     return y
 """
     base.init_servable_with_servable_config(1, servable_content)
-    master.context.set_max_request_buffer_count(1)
+    master.context.set_max_enqueued_requests(1)
 
     master.start_master_server("0.0.0.0", 6100)
     worker.start_servable(base.servable_dir, base.servable_name, worker_port=6200, master_port=6100)
@@ -1188,7 +1188,7 @@ def add_common(x1, x2):
     assert "error" in result0 or "error" in result1
     if "error" in result0:
         assert "error" not in result1
-        assert "Serving Error: request buffer number exceeds the limit 1" in result0["error"]
+        assert "Serving Error: enqueued requests count exceeds the limit 1" in result0["error"]
     else:
         assert "error" not in result0
-        assert "Serving Error: request buffer number exceeds the limit 1" in result1["error"]
+        assert "Serving Error: enqueued requests count exceeds the limit 1" in result1["error"]

@@ -57,9 +57,10 @@ DispatcherWorkerContext Dispatcher::GetWorkSession(const RequestSpec &request_sp
 }
 
 Status Dispatcher::JudgeInferNum() {
-  auto max_infer_num = MasterContext::Instance()->GetMaxRequestBufferCount();
-  if (infer_num_ >= max_infer_num) {
-    return INFER_STATUS_LOG_ERROR(FAILED) << "Serving Error: request buffer number exceeds the limit " << max_infer_num;
+  auto max_enqueued_requests = MasterContext::Instance()->GetMaxEnqueuedRequests();
+  if (enqueued_requests_ >= max_enqueued_requests) {
+    return INFER_STATUS_LOG_ERROR(FAILED)
+           << "Serving Error: enqueued requests count exceeds the limit " << max_enqueued_requests;
   }
   return SUCCESS;
 }
@@ -77,9 +78,9 @@ void Dispatcher::DispatchAsync(const proto::PredictRequest &request, proto::Pred
   try {
     auto callback = [this, on_finish]() {
       on_finish();
-      this->infer_num_--;
+      this->enqueued_requests_--;
     };
-    infer_num_++;
+    enqueued_requests_++;
     status = DispatchAsyncInner(request, reply, callback);
   } catch (const std::bad_alloc &ex) {
     MSI_LOG(ERROR) << "Serving Error: malloc memory failed";
@@ -99,7 +100,7 @@ void Dispatcher::DispatchAsync(const proto::PredictRequest &request, proto::Pred
   if (status != SUCCESS) {
     GrpcTensorHelper::CreateReplyFromErrorMsg(status, reply);
     on_finish();
-    infer_num_--;
+    enqueued_requests_--;
   }
 }
 

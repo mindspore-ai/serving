@@ -16,21 +16,21 @@
 from mindspore_serving._mindspore_serving import MasterContext_
 from mindspore_serving.common import check_type
 
-__all__ = ["set_max_request_buffer_count"]
+__all__ = ["set_max_enqueued_requests"]
 
 _context = MasterContext_.get_instance()
 
 
-def set_max_request_buffer_count(max_request_buffer_count):
+def set_max_enqueued_requests(max_enqueued_requests):
     r"""
     Set the maximum number of requests waiting to be processed.
 
     Args:
-        max_request_buffer_count (int): The maximum acceptable infer message size in number, default 10000,
+        max_enqueued_requests (int): The maximum acceptable infer message size in number, default 10000,
             Max infer number should be a positive integer.
 
     Raises:
         RuntimeError: The type or value of the parameters is invalid, or other error happened.
     """
-    check_type.check_int("max_request_buffer_count", max_request_buffer_count, 1)
-    _context.set_max_request_buffer_count(max_request_buffer_count)
+    check_type.check_int("max_enqueued_requests", max_enqueued_requests, 1)
+    _context.set_max_enqueued_requests(max_enqueued_requests)
