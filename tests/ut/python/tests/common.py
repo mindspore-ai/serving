@@ -130,7 +130,7 @@ def serving_test(func):
         try:
             func(*args, **kwargs)
         finally:
-            master.context.set_max_request_buffer_count(10000)
+            master.context.set_max_enqueued_requests(10000)
             master.stop()
             worker.stop()
             servable_dir = os.path.join(os.getcwd(), "serving_python_ut_servables")
