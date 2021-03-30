@@ -26,10 +26,10 @@ std::shared_ptr<MasterContext> MasterContext::Instance() {
   return instance;
 }
 
-void MasterContext::SetMaxRequestBufferCount(uint32_t max_request_buffer_count) {
-  max_request_buffer_count_ = max_request_buffer_count;
+void MasterContext::SetMaxEnqueuedRequests(uint32_t max_enqueued_requests) {
+  max_enqueued_requests_ = max_enqueued_requests;
 }
 
-uint32_t MasterContext::GetMaxRequestBufferCount() const { return max_request_buffer_count_; }
+uint32_t MasterContext::GetMaxEnqueuedRequests() const { return max_enqueued_requests_; }
 
 }  // namespace mindspore::serving

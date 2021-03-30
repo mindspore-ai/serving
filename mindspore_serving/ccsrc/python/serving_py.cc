@@ -182,7 +182,7 @@ void PyRegWorker(pybind11::module *m_ptr) {
   py::class_<MasterContext, std::shared_ptr<MasterContext>>(m, "MasterContext_")
     .def(py::init<>())
     .def_static("get_instance", &MasterContext::Instance)
-    .def("set_max_request_buffer_count", &MasterContext::SetMaxRequestBufferCount);
+    .def("set_max_enqueued_requests", &MasterContext::SetMaxEnqueuedRequests);
 }
 
 void PyRegWorkerAgent(pybind11::module *m_ptr) {
