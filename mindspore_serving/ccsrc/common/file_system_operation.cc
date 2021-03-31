@@ -34,6 +34,7 @@ bool DirOrFileExist(const std::string &file_path) {
 std::vector<std::string> GetAllSubDirs(const std::string &dir_path) {
   std::vector<std::string> SubDirs = GetAllSubDirsNotFullPath(dir_path);
   for (auto &item : SubDirs) {
+    // cppcheck-suppress useStlAlgorithm
     item = dir_path + "/" + item;
   }
   return SubDirs;
