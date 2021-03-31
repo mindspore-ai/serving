@@ -128,6 +128,7 @@ DataType RestfulService::GetObjDataType(const json &js) {
 
 std::string RestfulService::GetStringByDataType(DataType type) {
   for (const auto &item : str2_infer_type) {
+    // cppcheck-suppress useStlAlgorithm
     if (item.second == type) {
       return item.first;
     }

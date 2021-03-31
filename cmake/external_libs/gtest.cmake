@@ -9,5 +9,7 @@ mindspore_add_pkg(gtest
         -DCMAKE_MACOSX_RPATH=TRUE -Dgtest_disable_pthreads=ON)
 include_directories(${gtest_INC})
 add_library(mindspore_serving::gtest ALIAS gtest::gtest)
-file(COPY ${gtest_LIBPATH}/libgtest${CMAKE_SHARED_LIBRARY_SUFFIX} DESTINATION ${CMAKE_BINARY_DIR}/googletest/googlemock/gtest)
-file(COPY ${gtest_LIBPATH}/libgtest_main${CMAKE_SHARED_LIBRARY_SUFFIX} DESTINATION ${CMAKE_BINARY_DIR}/googletest/googlemock/gtest)
+file(COPY ${gtest_LIBPATH}/libgtest${CMAKE_SHARED_LIBRARY_SUFFIX} DESTINATION
+        ${CMAKE_BINARY_DIR}/googletest/googlemock/gtest)
+file(COPY ${gtest_LIBPATH}/libgtest_main${CMAKE_SHARED_LIBRARY_SUFFIX} DESTINATION
+        ${CMAKE_BINARY_DIR}/googletest/googlemock/gtest)
