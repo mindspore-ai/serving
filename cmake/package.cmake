@@ -39,20 +39,20 @@ install(
 # set python files
 file(GLOB MS_PY_LIST ${CMAKE_SOURCE_DIR}/mindspore_serving/*.py)
 install(
-    FILES ${MS_PY_LIST}
-    DESTINATION ${INSTALL_PY_DIR}
-    COMPONENT mindspore_serving
+        FILES ${MS_PY_LIST}
+        DESTINATION ${INSTALL_PY_DIR}
+        COMPONENT mindspore_serving
 )
 
 install(
-    TARGETS _mindspore_serving
-    DESTINATION ${INSTALL_BASE_DIR}
-    COMPONENT mindspore_serving
+        TARGETS _mindspore_serving
+        DESTINATION ${INSTALL_BASE_DIR}
+        COMPONENT mindspore_serving
 )
 install(
-    TARGETS serving_common
-    DESTINATION ${INSTALL_LIB_DIR}
-    COMPONENT mindspore_serving
+        TARGETS serving_common
+        DESTINATION ${INSTALL_LIB_DIR}
+        COMPONENT mindspore_serving
 )
 install(
         TARGETS serving_ascend
@@ -60,17 +60,17 @@ install(
         COMPONENT mindspore_serving
 )
 install(
-    DIRECTORY
-    ${CMAKE_SOURCE_DIR}/mindspore_serving/master
-    ${CMAKE_SOURCE_DIR}/mindspore_serving/worker
-    ${CMAKE_SOURCE_DIR}/mindspore_serving/common
-    ${CMAKE_SOURCE_DIR}/mindspore_serving/client
-    DESTINATION ${INSTALL_PY_DIR}
-    COMPONENT mindspore_serving
+        DIRECTORY
+        ${CMAKE_SOURCE_DIR}/mindspore_serving/master
+        ${CMAKE_SOURCE_DIR}/mindspore_serving/worker
+        ${CMAKE_SOURCE_DIR}/mindspore_serving/common
+        ${CMAKE_SOURCE_DIR}/mindspore_serving/client
+        DESTINATION ${INSTALL_PY_DIR}
+        COMPONENT mindspore_serving
 )
 install(
-    FILES ${CMAKE_SOURCE_DIR}/build/mindspore_serving/mindspore_serving/mindspore_serving/proto/ms_service_pb2.py
-          ${CMAKE_SOURCE_DIR}/build/mindspore_serving/mindspore_serving/mindspore_serving/proto/ms_service_pb2_grpc.py
-    DESTINATION ${INSTALL_PY_DIR}/proto
-    COMPONENT mindspore_serving
+        FILES ${CMAKE_SOURCE_DIR}/build/mindspore_serving/mindspore_serving/mindspore_serving/proto/ms_service_pb2.py
+        ${CMAKE_SOURCE_DIR}/build/mindspore_serving/mindspore_serving/mindspore_serving/proto/ms_service_pb2_grpc.py
+        DESTINATION ${INSTALL_PY_DIR}/proto
+        COMPONENT mindspore_serving
 )

@@ -38,6 +38,7 @@ Status ServableContext::SetDeviceTypeStr(const std::string &device_type) {
   DeviceType type;
   std::string device_type_lowcase = device_type;
   for (auto &c : device_type_lowcase) {
+    // cppcheck-suppress useStlAlgorithm
     if (c >= 'A' && c <= 'Z') {
       c = c - 'A' + 'a';
     }
