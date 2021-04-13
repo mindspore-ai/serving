@@ -80,8 +80,7 @@ def call_preprocess_pipeline(preprocess_fun, *args):
     in `preprocess` or `postprocess`, such as using MindData concurrency ability to process multiple input
     images in `preprocess`, MindSpore Serving provides 'call_preprocess_pipeline' and 'call_pstprocess_pipeline'
     to register such preprocessing and postprocessing. For more detail,
-    please refer to `Resnet50 model configuration example
-    <https://gitee.com/mindspore/serving/blob/r1.2/example/resnet/resnet50/servable_config.py>`_ .
+    please refer to `Resnet50 model configuration example <https://gitee.com/mindspore/serving/blob/r1.2/example/resnet/resnet50/servable_config.py>`_.
 
     Args:
         preprocess_fun (function): Python pipeline function for preprocess.
@@ -248,8 +247,7 @@ def call_postprocess_pipeline(postprocess_fun, *args):
     in `preprocess` or `postprocess`, such as using MindData concurrency ability to process multiple input
     images in `preprocess`, MindSpore Serving provides 'call_preprocess_pipeline' and 'call_pstprocess_pipeline'
     to register such preprocessing and postprocessing. For more detail,
-    please refer to `Resnet50 model configuration example
-    <https://gitee.com/mindspore/serving/blob/r1.2/example/resnet/resnet50/servable_config.py>`_ .
+    please refer to `Resnet50 model configuration example <https://gitee.com/mindspore/serving/blob/r1.2/example/resnet/resnet50/servable_config.py>`_.
 
     Args:
         postprocess_fun (function): Python pipeline function for postprocess.
