@@ -1,21 +1,60 @@
+# MindSpore Serving 1.2.0
 
-# 1. MindSpore Serving 1.2.0 Release Notes
+## MindSpore Serving 1.2.0 Release Notes
 
-## 1.1. Major Features and Improvements
+### Major Features and Improvements
 
-### 1.1.1. Serving Framework
+- [STABLE] Support distributed inference, it needs to cooperate with distributed training to export distributed models for super-large-scale neural network parameters(Ascend 910).
+- [STABLE] Support GPU platform, Serving worker nodes can be deployer on Nvidia GPU, Ascend 310 and Ascend 910.
+- This release is based on MindSpore version 1.2.0
+- Support Python 3.8 and 3.9.
 
-- [STABLE] Support distributed inference, it needs to cooperate with distributed training to export distributed models for super-large-scale neural network parameters.
-- [STABLE] Support GPU platform, Serving worker nodes can be deployer on GPU, Ascend 310 and Ascend 910.
+### API Change
 
-# 2. MindSpore Serving 1.1.0 Release Notes
+#### API Incompatible Change
 
-## 2.1. Major Features and Improvements
+##### Python API
 
-### 2.1.1. Ascend 310 & Ascend 910 Serving Framework
+Support deployment of distributed model, refer to [distributed inference tutorial](https://www.mindspore.cn/tutorial/inference/en/r1.2/serving_distributed_example.html) for related API.
+
+#### Deprecations
+
+##### Python API
+
+### Bug Fixes
+
+## Contributors
+
+Thanks goes to these wonderful people:
+
+chenweifeng, qinzheng, xujincai, xuyongfei, zhangyinxia, zhoufeng.
+
+Contributions of any kind are welcome!
+
+## MindSpore Serving 1.1.1 Release Notes
+
+## Major Features and Improvements
+
+- Adapts new C++ inference interface for MindSpore version 1.1.1.
+
+## Bug fixes
+
+- [BUGFIX] Fix bug in transforming result of type int16 in python Client.
+- [BUGFIX] Fix bytes type misidentified as str type after python preprocess and postprocess.
+- [BUGFIX] Fix bug releasing C++ tensor data when it's wrapped as numpy object sometimes.
+- [BUGFIX] Update RuntimeError to warning log when check Ascend environment failed.
+
+## MindSpore Serving 1.1.0 Release Notes
+
+### Major Features and Improvements
 
 - [STABLE] Support gRPC and RESTful API.
 - [STABLE] Support simple Python API for Client and Server.
 - [STABLE] Support Model configuration，User can customize preprocessing & postprocessing for model.
 - [STABLE] Support multiple models，Multiple models can run simultaneously.
 - [STABLE] Support Model batching，Multiple instances will be split and combined to meet the batch size requirements of the model.
+- This release is based on MindSpore version 1.1.0
+
+### Bug Fixes
+
+### Contributors
