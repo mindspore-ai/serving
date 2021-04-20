@@ -251,7 +251,10 @@ Status WorkExecutor::Work(const RequestSpec &request_spec, const std::vector<Ins
     context.user_context = user_context;
   }
   infer_session.instances = instances;
-  infer_session_map_[user_id] = infer_session;
+  {
+    std::unique_lock<std::mutex> lock(infer_session_map_mutex_);
+    infer_session_map_[user_id] = infer_session;
+  }
 
   if (!method_def.preprocess_name.empty()) {
     OnReceivePreprocessInputs(instances);
