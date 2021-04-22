@@ -229,12 +229,12 @@ class GPUEnvChecker():
                                "cuda version has been installed, you can refer to the "
                                "installation guidelines: https://www.mindspore.cn/install")
             else:
-                logger.warning(f"MindSpore version {__version__} and cuda version {self.v} does not match, "
+                logger.warning(f"MindSpore version and cuda version {self.v} does not match, "
                                "please refer to the installation guide for version matching "
                                "information: https://www.mindspore.cn/install")
         nvcc_version = self._get_nvcc_version(False)
         if nvcc_version and (nvcc_version not in self.version):
-            logger.warning(f"MindSpore version {__version__} and nvcc(cuda bin) version {nvcc_version} "
+            logger.warning(f"MindSpore version and nvcc(cuda bin) version {nvcc_version} "
                            "does not match, please refer to the installation guide for version matching "
                            "information: https://www.mindspore.cn/install")
 
