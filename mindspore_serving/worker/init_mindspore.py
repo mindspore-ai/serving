@@ -17,7 +17,7 @@ import os
 import importlib
 from mindspore_serving import log as logger
 from mindspore_serving._mindspore_serving import Worker_
-from ._check_version import check_version_and_env_config, check_version_and_try_set_env_lib
+from ._check_version import check_version_and_env_config, check_version_and_try_set_env_lib, check_mindspore_version
 
 _flag_set_mindspore_cxx_env = False
 
@@ -51,6 +51,7 @@ def init_mindspore_cxx_env():
     if _flag_set_mindspore_cxx_env:
         return
     _flag_set_mindspore_cxx_env = True
+    check_mindspore_version()
     check_version_and_try_set_env_lib()  # try set env LD_LIBRARY_PATH
     _set_mindspore_cxx_env()
     device_type = Worker_.get_device_type()
