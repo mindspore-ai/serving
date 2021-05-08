@@ -283,6 +283,36 @@ class GPUEnvChecker():
         return self.v
 
 
+def get_mindspore_version():
+    """Get MindSpore whl package version number"""
+    prefix = "####version:"
+    ms_result = subprocess.run([f"python -c \"import mindspore as ms;print('{prefix}'+ str(ms.version.__version__))\""
+                                f" | grep '{prefix}'"],
+                               text=True, capture_output=True, check=False, shell=True)
+    if ms_result.returncode:
+        return ""
+    result = ms_result.stdout
+    for line in result.split('\n'):
+        if line[:len(prefix)] == prefix:
+            return line[len(prefix):]
+    return ""
+
+
+def check_mindspore_version():
+    """check MindSpore version number"""
+    try:
+        from mindspore_serving.version import __version__
+    except ModuleNotFoundError:
+        logger.warning(f"Get MindSpore Serving version failed")
+        return
+    ms_version = get_mindspore_version()
+    if not ms_version:
+        logger.warning(f"Get MindSpore version failed")
+    elif __version__ != ms_version:
+        logger.warning(f"MindSpore version {ms_version} and MindSpore Serving version {__version__} are expected "
+                       f"to be consistent. If not, there may be compatibility problems.")
+
+
 def check_version_and_env_config(device_type):
     """check version and env config"""
     if device_type == "Ascend":
