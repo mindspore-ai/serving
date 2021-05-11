@@ -41,7 +41,7 @@ Status LocalModelServable::Predict(const std::vector<TensorBasePtr> &input, std:
   if (!model_loaded_ || !session_) {
     MSI_LOG_EXCEPTION << "Model has not been loaded";
   }
-  return session_->ExecuteModel(input, output);
+  return session_->ExecuteModel(input, output, true);
 }
 
 std::vector<TensorInfo> LocalModelServable::GetInputInfos() const {

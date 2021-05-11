@@ -289,7 +289,7 @@ Status MindSporeModelWrap::UnloadModel() {
   return SUCCESS;
 }
 
-Status MindSporeModelWrap::ExecuteModel(const RequestBase &request, serving::ReplyBase *reply) {
+Status MindSporeModelWrap::ExecuteModel(const RequestBase &request, serving::ReplyBase *reply, bool return_result) {
   MSI_EXCEPTION_IF_NULL(reply);
   FuncMakeInBuffer func_in = [&request](size_t index, const std::string &name) {
     auto input_tensor = request[index];
@@ -312,10 +312,11 @@ Status MindSporeModelWrap::ExecuteModel(const RequestBase &request, serving::Rep
     tensor->set_data_type(data_type);
     tensor->set_shape(shape);
   };
-  return ExecuteModelCommon(request.size(), func_in, func_out);
+  return ExecuteModelCommon(request.size(), func_in, func_out, return_result);
 }
 
-Status MindSporeModelWrap::ExecuteModel(const std::vector<TensorBasePtr> &request, std::vector<TensorBasePtr> *reply) {
+Status MindSporeModelWrap::ExecuteModel(const std::vector<TensorBasePtr> &request, std::vector<TensorBasePtr> *reply,
+                                        bool return_result) {
   MSI_EXCEPTION_IF_NULL(reply);
   FuncMakeInBuffer func_in = [&request](size_t index, const std::string &name) {
     auto &input_tensor = request[index];
@@ -333,11 +334,11 @@ Status MindSporeModelWrap::ExecuteModel(const std::vector<TensorBasePtr> &reques
     tensor->set_shape(shape);
     reply->push_back(tensor);
   };
-  return ExecuteModelCommon(request.size(), func_in, func_out);
+  return ExecuteModelCommon(request.size(), func_in, func_out, return_result);
 }
 
 Status MindSporeModelWrap::ExecuteModelCommon(size_t request_size, const FuncMakeInBuffer &in_func,
-                                              const FuncMakeOutTensor &out_func) {
+                                              const FuncMakeOutTensor &out_func, bool return_result) {
   if (model_.model == nullptr) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Model is not loaded";
   }
@@ -368,16 +369,18 @@ Status MindSporeModelWrap::ExecuteModelCommon(size_t request_size, const FuncMak
     return INFER_STATUS_LOG_ERROR(FAILED) << "Outputs size not match, predict outputs size " << outputs.size()
                                           << ", model outputs size " << output_names.size();
   }
-  auto &output_infos = model_info.output_tensor_infos;
-  for (size_t i = 0; i < output_names.size(); i++) {
-    auto &result_tensor = outputs[i];
-    auto &output_info = output_infos[i];
-    if (result_tensor.DataSize() != output_info.size) {
-      return INFER_STATUS_LOG_ERROR(FAILED)
-             << "Get output failed, predict output data size " << result_tensor.DataSize()
-             << " not match model info data size " << output_info.size << ", output_name " << output_names[i];
+  if (return_result) {
+    auto &output_infos = model_info.output_tensor_infos;
+    for (size_t i = 0; i < output_names.size(); i++) {
+      auto &result_tensor = outputs[i];
+      auto &output_info = output_infos[i];
+      if (result_tensor.DataSize() != output_info.size) {
+        return INFER_STATUS_LOG_ERROR(FAILED)
+               << "Get output failed, predict output data size " << result_tensor.DataSize()
+               << " not match model info data size " << output_info.size << ", output_name " << output_names[i];
+      }
+      out_func(result_tensor, output_info.data_type, output_info.shape);
     }
-    out_func(result_tensor, output_info.data_type, output_info.shape);
   }
   return SUCCESS;
 }
