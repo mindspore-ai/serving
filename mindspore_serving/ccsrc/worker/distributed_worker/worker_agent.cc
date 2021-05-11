@@ -167,7 +167,7 @@ Status WorkerAgent::Run(const proto::DistributedPredictRequest &request, proto::
     MSI_TIME_STAMP_START(ExecuteModel)
     ProtoDistributedPredictRequest request_wrap(request);
     ProtoDistributedPredictReply reply_wrap(reply);
-    status = session_->ExecuteModel(request_wrap, &reply_wrap);
+    status = session_->ExecuteModel(request_wrap, &reply_wrap, request.return_result());
     MSI_TIME_STAMP_END(ExecuteModel)
   } catch (const std::bad_alloc &ex) {
     status = INFER_STATUS_LOG_ERROR(FAILED) << "Serving Error: malloc memory failed";

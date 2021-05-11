@@ -96,19 +96,14 @@ class AscendEnvChecker:
             self._check_env()
             return
 
-        try:
-            # pylint: disable=unused-import
-            import te
-        # pylint: disable=broad-except
-        except Exception:
-            if Path(self.tbe_path).is_dir():
-                if os.getenv('LD_LIBRARY_PATH'):
-                    os.environ['LD_LIBRARY_PATH'] = self.tbe_path + ":" + os.environ['LD_LIBRARY_PATH']
-                else:
-                    os.environ['LD_LIBRARY_PATH'] = self.tbe_path
+        if Path(self.tbe_path).is_dir():
+            if os.getenv('LD_LIBRARY_PATH'):
+                os.environ['LD_LIBRARY_PATH'] = self.tbe_path + ":" + os.environ['LD_LIBRARY_PATH']
             else:
-                logger.warning(f"No such directory: {self.tbe_path}, Please check if Ascend 910 AI software package is "
-                               f"installed correctly.")
+                os.environ['LD_LIBRARY_PATH'] = self.tbe_path
+        else:
+            logger.warning(f"No such directory: {self.tbe_path}, Please check if Ascend 910 AI software package is "
+                           f"installed correctly.")
 
         if Path(self.op_impl_path).is_dir():
             sys.path.append(self.op_impl_path)
@@ -132,16 +127,11 @@ class AscendEnvChecker:
 
     def try_set_env_lib(self):
         """try set env but with no warning: LD_LIBRARY_PATH"""
-        try:
-            # pylint: disable=unused-import
-            import te
-        # pylint: disable=broad-except
-        except Exception:
-            if Path(self.tbe_path).is_dir():
-                if os.getenv('LD_LIBRARY_PATH'):
-                    os.environ['LD_LIBRARY_PATH'] = self.tbe_path + ":" + os.environ['LD_LIBRARY_PATH']
-                else:
-                    os.environ['LD_LIBRARY_PATH'] = self.tbe_path
+        if Path(self.tbe_path).is_dir():
+            if os.getenv('LD_LIBRARY_PATH'):
+                os.environ['LD_LIBRARY_PATH'] = self.tbe_path + ":" + os.environ['LD_LIBRARY_PATH']
+            else:
+                os.environ['LD_LIBRARY_PATH'] = self.tbe_path
 
     def _check_env(self):
         """ascend dependence path check"""

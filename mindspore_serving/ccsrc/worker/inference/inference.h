@@ -117,8 +117,10 @@ class InferenceBase {
                                    const std::map<std::string, std::string> &other_options) = 0;
 
   virtual Status UnloadModel() = 0;
-  virtual Status ExecuteModel(const RequestBase &request, ReplyBase *reply) = 0;
-  virtual Status ExecuteModel(const std::vector<TensorBasePtr> &request, std::vector<TensorBasePtr> *reply) = 0;
+
+  virtual Status ExecuteModel(const RequestBase &request, ReplyBase *reply, bool return_result) = 0;
+  virtual Status ExecuteModel(const std::vector<TensorBasePtr> &request, std::vector<TensorBasePtr> *reply,
+                              bool return_result) = 0;
 
   virtual std::vector<TensorInfo> GetInputInfos() const = 0;
 
