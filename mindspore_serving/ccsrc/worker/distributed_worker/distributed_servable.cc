@@ -71,9 +71,11 @@ Status DistributedServable::PredictInner(const std::vector<TensorBasePtr> &input
     MSI_LOG_EXCEPTION << "agent_spec_map_ size " << agent_spec_map_.size() << " not match rank size " << rank_size;
   }
   auto agent_num_per_stage = rank_size / stage_size;
-  auto result_agent_id = agent_num_per_stage * (stage_size - 1);
+  auto result_agent_id = rank_size - 1;  // agent_num_per_stage * (stage_size - 1);
 
   auto msg_list = std::make_shared<std::vector<DistributedPredictMsg>>(rank_size);
+  request.set_return_result(false);
+  empty_request.set_return_result(false);
 
   for (size_t i = 0; i < rank_size; ++i) {
     AsyncPredictCallback callback = [msg_list, i](const Status &status) {
@@ -81,8 +83,14 @@ Status DistributedServable::PredictInner(const std::vector<TensorBasePtr> &input
       msg_list->at(i).promise.set_value();
     };
     if (i < agent_num_per_stage) {
+      if (i == result_agent_id) {
+        request.set_return_result(true);
+      }
       agent_spec_map_[i].notify_agent_->DispatchAsync(request, &msg_list->at(i).reply, callback);
     } else {
+      if (i == result_agent_id) {
+        empty_request.set_return_result(true);
+      }
       agent_spec_map_[i].notify_agent_->DispatchAsync(empty_request, &msg_list->at(i).reply, callback);
     }
   }

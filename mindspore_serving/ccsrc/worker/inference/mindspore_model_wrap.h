@@ -57,8 +57,9 @@ class MindSporeModelWrap : public InferenceBase {
                            const std::map<std::string, std::string> &other_options) override;
 
   Status UnloadModel() override;
-  Status ExecuteModel(const RequestBase &request, ReplyBase *reply) override;
-  Status ExecuteModel(const std::vector<TensorBasePtr> &request, std::vector<TensorBasePtr> *reply) override;
+  Status ExecuteModel(const RequestBase &request, ReplyBase *reply, bool return_result) override;
+  Status ExecuteModel(const std::vector<TensorBasePtr> &request, std::vector<TensorBasePtr> *reply,
+                      bool return_result) override;
 
   std::vector<serving::TensorInfo> GetInputInfos() const override;
 
@@ -74,7 +75,8 @@ class MindSporeModelWrap : public InferenceBase {
   using FuncMakeInBuffer = std::function<mindspore::MSTensor *(size_t index, const std::string &name)>;
   using FuncMakeOutTensor =
     std::function<void(const mindspore::MSTensor, DataType data_type, const std::vector<int64_t> &shape)>;
-  Status ExecuteModelCommon(size_t request_size, const FuncMakeInBuffer &in_func, const FuncMakeOutTensor &out_func);
+  Status ExecuteModelCommon(size_t request_size, const FuncMakeInBuffer &in_func, const FuncMakeOutTensor &out_func,
+                            bool return_result);
   Status GetModelInfos(ApiModelInfo *model_info);
   std::shared_ptr<Context> TransformModelContext(serving::DeviceType device_type, uint32_t device_id,
                                                  const std::map<std::string, std::string> &other_options);
