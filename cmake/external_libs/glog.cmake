@@ -12,6 +12,7 @@ mindspore_add_pkg(glog
         LIBS glog
         URL ${REQ_URL}
         MD5 ${MD5}
+        PATCHES ${CMAKE_SOURCE_DIR}/third_party/patch/glog/glog.patch001
         CMAKE_OPTION -DBUILD_TESTING=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DBUILD_SHARED_LIBS=ON -DWITH_GFLAGS=OFF)
 include_directories(${glog_INC})
 add_library(mindspore_serving::glog ALIAS glog::glog)

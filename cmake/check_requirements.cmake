@@ -38,8 +38,3 @@ endif()
 message(PATCH_EXECUTABLE = ${Patch_EXECUTABLE})
 
 find_required_package(Threads)
-
-## packages used on Linux
-if(NOT CMAKE_SYSTEM_NAME MATCHES "Windows")
-    find_required_package(OpenSSL)
-endif()

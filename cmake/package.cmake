@@ -29,6 +29,19 @@ install(
         COMPONENT mindspore_serving
 )
 
+install(FILES ${grpc_LIBPATH}/libmindspore_serving_grpc++_reflection.so.1.27.3
+  DESTINATION ${INSTALL_LIB_DIR} RENAME libmindspore_serving_grpc++_reflection.so.1 COMPONENT mindspore)
+install(FILES ${grpc_LIBPATH}/libmindspore_serving_grpc++.so.1.27.3
+  DESTINATION ${INSTALL_LIB_DIR} RENAME libmindspore_serving_grpc++.so.1 COMPONENT mindspore)
+install(FILES ${grpc_LIBPATH}/libmindspore_serving_grpc.so.9.0.0
+  DESTINATION ${INSTALL_LIB_DIR} RENAME libmindspore_serving_grpc.so.9 COMPONENT mindspore)
+install(FILES ${grpc_LIBPATH}/libmindspore_serving_gpr.so.9.0.0
+  DESTINATION ${INSTALL_LIB_DIR} RENAME libmindspore_serving_gpr.so.9 COMPONENT mindspore)
+install(FILES ${grpc_LIBPATH}/libmindspore_serving_upb.so.9.0.0
+  DESTINATION ${INSTALL_LIB_DIR} RENAME libmindspore_serving_upb.so.9 COMPONENT mindspore)
+install(FILES ${grpc_LIBPATH}/libmindspore_serving_address_sorting.so.9.0.0
+  DESTINATION ${INSTALL_LIB_DIR} RENAME libmindspore_serving_address_sorting.so.9 COMPONENT mindspore)
+
 file(GLOB_RECURSE GLOG_LIB_LIST ${glog_LIBPATH}/libglog*)
 install(
         FILES ${GLOG_LIB_LIST}
