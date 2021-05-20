@@ -98,7 +98,7 @@ build_dependencies()
 required_package = [
     'numpy >= 1.17.0',
     'protobuf >= 3.8.0',
-    'grpcio >= 1.27.3',
+    'grpcio>=1.35.0,<=1.36.0',
     'psutil >= 5.6.1'
 ]
 

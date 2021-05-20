@@ -28,6 +28,7 @@ if [ $? -eq 0 ]; then
   echo "inference success"
 else
   echo "inference failed"
+  cat inference.log0
   exit 2
 fi
 cd ../
