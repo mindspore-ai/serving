@@ -14,7 +14,6 @@
 # ============================================================================
 
 import os
-import sys
 import pytest
 import numpy as np
 
@@ -25,16 +24,7 @@ import numpy as np
 def test_resnet():
     """test_serving"""
     sh_path = os.path.split(os.path.realpath(__file__))[0]
-    python_path_folders = []
-    for python_path in sys.path:
-        if os.path.isdir(python_path):
-            python_path_folders += [python_path]
-    folders = []
-    for folder in python_path_folders:
-        folders += [os.path.join(folder, x) for x in os.listdir(folder) \
-                    if os.path.isdir(os.path.join(folder, x)) and \
-                    '/site-packages/mindspore' in os.path.join(folder, x)]
-    ret = os.system(f"sh {sh_path}/resnet.sh {folders[0].split('mindspore', 1)[0] + 'mindspore'}")
+    ret = os.system(f"sh {sh_path}/resnet.sh")
     assert np.allclose(ret, 0)
 
 

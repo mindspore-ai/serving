@@ -25,7 +25,13 @@
 
 namespace mindspore::serving {
 
-enum StatusCode { SUCCESS = 0, FAILED, INVALID_INPUTS, SYSTEM_ERROR };
+enum StatusCode {
+  SUCCESS = 0,
+  FAILED,
+  INVALID_INPUTS,
+  SYSTEM_ERROR,
+  WORKER_UNAVAILABLE,
+};
 
 class Status {
  public:

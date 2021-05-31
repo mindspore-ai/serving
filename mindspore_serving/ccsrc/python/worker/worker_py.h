@@ -19,6 +19,7 @@
 
 #include <string>
 #include <unordered_map>
+#include "common/serving_common.h"
 #include "worker/worker.h"
 #include "worker/task_queue.h"
 #include "python/tensor_py.h"
@@ -28,21 +29,12 @@ namespace mindspore::serving {
 class MS_API PyWorker {
  public:
   static void StartServable(const std::string &model_directory, const std::string &model_name, uint32_t version_number,
-                            const std::string &master_ip, uint32_t master_port, const std::string &host_ip,
-                            uint32_t host_port);
-
-  static void StartServableInMaster(const std::string &model_directory, const std::string &model_name,
-                                    uint32_t version_number);
+                            const std::string &master_address, const std::string &worker_address);
 
   static void StartDistributedServable(const std::string &servable_directory, const std::string &servable_name,
                                        const std::string &rank_table_json_file, uint32_t version_number,
-                                       const std::string &worker_ip, uint32_t worker_port, const std::string &master_ip,
-                                       uint32_t master_port, uint32_t wait_agents_time_in_seconds);
-
-  static void StartDistributedServableInMaster(const std::string &servable_directory, const std::string &servable_name,
-                                               const std::string &rank_table_json_file, uint32_t version_number,
-                                               const std::string &worker_ip, uint32_t worker_port,
-                                               uint32_t wait_agents_time_in_seconds);
+                                       const std::string &distributed_address, const std::string &master_address,
+                                       const std::string &worker_address, uint32_t wait_agents_time_in_seconds);
 
   static int GetBatchSize();
   static void WaitAndClear();
@@ -57,6 +49,8 @@ class MS_API PyWorker {
   static void PushPostprocessPyFailed(int count);
 
   static std::string GetDeviceType();
+  // for grpc notify failed of worker
+  static void NotifyFailed(const std::string &master_address, const std::string &error_msg);
 
  private:
   static void OnEndStartServable(const std::string &servable_directory, const std::string &servable_name,

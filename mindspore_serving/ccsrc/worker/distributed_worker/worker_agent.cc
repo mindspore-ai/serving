@@ -65,14 +65,13 @@ Status WorkerAgent::StartAgent(const AgentStartUpConfig &config) {
   }
   status = StartGrpcServer();
   if (status != SUCCESS) {
-    MSI_LOG_ERROR << "Start agent grpc server failed, agent ip: " << config.agent_ip
-                  << ", agent port: " << config.agent_port;
+    MSI_LOG_ERROR << "Start agent grpc server failed, agent address: " << config.agent_address;
     return status;
   }
   status = RegisterAgent();
   if (status != SUCCESS) {
-    MSI_LOG_ERROR << "Register agent failed, agent ip: " << config.agent_ip << ", agent port: " << config.agent_port
-                  << ", worker ip: " << config.worker_ip << ", worker port: " << config.worker_port;
+    MSI_LOG_ERROR << "Register agent failed, agent address: " << config.agent_address
+                  << ", distributed worker address: " << config.distributed_address;
     return status;
   }
   MSI_LOG_INFO << "Start agent success, servable name: " << common_meta.servable_name << ", rank_id: " << config.rank_id
@@ -83,16 +82,14 @@ Status WorkerAgent::StartAgent(const AgentStartUpConfig &config) {
 }
 
 Status WorkerAgent::StartGrpcServer() {
-  std::string server_address = config_.agent_ip + ":" + std::to_string(config_.agent_port);
-  return grpc_server_.Start(std::make_shared<MSAgentImpl>(server_address), config_.agent_ip, config_.agent_port,
-                            gRpcMaxMBMsgSize, "Agent");
+  std::string server_address = config_.agent_address;
+  return grpc_server_.Start(std::make_shared<MSAgentImpl>(server_address), server_address, gRpcMaxMBMsgSize, "Agent");
 }
 
 Status WorkerAgent::RegisterAgent() {
-  notify_worker_ = std::make_shared<GrpcNotifyDistributeWorker>(config_.worker_ip, config_.worker_port,
-                                                                config_.agent_ip, config_.agent_port);
+  notify_worker_ = std::make_shared<GrpcNotifyDistributeWorker>(config_.distributed_address, config_.agent_address);
   WorkerAgentSpec spec;
-  spec.agent_address = config_.agent_ip + ":" + std::to_string(config_.agent_port);
+  spec.agent_address = config_.agent_address;
   spec.rank_id = config_.rank_id;
   spec.batch_size = session_->GetBatchSize();
   spec.input_infos = session_->GetInputInfos();

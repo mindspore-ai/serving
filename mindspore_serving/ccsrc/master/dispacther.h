@@ -28,12 +28,10 @@
 #include "common/servable.h"
 #include "master/notify_worker/base_notify.h"
 #include "common/grpc_client.h"
+#include "master/worker_context.h"
+#include "master/servable_endpoint.h"
 
 namespace mindspore::serving {
-struct DispatcherWorkerContext {
-  WorkerSpec worker_spec;
-  std::shared_ptr<BaseNotifyWorker> notify_worker_ = nullptr;
-};
 
 class MS_API Dispatcher {
  public:
@@ -42,39 +40,34 @@ class MS_API Dispatcher {
   void DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply, PredictOnFinish on_finish);
 
   Status RegisterServable(const proto::RegisterRequest &request, proto::RegisterReply *reply);
-  Status UnregisterServable(const proto::ExitRequest &request, proto::ExitReply *reply);
-
-  Status AddServable(const proto::AddWorkerRequest &request, proto::AddWorkerReply *reply);
-  Status RemoveServable(const proto::RemoveWorkerRequest &request, proto::RemoveWorkerReply *reply);
-
+  Status NotifyWorkerExit(const proto::ExitRequest &request, proto::ExitReply *reply);
+  Status NotifyWorkerFailed(const proto::NotifyFailedRequest *request, proto::NotifyFailedReply *reply);
+  Status NotifyWorkerNotAlive(WorkerContext *worker_context);
+  Status NotifyWorkerNotAvailable(WorkerContext *worker_context);
   void Clear();
 
-  Status RegisterLocalServable(const std::vector<WorkerSpec> &worker_specs);
-  Status UnregisterLocalServable();
-  Status AddLocalServable(const WorkerSpec &worker_spec);
-  Status RemoveLocalServable(const WorkerSpec &worker_spec);
-  void SetMaxInferNum(uint32_t max_infer_num);
+  std::shared_ptr<WorkerContext> InitWorkerContext(const ServableReprInfo &repr, uint64_t worker_pid);
 
  private:
-  std::unordered_map<std::string, std::vector<DispatcherWorkerContext>> servable_map_{};
+  std::vector<std::shared_ptr<ServableEndPoint>> servable_list_;
+  std::vector<std::shared_ptr<WorkerContext>> worker_list_;
 
   std::shared_mutex servable_shared_lock_;
   // avoid invoke Clear and then UnregisterServable is invoked by Clear in other thread
   std::atomic_bool clearing_flag = false;
   std::atomic_uint32_t enqueued_requests_ = 0;
+  bool worker_error_reported_ = false;
 
   Status JudgeInferNum();
-  DispatcherWorkerContext GetWorkSession(const RequestSpec &request_spec) const;
+  std::shared_ptr<ServableEndPoint> GetWorkerEndpoint(const RequestSpec &request_spec) const;
 
-  using CreateNotifyWorkerFunc = std::function<std::shared_ptr<BaseNotifyWorker>(const WorkerSpec &worker_spec)>;
+  using CreateNotifyWorkerFunc = std::function<std::shared_ptr<BaseNotifyWorker>(const WorkerRegSpec &worker_spec)>;
 
-  Status RegisterServableCommon(const std::vector<WorkerSpec> &worker_specs, CreateNotifyWorkerFunc func);
+  Status RegisterServableCommon(const WorkerRegSpec &worker_spec, CreateNotifyWorkerFunc func);
   Status UnregisterServableCommon(const std::string &worker_address);
-  Status AddServableCommon(const WorkerSpec &worker_spec, CreateNotifyWorkerFunc func);
-  Status RemoveServableCommon(const WorkerSpec &worker_spec);
-
   Status DispatchAsyncInner(const proto::PredictRequest &request, proto::PredictReply *reply,
                             PredictOnFinish on_finish);
+  Status RegisterWorkerContext(std::shared_ptr<WorkerContext> worker_context);
 };
 
 }  // namespace mindspore::serving

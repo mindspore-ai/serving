@@ -18,8 +18,7 @@ import os
 from functools import wraps
 from shutil import rmtree
 
-from mindspore_serving import master
-from mindspore_serving import worker
+from mindspore_serving import server
 from mindspore_serving.client import Client
 
 servable_index = 0
@@ -29,7 +28,11 @@ class ServingTestBase:
     def __init__(self):
         servable_dir = "serving_python_ut_servables"
         self.servable_dir = os.path.join(os.getcwd(), servable_dir)
-        rmtree(self.servable_dir, True)
+        try:
+            rmtree(self.servable_dir, True)
+        # pylint: disable=broad-except
+        except Exception:
+            pass
 
     def init_servable(self, version_number, config_file, model_file="tensor_add.mindir"):
         cur_dir = os.path.dirname(os.path.abspath(__file__))
@@ -78,7 +81,7 @@ class ServingTestBase:
         servable_index += 1
         self.version_number = 1
         self.servable_name_path = os.path.join(self.servable_dir, self.servable_name)
-        self.model_dir = os.path.join(self.servable_dir, "model_"+self.servable_name)
+        self.model_dir = os.path.join(self.servable_dir, "model_" + self.servable_name)
         self.rank_table_content_path = os.path.join(self.servable_dir, self.servable_name + "_hccl.json")
         try:
             os.mkdir(self.servable_dir)
@@ -130,9 +133,8 @@ def serving_test(func):
         try:
             func(*args, **kwargs)
         finally:
-            master.context.set_max_enqueued_requests(10000)
-            master.stop()
-            worker.stop()
+            server.master.context.set_max_enqueued_requests(10000)
+            server.stop()
             servable_dir = os.path.join(os.getcwd(), "serving_python_ut_servables")
             rmtree(servable_dir, True)
             temp_rank_dir = os.path.join(os.getcwd(), "temp_rank_table")
@@ -150,8 +152,8 @@ def serving_test(func):
     return wrap_test
 
 
-def create_client(ip, port, servable_name, method_name, version_number=0):
-    client = Client(ip, port, servable_name, method_name, version_number)
+def create_client(address, servable_name, method_name, version_number=0):
+    client = Client(address, servable_name, method_name, version_number)
     client_create_list.append(client)
     return client
 
@@ -164,7 +166,7 @@ def release_client(client):
 # test servable_config.py with client
 servable_config_import = r"""
 import numpy as np
-from mindspore_serving.worker import register
+from mindspore_serving.server import register
 """
 
 servable_config_declare_servable = r"""
@@ -212,6 +214,7 @@ def preprocess(other):
     return np.ones([2,2], np.float32), np.ones([2,2], np.float32)
     
 def str_concat_postprocess(text1, text2):
+    print("text1", text1, "text2", text2)
     return text1 + text2
 
 @register.register_method(output_names=["text"])

@@ -62,9 +62,7 @@ class MS_API ProtoTensor : public TensorBase {
 class MS_API GrpcTensorHelper {
  public:
   static void GetRequestSpec(const proto::PredictRequest &request, RequestSpec *request_spec);
-  static void GetWorkerSpec(const proto::RegisterRequest &request, std::vector<WorkerSpec> *worker_specs);
-  static void GetWorkerSpec(const proto::AddWorkerRequest &request, WorkerSpec *worker_spec);
-  static void GetWorkerSpec(const proto::RemoveWorkerRequest &request, WorkerSpec *worker_spec);
+  static void GetWorkerSpec(const proto::RegisterRequest &request, WorkerRegSpec *worker_specs);
   static Status CreateInstanceFromRequest(const proto::PredictRequest &request, RequestSpec *request_spec,
                                           std::vector<InstanceData> *results);
   static void CreateReplyFromInstances(const proto::PredictRequest &request, const std::vector<InstancePtr> &instances,
@@ -73,13 +71,27 @@ class MS_API GrpcTensorHelper {
   static void CopyFromAgentSpec(const proto::AgentSpec &request, WorkerAgentSpec *worker_specs);
   static void CopyFromWorkerAgentSpec(const std::vector<WorkerAgentSpec> &worker_specs,
                                       proto::AgentRegisterRequest *request);
+  static Status CreatePredictRequestFromInstances(const RequestSpec &request_spec,
+                                                  const std::vector<const proto::Instance *> &instances,
+                                                  proto::PredictRequest *request);
+  static Status CreatePredictReplyFromInstances(const proto::PredictRequest &request,
+                                                const std::vector<proto::ErrorMsg> &errors,
+                                                const std::vector<const proto::Instance *> &instances,
+                                                proto::PredictReply *reply);
+  static Status CreateInstanceFromPredictReply(const RequestSpec &request_spec, const proto::PredictReply &reply,
+                                               std::vector<proto::ErrorMsg> *error,
+                                               std::vector<const proto::Instance *> *results);
+
+  static Status CheckRequestInstances(const proto::PredictRequest &request,
+                                      const std::vector<std::string> &input_names);
 
  private:
   static Status CreateInstanceFromRequestInstances(const proto::PredictRequest &request,
                                                    const std::vector<std::string> &input_names,
                                                    std::vector<InstanceData> *results);
   static Status CheckRequestTensor(const proto::Tensor &tensor);
-
+  static void SetReplySpec(const RequestSpec &request_spec, proto::PredictReply *reply);
+  static void SetRequestSpec(const RequestSpec &request_spec, proto::PredictRequest *request);
   static Status CreateReplyFromInstancesInner(const proto::PredictRequest &request,
                                               const std::vector<InstancePtr> &instances, proto::PredictReply *reply);
 };

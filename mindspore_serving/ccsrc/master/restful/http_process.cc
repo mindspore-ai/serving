@@ -1055,7 +1055,8 @@ Status RestfulService::ParseInstancesReply(const PredictReply &reply, json *cons
     return SUCCESS;
   }
   if (error_size != 0 && error_size != instances_nums_) {
-    return INFER_STATUS_LOG_ERROR(FAILED) << "reply error size:" << error_size << " is not 0,1 or instances size";
+    return INFER_STATUS_LOG_ERROR(FAILED) << "reply error size:" << error_size << " is not 0,1 or instances size "
+                                          << instances_nums_ << ", reply instances size " << reply_size;
   }
   if (reply_size != instances_nums_) {
     return INFER_STATUS_LOG_ERROR(FAILED)

@@ -14,13 +14,11 @@
 # ============================================================================
 """MindSpore Serving Master"""
 
-from ._master import start_grpc_server, start_restful_server, start_master_server, stop
-from . import context
+from ._master import start_grpc_server, start_restful_server, stop
 
 __all__ = []
 __all__.extend([
     "start_grpc_server",
     'start_restful_server',
-    'start_master_server',
     'stop'
 ])

@@ -23,11 +23,6 @@
 #include <string>
 #include <memory>
 #include "common/serving_common.h"
-#include "master/grpc/grpc_process.h"
-#include "common/grpc_server.h"
-#include "master/restful/restful_server.h"
-#include "master/server.h"
-#include "master/dispacther.h"
 
 namespace py = pybind11;
 
@@ -36,9 +31,9 @@ namespace serving {
 
 class MS_API PyMaster {
  public:
-  static void StartGrpcServer(const std::string &ip, uint32_t grpc_port, int max_msg_mb_size = 100);
-  static void StartGrpcMasterServer(const std::string &ip, uint32_t grpc_port);
-  static void StartRestfulServer(const std::string &ip, uint32_t grpc_port, int max_msg_mb_size = 100);
+  static void StartGrpcServer(const std::string &socket_address, int max_msg_mb_size = 100);
+  static void StartGrpcMasterServer(const std::string &master_address);
+  static void StartRestfulServer(const std::string &socket_address, int max_msg_mb_size = 100);
   static void WaitAndClear();
   static void StopAndClear();
 };

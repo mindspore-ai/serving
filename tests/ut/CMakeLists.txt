@@ -92,6 +92,8 @@ link_directories(${CMKAE_BINARY_DIR}/securec/src)
 
 add_library(serving_common SHARED ${UT_SERVING_COMMON})
 
+target_link_options(serving_common PRIVATE -Wl,-init,mindspore_serving_log_init)
+
 target_link_libraries(serving_common PRIVATE PROTO_SRC_LIB)
 target_link_libraries(serving_common PRIVATE ${_REFLECTION} ${_GRPC_GRPCPP} ${_PROTOBUF_LIBPROTOBUF} pthread)
 target_link_libraries(serving_common PRIVATE mindspore_serving::event mindspore_serving::event_pthreads)

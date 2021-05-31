@@ -47,9 +47,8 @@ struct AgentStartUpConfig {
   std::string group_file_name;
   std::string rank_table_json_file_name;
 
-  std::string agent_ip;
-  uint32_t agent_port;
-  std::string worker_ip;
+  std::string agent_address;
+  std::string distributed_address;
   uint32_t worker_port;
 
   CommonServableMeta common_meta;

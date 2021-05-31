@@ -1,32 +1,20 @@
 #!/bin/bash
 
 export GLOG_v=1
-export DEVICE_ID=1
-
-MINDSPORE_INSTALL_PATH=$1
-ENV_DEVICE_ID=$DEVICE_ID
-CURRPATH=$(cd "$(dirname $0)" || exit; pwd)
+cd "$(dirname $0)" || exit
+CURRPATH=$(pwd)
 CURRUSER=$(whoami)
 PROJECT_PATH=${CURRPATH}/../../../
-echo "MINDSPORE_INSTALL_PATH:"  ${MINDSPORE_INSTALL_PATH}
-echo "ENV_DEVICE_ID:" ${ENV_DEVICE_ID}
 echo "CURRPATH:"  ${CURRPATH}
 echo "CURRUSER:"  ${CURRUSER}
 echo "PROJECT_PATH:"  ${PROJECT_PATH}
 
-export LD_LIBRARY_PATH=${MINDSPORE_INSTALL_PATH}/lib:${LD_LIBRARY_PATH}
-#export PYTHONPATH=${MINDSPORE_INSTALL_PATH}/:${PYTHONPATH}
-
 echo "LD_LIBRARY_PATH: " ${LD_LIBRARY_PATH}
 echo "PYTHONPATH: " ${PYTHONPATH}
-echo "-------------show MINDSPORE_INSTALL_PATH----------------"
-ls -l ${MINDSPORE_INSTALL_PATH}
-echo "------------------show /usr/lib64/----------------------"
-ls -l /usr/local/python/python375/lib/
 
 clean_pid()
 {
-  ps aux | grep 'master_with_worker.py' | grep ${CURRUSER} | grep -v grep | awk '{print $2}' | xargs kill -9
+  ps aux | grep 'serving_server.py' | grep ${CURRUSER} | grep -v grep | awk '{print $2}' | xargs kill -9
   if [ $? -ne 0 ]
   then
     echo "clean pip failed"
@@ -55,25 +43,25 @@ start_service()
 {
   echo "### start serving service ###"
   unset http_proxy https_proxy
-  python3 master_with_worker.py > service.log 2>&1 &
+  python3 serving_server.py > serving_server.log 2>&1 &
   if [ $? -ne 0 ]
   then
     echo "server failed to start."
   fi
 
-  result=`grep -E 'Serving gRPC server start success, listening on 127.0.0.1:5500' service.log | wc -l`
+  result=`grep -E 'Serving gRPC server start success, listening on 127.0.0.1:5500' serving_server.log | wc -l`
   count=0
-  while [[ ${result} -ne 1 && ${count} -lt 150 ]]
+  while [[ ${result} -eq 0 && ${count} -lt 150 ]]
   do
     sleep 1
     count=$(($count+1))
-    result=`grep -E 'Serving gRPC server start success, listening on 127.0.0.1:5500' service.log | wc -l`
+    result=`grep -E 'Serving gRPC server start success, listening on 127.0.0.1:5500' serving_server.log | wc -l`
   done
 
   if [ ${count} -eq 150 ]
   then
     clean_pid
-    cat service.log
+    cat serving_server.log
     echo "start serving service failed!" && exit 1
   fi
   echo "### start serving service end ###"
@@ -83,11 +71,11 @@ pytest_serving()
 {
   unset http_proxy https_proxy
   echo "###  client start ###"
-  python3  client.py > client.log 2>&1
+  python3  serving_client.py > serving_client.log 2>&1
   if [ $? -ne 0 ]
   then
     clean_pid
-    cat client.log
+    cat serving_client.log
     echo "client failed to start." && exit 1
   fi
   echo "### client end ###"
@@ -97,13 +85,14 @@ test_renet_model()
 {
   start_service
   pytest_serving
-  cat client.log
+  cat serving_client.log
   clean_pid
 }
 
 echo "-----serving start-----"
-rm -rf serving *.log *.mindir *.dat ${CURRPATH}/add ${CURRPATH}/kernel_meta
-rm -rf client.py  export_model  master_with_worker.py  resnet50  test_image
+rm -rf serving *.log *.mindir *.dat kernel_meta
+rm -rf unix_socket_files serving_logs
+rm -rf serving_client.py  export_model  serving_server.py  resnet50  test_image
 cp -r ../../../example/resnet/* .
 prepare_model
 test_renet_model

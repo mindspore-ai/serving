@@ -25,17 +25,11 @@
 namespace mindspore {
 namespace serving {
 
-GrpcNotifyDistributeWorker::GrpcNotifyDistributeWorker(const std::string &distributed_worker_ip,
-                                                       uint32_t distributed_worker_port, const std::string &host_ip,
-                                                       uint32_t host_port)
-    : distributed_worker_ip_(distributed_worker_ip),
-      distributed_worker_port_(distributed_worker_port),
-      host_ip_(host_ip),
-      host_port_(host_port) {
-  distributed_worker_address_ = distributed_worker_ip + ":" + std::to_string(distributed_worker_port);
-  agent_address_ = host_ip_ + ":" + std::to_string(host_port_);
-  auto channel = GrpcServer::CreateChannel(distributed_worker_address_);
-  stub_ = proto::MSWorker::NewStub(channel);
+GrpcNotifyDistributeWorker::GrpcNotifyDistributeWorker(const std::string &distributed_address,
+                                                       const std::string &agent_address)
+    : distributed_address_(distributed_address), agent_address_(agent_address) {
+  auto channel = GrpcServer::CreateChannel(distributed_address_);
+  stub_ = proto::MSDistributedWorker::NewStub(channel);
 }
 
 GrpcNotifyDistributeWorker::~GrpcNotifyDistributeWorker() = default;
@@ -43,7 +37,7 @@ GrpcNotifyDistributeWorker::~GrpcNotifyDistributeWorker() = default;
 Status GrpcNotifyDistributeWorker::Register(const std::vector<WorkerAgentSpec> &worker_specs) {
   const int32_t REGISTER_INTERVAL = 1;
 
-  MSI_LOG(INFO) << "Register to worker " << distributed_worker_address_ << ", agent address: " << agent_address_;
+  MSI_LOG(INFO) << "Register to worker " << distributed_address_ << ", agent address: " << agent_address_;
   proto::AgentRegisterRequest request;
   GrpcTensorHelper::CopyFromWorkerAgentSpec(worker_specs, &request);
   request.set_address(agent_address_);
@@ -81,10 +75,9 @@ Status GrpcNotifyDistributeWorker::Unregister() {
   return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Exit Failed";
 }
 
-Status GrpcNotifyDistributeWorker::NotifyFailed(const std::string &worker_ip, uint32_t worker_port) {
-  auto address = worker_ip + ":" + std::to_string(worker_port);
-  auto channel = GrpcServer::CreateChannel(address);
-  auto stub = proto::MSWorker::NewStub(channel);
+Status GrpcNotifyDistributeWorker::NotifyFailed(const std::string &distributed_address) {
+  auto channel = GrpcServer::CreateChannel(distributed_address);
+  auto stub = proto::MSDistributedWorker::NewStub(channel);
 
   grpc::ClientContext context;
   proto::AgentFailedRequest request;
@@ -97,11 +90,10 @@ Status GrpcNotifyDistributeWorker::NotifyFailed(const std::string &worker_ip, ui
   return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Failed to notify failure of agent";
 }
 
-void GrpcNotifyDistributeWorker::StartupNotifyExit(const std::string &worker_ip, uint32_t worker_port,
+void GrpcNotifyDistributeWorker::StartupNotifyExit(const std::string &distributed_address,
                                                    const std::string &agent_ip) {
-  auto address = worker_ip + ":" + std::to_string(worker_port);
-  auto channel = GrpcServer::CreateChannel(address);
-  auto stub = proto::MSWorker::NewStub(channel);
+  auto channel = GrpcServer::CreateChannel(distributed_address);
+  auto stub = proto::MSDistributedWorker::NewStub(channel);
 
   grpc::ClientContext context;
   proto::AgentExitRequest request;
@@ -115,15 +107,14 @@ void GrpcNotifyDistributeWorker::StartupNotifyExit(const std::string &worker_ip,
   }
 }
 
-Status GrpcNotifyDistributeWorker::GetAgentsConfigsFromWorker(const std::string &worker_ip, uint32_t worker_port,
+Status GrpcNotifyDistributeWorker::GetAgentsConfigsFromWorker(const std::string &distributed_address,
                                                               DistributedServableConfig *config) {
   const int32_t REGISTER_TIME_OUT = 60;
   const int32_t REGISTER_INTERVAL = 1;
   auto loop = REGISTER_TIME_OUT;
   while (loop-- && !ExitSignalHandle::Instance().HasStopped()) {
-    auto address = worker_ip + ":" + std::to_string(worker_port);
-    auto channel = GrpcServer::CreateChannel(address);
-    auto stub = proto::MSWorker::NewStub(channel);
+    auto channel = GrpcServer::CreateChannel(distributed_address);
+    auto stub = proto::MSDistributedWorker::NewStub(channel);
 
     grpc::ClientContext context;
     proto::AgentConfigAcquireRequest request;

@@ -34,12 +34,12 @@ class MS_API PyAgent {
  public:
   static void StartAgent(const AgentStartUpConfig &start_config);
 
-  static DistributedServableConfig GetAgentsConfigsFromWorker(const std::string &worker_ip, uint32_t worker_port);
+  static DistributedServableConfig GetAgentsConfigsFromWorker(const std::string &distributed_address);
   static void WaitAndClear();
   static void StopAndClear();
   // from start up, not agent
-  static void NotifyFailed(const std::string &worker_ip, uint32_t worker_port);
-  static void StartupNotifyExit(const std::string &worker_ip, uint32_t worker_port, const std::string &agent_ip);
+  static void NotifyFailed(const std::string &distributed_address);
+  static void StartupNotifyExit(const std::string &distributed_address, const std::string &agent_ip);
 };
 
 }  // namespace serving

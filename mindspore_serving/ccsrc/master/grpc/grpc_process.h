@@ -51,26 +51,17 @@ class MSServiceImpl {
 class MSMasterImpl final : public proto::MSMaster::Service {
  public:
   explicit MSMasterImpl(std::shared_ptr<Dispatcher> dispatcher, const std::string server_address)
-      : dispatcher_(dispatcher) {
-    if (!watcher_) {
-      watcher_ = std::make_shared<Watcher<proto::MSWorker, proto::MSWorker>>(server_address);
-    }
-  }
+      : dispatcher_(dispatcher) {}
   ~MSMasterImpl() = default;
 
   grpc::Status Register(grpc::ServerContext *context, const proto::RegisterRequest *request,
                         proto::RegisterReply *reply) override;
   grpc::Status Exit(grpc::ServerContext *context, const proto::ExitRequest *request, proto::ExitReply *reply) override;
-  grpc::Status AddWorker(grpc::ServerContext *context, const proto::AddWorkerRequest *request,
-                         proto::AddWorkerReply *reply) override;
-  grpc::Status RemoveWorker(grpc::ServerContext *context, const proto::RemoveWorkerRequest *request,
-                            proto::RemoveWorkerReply *reply) override;
-  grpc::Status Ping(grpc::ServerContext *context, const proto::PingRequest *request, proto::PingReply *reply) override;
-  grpc::Status Pong(grpc::ServerContext *context, const proto::PongRequest *request, proto::PongReply *reply) override;
+  grpc::Status NotifyFailed(grpc::ServerContext *context, const proto::NotifyFailedRequest *request,
+                            proto::NotifyFailedReply *reply) override;
 
  private:
   std::shared_ptr<Dispatcher> dispatcher_;
-  std::shared_ptr<Watcher<proto::MSWorker, proto::MSWorker>> watcher_;
 };
 
 }  // namespace serving

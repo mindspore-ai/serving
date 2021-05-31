@@ -30,16 +30,16 @@
 #include "worker/notfiy_master/base_notify.h"
 #include "common/grpc_server.h"
 #include "worker/task_queue.h"
-#include "worker/version_control/version_controller.h"
 #include "common/grpc_async_server.h"
 #include "worker/sevable_base.h"
 #include "worker/grpc/worker_server.h"
+#include "worker/distributed_worker/distributed_process/distributed_server.h"
 
 namespace mindspore {
 namespace serving {
 
 struct ServableWorkerContext {
-  WorkerSpec worker_spec;
+  ServableRegSpec servable_spec;
   ServableSignature servable_signature;
   std::shared_ptr<WorkExecutor> worker_service = nullptr;
   std::shared_ptr<ServableBase> servable = nullptr;
@@ -56,16 +56,14 @@ class MS_API Worker {
   Status RunAsync(const proto::PredictRequest &request, proto::PredictReply *reply, PredictOnFinish on_finish);
   Status StartServable(std::shared_ptr<ServableBase> servable, std::shared_ptr<BaseNotifyMaster> notify_master);
 
-  Status StartGrpcServer(const std::shared_ptr<MSWorkerServer> &grpc_server, const std::string &worker_ip,
-                         int32_t port);
+  Status StartGrpcServer(const std::string &server_address);
+  Status StartDistributedGrpcServer(std::shared_ptr<DistributedServable> servable, const std::string &server_address);
 
   void StopServable(bool notify_master = true);
   bool IsRunning();
   Status RegisterWorker();
   void Update();
   Status StartVersionController();
-  Status AddWorker(const ServableWorkerContext &work);
-  Status RemoveWorker(const ServableWorkerContext &work);
 
   PyTaskQueueGroup &GetPyTaskQueueGroup() { return py_task_queue_group_; }
   size_t GetBatchSize() const;
@@ -73,21 +71,23 @@ class MS_API Worker {
   void PushPyPostprocessResult(std::vector<ResultInstance> outputs);
 
  private:
-  std::vector<ServableWorkerContext> work_list_;
+  uint64_t worker_pid = 0;
+  ServableWorkerContext servable_context_;
   PyTaskQueueGroup py_task_queue_group_;
   PreprocessThreadPool cpp_preprocess_;
   PostprocessThreadPool cpp_postprocess_;
 
-  VersionController version_controller_;
   std::atomic_bool exit_notify_master_ = true;
   std::atomic_bool servable_started_ = false;
   std::atomic_flag clear_flag_ = ATOMIC_FLAG_INIT;
   std::shared_ptr<BaseNotifyMaster> notify_master_ = nullptr;
-  std::shared_ptr<MSWorkerServer> worker_grpc_server_ = nullptr;
+  std::shared_ptr<WorkerGrpcServer> worker_grpc_server_ = nullptr;
+  std::shared_ptr<DistributedWorkerGrpcServer> distributed_grpc_server_ = nullptr;
 
   std::shared_mutex worker_shared_lock_;
 
-  ServableWorkerContext GetServableWorker(const RequestSpec &request_spec);
+  Status RunAsyncInner(const proto::PredictRequest &request, proto::PredictReply *reply, PredictOnFinish on_finish);
+  bool CheckServableRequest(const RequestSpec &request_spec);
   std::shared_ptr<TaskQueue> GetPyTaskQueuePreprocess() { return py_task_queue_group_.GetPreprocessTaskQueue(); }
   std::shared_ptr<TaskQueue> GetPyTaskQueuePostprocess() { return py_task_queue_group_.GetPostprocessTaskQueue(); }
   std::shared_ptr<TaskQueue> GetCppTaskQueuePreprocess() { return cpp_preprocess_.GetTaskQueue(); }

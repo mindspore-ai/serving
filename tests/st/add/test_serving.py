@@ -14,7 +14,6 @@
 # ============================================================================
 
 import os
-import sys
 import pytest
 import numpy as np
 
@@ -22,23 +21,12 @@ import numpy as np
 @pytest.mark.level0
 @pytest.mark.platform_arm_ascend_training
 @pytest.mark.env_single
-def test_serving():
+def test_serving_add():
     """test_serving"""
     sh_path = os.path.split(os.path.realpath(__file__))[0]
-    python_path_folders = []
-    for python_path in sys.path:
-        if os.path.isdir(python_path):
-            python_path_folders += [python_path]
-    folders = []
-    for folder in python_path_folders:
-        folders += [os.path.join(folder, x) for x in os.listdir(folder) \
-                    if os.path.isdir(os.path.join(folder, x)) and \
-                    '/site-packages/mindspore' in os.path.join(folder, x)]
-    ret = os.system(f"sh {sh_path}/add.sh {folders[0].split('mindspore', 1)[0] + 'mindspore'}")
-    assert np.allclose(ret, 0)
-    ret = os.system(f"sh {sh_path}/add_mul_process.sh {folders[0].split('mindspore', 1)[0] + 'mindspore'}")
+    ret = os.system(f"sh {sh_path}/add.sh")
     assert np.allclose(ret, 0)
 
 
 if __name__ == '__main__':
-    test_serving()
+    test_serving_add()

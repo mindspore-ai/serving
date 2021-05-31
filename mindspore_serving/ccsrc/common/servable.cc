@@ -51,7 +51,7 @@ void LocalServableMeta::SetModelFormat(const std::string &format) {
   }
 }
 
-std::string LoadServableSpec::Repr() const {
+std::string ServableLoadSpec::Repr() const {
   std::string version;
   if (version_number > 0) {
     version = " version(" + std::to_string(version_number) + ") ";
@@ -59,12 +59,11 @@ std::string LoadServableSpec::Repr() const {
   return "servable(" + servable_name + ") " + version;
 }
 
-std::string WorkerSpec::Repr() const {
-  std::string version;
-  if (version_number > 0) {
-    version = " version(" + std::to_string(version_number) + ") ";
-  }
-  return "servable(" + servable_name + ") " + version + " address(" + worker_address + ") ";
+std::string WorkerRegSpec::Repr() const {
+  std::stringstream str_stream;
+  str_stream << "{worker_pid:" << worker_pid << ", address:" + worker_address
+             << ", servable:" << servable_spec.servable_name + ", version:" << servable_spec.version_number << "}";
+  return str_stream.str();
 }
 
 std::string RequestSpec::Repr() const {

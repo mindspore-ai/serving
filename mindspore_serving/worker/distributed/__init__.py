@@ -12,16 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-"""MindSpore Serving Worker."""
+"""MindSpore Serving Distributed Worker."""
 
-from .agent_startup import startup_worker_agents
-from .register import declare_distributed_servable
-from .distributed_worker import start_distributed_servable, start_distributed_servable_in_master
+from ._distributed import startup_worker_agents
+from ._distributed import declare_distributed_servable
+from ._distributed import start_distributed_servable_in_master
 
 __all__ = []
 __all__.extend([
     "startup_worker_agents",
     'declare_distributed_servable',
-    'start_distributed_servable',
-    'start_distributed_servable_in_master'
+    'start_distributed_servable_in_master',
 ])

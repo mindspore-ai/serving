@@ -20,11 +20,8 @@
 #include <memory>
 #include "common/exit_handle.h"
 #include "worker/notfiy_master/grpc_notify.h"
-#include "worker/notfiy_master/local_notify.h"
 #include "worker/local_servable/local_sevable.h"
 #include "worker/distributed_worker/distributed_servable.h"
-#include "worker/grpc/worker_server.h"
-#include "worker/distributed_worker/distributed_process/distributed_server.h"
 #include "worker/inference/inference.h"
 
 namespace mindspore::serving {
@@ -40,13 +37,12 @@ void PyWorker::OnEndStartServable(const std::string &servable_directory, const s
 }
 
 void PyWorker::StartServable(const std::string &model_directory, const std::string &model_name, uint32_t version_number,
-                             const std::string &master_ip, uint32_t master_port, const std::string &worker_ip,
-                             uint32_t worker_port) {
+                             const std::string &master_address, const std::string &worker_address) {
   if (Worker::GetInstance().IsRunning()) {
     MSI_LOG_EXCEPTION << "A servable has been started, only one servable can run in a process currently.";
   }
 
-  auto notify_master = std::make_shared<GrpcNotfiyMaster>(master_ip, master_port, worker_ip, worker_port);
+  auto notify_master = std::make_shared<GrpcNotifyMaster>(master_address, worker_address);
   auto servable = std::make_shared<LocalModelServable>();
   auto status = servable->StartServable(model_directory, model_name, version_number);
   if (status != SUCCESS) {
@@ -58,37 +54,7 @@ void PyWorker::StartServable(const std::string &model_directory, const std::stri
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
   // start grpc server
-  auto grpc_sever = std::make_shared<MSWorkerServer>();
-  status = Worker::GetInstance().StartGrpcServer(grpc_sever, worker_ip, worker_port);
-  if (status != SUCCESS) {
-    MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
-  }
-
-  status = Worker::GetInstance().StartVersionController();
-  if (status != SUCCESS) {
-    MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
-  }
-  OnEndStartServable(model_directory, model_name, version_number, servable->GetServableVersion());
-}
-
-void PyWorker::StartServableInMaster(const std::string &model_directory, const std::string &model_name,
-                                     uint32_t version_number) {
-  if (Worker::GetInstance().IsRunning()) {
-    MSI_LOG_EXCEPTION << "A servable has been started, only one servable can run in a process currently.";
-  }
-
-  auto notify_master = std::make_shared<LocalNotifyMaster>();
-  auto servable = std::make_shared<LocalModelServable>();
-  auto status = servable->StartServable(model_directory, model_name, version_number);
-  if (status != SUCCESS) {
-    servable->Clear();
-    MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
-  }
-  status = Worker::GetInstance().StartServable(servable, notify_master);
-  if (status != SUCCESS) {
-    MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
-  }
-  status = Worker::GetInstance().StartVersionController();
+  status = Worker::GetInstance().StartGrpcServer(worker_address);
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
@@ -97,22 +63,20 @@ void PyWorker::StartServableInMaster(const std::string &model_directory, const s
 
 void PyWorker::StartDistributedServable(const std::string &servable_directory, const std::string &servable_name,
                                         const std::string &rank_table_json_file, uint32_t version_number,
-                                        const std::string &worker_ip, uint32_t worker_port,
-                                        const std::string &master_ip, uint32_t master_port,
-                                        uint32_t wait_agents_time_in_seconds) {
+                                        const std::string &distributed_address, const std::string &master_address,
+                                        const std::string &worker_address, uint32_t wait_agents_time_in_seconds) {
   if (Worker::GetInstance().IsRunning()) {
     MSI_LOG_EXCEPTION << "A servable has been started, only one servable can run in a process currently.";
   }
 
   Status status;
   auto servable = std::make_shared<DistributedServable>();
-  auto grpc_sever = std::make_shared<MSDistributedWorkerServer>(servable);
-  status = Worker::GetInstance().StartGrpcServer(grpc_sever, worker_ip, worker_port);
+  status = Worker::GetInstance().StartDistributedGrpcServer(servable, distributed_address);
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
 
-  auto notify_master = std::make_shared<GrpcNotfiyMaster>(master_ip, master_port, worker_ip, worker_port);
+  auto notify_master = std::make_shared<GrpcNotifyMaster>(master_address, worker_address);
   status = servable->StartServable(servable_directory, servable_name, rank_table_json_file, version_number,
                                    wait_agents_time_in_seconds);
   if (status != SUCCESS) {
@@ -123,41 +87,9 @@ void PyWorker::StartDistributedServable(const std::string &servable_directory, c
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
-  status = Worker::GetInstance().StartVersionController();
-  if (status != SUCCESS) {
-    MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
-  }
-  OnEndStartServable(servable_directory, servable_name, version_number, servable->GetServableVersion());
-}
+  // start grpc server
 
-void PyWorker::StartDistributedServableInMaster(const std::string &servable_directory, const std::string &servable_name,
-                                                const std::string &rank_table_json_file, uint32_t version_number,
-                                                const std::string &worker_ip, uint32_t worker_port,
-                                                uint32_t wait_agents_time_in_seconds) {
-  if (Worker::GetInstance().IsRunning()) {
-    MSI_LOG_EXCEPTION << "A servable has been started, only one servable can run in a process currently.";
-  }
-
-  Status status;
-  auto servable = std::make_shared<DistributedServable>();
-  auto grpc_sever = std::make_shared<MSDistributedWorkerServer>(servable);
-  status = Worker::GetInstance().StartGrpcServer(grpc_sever, worker_ip, worker_port);
-  if (status != SUCCESS) {
-    MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
-  }
-
-  auto notify_master = std::make_shared<LocalNotifyMaster>();
-  status = servable->StartServable(servable_directory, servable_name, rank_table_json_file, version_number,
-                                   wait_agents_time_in_seconds);
-  if (status != SUCCESS) {
-    servable->Clear();
-    MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
-  }
-  status = Worker::GetInstance().StartServable(servable, notify_master);
-  if (status != SUCCESS) {
-    MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
-  }
-  status = Worker::GetInstance().StartVersionController();
+  status = Worker::GetInstance().StartGrpcServer(worker_address);
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
@@ -243,8 +175,11 @@ int PyWorker::GetBatchSize() { return Worker::GetInstance().GetBatchSize(); }
 
 std::string PyWorker::GetDeviceType() {
   auto device_type = InferenceLoader::Instance().GetSupportDeviceType(kDeviceTypeNotSpecified, kUnknownType);
-  if (device_type == kDeviceTypeAscend || device_type == kDeviceTypeAscendMS || device_type == kDeviceTypeAscendCL) {
-    return "Ascend";
+  if (device_type == kDeviceTypeAscendMS) {
+    return "AscendMS";
+  }
+  if (device_type == kDeviceTypeAscendCL) {
+    return "AscendCL";
   }
   if (device_type == kDeviceTypeGpu) {
     return "Gpu";
@@ -253,6 +188,10 @@ std::string PyWorker::GetDeviceType() {
     return "Cpu";
   }
   return std::string();
+}
+
+void PyWorker::NotifyFailed(const std::string &master_address, const std::string &error_msg) {
+  GrpcNotifyMaster::NotifyFailed(master_address, error_msg);
 }
 
 }  // namespace mindspore::serving

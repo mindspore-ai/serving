@@ -57,7 +57,7 @@ Status GraphImplStubAdd::Run(const std::vector<MSTensor> &inputs, std::vector<MS
   }
   auto x1 = reinterpret_cast<const float *>(inputs[0].Data().get());
   auto x2 = reinterpret_cast<const float *>(inputs[1].Data().get());
-  MSTensor* output_ptr = outputs_[0].Clone();
+  MSTensor *output_ptr = outputs_[0].Clone();
   if (output_ptr == nullptr) {
     return mindspore::kCoreFailed;
   }

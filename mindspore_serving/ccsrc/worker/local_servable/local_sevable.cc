@@ -35,7 +35,9 @@ LocalModelServable::~LocalModelServable() { Clear(); }
 
 std::string LocalModelServable::GetServableName() const { return servable_name_; }
 
-uint64_t LocalModelServable::GetServableVersion() const { return version_number_; }
+uint64_t LocalModelServable::GetServableVersion() const { return running_version_number_; }
+
+uint64_t LocalModelServable::GetConfigVersion() const { return base_spec_.version_number; }
 
 Status LocalModelServable::Predict(const std::vector<TensorBasePtr> &input, std::vector<TensorBasePtr> *output) {
   if (!model_loaded_ || !session_) {
@@ -111,14 +113,14 @@ Status LocalModelServable::StartServable(const std::string &servable_directory, 
     return status;
   }
   servable_name_ = base_spec_.servable_name;
-  version_number_ = real_version_number;
+  running_version_number_ = real_version_number;
   model_loaded_ = true;
   MSI_LOG_INFO << status.StatusMessage();
   std::cout << status.StatusMessage() << std::endl;
   return SUCCESS;
 }
 
-void LocalModelServable::GetVersions(const LoadServableSpec &servable_spec, std::vector<uint64_t> *real_versions) {
+void LocalModelServable::GetVersions(const ServableLoadSpec &servable_spec, std::vector<uint64_t> *real_versions) {
   MSI_EXCEPTION_IF_NULL(real_versions);
   // define version_strategy:"specific","latest","multi"
   if (version_strategy_ == kVersionStrategySpecific) {
@@ -165,7 +167,7 @@ void LocalModelServable::GetVersions(const LoadServableSpec &servable_spec, std:
   }
 }
 
-Status LocalModelServable::LoadServableConfig(const LoadServableSpec &servable_spec,
+Status LocalModelServable::LoadServableConfig(const ServableLoadSpec &servable_spec,
                                               const std::string &version_strategy,
                                               std::vector<uint64_t> *real_versions) {
   MSI_EXCEPTION_IF_NULL(real_versions);

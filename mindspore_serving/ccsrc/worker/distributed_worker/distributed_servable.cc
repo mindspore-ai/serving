@@ -41,6 +41,8 @@ std::string DistributedServable::GetServableName() const { return servable_name_
 
 uint64_t DistributedServable::GetServableVersion() const { return version_number_; }
 
+uint64_t DistributedServable::GetConfigVersion() const { return version_number_; }
+
 Status DistributedServable::Predict(const std::vector<TensorBasePtr> &input, std::vector<TensorBasePtr> *output) {
   auto status = PredictInner(input, output);
   if (status != SUCCESS) {
@@ -607,8 +609,8 @@ Status DistributedServable::CheckRankConfig() {
   }
   if (config_.rank_list.size() != rank_size) {
     return INFER_STATUS_LOG_ERROR(FAILED)
-           << "Rank size " << config_.rank_list.size() << " declared in rank table file not equal to rank size "
-           << rank_size << " declared in servable_config, rank json config file: " << rank_table_json_file_;
+           << "Rank size " << config_.rank_list.size() << " declared in rank table file '" << rank_table_json_file_
+           << "' not equal to " << rank_size << " declared in servable config";
   }
   auto parallel_count = rank_size / stage_size;
   constexpr size_t card_count_per_machine = 8;

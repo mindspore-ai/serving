@@ -367,6 +367,13 @@ __attribute__((constructor)) void mindspore_serving_log_init(void) {
 #else
 void mindspore_serving_log_init(void) {
 #endif
+  static bool is_glog_initialzed = false;
+  if (!is_glog_initialzed) {
+#if !defined(_WIN32) && !defined(_WIN64)
+    google::InitGoogleLogging("mindspore_serving");
+#endif
+    is_glog_initialzed = true;
+  }
   mindspore::serving::common_log_init();
 }
 }

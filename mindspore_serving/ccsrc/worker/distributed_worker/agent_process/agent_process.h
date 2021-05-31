@@ -37,7 +37,7 @@ class MSAgentImpl final : public proto::MSAgent::Service {
  public:
   explicit MSAgentImpl(const std::string server_address) {
     if (!watcher_) {
-      watcher_ = std::make_shared<Watcher<proto::MSWorker, proto::MSWorker>>(server_address);
+      watcher_ = std::make_shared<Watcher<proto::MSDistributedWorker, proto::MSDistributedWorker>>(server_address);
     }
   }
   grpc::Status Predict(grpc::ServerContext *context, const proto::DistributedPredictRequest *request,
@@ -48,7 +48,7 @@ class MSAgentImpl final : public proto::MSAgent::Service {
   grpc::Status Pong(grpc::ServerContext *context, const proto::PongRequest *request, proto::PongReply *reply) override;
 
  private:
-  std::shared_ptr<Watcher<proto::MSWorker, proto::MSWorker>> watcher_;
+  std::shared_ptr<Watcher<proto::MSDistributedWorker, proto::MSDistributedWorker>> watcher_;
 };
 
 }  // namespace serving

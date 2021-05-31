@@ -22,17 +22,17 @@ import numpy as np
 import psutil
 
 from common import serving_test, create_client, ServingTestBase
-from mindspore_serving.worker import distributed
-from mindspore_serving import master
+from mindspore_serving.server import distributed
+from mindspore_serving import server
 
 distributed_import = r"""
 import numpy as np
-from mindspore_serving.worker import distributed
-from mindspore_serving.worker import register
+from mindspore_serving.server import distributed
+from mindspore_serving.server import register
 """
 
 distributed_declare_servable = r"""
-distributed.declare_distributed_servable(rank_size=8, stage_size=1, with_batch_dim=False)
+distributed.declare_servable(rank_size=8, stage_size=1, with_batch_dim=False)
 """
 
 rank_table_content = r"""
@@ -80,10 +80,10 @@ def start_distributed_grpc_server():
 
 def start_distributed_worker(base):
     def worker_process():
-        distributed.start_distributed_servable_in_master(base.servable_dir, base.servable_name,
-                                                         rank_table_json_file=base.rank_table_content_path,
-                                                         worker_ip="127.0.0.1", worker_port=6200)
-        master.start_grpc_server("0.0.0.0", 5500)
+        distributed.start_servable(base.servable_dir, base.servable_name,
+                                   rank_table_json_file=base.rank_table_content_path,
+                                   distributed_address="127.0.0.1:6200")
+        server.start_grpc_server("0.0.0.0:5500")
 
     worker = Process(target=worker_process)
     worker.start()
@@ -97,8 +97,8 @@ def start_agents(model_file_list, group_config_list, start_port):
 
     def agent_process(send_pipe):
         try:
-            distributed.startup_worker_agents(worker_ip="127.0.0.1", worker_port=6200, model_files=model_file_list,
-                                              group_config_files=group_config_list, agent_start_port=start_port)
+            distributed.startup_agents(distributed_address="127.0.0.1:6200", model_files=model_file_list,
+                                       group_config_files=group_config_list, agent_start_port=start_port)
             send_pipe.send("Success")
         # pylint: disable=broad-except
         except Exception as e:
@@ -135,6 +135,7 @@ def send_exit(process):
 
     def children_alive():
         return any([item.is_running() for item in child_processes])
+
     os.kill(process.pid, signal.SIGINT)
     for _ in range(50):  # 50*0.1s
         if not process.is_alive() and not children_alive():
@@ -155,7 +156,7 @@ def test_distributed_worker_worker_exit_success():
     agent_process = start_agents(base.model_file_list, base.group_config_list, 7000)
     base.add_on_exit(lambda: send_exit(agent_process))
 
-    client = create_client("localhost", 5500, base.servable_name, "predict")
+    client = create_client("localhost:5500", base.servable_name, "predict")
     instances = [{}, {}, {}]
     y_data_list = []
     for index, instance in enumerate(instances):
@@ -178,6 +179,7 @@ def test_distributed_worker_worker_exit_success():
 
     def agents_alive():
         return any([item.is_running() for item in agents])
+
     os.kill(worker_process.pid, signal.SIGINT)
     for _ in range(50):  # 50*0.1s
         if not worker_process.is_alive() and not agent_process.is_alive() and not agents_alive():
@@ -196,7 +198,7 @@ def test_distributed_worker_agent_exit_success():
     agent_process = start_agents(base.model_file_list, base.group_config_list, 7008)
     base.add_on_exit(lambda: send_exit(agent_process))
 
-    client = create_client("localhost", 5500, base.servable_name, "predict")
+    client = create_client("localhost:5500", base.servable_name, "predict")
     instances = [{}, {}, {}]
     y_data_list = []
     for index, instance in enumerate(instances):
@@ -216,6 +218,7 @@ def test_distributed_worker_agent_exit_success():
 
     def agents_alive():
         return any([item.is_running() for item in agents])
+
     os.kill(agent_process.pid, signal.SIGINT)
     for _ in range(50):  # 50*0.1s
         if not worker_process.is_alive() and not agent_process.is_alive() and not agents_alive():
@@ -234,7 +237,7 @@ def test_distributed_worker_agent_startup_killed_exit_success():
     agent_process = start_agents(base.model_file_list, base.group_config_list, 7016)
     base.add_on_exit(lambda: send_exit(agent_process))
 
-    client = create_client("localhost", 5500, base.servable_name, "predict")
+    client = create_client("localhost:5500", base.servable_name, "predict")
     instances = [{}, {}, {}]
     y_data_list = []
     for index, instance in enumerate(instances):
@@ -254,6 +257,7 @@ def test_distributed_worker_agent_startup_killed_exit_success():
 
     def agents_alive():
         return any([item.is_running() for item in agents])
+
     os.kill(agent_process.pid, signal.SIGKILL)  # kill msg
     for _ in range(50):  # 50*0.1s
         # test agent_process.is_alive() first, it will make agents(children) notify exit of their parent
@@ -273,7 +277,7 @@ def test_distributed_worker_agent_killed_exit_success():
     agent_process = start_agents(base.model_file_list, base.group_config_list, 7024)
     base.add_on_exit(lambda: send_exit(agent_process))
 
-    client = create_client("localhost", 5500, base.servable_name, "predict")
+    client = create_client("localhost:5500", base.servable_name, "predict")
     instances = [{}, {}, {}]
     y_data_list = []
     for index, instance in enumerate(instances):
@@ -294,6 +298,7 @@ def test_distributed_worker_agent_killed_exit_success():
 
     def agents_alive():
         return any([item.is_running() for item in agents])
+
     os.kill(agents[0].pid, signal.SIGKILL)  # kill msg
     for _ in range(50):  # 50*0.1s
         if not worker_process.is_alive() and not agent_process.is_alive() and not agents_alive():

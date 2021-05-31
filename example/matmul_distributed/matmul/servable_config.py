@@ -13,10 +13,10 @@
 # limitations under the License.
 # ============================================================================
 """Distributed matmul config python file"""
-from mindspore_serving.worker import distributed
-from mindspore_serving.worker import register
+from mindspore_serving.server import distributed
+from mindspore_serving.server import register
 
-distributed.declare_distributed_servable(rank_size=8, stage_size=1, with_batch_dim=False)
+distributed.declare_servable(rank_size=8, stage_size=1, with_batch_dim=False)
 
 
 @register.register_method(output_names=["y"])

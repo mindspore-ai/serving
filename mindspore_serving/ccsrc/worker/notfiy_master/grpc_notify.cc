@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include "worker/notfiy_master/grpc_notify.h"
+#include <unistd.h>
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
@@ -24,126 +25,88 @@
 namespace mindspore {
 namespace serving {
 
-GrpcNotfiyMaster::GrpcNotfiyMaster(const std::string &master_ip, uint32_t master_port, const std::string &host_ip,
-                                   uint32_t host_port)
-    : master_ip_(master_ip), master_port_(master_port), host_ip_(host_ip), host_port_(host_port) {
-  master_address_ = master_ip_ + ":" + std::to_string(master_port);
-  worker_address_ = host_ip_ + ":" + std::to_string(host_port_);
+GrpcNotifyMaster::GrpcNotifyMaster(const std::string &master_address, const std::string &worker_address)
+    : master_address_(master_address), worker_address_(worker_address) {}
+
+GrpcNotifyMaster::~GrpcNotifyMaster() = default;
+
+Status GrpcNotifyMaster::Register(const WorkerRegSpec &worker_spec) {
+  proto::RegisterRequest request;
+  auto proto_worker_spec = request.mutable_worker_spec();
+  proto_worker_spec->set_address(worker_address_);
+  proto_worker_spec->set_worker_pid(getpid());
+  const auto &spec = worker_spec.servable_spec;
+  auto proto_spec = proto_worker_spec->mutable_servable_spec();
+  proto_spec->set_name(spec.servable_name);
+  proto_spec->set_version_number(spec.version_number);
+  proto_spec->set_config_version_number(spec.config_version_number);
+  proto_spec->set_batch_size(spec.batch_size);
+  for (auto &method : spec.methods) {
+    auto proto_method = proto_spec->add_methods();
+    proto_method->set_name(method.name);
+    for (auto &name : method.input_names) {
+      proto_method->add_input_names(name);
+    }
+  }
+
+  MSI_LOG(INFO) << "Register to " << master_address_;
+  proto::RegisterReply reply;
+  grpc::ClientContext context;
+  const int32_t TIME_OUT = 1;
+  std::chrono::system_clock::time_point deadline = std::chrono::system_clock::now() + std::chrono::seconds(TIME_OUT);
+  context.set_deadline(deadline);
   auto channel = GrpcServer::CreateChannel(master_address_);
-  stub_ = proto::MSMaster::NewStub(channel);
+  auto stub = proto::MSMaster::NewStub(channel);
+  grpc::Status status = stub->Register(&context, request, &reply);
+  if (status.ok()) {
+    MSI_LOG(INFO) << "Register SUCCESS ";
+    return SUCCESS;
+  }
+  return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
+         << "Register failed, Grpc message: " << status.error_code() << ", " << status.error_message();
 }
 
-GrpcNotfiyMaster::~GrpcNotfiyMaster() = default;
-
-Status GrpcNotfiyMaster::Register(const std::vector<WorkerSpec> &worker_specs) {
-  const int32_t REGISTER_TIME_OUT = 60;
-  const int32_t REGISTER_INTERVAL = 1;
-  auto loop = REGISTER_TIME_OUT;
-  while (loop-- && !ExitSignalHandle::Instance().HasStopped()) {
-    MSI_LOG(INFO) << "Register to " << master_address_;
-    proto::RegisterRequest request;
-    request.set_address(worker_address_);
-    for (size_t i = 0; i < worker_specs.size(); i++) {
-      auto &spec = worker_specs[i];
-      auto worker_spec = request.add_worker_spec();
-      worker_spec->set_name(spec.servable_name);
-      worker_spec->set_version_number(spec.version_number);
-      for (auto &method : spec.methods) {
-        auto proto_method = worker_spec->add_methods();
-        proto_method->set_name(method.name);
-        for (auto &name : method.input_names) {
-          proto_method->add_input_names(name);
-        }
-      }
-    }
-
-    proto::RegisterReply reply;
-    grpc::ClientContext context;
-    std::chrono::system_clock::time_point deadline =
-      std::chrono::system_clock::now() + std::chrono::seconds(REGISTER_INTERVAL);
-    context.set_deadline(deadline);
-    grpc::Status status = stub_->Register(&context, request, &reply);
-    if (status.ok()) {
-      MSI_LOG(INFO) << "Register SUCCESS ";
-      return SUCCESS;
-    }
-    MSI_LOG_INFO << "Grpc message: " << status.error_code() << ", " << status.error_message();
-    std::this_thread::sleep_for(std::chrono::milliseconds(REGISTER_INTERVAL * 1000));
-  }
-  if (ExitSignalHandle::Instance().HasStopped()) {
-    return INFER_STATUS_LOG_WARNING(FAILED) << "Worker exit, stop registration";
-  }
-  return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Register TimeOut";
-}
-
-Status GrpcNotfiyMaster::Unregister() {
+Status GrpcNotifyMaster::Unregister() {
   if (is_stoped_.load()) {
     return SUCCESS;
   }
   is_stoped_ = true;
   proto::ExitRequest request;
   request.set_address(worker_address_);
+  MSI_LOG(INFO) << "Unregister to " << master_address_;
   proto::ExitReply reply;
   grpc::ClientContext context;
   const int32_t TIME_OUT = 1;
   std::chrono::system_clock::time_point deadline = std::chrono::system_clock::now() + std::chrono::seconds(TIME_OUT);
   context.set_deadline(deadline);
-  grpc::Status status = stub_->Exit(&context, request, &reply);
+  auto channel = GrpcServer::CreateChannel(master_address_);
+  auto stub = proto::MSMaster::NewStub(channel);
+  grpc::Status status = stub->Exit(&context, request, &reply);
   if (status.ok()) {
     MSI_LOG(INFO) << "Exit SUCCESS ";
     return SUCCESS;
   }
-  return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Exit Failed";
+  return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
+         << "Exit Failed, Grpc message: " << status.error_code() << ", " << status.error_message();
 }
 
-Status GrpcNotfiyMaster::AddWorker(const WorkerSpec &worker_spec) {
-  proto::AddWorkerReply reply;
-  grpc::ClientContext context;
-  proto::AddWorkerRequest request;
-  request.set_address(worker_address_);
-  request.mutable_worker_spec()->set_name(worker_spec.servable_name);
-  request.mutable_worker_spec()->set_version_number(worker_spec.version_number);
-  for (auto &method : worker_spec.methods) {
-    auto proto_method = request.mutable_worker_spec()->add_methods();
-    proto_method->set_name(method.name);
-    for (auto &name : method.input_names) {
-      proto_method->add_input_names(name);
-    }
-  }
-  const int32_t INTERVAL = 1;
-  std::chrono::system_clock::time_point deadline = std::chrono::system_clock::now() + std::chrono::seconds(INTERVAL);
-  context.set_deadline(deadline);
-  grpc::Status status = stub_->AddWorker(&context, request, &reply);
-  if (status.ok()) {
-    MSI_LOG(INFO) << "AddWorker SUCCESS ";
-    return SUCCESS;
-  }
-  return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "AddWorker Failed";
-}
+Status GrpcNotifyMaster::NotifyFailed(const std::string &master_address, const std::string &error_msg) {
+  proto::NotifyFailedRequest request;
+  request.set_worker_pid(getpid());
+  request.set_error_msg(error_msg);
+  auto channel = GrpcServer::CreateChannel(master_address);
+  auto stub = proto::MSMaster::NewStub(channel);
 
-Status GrpcNotfiyMaster::RemoveWorker(const WorkerSpec &worker_spec) {
-  proto::RemoveWorkerReply reply;
+  proto::NotifyFailedReply reply;
   grpc::ClientContext context;
-  proto::RemoveWorkerRequest request;
-  request.set_address(worker_address_);
-  request.mutable_worker_spec()->set_name(worker_spec.servable_name);
-  request.mutable_worker_spec()->set_version_number(worker_spec.version_number);
-  for (auto &method : worker_spec.methods) {
-    auto proto_method = request.mutable_worker_spec()->add_methods();
-    proto_method->set_name(method.name);
-    for (auto &name : method.input_names) {
-      proto_method->add_input_names(name);
-    }
-  }
-  const int32_t INTERVAL = 1;
-  std::chrono::system_clock::time_point deadline = std::chrono::system_clock::now() + std::chrono::seconds(INTERVAL);
-  context.set_deadline(deadline);
-  grpc::Status status = stub_->RemoveWorker(&context, request, &reply);
+  grpc::Status status = stub->NotifyFailed(&context, request, &reply);
   if (status.ok()) {
-    MSI_LOG(INFO) << "RemoveWorker SUCCESS ";
+    MSI_LOG(INFO) << "Success to notify master " << master_address << " error message of worker: " << error_msg;
     return SUCCESS;
   }
-  return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "RemoveWorker Failed";
+  MSI_LOG_WARNING << "Failed to notify master " << master_address << " error message of worker: " << error_msg
+                  << ", grpc error: " << status.error_message();
+  return FAILED;
 }
 
 }  // namespace serving

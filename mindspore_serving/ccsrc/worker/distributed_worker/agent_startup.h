@@ -31,12 +31,12 @@ class MS_API WorkerAgentStartUp {
   // from python, worker_agent.py
   // start_worker_agent
   // step1, get agents config from worker
-  Status GetAgentsConfigsFromWorker(const std::string &worker_ip, uint32_t worker_port);
+  Status GetAgentsConfigsFromWorker(const std::string &distributed_address);
   // step2, invoke from python
   Status GetDistributedServableConfig(DistributedServableConfig *config);
 
-  Status NotifyFailed(const std::string &worker_ip, uint32_t worker_port);
-  void StartupNotifyExit(const std::string &worker_ip, uint32_t worker_port, const std::string &agent_ip);
+  Status NotifyFailed(const std::string &distributed_address);
+  void StartupNotifyExit(const std::string &distributed_address, const std::string &agent_ip);
 
  private:
   DistributedServableConfig config_;

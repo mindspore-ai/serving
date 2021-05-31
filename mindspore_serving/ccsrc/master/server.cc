@@ -35,8 +35,8 @@
 namespace mindspore {
 namespace serving {
 
-Status Server::StartGrpcServer(const std::string &ip, uint32_t grpc_port, int max_msg_mb_size) {
-  if (grpc_async_server_ != nullptr) {
+Status Server::StartGrpcServer(const std::string &socket_address, int max_msg_mb_size) {
+  if (grpc_async_server_) {
     return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Serving Error: Serving gRPC server is already running";
   }
   if (max_msg_mb_size > gRpcMaxMBMsgSize) {
@@ -44,27 +44,26 @@ Status Server::StartGrpcServer(const std::string &ip, uint32_t grpc_port, int ma
                     << "MB to 512MB";
     max_msg_mb_size = gRpcMaxMBMsgSize;
   }
-  grpc_async_server_ = std::make_unique<MSServiceServer>(std::make_shared<MSServiceImpl>(dispatcher_), ip, grpc_port);
-  return grpc_async_server_->Init(max_msg_mb_size);
+  grpc_async_server_ = std::make_shared<MasterGrpcServer>(dispatcher_);
+  return grpc_async_server_->Start(socket_address, max_msg_mb_size, "Serving gRPC");
 }
 
-Status Server::StartGrpcMasterServer(const std::string &ip, uint32_t grpc_port) {
-  std::string server_address = ip + ":" + std::to_string(grpc_port);
-  return grpc_manager_server_.Start(std::make_shared<MSMasterImpl>(dispatcher_, server_address), ip, grpc_port,
+Status Server::StartGrpcMasterServer(const std::string &master_address) {
+  return grpc_manager_server_.Start(std::make_shared<MSMasterImpl>(dispatcher_, master_address), master_address,
                                     gRpcMaxMBMsgSize, "Master");
 }
 
-Status Server::StartRestfulServer(const std::string &ip, uint32_t restful_port, int max_msg_mb_size,
-                                  int time_out_second) {
-  return restful_server_.Start(ip, restful_port, max_msg_mb_size, time_out_second);
+Status Server::StartRestfulServer(const std::string &socket_address, int max_msg_mb_size, int time_out_second) {
+  return restful_server_.Start(socket_address, max_msg_mb_size, time_out_second);
 }
 
 void Server::Clear() {
+  MSI_LOG_INFO << "Server start to clean";
   dispatcher_->Clear();
   restful_server_.Stop();
-  grpc_server_.Stop();
   grpc_manager_server_.Stop();
   grpc_async_server_ = nullptr;
+  MSI_LOG_INFO << "Server end to clean";
 }
 
 Server::Server() = default;

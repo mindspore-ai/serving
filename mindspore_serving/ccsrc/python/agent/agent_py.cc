@@ -21,8 +21,8 @@
 
 namespace mindspore::serving {
 
-DistributedServableConfig PyAgent::GetAgentsConfigsFromWorker(const std::string &worker_ip, uint32_t worker_port) {
-  auto status = WorkerAgentStartUp::Instance().GetAgentsConfigsFromWorker(worker_ip, worker_port);
+DistributedServableConfig PyAgent::GetAgentsConfigsFromWorker(const std::string &distributed_address) {
+  auto status = WorkerAgentStartUp::Instance().GetAgentsConfigsFromWorker(distributed_address);
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
@@ -35,8 +35,8 @@ DistributedServableConfig PyAgent::GetAgentsConfigsFromWorker(const std::string 
   return config;
 }
 
-void PyAgent::NotifyFailed(const std::string &worker_ip, uint32_t worker_port) {
-  WorkerAgentStartUp::Instance().NotifyFailed(worker_ip, worker_port);
+void PyAgent::NotifyFailed(const std::string &distributed_address) {
+  WorkerAgentStartUp::Instance().NotifyFailed(distributed_address);
 }
 
 void PyAgent::StartAgent(const AgentStartUpConfig &start_config) {
@@ -60,8 +60,8 @@ void PyAgent::StopAndClear() {
   WorkerAgent::Instance().Clear();
 }
 
-void PyAgent::StartupNotifyExit(const std::string &worker_ip, uint32_t worker_port, const std::string &agent_ip) {
-  WorkerAgentStartUp::Instance().StartupNotifyExit(worker_ip, worker_port, agent_ip);
+void PyAgent::StartupNotifyExit(const std::string &distributed_address, const std::string &agent_ip) {
+  WorkerAgentStartUp::Instance().StartupNotifyExit(distributed_address, agent_ip);
 }
 
 }  // namespace mindspore::serving

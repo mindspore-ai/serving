@@ -18,15 +18,13 @@
 
 namespace mindspore::serving {
 
-Status GrpcServer::Start(std::shared_ptr<grpc::Service> service, const std::string &ip, uint32_t grpc_port,
-                         int max_msg_mb_size, const std::string &server_tag) {
+Status GrpcServer::Start(std::shared_ptr<grpc::Service> service, const std::string &server_address, int max_msg_mb_size,
+                         const std::string &server_tag) {
   service_ = service;
   Status status;
   if (in_running_) {
     return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Serving Error: " << server_tag << " server is already running";
   }
-
-  std::string server_address = ip + ":" + std::to_string(grpc_port);
 
   grpc::EnableDefaultHealthCheckService(true);
   grpc::reflection::InitProtoReflectionServerBuilderPlugin();

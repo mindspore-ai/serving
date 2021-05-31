@@ -16,26 +16,26 @@
 
 #include "python/master/master_py.h"
 #include "common/exit_handle.h"
-#include "worker/task_queue.h"
+#include "master/server.h"
 
 namespace mindspore::serving {
 
-void PyMaster::StartGrpcServer(const std::string &ip, uint32_t grpc_port, int max_msg_mb_size) {
-  auto status = Server::Instance().StartGrpcServer(ip, grpc_port, max_msg_mb_size);
+void PyMaster::StartGrpcServer(const std::string &socket_address, int max_msg_mb_size) {
+  auto status = Server::Instance().StartGrpcServer(socket_address, max_msg_mb_size);
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
 }
 
-void PyMaster::StartGrpcMasterServer(const std::string &ip, uint32_t grpc_port) {
-  auto status = Server::Instance().StartGrpcMasterServer(ip, grpc_port);
+void PyMaster::StartGrpcMasterServer(const std::string &master_address) {
+  auto status = Server::Instance().StartGrpcMasterServer(master_address);
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
 }
 
-void PyMaster::StartRestfulServer(const std::string &ip, uint32_t grpc_port, int max_msg_mb_size) {
-  auto status = Server::Instance().StartRestfulServer(ip, grpc_port, max_msg_mb_size);
+void PyMaster::StartRestfulServer(const std::string &socket_address, int max_msg_mb_size) {
+  auto status = Server::Instance().StartRestfulServer(socket_address, max_msg_mb_size);
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }

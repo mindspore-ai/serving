@@ -74,7 +74,7 @@ class MSServiceClient {
         call->callback(SUCCESS);
       } else {
         MSI_LOG_ERROR << "RPC failed: " << call->status.error_code() << ", " << call->status.error_message();
-        call->callback(Status(FAILED, call->status.error_message()));
+        call->callback(Status(WORKER_UNAVAILABLE, call->status.error_message()));
       }
       delete call;
     }

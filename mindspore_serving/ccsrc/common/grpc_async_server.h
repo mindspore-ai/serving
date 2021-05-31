@@ -28,29 +28,148 @@
 
 namespace mindspore::serving {
 
+class GrpcAsyncServiceContextBase {
+ public:
+  GrpcAsyncServiceContextBase() = default;
+  virtual ~GrpcAsyncServiceContextBase() = default;
+
+  virtual void HandleRequest() = 0;
+  virtual bool JudgeFinish() const = 0;
+};
+
+template <class ServiceImpl, class AsyncService, class Derived>
+class GrpcAsyncServiceContext : public GrpcAsyncServiceContextBase {
+ public:
+  enum class STATE : int8_t { CREATE = 1, PROCESS = 2, FINISH = 3 };
+
+  GrpcAsyncServiceContext(ServiceImpl *service_impl, AsyncService *async_service, grpc::ServerCompletionQueue *cq)
+      : service_impl_(service_impl), async_service_(async_service), cq_(cq) {
+    state_ = STATE::CREATE;
+  }
+  ~GrpcAsyncServiceContext() = default;
+  GrpcAsyncServiceContext() = delete;
+
+  virtual void StartEnqueueRequest() = 0;
+
+  bool JudgeFinish() const override { return state_ == STATE::FINISH; }
+
+  static Status EnqueueRequest(ServiceImpl *service_impl, AsyncService *async_service,
+                               grpc::ServerCompletionQueue *cq) {
+    auto call = new Derived(service_impl, async_service, cq);
+    call->StartEnqueueRequest();
+    return SUCCESS;
+  }
+
+ protected:
+  STATE state_;
+  grpc::ServerContext ctx_;
+
+  ServiceImpl *service_impl_;
+  AsyncService *async_service_;
+  grpc::ServerCompletionQueue *cq_;
+};
+
+template <class AsyncService>
 class GrpcAsyncServer {
  public:
-  explicit GrpcAsyncServer(const std::string &host, uint32_t port);
-  virtual ~GrpcAsyncServer();
-  /// \brief Brings up gRPC server
-  /// \return none
-  Status Run(const std::string &server_tag, int max_msg_mb_size);
-  /// \brief Entry function to handle async server request
-  Status HandleRequest();
-
-  void Stop();
-
-  virtual Status RegisterService(grpc::ServerBuilder *builder) = 0;
+  GrpcAsyncServer() {}
+  virtual ~GrpcAsyncServer() { Stop(); }
 
   virtual Status EnqueueRequest() = 0;
 
-  virtual Status ProcessRequest(void *tag) = 0;
+  bool IsRunning() const { return in_running_; }
+
+  /// \brief Brings up gRPC server
+  /// \return none
+  Status Start(const std::string &socket_address, int max_msg_mb_size, const std::string &server_tag) {
+    if (in_running_) {
+      return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Serving Error: " << server_tag << " server is already running";
+    }
+
+    grpc::ServerBuilder builder;
+    if (max_msg_mb_size > 0) {
+      builder.SetMaxSendMessageSize(static_cast<int>(max_msg_mb_size * (1u << 20)));
+      builder.SetMaxReceiveMessageSize(static_cast<int>(max_msg_mb_size * (1u << 20)));
+    }
+    builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
+    int port_tcpip = 0;
+    builder.AddListeningPort(socket_address, grpc::InsecureServerCredentials(), &port_tcpip);
+    Status status = RegisterService(&builder);
+    if (status != SUCCESS) return status;
+    cq_ = builder.AddCompletionQueue();
+    server_ = builder.BuildAndStart();
+    if (server_) {
+      MSI_LOG(INFO) << server_tag << " server start success, listening on " << socket_address;
+    } else {
+      return INFER_STATUS_LOG_ERROR(FAILED) << "Serving Error: " << server_tag
+                                            << " server start failed, create server failed, address " << socket_address;
+    }
+    auto grpc_server_run = [this]() { HandleRequest(); };
+    grpc_thread_ = std::thread(grpc_server_run);
+    in_running_ = true;
+    return SUCCESS;
+  }
+  /// \brief Entry function to handle async server request
+  Status HandleRequest() {
+    bool success = false;
+    void *tag;
+    // We loop through the grpc queue. Each connection if successful
+    // will come back with our own tag which is an instance of GrpcAsyncServiceContextBase
+    // and we simply call its functor. But first we need to create these instances
+    // and inject them into the grpc queue.
+    Status status = EnqueueRequest();
+    if (status != SUCCESS) return status;
+    while (cq_->Next(&tag, &success)) {
+      if (success) {
+        status = ProcessRequest(tag);
+        if (status != SUCCESS) return status;
+      } else {
+        MSI_LOG(DEBUG) << "cq_->Next failed.";
+      }
+    }
+    return SUCCESS;
+  }
+
+  void Stop() {
+    if (in_running_) {
+      if (server_) {
+        server_->Shutdown();
+      }
+      // Always shutdown the completion queue after the server.
+      if (cq_) {
+        cq_->Shutdown();
+      }
+
+      if (grpc_thread_.joinable()) {
+        grpc_thread_.join();
+      }
+    }
+    in_running_ = false;
+  }
+
+  Status RegisterService(grpc::ServerBuilder *builder) {
+    builder->RegisterService(&svc_);
+    return SUCCESS;
+  }
+
+  Status ProcessRequest(void *tag) {
+    auto rq = static_cast<GrpcAsyncServiceContextBase *>(tag);
+    if (rq->JudgeFinish()) {
+      delete rq;
+    } else {
+      rq->HandleRequest();
+    }
+    return SUCCESS;
+  }
 
  protected:
-  std::string host_;
-  uint32_t port_;
   std::unique_ptr<grpc::ServerCompletionQueue> cq_;
   std::unique_ptr<grpc::Server> server_;
+
+  AsyncService svc_;
+
+  bool in_running_ = false;
+  std::thread grpc_thread_;
 };
 
 }  // namespace mindspore::serving
