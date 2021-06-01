@@ -91,3 +91,6 @@ test_temp_summary_event_file/
 mindspore_serving/version.py
 mindspore_serving/default_config.py
 mindspore_serving/.commit_id
+tests/ut/python/tests/serving_logs/
+tests/ut/python/tests/unix_socket_files/
+tests/ut/python/tests/serving_python_ut_servables/

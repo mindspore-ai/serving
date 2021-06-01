@@ -20,11 +20,9 @@
 
 namespace mindspore {
 namespace serving {
-grpc::Status MSWorkerImpl::Exit(grpc::ServerContext *context, const proto::ExitRequest *request,
-                                proto::ExitReply *reply) {
+void MSWorkerImpl::Exit(grpc::ServerContext *context, const proto::ExitRequest *request, proto::ExitReply *reply) {
   MSI_LOG(INFO) << "Master Exit";
   Worker::GetInstance().StopServable(false);
-  return grpc::Status::OK;
 }
 
 void MSWorkerImpl::PredictAsync(grpc::ServerContext *context, const proto::PredictRequest *request,
@@ -54,20 +52,5 @@ void MSWorkerImpl::PredictAsync(grpc::ServerContext *context, const proto::Predi
   }
 }
 
-grpc::Status MSWorkerImpl::Ping(grpc::ServerContext *context, const proto::PingRequest *request,
-                                proto::PingReply *reply) {
-  MSI_EXCEPTION_IF_NULL(request);
-  MSI_EXCEPTION_IF_NULL(reply);
-  watcher_->RecvPing(request->address());
-  return grpc::Status::OK;
-}
-
-grpc::Status MSWorkerImpl::Pong(grpc::ServerContext *context, const proto::PongRequest *request,
-                                proto::PongReply *reply) {
-  MSI_EXCEPTION_IF_NULL(request);
-  MSI_EXCEPTION_IF_NULL(reply);
-  watcher_->RecvPong(request->address());
-  return grpc::Status::OK;
-}
 }  // namespace serving
 }  // namespace mindspore

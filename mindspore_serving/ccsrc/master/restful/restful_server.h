@@ -43,7 +43,7 @@ class MS_API RestfulServer {
   RestfulServer() : thread_pool_(kDefaultRestfulThreadPoolNum) {}
   ~RestfulServer() { Stop(); }
 
-  Status Start(const std::string &ip, uint32_t restful_port, int max_msg_size, int time_out_second);
+  Status Start(const std::string &socket_address, int max_msg_size, int time_out_second);
   void Stop();
 
  private:
@@ -53,9 +53,10 @@ class MS_API RestfulServer {
   void Committer(const std::shared_ptr<RestfulRequest> &restful_request);
   Status Run(const std::shared_ptr<RestfulRequest> &restful_request);
   Status StartRestfulServer();
+  bool IsUnixAddress(const std::string &socket_address);
+  bool GetSocketAddress(const std::string &socket_address, uint32_t *ip, uint16_t *port);
 
-  std::string restful_ip_;
-  uint32_t restful_port_{};
+  std::string socket_address_;
   int max_msg_size_{};
   bool in_running_ = false;
 

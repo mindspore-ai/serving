@@ -14,14 +14,13 @@
 # ============================================================================
 """MindSpore Serving Worker."""
 
-from . import register
-from ._worker import start_servable, start_servable_in_master, stop
+from mindspore_serving.server import register
+from ._worker import start_servable_in_master, stop
 from . import distributed
 
 __all__ = []
 __all__.extend(register.__all__)
 __all__.extend([
-    "start_servable",
     'start_servable_in_master',
     'stop'
 ])

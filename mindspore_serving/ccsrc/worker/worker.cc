@@ -40,12 +40,9 @@ Worker &Worker::GetInstance() {
 }
 
 Status Worker::RegisterWorker() {
-  std::vector<WorkerSpec> worker_specs;
-  for (auto &work : work_list_) {
-    // cppcheck-suppress useStlAlgorithm
-    worker_specs.push_back(work.worker_spec);
-  }
-  auto status = notify_master_->Register(worker_specs);
+  WorkerRegSpec worker_spec;
+  worker_spec.servable_spec = servable_context_.servable_spec;
+  auto status = notify_master_->Register(worker_spec);
   return status;
 }
 
@@ -54,16 +51,26 @@ Status Worker::StartVersionController() {
   return SUCCESS;
 }
 
-Status Worker::AddWorker(const ServableWorkerContext &work) { return notify_master_->AddWorker(work.worker_spec); }
-
-Status Worker::RemoveWorker(const ServableWorkerContext &work) {
-  return notify_master_->RemoveWorker(work.worker_spec);
+Status Worker::RunAsync(const proto::PredictRequest &request, proto::PredictReply *reply, PredictOnFinish on_finish) {
+  while (true) {
+    if (worker_shared_lock_.try_lock_shared()) {
+      auto status = RunAsyncInner(request, reply, on_finish);
+      worker_shared_lock_.unlock_shared();
+      return status;
+    } else if (!servable_started_) {
+      return INFER_STATUS_LOG_ERROR(WORKER_UNAVAILABLE)
+             << "RunAsync worker for inference failed, worker has not been started or stopped";
+    }
+    std::chrono::milliseconds duration(1);  // 1ms
+    std::this_thread::sleep_for(duration);
+  }
 }
 
-Status Worker::RunAsync(const proto::PredictRequest &request, proto::PredictReply *reply, PredictOnFinish on_finish) {
-  std::shared_lock<std::shared_mutex> lock(worker_shared_lock_);
+Status Worker::RunAsyncInner(const proto::PredictRequest &request, proto::PredictReply *reply,
+                             PredictOnFinish on_finish) {
   if (!servable_started_) {
-    return INFER_STATUS_LOG_ERROR(FAILED) << "RunAsync worker for inference failed, worker has not been started";
+    return INFER_STATUS_LOG_ERROR(WORKER_UNAVAILABLE)
+           << "RunAsync worker for inference failed, worker has not been started or stopped";
   }
   MSI_EXCEPTION_IF_NULL(reply);
   std::vector<InstanceData> instances_data;
@@ -76,27 +83,33 @@ Status Worker::RunAsync(const proto::PredictRequest &request, proto::PredictRepl
   if (instances_data.empty()) {
     return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Input instances count is 0";
   }
-
-  const auto &worker = GetServableWorker(request_spec);
-  if (worker.worker_service == nullptr) {
+  if (!CheckServableRequest(request_spec)) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Cannot find servable match " << request_spec.Repr();
   }
   WorkCallBack on_process_done = [request, reply, on_finish](const std::vector<InstancePtr> &instances) {
     GrpcTensorHelper::CreateReplyFromInstances(request, instances, reply);
     on_finish();
   };
-  return worker.worker_service->Work(request_spec, instances_data, on_process_done);
+  return servable_context_.worker_service->Work(request_spec, instances_data, on_process_done);
 }
 
 void Worker::Update() {}
 
-Status Worker::StartGrpcServer(const std::shared_ptr<MSWorkerServer> &grpc_server, const std::string &worker_ip,
-                               int32_t port) {
+Status Worker::StartGrpcServer(const std::string &server_address) {
   if (worker_grpc_server_ != nullptr) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Worker gRPC server is already running";
   }
-  worker_grpc_server_ = grpc_server;
-  return worker_grpc_server_->StartWorkerGrpcServer(worker_ip, port);
+  worker_grpc_server_ = std::make_shared<WorkerGrpcServer>();
+  return worker_grpc_server_->Start(server_address, gRpcMaxMBMsgSize, "Worker gRPC");
+}
+
+Status Worker::StartDistributedGrpcServer(std::shared_ptr<DistributedServable> servable,
+                                          const std::string &server_address) {
+  if (distributed_grpc_server_ != nullptr) {
+    return INFER_STATUS_LOG_ERROR(FAILED) << "Distributed gRPC server is already running";
+  }
+  distributed_grpc_server_ = std::make_shared<DistributedWorkerGrpcServer>(servable, server_address);
+  return distributed_grpc_server_->Start(server_address, gRpcMaxMBMsgSize, "Distributed gRPC");
 }
 
 Status Worker::StartServable(std::shared_ptr<ServableBase> servable, std::shared_ptr<BaseNotifyMaster> notify_master) {
@@ -123,24 +136,28 @@ Status Worker::StartServable(std::shared_ptr<ServableBase> servable, std::shared
   if (status != SUCCESS) {
     return status;
   }
-  ServableWorkerContext work;
-  WorkerSpec worker_spec;
-  worker_spec.servable_name = servable_name;
-  worker_spec.version_number = servable->GetServableVersion();
+  ServableWorkerContext servable_context;
+  ServableRegSpec &servable_spec = servable_context.servable_spec;
+  servable_spec.servable_name = servable_name;
+  servable_spec.version_number = servable->GetServableVersion();
+  servable_spec.config_version_number = servable->GetConfigVersion();
+  servable_spec.batch_size = servable->GetBatchSize();
+  if (servable_spec.batch_size == 0) {  // with_batch_size=False
+    servable_spec.batch_size = 1;
+  }
   for (auto &method : signature.methods) {
-    WorkerMethodInfo worker_method_info;
+    ServableMethodInfo worker_method_info;
     worker_method_info.name = method.method_name;
     for (auto &name : method.inputs) {
       worker_method_info.input_names.push_back(name);
     }
-    worker_spec.methods.push_back(worker_method_info);
+    servable_spec.methods.push_back(worker_method_info);
   }
-  work.worker_spec = worker_spec;
-  work.servable_signature = signature;
-  work.worker_service = service;
-  work.servable = servable;
+  servable_context.servable_signature = signature;
+  servable_context.worker_service = service;
+  servable_context.servable = servable;
 
-  work_list_.push_back(work);
+  servable_context_ = servable_context;
 
   status = RegisterWorker();
   if (status != SUCCESS) {
@@ -159,23 +176,24 @@ void Worker::StopServable(bool notify_master) {
 void Worker::Clear() {
   std::unique_lock<std::shared_mutex> lock(worker_shared_lock_);
   MSI_LOG_INFO << "Start clear worker session";
-  version_controller_.StopPollModelPeriodic();
+  servable_started_ = false;
+  if (servable_context_.servable) {
+    servable_context_.servable->Clear();
+    servable_context_.servable = nullptr;
+  }
+  if (servable_context_.worker_service) {
+    servable_context_.worker_service = nullptr;
+  }
   if (exit_notify_master_ && servable_started_) {
     notify_master_->Unregister();
   }
-  for (auto &worker_item : work_list_) {
-    worker_item.servable->Clear();
-  }
-  work_list_.clear();
-
+  worker_grpc_server_ = nullptr;
+  distributed_grpc_server_ = nullptr;
   py_task_queue_group_.Stop();
   cpp_preprocess_.Stop();
   cpp_postprocess_.Stop();
 
   ServableStorage::Instance().Clear();
-  worker_grpc_server_ = nullptr;
-
-  servable_started_ = false;
   MSI_LOG_INFO << "End clear worker session";
 }
 
@@ -183,41 +201,24 @@ bool Worker::IsRunning() { return servable_started_; }
 
 Worker::~Worker() { Clear(); }
 
-ServableWorkerContext Worker::GetServableWorker(const RequestSpec &request_spec) {
-  ServableWorkerContext context;
-  if (request_spec.version_number != 0) {
-    auto item = find_if(work_list_.begin(), work_list_.end(), [&](const ServableWorkerContext &v) {
-      return v.worker_spec.servable_name == request_spec.servable_name &&
-             v.worker_spec.version_number == request_spec.version_number;
-    });
-    if (item != work_list_.end()) {
-      context = *item;
-    }
-  } else {
-    uint64_t max_version = 0;
-    for (auto &item : work_list_) {
-      if (item.worker_spec.servable_name == request_spec.servable_name &&
-          item.worker_spec.version_number > max_version) {
-        context = item;
-        max_version = item.worker_spec.version_number;
-      }
-    }
+bool Worker::CheckServableRequest(const RequestSpec &request_spec) {
+  auto &servable_spec = servable_context_.servable_spec;
+  if (servable_spec.servable_name != request_spec.servable_name) {
+    return false;
   }
-  return context;
+  if (request_spec.version_number != 0 && servable_spec.version_number != request_spec.version_number) {
+    return false;
+  }
+  return true;
 }
 
 Worker::Worker() {}
 
 size_t Worker::GetBatchSize() const {
-  size_t batch_size_ret = 1;
-  for (const auto &service : work_list_) {
-    auto batch_size = service.servable->GetBatchSize();
-    if (batch_size != 0) {
-      batch_size_ret = batch_size;
-      break;
-    }
+  if (!servable_context_.servable) {
+    return 0;
   }
-  return batch_size_ret;
+  return servable_context_.servable->GetBatchSize();
 }
 
 void Worker::PushPyPreprocessResult(std::vector<ResultInstance> outputs) {

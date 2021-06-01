@@ -33,42 +33,26 @@
 namespace mindspore {
 namespace serving {
 
-// Service Implement
-class MS_API MSDistributedWorkerServer : public MSWorkerServer {
+template <class Derived>
+class DistributedServiceContext
+    : public GrpcAsyncServiceContext<MSDistributedImpl, proto::MSDistributedWorker::AsyncService, Derived> {
  public:
-  explicit MSDistributedWorkerServer(std::shared_ptr<DistributedServable> servable) : servable_(servable) {}
-  ~MSDistributedWorkerServer() = default;
-  Status StartWorkerGrpcServer(const std::string &hostname, int32_t port) override;
-
- private:
-  std::shared_ptr<DistributedServable> servable_;
-};
-
-class DistributedServiceContext : public WorkerServiceContext {
- public:
-  DistributedServiceContext(MSDistributedImpl *service_impl, proto::MSWorker::AsyncService *async_service,
+  DistributedServiceContext(MSDistributedImpl *service_impl, proto::MSDistributedWorker::AsyncService *async_service,
                             grpc::ServerCompletionQueue *cq)
-      : WorkerServiceContext(service_impl, async_service, cq), dist_service_impl_(service_impl) {}
-
- protected:
-  MSDistributedImpl *dist_service_impl_ = nullptr;
+      : GrpcAsyncServiceContext<MSDistributedImpl, proto::MSDistributedWorker::AsyncService, Derived>(
+          service_impl, async_service, cq) {}
+  virtual void StartEnqueueRequest() = 0;
+  virtual void HandleRequest() = 0;
 };
 
 // Service Implement
-class WorkerAgentRegisterContext : public DistributedServiceContext {
+class WorkerAgentRegisterContext : public DistributedServiceContext<WorkerAgentRegisterContext> {
  public:
-  WorkerAgentRegisterContext(MSDistributedImpl *service_impl, proto::MSWorker::AsyncService *async_service,
+  WorkerAgentRegisterContext(MSDistributedImpl *service_impl, proto::MSDistributedWorker::AsyncService *async_service,
                              grpc::ServerCompletionQueue *cq)
-      : DistributedServiceContext(service_impl, async_service, cq), responder_(&ctx_) {}
+      : DistributedServiceContext<WorkerAgentRegisterContext>(service_impl, async_service, cq), responder_(&ctx_) {}
 
   ~WorkerAgentRegisterContext() = default;
-
-  static Status EnqueueRequest(MSDistributedImpl *service_impl, proto::MSWorker::AsyncService *async_service,
-                               grpc::ServerCompletionQueue *cq) {
-    auto call = new WorkerAgentRegisterContext(service_impl, async_service, cq);
-    call->StartEnqueueRequest();
-    return SUCCESS;
-  }
 
   void StartEnqueueRequest() override {
     state_ = STATE::PROCESS;
@@ -76,9 +60,9 @@ class WorkerAgentRegisterContext : public DistributedServiceContext {
   }
 
   void HandleRequest() override {
-    EnqueueRequest(dist_service_impl_, async_service_, cq_);
+    EnqueueRequest(service_impl_, async_service_, cq_);
     state_ = STATE::FINISH;
-    grpc::Status status = dist_service_impl_->AgentRegister(&ctx_, &request_, &response_);
+    grpc::Status status = service_impl_->AgentRegister(&ctx_, &request_, &response_);
     responder_.Finish(response_, status, this);
   }
 
@@ -88,20 +72,13 @@ class WorkerAgentRegisterContext : public DistributedServiceContext {
   proto::AgentRegisterReply response_;
 };
 
-class WorkerAgentExitContext : public DistributedServiceContext {
+class WorkerAgentExitContext : public DistributedServiceContext<WorkerAgentExitContext> {
  public:
-  WorkerAgentExitContext(MSDistributedImpl *service_impl, proto::MSWorker::AsyncService *async_service,
+  WorkerAgentExitContext(MSDistributedImpl *service_impl, proto::MSDistributedWorker::AsyncService *async_service,
                          grpc::ServerCompletionQueue *cq)
-      : DistributedServiceContext(service_impl, async_service, cq), responder_(&ctx_) {}
+      : DistributedServiceContext<WorkerAgentExitContext>(service_impl, async_service, cq), responder_(&ctx_) {}
 
   ~WorkerAgentExitContext() = default;
-
-  static Status EnqueueRequest(MSDistributedImpl *service_impl, proto::MSWorker::AsyncService *async_service,
-                               grpc::ServerCompletionQueue *cq) {
-    auto call = new WorkerAgentExitContext(service_impl, async_service, cq);
-    call->StartEnqueueRequest();
-    return SUCCESS;
-  }
 
   void StartEnqueueRequest() override {
     state_ = STATE::PROCESS;
@@ -109,9 +86,9 @@ class WorkerAgentExitContext : public DistributedServiceContext {
   }
 
   void HandleRequest() override {
-    EnqueueRequest(dist_service_impl_, async_service_, cq_);
+    EnqueueRequest(service_impl_, async_service_, cq_);
     state_ = STATE::FINISH;
-    grpc::Status status = dist_service_impl_->AgentExit(&ctx_, &request_, &response_);
+    grpc::Status status = service_impl_->AgentExit(&ctx_, &request_, &response_);
     responder_.Finish(response_, status, this);
   }
 
@@ -121,19 +98,13 @@ class WorkerAgentExitContext : public DistributedServiceContext {
   proto::AgentExitReply response_;
 };
 
-class WorkerAgentFailedContext : public DistributedServiceContext {
+class WorkerAgentFailedContext : public DistributedServiceContext<WorkerAgentFailedContext> {
  public:
-  WorkerAgentFailedContext(MSDistributedImpl *service_impl, proto::MSWorker::AsyncService *async_service,
+  WorkerAgentFailedContext(MSDistributedImpl *service_impl, proto::MSDistributedWorker::AsyncService *async_service,
                            grpc::ServerCompletionQueue *cq)
-      : DistributedServiceContext(service_impl, async_service, cq), responder_(&ctx_) {}
+      : DistributedServiceContext<WorkerAgentFailedContext>(service_impl, async_service, cq), responder_(&ctx_) {}
 
   ~WorkerAgentFailedContext() = default;
-  static Status EnqueueRequest(MSDistributedImpl *service_impl, proto::MSWorker::AsyncService *async_service,
-                               grpc::ServerCompletionQueue *cq) {
-    auto call = new WorkerAgentFailedContext(service_impl, async_service, cq);
-    call->StartEnqueueRequest();
-    return SUCCESS;
-  }
 
   void StartEnqueueRequest() override {
     state_ = STATE::PROCESS;
@@ -141,9 +112,9 @@ class WorkerAgentFailedContext : public DistributedServiceContext {
   }
 
   void HandleRequest() override {
-    EnqueueRequest(dist_service_impl_, async_service_, cq_);
+    EnqueueRequest(service_impl_, async_service_, cq_);
     state_ = STATE::FINISH;
-    grpc::Status status = dist_service_impl_->AgentFailed(&ctx_, &request_, &response_);
+    grpc::Status status = service_impl_->AgentFailed(&ctx_, &request_, &response_);
     responder_.Finish(response_, status, this);
   }
 
@@ -153,19 +124,15 @@ class WorkerAgentFailedContext : public DistributedServiceContext {
   proto::AgentFailedReply response_;
 };
 
-class WorkerAgentConfigAcquireContext : public DistributedServiceContext {
+class WorkerAgentConfigAcquireContext : public DistributedServiceContext<WorkerAgentConfigAcquireContext> {
  public:
-  WorkerAgentConfigAcquireContext(MSDistributedImpl *service_impl, proto::MSWorker::AsyncService *async_service,
+  WorkerAgentConfigAcquireContext(MSDistributedImpl *service_impl,
+                                  proto::MSDistributedWorker::AsyncService *async_service,
                                   grpc::ServerCompletionQueue *cq)
-      : DistributedServiceContext(service_impl, async_service, cq), responder_(&ctx_) {}
+      : DistributedServiceContext<WorkerAgentConfigAcquireContext>(service_impl, async_service, cq),
+        responder_(&ctx_) {}
 
   ~WorkerAgentConfigAcquireContext() = default;
-  static Status EnqueueRequest(MSDistributedImpl *service_impl, proto::MSWorker::AsyncService *async_service,
-                               grpc::ServerCompletionQueue *cq) {
-    auto call = new WorkerAgentConfigAcquireContext(service_impl, async_service, cq);
-    call->StartEnqueueRequest();
-    return SUCCESS;
-  }
 
   void StartEnqueueRequest() override {
     state_ = STATE::PROCESS;
@@ -173,9 +140,9 @@ class WorkerAgentConfigAcquireContext : public DistributedServiceContext {
   }
 
   void HandleRequest() override {
-    EnqueueRequest(dist_service_impl_, async_service_, cq_);
+    EnqueueRequest(service_impl_, async_service_, cq_);
     state_ = STATE::FINISH;
-    grpc::Status status = dist_service_impl_->AgentConfigAcquire(&ctx_, &request_, &response_);
+    grpc::Status status = service_impl_->AgentConfigAcquire(&ctx_, &request_, &response_);
     responder_.Finish(response_, status, this);
   }
 
@@ -185,24 +152,76 @@ class WorkerAgentConfigAcquireContext : public DistributedServiceContext {
   proto::AgentConfigAcquireReply response_;
 };
 
-class DistributedWorkerGrpcServer : public WorkerGrpcServer {
+class WorkerPingContext : public DistributedServiceContext<WorkerPingContext> {
  public:
-  DistributedWorkerGrpcServer(const std::string &host, int32_t port, MSDistributedImpl *service_impl)
-      : WorkerGrpcServer(host, port, service_impl), distributed_service_impl_(service_impl) {}
+  WorkerPingContext(MSDistributedImpl *service_impl, proto::MSDistributedWorker::AsyncService *async_service,
+                    grpc::ServerCompletionQueue *cq)
+      : DistributedServiceContext<WorkerPingContext>(service_impl, async_service, cq), responder_(&ctx_) {}
 
-  ~DistributedWorkerGrpcServer() = default;
+  ~WorkerPingContext() = default;
 
-  Status EnqueueRequest() {
-    WorkerGrpcServer::EnqueueRequest();
-    WorkerAgentRegisterContext::EnqueueRequest(distributed_service_impl_, &svc_, cq_.get());
-    WorkerAgentExitContext::EnqueueRequest(distributed_service_impl_, &svc_, cq_.get());
-    WorkerAgentFailedContext::EnqueueRequest(distributed_service_impl_, &svc_, cq_.get());
-    WorkerAgentConfigAcquireContext::EnqueueRequest(distributed_service_impl_, &svc_, cq_.get());
+  void StartEnqueueRequest() override {
+    state_ = STATE::PROCESS;
+    async_service_->RequestPing(&ctx_, &request_, &responder_, cq_, cq_, this);
+  }
+
+  void HandleRequest() override {
+    EnqueueRequest(service_impl_, async_service_, cq_);
+    state_ = STATE::FINISH;
+    grpc::Status status = service_impl_->Ping(&ctx_, &request_, &response_);
+    responder_.Finish(response_, status, this);
+  }
+
+ private:
+  grpc::ServerAsyncResponseWriter<proto::PingReply> responder_;
+  proto::PingRequest request_;
+  proto::PingReply response_;
+};
+
+class WorkerPongContext : public DistributedServiceContext<WorkerPongContext> {
+ public:
+  WorkerPongContext(MSDistributedImpl *service_impl, proto::MSDistributedWorker::AsyncService *async_service,
+                    grpc::ServerCompletionQueue *cq)
+      : DistributedServiceContext<WorkerPongContext>(service_impl, async_service, cq), responder_(&ctx_) {}
+
+  ~WorkerPongContext() = default;
+
+  void StartEnqueueRequest() override {
+    state_ = STATE::PROCESS;
+    async_service_->RequestPong(&ctx_, &request_, &responder_, cq_, cq_, this);
+  }
+
+  void HandleRequest() override {
+    EnqueueRequest(service_impl_, async_service_, cq_);
+    state_ = STATE::FINISH;
+    grpc::Status status = service_impl_->Pong(&ctx_, &request_, &response_);
+    responder_.Finish(response_, status, this);
+  }
+
+ private:
+  grpc::ServerAsyncResponseWriter<proto::PongReply> responder_;
+  proto::PongRequest request_;
+  proto::PongReply response_;
+};
+
+class DistributedWorkerGrpcServer : public GrpcAsyncServer<proto::MSDistributedWorker::AsyncService> {
+ public:
+  DistributedWorkerGrpcServer(std::shared_ptr<DistributedServable> servable, const std::string server_address)
+      : GrpcAsyncServer<proto::MSDistributedWorker::AsyncService>(),
+        service_impl_(MSDistributedImpl(servable, server_address)) {}
+
+  Status EnqueueRequest() override {
+    WorkerAgentRegisterContext::EnqueueRequest(&service_impl_, &svc_, cq_.get());
+    WorkerAgentExitContext::EnqueueRequest(&service_impl_, &svc_, cq_.get());
+    WorkerAgentFailedContext::EnqueueRequest(&service_impl_, &svc_, cq_.get());
+    WorkerAgentConfigAcquireContext::EnqueueRequest(&service_impl_, &svc_, cq_.get());
+    WorkerPingContext::EnqueueRequest(&service_impl_, &svc_, cq_.get());
+    WorkerPongContext::EnqueueRequest(&service_impl_, &svc_, cq_.get());
     return SUCCESS;
   }
 
  private:
-  MSDistributedImpl *distributed_service_impl_;
+  MSDistributedImpl service_impl_;
 };
 
 }  // namespace serving

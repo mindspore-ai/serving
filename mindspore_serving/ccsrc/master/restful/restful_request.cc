@@ -171,16 +171,18 @@ Status RestfulRequest::RestfulReplayBufferInit() {
 
 Status RestfulRequest::RestfulReplay(const std::string &replay) {
   if (replay_buffer_ == nullptr) {
-    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "replay_buffer_ is nullptr";
+    return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "replay_buffer_ is nullptr";
   }
   if (decompose_event_request_ == nullptr) {
-    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "replay_buffer_ is nullptr";
+    return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "decompose_event_request_ is nullptr";
   }
   if (decompose_event_request_->event_request_ == nullptr) {
-    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "replay_buffer_ is nullptr";
+    return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "decompose_event_request_->event_request_ is nullptr";
   }
   evbuffer_add(replay_buffer_, replay.data(), replay.size());
   evhttp_send_reply(decompose_event_request_->event_request_, HTTP_OK, "Client", replay_buffer_);
+
+  MSI_LOG_INFO << "---------------------------- RestfulReplay";
   return SUCCESS;
 }
 

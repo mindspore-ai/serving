@@ -46,19 +46,20 @@ class MS_API LocalModelServable : public ServableBase {
   Status InitDevice(ModelType model_type, const std::map<std::string, std::string> &other_options);
   std::string GetServableName() const override;
   uint64_t GetServableVersion() const override;
+  uint64_t GetConfigVersion() const override;
   void Clear() override;
 
  private:
-  LoadServableSpec base_spec_;
+  ServableLoadSpec base_spec_;
   std::string servable_name_;
-  uint64_t version_number_ = 0;
+  uint64_t running_version_number_ = 0;
 
   std::shared_ptr<InferenceBase> session_ = nullptr;
   std::string version_strategy_;
   bool model_loaded_ = false;
 
-  void GetVersions(const LoadServableSpec &servable_spec, std::vector<uint64_t> *real_versions);
-  Status LoadServableConfig(const LoadServableSpec &servable_spec, const std::string &version_strategy,
+  void GetVersions(const ServableLoadSpec &servable_spec, std::vector<uint64_t> *real_versions);
+  Status LoadServableConfig(const ServableLoadSpec &servable_spec, const std::string &version_strategy,
                             std::vector<uint64_t> *real_version_number);
   Status LoadModel(uint64_t version);
 };

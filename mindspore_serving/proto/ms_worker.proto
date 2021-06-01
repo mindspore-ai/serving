@@ -26,6 +26,9 @@ service MSWorker {
   // for master
   rpc Predict(PredictRequest) returns (PredictReply) {}
   rpc Exit(ExitRequest) returns (ExitReply) {}
+}
+
+service MSDistributedWorker {
   // for worker agent
   rpc AgentExit(AgentExitRequest) returns (AgentExitReply) {}
   rpc AgentRegister(AgentRegisterRequest) returns (AgentRegisterReply) {}

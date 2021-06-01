@@ -15,7 +15,7 @@
 """add model servable config"""
 
 import numpy as np
-from mindspore_serving.worker import register
+from mindspore_serving.server import register
 
 
 def add_trans_datatype(x1, x2):

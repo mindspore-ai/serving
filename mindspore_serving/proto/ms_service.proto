@@ -26,7 +26,7 @@ service MSService {
 
 message PredictRequest {
   ServableSpec servable_spec = 1;
-  repeated Instance instances = 3;
+  repeated Instance instances = 2;
 }
 
 message ErrorMsg{
@@ -36,7 +36,6 @@ message ErrorMsg{
 
 message PredictReply {
   ServableSpec servable_spec = 1;
-  bool status = 2;
   repeated Instance instances = 3;
   // size 0: OK, 1: for all batch, >1: for every batch
   repeated ErrorMsg error_msg = 4;
@@ -87,7 +86,7 @@ message ServableSpec {
   string name = 1;
 
   // optional. If unspecified, the latest version servable will be used.
-  int64 version_number = 3;
+  uint64 version_number = 3;
 
   // Specifies the method name in the servable.
   string method_name = 2;

@@ -173,7 +173,7 @@ TEST_F(TestMasterWorkerClient, test_master_worker_success_version_number_1_2_req
   EXPECT_TRUE(grpc_status.ok());
   // checkout output
   ASSERT_EQ(reply.error_msg_size(), 1);
-  ExpectContainMsg(reply.error_msg(0).error_msg(), "servable is not available");
+  ExpectContainMsg(reply.error_msg(0).error_msg(), "Cannot find servable match servable");
 }
 
 TEST_F(TestMasterWorkerClient, test_master_worker_three_instance_success) {
@@ -294,7 +294,7 @@ TEST_F(TestMasterWorkerClient, test_master_worker_error_servable_name) {
   EXPECT_TRUE(grpc_status.ok());
   // checkout output
   ASSERT_EQ(reply.error_msg_size(), 1);
-  ExpectContainMsg(reply.error_msg(0).error_msg(), "servable is not available");
+  ExpectContainMsg(reply.error_msg(0).error_msg(), "Servable test_servable_error is not declared");
 }
 
 TEST_F(TestMasterWorkerClient, test_master_worker_error_method_name) {
@@ -314,7 +314,8 @@ TEST_F(TestMasterWorkerClient, test_master_worker_error_method_name) {
   EXPECT_TRUE(grpc_status.ok());
   // checkout output
   ASSERT_EQ(reply.error_msg_size(), 1);
-  ExpectContainMsg(reply.error_msg(0).error_msg(), "method is not available");
+  ExpectContainMsg(reply.error_msg(0).error_msg(),
+                   "Method add_common_error is not registered for servable test_servable");
 }
 
 TEST_F(TestMasterWorkerClient, test_master_worker_error_version_number) {
@@ -334,7 +335,7 @@ TEST_F(TestMasterWorkerClient, test_master_worker_error_version_number) {
   EXPECT_TRUE(grpc_status.ok());
   // checkout output
   ASSERT_EQ(reply.error_msg_size(), 1);
-  ExpectContainMsg(reply.error_msg(0).error_msg(), "servable is not available");
+  ExpectContainMsg(reply.error_msg(0).error_msg(), "Cannot find servable match servable");
 }
 
 TEST_F(TestMasterWorkerClient, test_master_worker_invalid_input_name) {

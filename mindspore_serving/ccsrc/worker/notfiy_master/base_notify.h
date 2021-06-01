@@ -27,10 +27,8 @@ class MS_API BaseNotifyMaster {
  public:
   BaseNotifyMaster() = default;
   virtual ~BaseNotifyMaster() = default;
-  virtual Status Register(const std::vector<WorkerSpec> &worker_specs) = 0;
+  virtual Status Register(const WorkerRegSpec &worker_spec) = 0;
   virtual Status Unregister() = 0;
-  virtual Status AddWorker(const WorkerSpec &worker_spec) = 0;
-  virtual Status RemoveWorker(const WorkerSpec &worker_spec) = 0;
 };
 
 }  // namespace serving

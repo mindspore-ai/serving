@@ -61,6 +61,7 @@ class MS_API DistributedServable : public ServableBase {
   uint64_t GetBatchSize() const override;
   std::string GetServableName() const override;
   uint64_t GetServableVersion() const override;
+  uint64_t GetConfigVersion() const override;
   void Clear() override;
   void OnAgentFailed();
 

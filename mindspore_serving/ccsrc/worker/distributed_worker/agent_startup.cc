@@ -26,8 +26,8 @@ WorkerAgentStartUp &WorkerAgentStartUp::Instance() {
   return instance;
 }
 
-Status WorkerAgentStartUp::GetAgentsConfigsFromWorker(const std::string &worker_ip, uint32_t worker_port) {
-  return GrpcNotifyDistributeWorker::GetAgentsConfigsFromWorker(worker_ip, worker_port, &config_);
+Status WorkerAgentStartUp::GetAgentsConfigsFromWorker(const std::string &distributed_address) {
+  return GrpcNotifyDistributeWorker::GetAgentsConfigsFromWorker(distributed_address, &config_);
 }
 
 Status WorkerAgentStartUp::GetDistributedServableConfig(DistributedServableConfig *config) {
@@ -39,13 +39,12 @@ Status WorkerAgentStartUp::GetDistributedServableConfig(DistributedServableConfi
   return SUCCESS;
 }
 
-Status WorkerAgentStartUp::NotifyFailed(const std::string &worker_ip, uint32_t worker_port) {
-  return GrpcNotifyDistributeWorker::NotifyFailed(worker_ip, worker_port);
+Status WorkerAgentStartUp::NotifyFailed(const std::string &distributed_address) {
+  return GrpcNotifyDistributeWorker::NotifyFailed(distributed_address);
 }
 
-void WorkerAgentStartUp::StartupNotifyExit(const std::string &worker_ip, uint32_t worker_port,
-                                           const std::string &agent_ip) {
-  GrpcNotifyDistributeWorker::StartupNotifyExit(worker_ip, worker_port, agent_ip);
+void WorkerAgentStartUp::StartupNotifyExit(const std::string &distributed_address, const std::string &agent_ip) {
+  GrpcNotifyDistributeWorker::StartupNotifyExit(distributed_address, agent_ip);
 }
 
 }  // namespace serving

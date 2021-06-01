@@ -22,6 +22,7 @@
 #include "common/grpc_server.h"
 #include "master/restful/restful_server.h"
 #include "master/dispacther.h"
+#include "master/grpc/grpc_server.h"
 
 namespace mindspore {
 namespace serving {
@@ -30,10 +31,10 @@ class MS_API Server {
  public:
   Server();
   ~Server();
-  Status StartGrpcServer(const std::string &ip, uint32_t grpc_port, int max_msg_mb_size = gRpcDefaultMsgMBSize);
-  Status StartGrpcMasterServer(const std::string &ip, uint32_t grpc_port);
-  Status StartRestfulServer(const std::string &ip, uint32_t restful_port, int max_msg_mb_size = gRpcDefaultMsgMBSize,
+  Status StartGrpcServer(const std::string &socket_address, int max_msg_mb_size = gRpcDefaultMsgMBSize);
+  Status StartRestfulServer(const std::string &socket_address, int max_msg_mb_size = gRpcDefaultMsgMBSize,
                             int time_out_second = 100);
+  Status StartGrpcMasterServer(const std::string &master_address);
   void Clear();
 
   std::shared_ptr<Dispatcher> GetDispatcher() { return dispatcher_; }
@@ -41,10 +42,10 @@ class MS_API Server {
   static Server &Instance();
 
  private:
-  GrpcServer grpc_server_;
+  std::shared_ptr<Dispatcher> dispatcher_ = std::make_shared<Dispatcher>();
+  std::shared_ptr<MasterGrpcServer> grpc_async_server_ = nullptr;
   GrpcServer grpc_manager_server_;
   RestfulServer restful_server_;
-  std::shared_ptr<Dispatcher> dispatcher_ = std::make_shared<Dispatcher>();
 };
 }  // namespace serving
 }  // namespace mindspore

@@ -54,23 +54,30 @@ struct MethodSignature {
   std::vector<std::pair<PredictPhaseTag, uint64_t>> returns;
 };
 
-struct LoadServableSpec {
+struct ServableLoadSpec {
   std::string servable_directory;
   std::string servable_name;
   uint64_t version_number = 0;
   std::string Repr() const;
 };
 
-struct WorkerMethodInfo {
+struct ServableMethodInfo {
   std::string name;
   std::vector<std::string> input_names;
 };
 
-struct WorkerSpec {
+struct ServableRegSpec {
   std::string servable_name;
   uint64_t version_number = 0;
+  uint64_t config_version_number = 0;
+  uint64_t batch_size = 0;
+  std::vector<ServableMethodInfo> methods;
+};
+
+struct WorkerRegSpec {
+  uint64_t worker_pid = 0;
   std::string worker_address;
-  std::vector<WorkerMethodInfo> methods;
+  ServableRegSpec servable_spec;
   std::string Repr() const;
 };
 

@@ -16,7 +16,6 @@
 #include "master/notify_worker/grpc_notify.h"
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>
-#include <grpcpp/ext/proto_server_reflection_plugin.h>
 #include <thread>
 #include "common/exit_handle.h"
 #include "common/grpc_server.h"
@@ -51,7 +50,7 @@ Status GrpcNotifyWorker::Exit() {
 Status GrpcNotifyWorker::DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
                                        PredictOnFinish on_finish) {
   if (!stub_) {
-    return INFER_STATUS_LOG_ERROR(FAILED)
+    return INFER_STATUS_LOG_ERROR(WORKER_UNAVAILABLE)
            << "Predict failed, worker gRPC has not been inited or has already exited, worker address "
            << worker_address_;
   }

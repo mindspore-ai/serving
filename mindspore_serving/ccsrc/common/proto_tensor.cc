@@ -173,52 +173,25 @@ void GrpcTensorHelper::GetRequestSpec(const proto::PredictRequest &request, Requ
   request_spec->version_number = request.servable_spec().version_number();
 }
 
-void GrpcTensorHelper::GetWorkerSpec(const proto::RegisterRequest &request, std::vector<WorkerSpec> *worker_specs) {
-  MSI_EXCEPTION_IF_NULL(worker_specs);
-  for (auto &proto_spec : request.worker_spec()) {
-    WorkerSpec worker_spec;
-    worker_spec.worker_address = request.address();
-    worker_spec.servable_name = proto_spec.name();
-    worker_spec.version_number = proto_spec.version_number();
-    for (const auto &proto_method : proto_spec.methods()) {
-      WorkerMethodInfo method_info;
-      method_info.name = proto_method.name();
-      for (auto &name : proto_method.input_names()) {
-        method_info.input_names.push_back(name);
-      }
-      worker_spec.methods.push_back(method_info);
-    }
-    worker_specs->push_back(worker_spec);
-  }
-}
-
-void GrpcTensorHelper::GetWorkerSpec(const proto::AddWorkerRequest &request, WorkerSpec *worker_spec) {
+void GrpcTensorHelper::GetWorkerSpec(const proto::RegisterRequest &request, WorkerRegSpec *worker_spec) {
   MSI_EXCEPTION_IF_NULL(worker_spec);
-  worker_spec->worker_address = request.address();
-  worker_spec->servable_name = request.worker_spec().name();
-  worker_spec->version_number = request.worker_spec().version_number();
-  for (const auto &proto_method : request.worker_spec().methods()) {
-    WorkerMethodInfo method_info;
+  auto &proto_worker_spec = request.worker_spec();
+  worker_spec->worker_address = proto_worker_spec.address();
+  worker_spec->worker_pid = proto_worker_spec.worker_pid();
+
+  auto &proto_spec = proto_worker_spec.servable_spec();
+  auto &servable_spec = worker_spec->servable_spec;
+  servable_spec.servable_name = proto_spec.name();
+  servable_spec.version_number = proto_spec.version_number();
+  servable_spec.config_version_number = proto_spec.config_version_number();
+  servable_spec.batch_size = proto_spec.batch_size();
+  for (const auto &proto_method : proto_spec.methods()) {
+    ServableMethodInfo method_info;
     method_info.name = proto_method.name();
     for (auto &name : proto_method.input_names()) {
       method_info.input_names.push_back(name);
     }
-    worker_spec->methods.push_back(method_info);
-  }
-}
-
-void GrpcTensorHelper::GetWorkerSpec(const proto::RemoveWorkerRequest &request, WorkerSpec *worker_spec) {
-  MSI_EXCEPTION_IF_NULL(worker_spec);
-  worker_spec->worker_address = request.address();
-  worker_spec->servable_name = request.worker_spec().name();
-  worker_spec->version_number = request.worker_spec().version_number();
-  for (const auto &proto_method : request.worker_spec().methods()) {
-    WorkerMethodInfo method_info;
-    method_info.name = proto_method.name();
-    for (auto &name : proto_method.input_names()) {
-      method_info.input_names.push_back(name);
-    }
-    worker_spec->methods.push_back(method_info);
+    servable_spec.methods.push_back(method_info);
   }
 }
 
@@ -262,6 +235,95 @@ void GrpcTensorHelper::CreateReplyFromInstances(const proto::PredictRequest &req
   if (status != SUCCESS) {
     CreateReplyFromErrorMsg(status, reply);
   }
+}
+
+Status GrpcTensorHelper::CreateInstanceFromPredictReply(const RequestSpec &request_spec,
+                                                        const proto::PredictReply &reply,
+                                                        std::vector<proto::ErrorMsg> *error,
+                                                        std::vector<const proto::Instance *> *results) {
+  MSI_EXCEPTION_IF_NULL(error);
+  MSI_EXCEPTION_IF_NULL(results);
+  results->clear();
+  error->clear();
+  if (reply.instances_size() == 0 && reply.error_msg_size() == 0) {
+    return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
+           << "The instance or error count of reply cannot be 0, servable: " << request_spec.servable_name
+           << ", method: " << request_spec.method_name;
+  }
+  std::copy(reply.error_msg().begin(), reply.error_msg().end(), std::back_inserter(*error));
+  for (auto &item : reply.instances()) {
+    // cppcheck-suppress useStlAlgorithm
+    results->push_back(&item);
+  }
+  return SUCCESS;
+}
+
+void GrpcTensorHelper::SetReplySpec(const RequestSpec &request_spec, proto::PredictReply *reply) {
+  proto::ServableSpec &spec = *reply->mutable_servable_spec();
+  spec.set_name(request_spec.servable_name);
+  spec.set_method_name(request_spec.method_name);
+  spec.set_version_number(request_spec.version_number);
+}
+
+Status GrpcTensorHelper::CreatePredictReplyFromInstances(const proto::PredictRequest &request,
+                                                         const std::vector<proto::ErrorMsg> &errors,
+                                                         const std::vector<const proto::Instance *> &instances,
+                                                         proto::PredictReply *reply) {
+  MSI_EXCEPTION_IF_NULL(reply);
+  *reply->mutable_servable_spec() = request.servable_spec();
+  for (auto &instance : instances) {
+    auto proto_instance = reply->add_instances();
+    if (instance) {
+      *proto_instance->mutable_items() = instance->items();
+    }
+  }
+  bool all_ok = true;
+  bool all_same = true;
+  for (auto &error : errors) {
+    if (error.error_code() != 0) {
+      all_ok = false;
+    }
+    if (error.error_code() != errors[0].error_code() || error.error_msg() != errors[0].error_msg()) {
+      all_same = false;
+    }
+  }
+  if (!all_ok) {
+    if (all_same) {
+      reply->clear_instances();
+      auto proto_error = reply->add_error_msg();
+      proto_error->set_error_msg(errors[0].error_msg());
+      proto_error->set_error_code(errors[0].error_code());
+    } else {
+      for (auto &error : errors) {
+        auto proto_error = reply->add_error_msg();
+        proto_error->set_error_msg(error.error_msg());
+        proto_error->set_error_code(error.error_code());
+      }
+    }
+  }
+  return SUCCESS;
+}
+
+void GrpcTensorHelper::SetRequestSpec(const RequestSpec &request_spec, proto::PredictRequest *request) {
+  proto::ServableSpec spec;
+  spec.set_name(request_spec.servable_name);
+  spec.set_method_name(request_spec.method_name);
+  spec.set_version_number(request_spec.version_number);
+  *request->mutable_servable_spec() = spec;
+}
+Status GrpcTensorHelper::CreatePredictRequestFromInstances(const RequestSpec &request_spec,
+                                                           const std::vector<const proto::Instance *> &instances,
+                                                           proto::PredictRequest *request) {
+  MSI_EXCEPTION_IF_NULL(request);
+  auto proto_spec = request->mutable_servable_spec();
+  proto_spec->set_name(request_spec.servable_name);
+  proto_spec->set_method_name(request_spec.method_name);
+  proto_spec->set_version_number(request_spec.version_number);
+  for (auto &instance : instances) {
+    auto proto_instance = request->add_instances();
+    *proto_instance->mutable_items() = instance->items();
+  }
+  return SUCCESS;
 }
 
 Status GrpcTensorHelper::CreateReplyFromInstancesInner(const proto::PredictRequest &request,
@@ -339,6 +401,30 @@ Status GrpcTensorHelper::CreateInstanceFromRequestInstances(const proto::Predict
       instance_data.push_back(add_tensor);
     }
     results->push_back(instance_data);
+  }
+  return SUCCESS;
+}
+
+Status GrpcTensorHelper::CheckRequestInstances(const proto::PredictRequest &request,
+                                               const std::vector<std::string> &input_names) {
+  auto servable_name = request.servable_spec().name();
+  auto method_name = request.servable_spec().method_name();
+  Status status;
+  for (auto &proto_instance : request.instances()) {
+    for (const auto &input_name : input_names) {
+      auto it = proto_instance.items().find(input_name);
+      if (it == proto_instance.items().end()) {
+        return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
+               << "Cannot find input " << input_name << " in instance input , servable " << servable_name << ", method "
+               << method_name;
+      }
+      status = CheckRequestTensor(it->second);
+      if (status != SUCCESS) {
+        auto status2 = INFER_STATUS(INVALID_INPUTS) << "Instances input " << input_name << " check failed";
+        MSI_LOG_ERROR << status2.StatusMessage();
+        return Status(INVALID_INPUTS, status2.StatusMessage() + ", detail: " + status.StatusMessage());
+      }
+    }
   }
   return SUCCESS;
 }
@@ -439,7 +525,7 @@ void GrpcTensorHelper::CreateReplyFromErrorMsg(const Status &error_msg, proto::P
   reply->clear_error_msg();
   reply->clear_instances();
   auto proto_error_msg = reply->add_error_msg();
-  proto_error_msg->set_error_code(FAILED);
+  proto_error_msg->set_error_code(error_msg.StatusCode());
   std::string error_msg_str = error_msg.StatusMessage();
   if (error_msg_str.empty()) {
     proto_error_msg->set_error_msg("Predict failed");

@@ -22,12 +22,13 @@ namespace mindspore {
 namespace serving {
 
 namespace {
-std::string GetProtorWorkerSpecRepr(const proto::WorkerSpec &worker_spec) {
+std::string GetProtorWorkerSpecRepr(const proto::WorkerRegSpec &worker_spec) {
   std::stringstream str;
-  str << "{name:" << worker_spec.name() << ", version:" << worker_spec.version_number() << ", method:[";
-  for (int k = 0; k < worker_spec.methods_size(); k++) {
-    str << worker_spec.methods(k).name();
-    if (k + 1 < worker_spec.methods_size()) {
+  auto &servable_spec = worker_spec.servable_spec();
+  str << "{name:" << servable_spec.name() << ", version:" << servable_spec.version_number() << ", method:[";
+  for (int k = 0; k < servable_spec.methods_size(); k++) {
+    str << servable_spec.methods(k).name();
+    if (k + 1 < servable_spec.methods_size()) {
       str << ",";
     }
   }
@@ -47,14 +48,8 @@ grpc::Status MSMasterImpl::Register(grpc::ServerContext *context, const proto::R
   MSI_EXCEPTION_IF_NULL(reply);
   auto worker_sig = [request]() {
     std::stringstream str;
-    str << "worker address: " << request->address() << ", servables: [";
-    for (int i = 0; i < request->worker_spec_size(); i++) {
-      str << GetProtorWorkerSpecRepr(request->worker_spec(i));
-      if (i + 1 < request->worker_spec_size()) {
-        str << ", ";
-      }
-    }
-    str << "]";
+    str << "worker address: " << request->worker_spec().address() << ", servable: ";
+    str << GetProtorWorkerSpecRepr(request->worker_spec());
     return str.str();
   };
   Status status(FAILED);
@@ -63,50 +58,7 @@ grpc::Status MSMasterImpl::Register(grpc::ServerContext *context, const proto::R
     MSI_LOG_ERROR << "Register servable failed, " << worker_sig();
     return grpc::Status::OK;
   }
-  watcher_->StartWatch(request->address());
   MSI_LOG(INFO) << "Register success: " << worker_sig();
-  return grpc::Status::OK;
-}
-
-grpc::Status MSMasterImpl::AddWorker(grpc::ServerContext *context, const proto::AddWorkerRequest *request,
-                                     proto::AddWorkerReply *reply) {
-  MSI_EXCEPTION_IF_NULL(request);
-  MSI_EXCEPTION_IF_NULL(reply);
-  auto worker_sig = [request]() {
-    std::stringstream str;
-    str << "worker address: " << request->address()
-        << ", servables: " << GetProtorWorkerSpecRepr(request->worker_spec());
-    return str.str();
-  };
-  Status status(FAILED);
-  status = dispatcher_->AddServable(*request, reply);
-  if (status != SUCCESS) {
-    MSI_LOG_ERROR << "Add servable failed, " << worker_sig();
-    return grpc::Status::OK;
-  }
-  watcher_->StartWatch(request->address());
-  MSI_LOG(INFO) << "Add success, " << worker_sig();
-  return grpc::Status::OK;
-}
-
-grpc::Status MSMasterImpl::RemoveWorker(grpc::ServerContext *context, const proto::RemoveWorkerRequest *request,
-                                        proto::RemoveWorkerReply *reply) {
-  MSI_EXCEPTION_IF_NULL(request);
-  MSI_EXCEPTION_IF_NULL(reply);
-  auto worker_sig = [request]() {
-    std::stringstream str;
-    str << "worker address: " << request->address()
-        << ", servables: " << GetProtorWorkerSpecRepr(request->worker_spec());
-    return str.str();
-  };
-  Status status(FAILED);
-  watcher_->StopWatch(request->address());
-  status = dispatcher_->RemoveServable(*request, reply);
-  if (status != SUCCESS) {
-    MSI_LOG_ERROR << "Add servable failed, " << worker_sig();
-    return grpc::Status::OK;
-  }
-  MSI_LOG(INFO) << "Add success, " << worker_sig();
   return grpc::Status::OK;
 }
 
@@ -121,29 +73,19 @@ grpc::Status MSMasterImpl::Exit(grpc::ServerContext *context, const proto::ExitR
   };
 
   MSI_LOG(INFO) << "Worker Exit, " << worker_sig();
-  Status status(FAILED);
-  watcher_->StopWatch(request->address());
-  status = dispatcher_->UnregisterServable(*request, reply);
+  Status status = dispatcher_->NotifyWorkerExit(*request, reply);
   if (status != SUCCESS) {
     MSI_LOG_ERROR << "UnRegister servable failed, " << worker_sig();
     return grpc::Status::OK;
   }
   return grpc::Status::OK;
 }
-grpc::Status MSMasterImpl::Ping(grpc::ServerContext *context, const proto::PingRequest *request,
-                                proto::PingReply *reply) {
-  MSI_EXCEPTION_IF_NULL(request);
-  MSI_EXCEPTION_IF_NULL(reply);
-  watcher_->RecvPing(request->address());
+
+grpc::Status MSMasterImpl::NotifyFailed(grpc::ServerContext *context, const proto::NotifyFailedRequest *request,
+                                        proto::NotifyFailedReply *reply) {
+  dispatcher_->NotifyWorkerFailed(request, reply);
   return grpc::Status::OK;
 }
 
-grpc::Status MSMasterImpl::Pong(grpc::ServerContext *context, const proto::PongRequest *request,
-                                proto::PongReply *reply) {
-  MSI_EXCEPTION_IF_NULL(request);
-  MSI_EXCEPTION_IF_NULL(reply);
-  watcher_->RecvPong(request->address());
-  return grpc::Status::OK;
-}
 }  // namespace serving
 }  // namespace mindspore

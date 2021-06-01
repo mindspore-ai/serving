@@ -15,12 +15,12 @@
 """test Serving: test servable_config"""
 
 from common import ServingTestBase, serving_test
-from mindspore_serving import worker
+from mindspore_serving import server
 
 # test servable_config.py
 servable_config_import = r"""
 import numpy as np
-from mindspore_serving.worker import register
+from mindspore_serving.server import register
 """
 
 servable_config_declare_servable = r"""
@@ -58,7 +58,7 @@ def test_register_method_common_success():
     servable_content += servable_config_method_add_cast
 
     base.init_servable_with_servable_config(1, servable_content)
-    worker.start_servable_in_master(base.servable_dir, base.servable_name)
+    server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
 
 
 @serving_test
@@ -72,7 +72,7 @@ def test_register_method_no_declare_servable_failed():
 
     base.init_servable_with_servable_config(1, servable_content)
     try:
-        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
         assert False
     except RuntimeError as e:
         assert "RegisterInputOutputInfo failed, cannot find servable" in str(e)
@@ -89,7 +89,7 @@ def test_register_method_no_method_registered_failed():
 
     base.init_servable_with_servable_config(1, servable_content)
     try:
-        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
         assert False
     except RuntimeError as e:
         assert "There is no method registered for servable" in str(e)
@@ -106,9 +106,9 @@ def test_register_method_reference_invalid_preprocess_failed():
 
     base.init_servable_with_servable_config(1, servable_content)
     try:
-        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
         assert False
-    except NameError as e:
+    except RuntimeError as e:
         assert "name 'add_trans_datatype' is not defined" in str(e)
 
 
@@ -126,7 +126,7 @@ def add_trans_datatype(x1, x2, x3):
 
     base.init_servable_with_servable_config(1, servable_content)
     try:
-        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
         assert False
     except RuntimeError as e:
         assert "function add_trans_datatype input args count 3 not match registered in method count 2" in str(e)
@@ -146,7 +146,7 @@ def add_trans_datatype(x1):
 
     base.init_servable_with_servable_config(1, servable_content)
     try:
-        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
         assert False
     except RuntimeError as e:
         assert "function add_trans_datatype input args count 1 not match registered in method count 2" in str(e)
@@ -171,7 +171,7 @@ def add_cast(x1, x2):
 """
     base.init_servable_with_servable_config(1, servable_content)
     try:
-        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
         assert False
     except RuntimeError as e:
         assert "function add_trans_datatype_back input args count 2 not match registered in method count 1" in str(e)
@@ -193,7 +193,7 @@ def add_cast(x1, x2):
 """
     base.init_servable_with_servable_config(1, servable_content)
     try:
-        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
         assert False
     except RuntimeError as e:
         assert "call_servable should be invoked after call_preprocess" in str(e)
@@ -215,7 +215,7 @@ def add_cast(x1, x2):
 """
     base.init_servable_with_servable_config(1, servable_content)
     try:
-        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
         assert False
     except RuntimeError as e:
         assert "call_postprocess or call_postprocess_pipeline should be invoked after call_preprocess" in str(e)
@@ -237,7 +237,7 @@ def add_cast(x1, x2):
 """
     base.init_servable_with_servable_config(1, servable_content)
     try:
-        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
         assert False
     except RuntimeError as e:
         assert "call_postprocess or call_postprocess_pipeline should be invoked after call_preprocess" in str(e)
@@ -259,7 +259,7 @@ def add_cast(x1, x2):
 """
     base.init_servable_with_servable_config(1, servable_content)
     try:
-        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
         assert False
     except RuntimeError as e:
         assert "call_servable should be invoked after call_preprocess_pipeline" in str(e)
@@ -281,7 +281,7 @@ def add_cast(x1, x2):
 """
     base.init_servable_with_servable_config(1, servable_content)
     try:
-        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
         assert False
     except RuntimeError as e:
         assert "call_postprocess or call_postprocess_pipeline should be invoked after call_preprocess_pipeline" \
@@ -304,7 +304,7 @@ def add_cast(x1, x2):
 """
     base.init_servable_with_servable_config(1, servable_content)
     try:
-        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
         assert False
     except RuntimeError as e:
         assert "call_postprocess or call_postprocess_pipeline should be invoked after call_preprocess_pipeline" \
@@ -328,7 +328,7 @@ def add_cast(x1, x2):
 """
     base.init_servable_with_servable_config(1, servable_content)
     try:
-        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
         assert False
     except RuntimeError as e:
         assert "call_preprocess or call_preprocess_pipeline should not be invoked more than once" in str(e)
@@ -350,7 +350,7 @@ def add_cast(x1, x2):
 """
     base.init_servable_with_servable_config(1, servable_content)
     try:
-        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
         assert False
     except RuntimeError as e:
         assert "call_preprocess or call_preprocess_pipeline should not be invoked more than once" in str(e)
@@ -372,7 +372,7 @@ def add_cast(x1, x2):
 """
     base.init_servable_with_servable_config(1, servable_content)
     try:
-        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
         assert False
     except RuntimeError as e:
         assert "call_preprocess or call_preprocess_pipeline should not be invoked more than once" in str(e)
@@ -397,7 +397,7 @@ def add_cast(x1, x2):
 """
     base.init_servable_with_servable_config(1, servable_content)
     try:
-        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
         assert False
     except RuntimeError as e:
         assert "call_postprocess or call_postprocess_pipeline should not be invoked more than once" in str(e)
@@ -421,7 +421,7 @@ def add_cast(x1, x2):
 """
     base.init_servable_with_servable_config(1, servable_content)
     try:
-        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
         assert False
     except RuntimeError as e:
         assert "call_postprocess or call_postprocess_pipeline should not be invoked more than once" in str(e)
@@ -445,7 +445,7 @@ def add_cast(x1, x2):
 """
     base.init_servable_with_servable_config(1, servable_content)
     try:
-        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
         assert False
     except RuntimeError as e:
         assert "call_postprocess or call_postprocess_pipeline should not be invoked more than once" in str(e)
@@ -468,7 +468,7 @@ def add_cast(x1, x2):
 """
     base.init_servable_with_servable_config(1, servable_content)
     try:
-        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
         assert False
     except RuntimeError as e:
         assert "call_servable should not be invoked more than once" in str(e)
@@ -489,7 +489,7 @@ def add_cast(x1, x2):
 """
     base.init_servable_with_servable_config(1, servable_content)
     try:
-        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
         assert False
     except RuntimeError as e:
         assert "call_postprocess or call_postprocess_pipeline should be invoked after call_servable" in str(e)
@@ -510,7 +510,7 @@ def add_cast(x1, x2):
 """
     base.init_servable_with_servable_config(1, servable_content)
     try:
-        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
         assert False
     except RuntimeError as e:
         assert "call_postprocess or call_postprocess_pipeline should be invoked after call_servable" in str(e)
@@ -537,7 +537,7 @@ def add_cast2(x1, x2):
 """
     base.init_servable_with_servable_config(1, servable_content)
     try:
-        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
         assert False
     except RuntimeError as e:
         assert f"Preprocess '{base.servable_name}.add_trans_datatype' inputs count 3 " \
@@ -565,7 +565,7 @@ def add_cast2(x1, x2):
 """
     base.init_servable_with_servable_config(1, servable_content)
     try:
-        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
         assert False
     except RuntimeError as e:
         assert f"Preprocess '{base.servable_name}.add_trans_datatype' outputs count 2 " \
@@ -593,7 +593,7 @@ def add_cast2(x1, x2):
 """
     base.init_servable_with_servable_config(1, servable_content)
     try:
-        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
         assert False
     except RuntimeError as e:
         assert f"Postprocess '{base.servable_name}.add_trans_datatype' inputs count 3 " \
@@ -621,7 +621,7 @@ def add_cast2(x1, x2):
 """
     base.init_servable_with_servable_config(1, servable_content)
     try:
-        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
         assert False
     except RuntimeError as e:
         assert f"Postprocess '{base.servable_name}.add_trans_datatype' outputs count 3 " \
@@ -647,7 +647,7 @@ def add_cast2(x1, x2):
 """
     base.init_servable_with_servable_config(1, servable_content)
     try:
-        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
         assert False
     except RuntimeError as e:
         assert "RegisterInputOutputInfo failed, inputs count 3 not match old count 2" in str(e)
@@ -672,7 +672,7 @@ def add_cast2(x1, x2):
 """
     base.init_servable_with_servable_config(1, servable_content)
     try:
-        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
         assert False
     except RuntimeError as e:
         assert "RegisterInputOutputInfo failed, outputs count 2 not match old count 1" in str(e)
@@ -692,7 +692,7 @@ def add_cast(x1, x2):
 """
     base.init_servable_with_servable_config(1, servable_content)
     try:
-        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
         assert False
     except RuntimeError as e:
         assert "The inputs count 3 registered in method not equal to the count 2 defined in servable" in str(e)
@@ -712,7 +712,7 @@ def add_cast(x1, x2):
 """
     base.init_servable_with_servable_config(1, servable_content)
     try:
-        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
         assert False
     except RuntimeError as e:
         assert "The outputs count 2 registered in method not equal to the count 1 defined in servable" in str(e)
@@ -732,7 +732,7 @@ def add_cast(x1, x2):
 """
     base.init_servable_with_servable_config(1, servable_content)
     try:
-        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
         assert False
     except RuntimeError as e:
         assert "Method return output size 2 not match registered 1" in str(e)
@@ -757,7 +757,7 @@ def add_cast(x1, x2):
 """
     base.init_servable_with_servable_config(1, servable_content)
     try:
-        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
         assert False
     except RuntimeError as e:
         assert "Method add_cast has been registered more than once." in str(e)
@@ -777,7 +777,7 @@ def add_cast(x1, **x2):
 """
     base.init_servable_with_servable_config(1, servable_content)
     try:
-        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
         assert False
     except RuntimeError as e:
         assert "'add_cast' input x2 cannot be VAR_KEYWORD !" in str(e)
@@ -797,7 +797,7 @@ def add_cast(x1, *x2):
 """
     base.init_servable_with_servable_config(1, servable_content)
     try:
-        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
         assert False
     except RuntimeError as e:
         assert "'add_cast' input x2 cannot be VAR_POSITIONAL !" in str(e)
@@ -818,9 +818,9 @@ def add_cast(x1, x2):
 """
     base.init_servable_with_servable_config(1, servable_content)
     try:
-        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
         assert False
-    except AttributeError as e:
+    except RuntimeError as e:
         assert "'numpy.ndarray' object has no attribute 'as_pair'" in str(e)
 
 
@@ -838,9 +838,9 @@ def add_cast(x1, x2):
 """
     base.init_servable_with_servable_config(1, servable_content)
     try:
-        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
         assert False
-    except AttributeError as e:
+    except RuntimeError as e:
         assert "'numpy.ndarray' object has no attribute 'as_pair'" in str(e)
 
 
@@ -862,7 +862,7 @@ def add_cast(x1, x2):
 """
     base.init_servable_with_servable_config(1, servable_content)
     try:
-        worker.start_servable_in_master(base.servable_dir, base.servable_name)
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
         assert False
-    except AttributeError as e:
+    except RuntimeError as e:
         assert "'numpy.ndarray' object has no attribute 'as_pair'" in str(e)

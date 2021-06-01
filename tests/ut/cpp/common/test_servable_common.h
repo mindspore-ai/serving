@@ -25,7 +25,7 @@
 #include "common/common_test.h"
 #include "master/server.h"
 #include "worker/worker.h"
-#include "worker/notfiy_master/local_notify.h"
+#include "worker/notfiy_master/base_notify.h"
 #include "worker/context.h"
 #include "worker/local_servable/local_sevable.h"
 #include "master/grpc/grpc_process.h"
@@ -42,6 +42,12 @@ namespace serving {
       std::cout << "error_msg: " << error_msg_str << ", expected_msg: " << expected_msg << std::endl; \
     }                                                                                                 \
   }
+
+class FakeNotifyMaster : public BaseNotifyMaster {
+ public:
+  Status Register(const WorkerRegSpec &worker_spec) override { return SUCCESS; }
+  Status Unregister() override { return SUCCESS; }
+};
 
 class TestMasterWorker : public UT::Common {
  public:
@@ -100,7 +106,7 @@ class TestMasterWorker : public UT::Common {
   }
 
   static Status StartServable(const std::string &servable_dir, const std::string &servable_name, int version_number) {
-    auto notify_master = std::make_shared<LocalNotifyMaster>();
+    auto notify_master = std::make_shared<FakeNotifyMaster>();
     ServableContext::Instance()->SetDeviceId(0);
     ServableContext::Instance()->SetDeviceTypeStr("Ascend");
     auto servable = std::make_shared<LocalModelServable>();
@@ -372,12 +378,12 @@ class TestMasterWorkerClient : public TestMasterWorker {
     }
   }
   static grpc::Status Dispatch(const proto::PredictRequest &request, proto::PredictReply *reply) {
-    MSServiceImpl impl(Server::Instance().GetDispatcher());
+    MSWorkerImpl impl;
     grpc::ServerContext context;
     auto promise = std::make_shared<std::promise<void>>();
     auto future = promise->get_future();
     PredictOnFinish callback = [promise]() { promise->set_value(); };
-    impl.PredictAsync(&request, reply, callback);
+    impl.PredictAsync(&context, &request, reply, callback);
     future.get();
     return grpc::Status::OK;
   }

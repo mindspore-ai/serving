@@ -23,16 +23,14 @@ import "mindspore_serving/proto/ms_service.proto";
 service MSMaster {
   rpc Register(RegisterRequest) returns (RegisterReply) {}
   rpc Exit(ExitRequest) returns (ExitReply) {}
-  rpc AddWorker(AddWorkerRequest) returns (AddWorkerReply) {}
-  rpc RemoveWorker(RemoveWorkerRequest) returns (RemoveWorkerReply) {}
-  rpc Ping(PingRequest) returns (PingReply) {}
-  rpc Pong(PongRequest) returns (PongReply) {}
+  rpc NotifyFailed(NotifyFailedRequest) returns (NotifyFailedReply) {}
 }
 
-message WorkerSpec {
+message ServableRegSpec {
   string name = 1;
-  int64 version_number = 2;
-
+  uint64 version_number = 2;
+  uint64 config_version_number = 3;
+  uint64 batch_size = 4;
   message MethodInfo{
     string name = 1;
     repeated string input_names = 2;
@@ -40,9 +38,14 @@ message WorkerSpec {
   repeated MethodInfo methods = 5;
 }
 
-message RegisterRequest {
-  repeated WorkerSpec worker_spec = 1;
+message WorkerRegSpec {
+  uint64 worker_pid = 1;
   string address = 2;
+  ServableRegSpec servable_spec = 4;
+}
+
+message RegisterRequest {
+  WorkerRegSpec worker_spec = 1;
 }
 
 message RegisterReply {
@@ -57,20 +60,11 @@ message ExitReply {
   ErrorMsg error_msg = 1;
 }
 
-message AddWorkerRequest {
-  WorkerSpec worker_spec = 1;
-  string address = 2;
+message NotifyFailedRequest {
+  uint64 worker_pid = 1;
+  string error_msg = 2;
 }
 
-message AddWorkerReply {
-  ErrorMsg error_msg = 1;
-}
+message NotifyFailedReply {
 
-message RemoveWorkerRequest {
-  WorkerSpec worker_spec = 1;
-  string address = 2;
-}
-
-message RemoveWorkerReply {
-  ErrorMsg error_msg = 1;
 }

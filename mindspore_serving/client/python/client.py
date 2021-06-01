@@ -140,6 +140,11 @@ def _check_int(arg_name, int_val, minimum=None, maximum=None):
         raise RuntimeError(f"Parameter '{arg_name}' should be <= {maximum}")
 
 
+class SSLConfig:
+    def __init__(self, custom_ca=None, private_key=None, cert=None):
+        pass
+
+
 class Client:
     """
     The Client encapsulates the serving gRPC API, which can be used to create requests,
@@ -167,22 +172,19 @@ class Client:
         >>> print(result)
     """
 
-    def __init__(self, ip, port, servable_name, method_name, version_number=0):
-        _check_str("ip", ip)
-        _check_int("port", port, 1, 65535)
+    def __init__(self, address, servable_name, method_name, version_number=0):
+        _check_str("address", address)
         _check_str("servable_name", servable_name)
         _check_str("method_name", method_name)
         _check_int("version_number", version_number, 0)
 
-        self.ip = ip
-        self.port = port
+        self.address = address
         self.servable_name = servable_name
         self.method_name = method_name
         self.version_number = version_number
 
-        channel_str = str(ip) + ":" + str(port)
         msg_bytes_size = 512 * 1024 * 1024  # 512MB
-        channel = grpc.insecure_channel(channel_str,
+        channel = grpc.insecure_channel(address,
                                         options=[
                                             ('grpc.max_send_message_length', msg_bytes_size),
                                             ('grpc.max_receive_message_length', msg_bytes_size),
@@ -298,7 +300,7 @@ class Client:
     def _paser_result(result):
         """Used to parse result."""
         error_msg_len = len(result.error_msg)
-        if error_msg_len == 1:
+        if error_msg_len == 1 and result.error_msg[0].error_code != 0:
             return {"error": bytes.decode(result.error_msg[0].error_msg)}
         ret_val = []
         instance_len = len(result.instances)

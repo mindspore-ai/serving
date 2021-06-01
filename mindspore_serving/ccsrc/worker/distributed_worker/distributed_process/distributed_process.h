@@ -35,10 +35,14 @@ namespace mindspore {
 namespace serving {
 
 // Service Implement
-class MSDistributedImpl final : public MSWorkerImpl {
+class MSDistributedImpl {
  public:
   explicit MSDistributedImpl(std::shared_ptr<DistributedServable> servable, const std::string server_address)
-      : MSWorkerImpl(server_address), servable_(servable) {}
+      : servable_(servable) {
+    if (!watcher_) {
+      watcher_ = std::make_shared<Watcher<proto::MSAgent, proto::MSAgent>>(server_address);
+    }
+  }
   ~MSDistributedImpl() = default;
   grpc::Status AgentRegister(grpc::ServerContext *context, const proto::AgentRegisterRequest *request,
                              proto::AgentRegisterReply *reply);
@@ -49,8 +53,13 @@ class MSDistributedImpl final : public MSWorkerImpl {
   grpc::Status AgentConfigAcquire(grpc::ServerContext *context, const proto::AgentConfigAcquireRequest *request,
                                   proto::AgentConfigAcquireReply *reply);
 
+  grpc::Status Ping(grpc::ServerContext *context, const proto::PingRequest *request, proto::PingReply *reply);
+  grpc::Status Pong(grpc::ServerContext *context, const proto::PongRequest *request, proto::PongReply *reply);
+
  private:
   std::shared_ptr<DistributedServable> servable_;
+
+  std::shared_ptr<Watcher<proto::MSAgent, proto::MSAgent>> watcher_;
 };
 
 }  // namespace serving

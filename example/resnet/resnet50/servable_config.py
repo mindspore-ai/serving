@@ -20,7 +20,7 @@ import mindspore.dataset as ds
 import mindspore.dataset.transforms.c_transforms as TC
 import mindspore.dataset.vision.c_transforms as VC
 
-from mindspore_serving.worker import register
+from mindspore_serving.server import register
 
 cur_dir = os.path.abspath(os.path.dirname(__file__))
 print("current dir:", cur_dir)

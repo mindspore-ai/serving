@@ -19,7 +19,7 @@ import requests
 import numpy as np
 
 from common import init_str_servable, init_bytes_servable, init_bool_int_float_servable
-from mindspore_serving import master, worker
+from mindspore_serving import server
 
 
 def compare_float_value(result, expect):
@@ -55,15 +55,15 @@ def check_number_result(result, y_data_list, output_name="y"):
         assert (np.abs(result_item - expected_item) < 0.001).all()
 
 
-def post_restful(ip, restful_port, servable_name, method_name, json_instances, version_number=None):
+def post_restful(address, servable_name, method_name, json_instances, version_number=None):
     instances_map = {"instances": json_instances}
     post_payload = json.dumps(instances_map)
     print("request:", post_payload[:200])
     if version_number is not None:
-        request_url = f"http://{ip}:{restful_port}/model/{servable_name}/version/{version_number}:{method_name}"
+        request_url = f"http://{address}/model/{servable_name}/version/{version_number}:{method_name}"
         result = requests.post(request_url, data=post_payload)
     else:
-        request_url = f"http://{ip}:{restful_port}/model/{servable_name}:{method_name}"
+        request_url = f"http://{address}/model/{servable_name}:{method_name}"
         result = requests.post(request_url, data=post_payload)
     print("result", result.text[:200])
     result = json.loads(result.text)
@@ -72,20 +72,20 @@ def post_restful(ip, restful_port, servable_name, method_name, json_instances, v
 
 def start_str_restful_server():
     base = init_str_servable()
-    worker.start_servable_in_master(base.servable_dir, base.servable_name)
-    master.start_restful_server("0.0.0.0", 5500)
+    server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
+    server.start_restful_server("0.0.0.0:5500")
     return base
 
 
 def start_bytes_restful_server():
     base = init_bytes_servable()
-    worker.start_servable_in_master(base.servable_dir, base.servable_name)
-    master.start_restful_server("0.0.0.0", 5500)
+    server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
+    server.start_restful_server("0.0.0.0:5500")
     return base
 
 
 def start_bool_int_float_restful_server():
     base = init_bool_int_float_servable()
-    worker.start_servable_in_master(base.servable_dir, base.servable_name)
-    master.start_restful_server("0.0.0.0", 5500)
+    server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
+    server.start_restful_server("0.0.0.0:5500")
     return base

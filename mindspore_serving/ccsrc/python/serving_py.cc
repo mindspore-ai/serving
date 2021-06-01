@@ -21,7 +21,9 @@
 #include "python/worker/servable_py.h"
 #include "python/tensor_py.h"
 #include "common/servable.h"
+#include "master/server.h"
 #include "master/master_context.h"
+#include "master/worker_context.h"
 #include "worker/context.h"
 #include "python/master/master_py.h"
 #include "python/agent/agent_py.h"
@@ -130,6 +132,29 @@ void PyRegMaster(pybind11::module *m_ptr) {
     .def_static("start_restful_server", &PyMaster::StartRestfulServer)
     .def_static("wait_and_clear", &PyMaster::WaitAndClear)
     .def_static("stop_and_clear", &PyMaster::StopAndClear);
+
+  py::class_<ServableStartConfig>(m, "ServableStartConfig_")
+    .def(py::init<>())
+    .def_readwrite("servable_directory", &ServableStartConfig::servable_directory)
+    .def_readwrite("servable_name", &ServableStartConfig::servable_name)
+    .def_readwrite("config_version_number", &ServableStartConfig::config_version_number)
+    .def_readwrite("device_type", &ServableStartConfig::device_type)
+    .def_readwrite("device_ids", &ServableStartConfig::device_ids);
+
+  py::class_<WorkerContext, std::shared_ptr<WorkerContext>>(m, "WorkerContext_")
+    .def_static("init_worker", &WorkerContext::PyInitWorkerContext)
+    .def("has_error_notified", &WorkerContext::HasErrorNotified)
+    .def("has_exit_notified", &WorkerContext::HasExitNotified)
+    .def("get_notified_error", &WorkerContext::GetNotifiedError)
+    .def("ready", &WorkerContext::HasReady)
+    .def("print_status", &WorkerContext::PrintStatus)
+    .def("is_in_starting", &WorkerContext::IsInStarting)
+    .def("update_worker_pid", &WorkerContext::UpdateWorkerPid)
+    .def("notify_not_alive", &WorkerContext::PyNotifyNotAlive)
+    .def("notify_start_failed", &WorkerContext::PyNotifyStartFailed)
+    .def_property_readonly("is_unavailable", &WorkerContext::IsUnavailable)
+    .def_property_readonly("normal_handled_count", &WorkerContext::GetNormalHandledCount)
+    .def_property_readonly("address", &WorkerContext::GetWorkerAddress);
 }
 
 void PyRegWorker(pybind11::module *m_ptr) {
@@ -152,9 +177,7 @@ void PyRegWorker(pybind11::module *m_ptr) {
 
   py::class_<PyWorker>(m, "Worker_")
     .def_static("start_servable", &PyWorker::StartServable)
-    .def_static("start_servable_in_master", &PyWorker::StartServableInMaster)
     .def_static("start_distributed_servable", &PyWorker::StartDistributedServable)
-    .def_static("start_distributed_servable_in_master", &PyWorker::StartDistributedServableInMaster)
     .def_static("get_batch_size", &PyWorker::GetBatchSize)
     .def_static("wait_and_clear", &PyWorker::WaitAndClear)
     .def_static("stop_and_clear", PyWorker::StopAndClear)
@@ -165,7 +188,8 @@ void PyRegWorker(pybind11::module *m_ptr) {
     .def_static("push_preprocess_failed", &PyWorker::PushPreprocessPyFailed)
     .def_static("push_postprocess_result", &PyWorker::PushPostprocessPyResult)
     .def_static("push_postprocess_failed", &PyWorker::PushPostprocessPyFailed)
-    .def_static("get_device_type", &PyWorker::GetDeviceType);
+    .def_static("get_device_type", &PyWorker::GetDeviceType)
+    .def_static("notify_failed", &PyWorker::NotifyFailed);
 
   py::class_<ServableContext, std::shared_ptr<ServableContext>>(m, "ServableContext_")
     .def(py::init<>())
@@ -202,10 +226,8 @@ void PyRegWorkerAgent(pybind11::module *m_ptr) {
     .def_readwrite("model_file_name", &AgentStartUpConfig::model_file_name)
     .def_readwrite("group_file_name", &AgentStartUpConfig::group_file_name)
     .def_readwrite("rank_table_json_file_name", &AgentStartUpConfig::rank_table_json_file_name)
-    .def_readwrite("agent_ip", &AgentStartUpConfig::agent_ip)
-    .def_readwrite("agent_port", &AgentStartUpConfig::agent_port)
-    .def_readwrite("worker_ip", &AgentStartUpConfig::worker_ip)
-    .def_readwrite("worker_port", &AgentStartUpConfig::worker_port)
+    .def_readwrite("agent_address", &AgentStartUpConfig::agent_address)
+    .def_readwrite("distributed_address", &AgentStartUpConfig::distributed_address)
     .def_readwrite("common_meta", &AgentStartUpConfig::common_meta);
 }
 

@@ -30,27 +30,21 @@ namespace serving {
 
 class MS_API GrpcNotifyDistributeWorker {
  public:
-  GrpcNotifyDistributeWorker(const std::string &worker_ip, uint32_t worker_port, const std::string &agent_ip,
-                             uint32_t agent_port);
+  GrpcNotifyDistributeWorker(const std::string &distributed_address, const std::string &agent_address);
   ~GrpcNotifyDistributeWorker();
   Status Register(const std::vector<WorkerAgentSpec> &agent_specs);
   Status Unregister();
   // from start up, not agent
-  static Status NotifyFailed(const std::string &worker_ip, uint32_t worker_port);
-  static Status GetAgentsConfigsFromWorker(const std::string &worker_ip, uint32_t worker_port,
-                                           DistributedServableConfig *config);
-  static void StartupNotifyExit(const std::string &worker_ip, uint32_t worker_port, const std::string &agent_ip);
+  static Status NotifyFailed(const std::string &distributed_address);
+  static Status GetAgentsConfigsFromWorker(const std::string &distributed_address, DistributedServableConfig *config);
+  static void StartupNotifyExit(const std::string &distributed_address, const std::string &agent_ip);
 
  private:
   static Status ParseAgentConfigAcquireReply(const proto::AgentConfigAcquireReply &reply,
                                              DistributedServableConfig *config);
-  std::string distributed_worker_ip_;
-  uint32_t distributed_worker_port_;
-  std::string host_ip_;
-  uint32_t host_port_;
+  std::string distributed_address_;
   std::string agent_address_;
-  std::string distributed_worker_address_;
-  std::unique_ptr<proto::MSWorker::Stub> stub_;
+  std::unique_ptr<proto::MSDistributedWorker::Stub> stub_;
   std::atomic<bool> is_stoped_{false};
 };
 

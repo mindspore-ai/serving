@@ -26,24 +26,18 @@
 namespace mindspore {
 namespace serving {
 
-class MS_API GrpcNotfiyMaster : public BaseNotifyMaster {
+class MS_API GrpcNotifyMaster : public BaseNotifyMaster {
  public:
-  GrpcNotfiyMaster(const std::string &master_ip, uint32_t master_port, const std::string &host_ip, uint32_t host_port);
-  ~GrpcNotfiyMaster() override;
-  Status Register(const std::vector<WorkerSpec> &worker_specs) override;
+  GrpcNotifyMaster(const std::string &master_address, const std::string &worker_address);
+  ~GrpcNotifyMaster() override;
+  Status Register(const WorkerRegSpec &worker_spec) override;
   Status Unregister() override;
-  Status AddWorker(const WorkerSpec &worker_spec) override;
-  Status RemoveWorker(const WorkerSpec &worker_spec) override;
+  static Status NotifyFailed(const std::string &master_address, const std::string &error_msg);
 
  private:
-  std::string master_ip_;
-  uint32_t master_port_;
-  std::string host_ip_;
-  uint32_t host_port_;
-  std::string worker_address_;
   std::string master_address_;
+  std::string worker_address_;
 
-  std::unique_ptr<proto::MSMaster::Stub> stub_;
   std::atomic<bool> is_stoped_{false};
 };
 

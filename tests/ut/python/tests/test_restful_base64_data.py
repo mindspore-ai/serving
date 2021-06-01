@@ -22,8 +22,7 @@ from common import ServingTestBase, serving_test
 from common import servable_config_import, servable_config_declare_servable
 from common_restful import compare_float_value, check_number_result, post_restful
 from common_restful import start_str_restful_server, start_bytes_restful_server, start_bool_int_float_restful_server
-from mindspore_serving import master
-from mindspore_serving import worker
+from mindspore_serving import server
 
 
 def b64_decode_to_str(a):
@@ -46,7 +45,7 @@ def common_test_restful_base64_str_scalar_input_output_success(shape):
             instance["text2"] = {"b64": base64.b64encode(str.encode(str_b[i])).decode(), "type": "str",
                                  'shape': shape}
 
-    result = post_restful("localhost", 5500, base.servable_name, "str_concat", instances)
+    result = post_restful("localhost:5500", base.servable_name, "str_concat", instances)
     result = result["instances"]
     assert result[0]["text"] == str_a[0] + str_b[0]
     assert result[1]["text"] == str_a[1] + str_b[1]
@@ -79,7 +78,7 @@ def test_restful_base64_empty_str_input_output_success():
         instance["text1"] = {"b64": base64.b64encode(str.encode(str_a[i])).decode(), "type": "str"}
         instance["text2"] = {"b64": base64.b64encode(str.encode(str_b[i])).decode(), "type": "str"}
 
-    result = post_restful("localhost", 5500, base.servable_name, "str_empty", instances)
+    result = post_restful("localhost:5500", base.servable_name, "str_empty", instances)
     result = result["instances"]
     assert result[0]["text"] == ""
     assert result[1]["text"] == "456"
@@ -97,7 +96,7 @@ def test_restful_base64_str_scalar_invalid_shape0_input_failed():
         instance["text1"] = {"b64": base64.b64encode(str.encode(str_a[i])).decode(), "type": "str", "shape": [0]}
         instance["text2"] = {"b64": base64.b64encode(str.encode(str_b[i])).decode(), "type": "str", "shape": [0]}
 
-    result = post_restful("localhost", 5500, base.servable_name, "str_concat", instances)
+    result = post_restful("localhost:5500", base.servable_name, "str_concat", instances)
     assert "only support scalar when data type is string or bytes, please check 'type' or 'shape'" \
            in str(result["error_msg"])
 
@@ -113,7 +112,7 @@ def test_restful_base64_str_scalar_invalid_shape_input_failed():
         instance["text1"] = {"b64": base64.b64encode(str.encode(str_a[i])).decode(), "type": "str", 'shape': [2]}
         instance["text2"] = {"b64": base64.b64encode(str.encode(str_b[i])).decode(), "type": "str", 'shape': [2]}
 
-    result = post_restful("localhost", 5500, base.servable_name, "str_concat", instances)
+    result = post_restful("localhost:5500", base.servable_name, "str_concat", instances)
     assert "json object, only support scalar when data type is string or bytes, please check 'type' or 'shape'" \
            in str(result["error_msg"])
 
@@ -131,7 +130,7 @@ def test_restful_base64_str_1d_array_failed():
         instance["text2"] = [{"b64": base64.b64encode(str.encode(str_b[i])).decode(), "type": "str"},
                              {"b64": base64.b64encode(str.encode(str_b[i])).decode(), "type": "str"}]
 
-    result = post_restful("localhost", 5500, base.servable_name, "str_concat", instances)
+    result = post_restful("localhost:5500", base.servable_name, "str_concat", instances)
     assert "json array, string or bytes type only support one item" in str(result["error_msg"])
 
 
@@ -149,7 +148,7 @@ def common_test_restful_bytes_input_output_success(shape):
             instance["text1"] = {"b64": base64.b64encode(str.encode(str_a[i])).decode()}
             instance["text2"] = {"b64": base64.b64encode(str.encode(str_b[i])).decode()}
 
-    result = post_restful("localhost", 5500, base.servable_name, "bytes_concat", instances)
+    result = post_restful("localhost:5500", base.servable_name, "bytes_concat", instances)
     result = result["instances"]
     assert b64_decode_to_str(result[0]["text"]) == str_a[0] + str_b[0]
     assert b64_decode_to_str(result[1]["text"]) == str_a[1] + str_b[1]
@@ -182,7 +181,7 @@ def test_restful_empty_bytes_input_output_success():
         instance["text1"] = {"b64": base64.b64encode(str.encode(str_a[i])).decode()}
         instance["text2"] = {"b64": base64.b64encode(str.encode(str_b[i])).decode()}
 
-    result = post_restful("localhost", 5500, base.servable_name, "bytes_empty", instances)
+    result = post_restful("localhost:5500", base.servable_name, "bytes_empty", instances)
     result = result["instances"]
     assert b64_decode_to_str(result[0]["text"]) == ""
     assert b64_decode_to_str(result[1]["text"]) == "456"
@@ -202,7 +201,7 @@ def test_restful_bytes_1d_array_failed():
         instance["text2"] = [{"b64": base64.b64encode(str.encode(str_b[i])).decode()},
                              {"b64": base64.b64encode(str.encode(str_b[i])).decode()}]
 
-    result = post_restful("localhost", 5500, base.servable_name, "bytes_concat", instances)
+    result = post_restful("localhost:5500", base.servable_name, "bytes_concat", instances)
     assert "json array, string or bytes type only support one item" in str(result["error_msg"])
 
 
@@ -217,7 +216,7 @@ def test_restful_bytes_invalid_shape_input_failed():
         instance["text1"] = {"b64": base64.b64encode(str.encode(str_a[i])).decode(), 'shape': [0]}
         instance["text2"] = {"b64": base64.b64encode(str.encode(str_b[i])).decode(), 'shape': [0]}
 
-    result = post_restful("localhost", 5500, base.servable_name, "bytes_concat", instances)
+    result = post_restful("localhost:5500", base.servable_name, "bytes_concat", instances)
     assert "only support scalar when data type is string or bytes, please check 'type' or 'shape'" \
            in result["error_msg"]
 
@@ -231,7 +230,7 @@ def test_restful_base64_bool_scalar_input_output_success():
         val = np.int8(i % 2 == 0)
         instance["bool_val"] = {"b64": base64.b64encode(val.tobytes()).decode(), 'type': "bool"}
 
-    result = post_restful("localhost", 5500, base.servable_name, "bool_not", instances)
+    result = post_restful("localhost:5500", base.servable_name, "bool_not", instances)
     result = result["instances"]
     assert not result[0]["value"]
     assert result[1]["value"]
@@ -248,7 +247,7 @@ def test_restful_base64_bool_1d_array_input_output_success():
         val = np.array(val)
         instance["bool_val"] = {"b64": base64.b64encode(val.tobytes()).decode(), 'type': "bool", "shape": [i + 1]}
 
-    result = post_restful("localhost", 5500, base.servable_name, "bool_not", instances)
+    result = post_restful("localhost:5500", base.servable_name, "bool_not", instances)
     result = result["instances"]
     assert result[0]["value"] == [False]
     assert result[1]["value"] == [True, True]
@@ -267,7 +266,7 @@ def test_restful_base64_bool_2d_array_input_output_success():
         instance["bool_val"] = {"b64": base64.b64encode(val.tobytes()).decode(), 'type': "bool",
                                 "shape": [i + 1, i + 1]}
 
-    result = post_restful("localhost", 5500, base.servable_name, "bool_not", instances)
+    result = post_restful("localhost:5500", base.servable_name, "bool_not", instances)
     result = result["instances"]
     assert result[0]["value"] == [[False]]
     assert result[1]["value"] == [[True, True], [True, True]]
@@ -283,7 +282,7 @@ def test_restful_base64_int_scalar_input_output_success():
         val = np.int32(i * 2)
         instance["int_val"] = {"b64": base64.b64encode(val.tobytes()).decode(), 'type': "int32"}
 
-    result = post_restful("localhost", 5500, base.servable_name, "int_plus_1", instances)
+    result = post_restful("localhost:5500", base.servable_name, "int_plus_1", instances)
     result = result["instances"]
     assert result[0]["value"] == 1
     assert result[1]["value"] == 3
@@ -303,7 +302,7 @@ def test_restful_base64_int_1d_empty_input_output_success():
         val = np.array(val).astype(np.int32)
         instance["int_val"] = {"b64": base64.b64encode(val.tobytes()).decode(), 'type': "int32", "shape": val.shape}
 
-    result = post_restful("localhost", 5500, base.servable_name, "int_plus_1", instances)
+    result = post_restful("localhost:5500", base.servable_name, "int_plus_1", instances)
     result = result["instances"]
     assert result[0]["value"] == []
     assert result[1]["value"] == [3, 3]
@@ -323,7 +322,7 @@ def test_restful_base64_int_2d_empty_input_output_success():
         val = np.array(val).astype(np.int32)
         instance["int_val"] = {"b64": base64.b64encode(val.tobytes()).decode(), 'type': "int32", "shape": val.shape}
 
-    result = post_restful("localhost", 5500, base.servable_name, "int_plus_1", instances)
+    result = post_restful("localhost:5500", base.servable_name, "int_plus_1", instances)
     result = result["instances"]
     assert result[0]["value"] == [[]]
     assert result[1]["value"] == [3, 3]
@@ -340,7 +339,7 @@ def test_restful_base64_int_2d_empty_invalid_shape_failed():
         val = np.array(val).astype(np.int32)
         instance["int_val"] = {"b64": base64.b64encode(val.tobytes()).decode(), 'type': "int32", "shape": [1, 2, 0, 1]}
 
-    result = post_restful("localhost", 5500, base.servable_name, "int_plus_1", instances)
+    result = post_restful("localhost:5500", base.servable_name, "int_plus_1", instances)
     assert "json object, key is 'shape', invalid shape value" in result["error_msg"]
 
 
@@ -355,7 +354,7 @@ def test_restful_base64_int_1d_array_input_output_success():
         val = np.array(val).astype(np.int32)
         instance["int_val"] = {"b64": base64.b64encode(val.tobytes()).decode(), 'type': "int32", "shape": val.shape}
 
-    result = post_restful("localhost", 5500, base.servable_name, "int_plus_1", instances)
+    result = post_restful("localhost:5500", base.servable_name, "int_plus_1", instances)
     result = result["instances"]
     assert result[0]["value"] == [1]
     assert result[1]["value"] == [3, 3]
@@ -375,7 +374,7 @@ def common_test_restful_base64_int_type_2d_array_input_output_success(dtype):
         instance["int_val"] = {"b64": base64.b64encode(val.tobytes()).decode(), 'type': dtype_str_map[dtype],
                                "shape": val.shape}
 
-    result = post_restful("localhost", 5500, base.servable_name, "int_plus_1", instances)
+    result = post_restful("localhost:5500", base.servable_name, "int_plus_1", instances)
     result = result["instances"]
     assert result[0]["value"] == [[-1]]
     assert result[1]["value"] == [[5, 5], [5, 5]]
@@ -415,7 +414,7 @@ def common_test_restful_base64_uint_type_2d_array_input_output_success(dtype):
         instance["int_val"] = {"b64": base64.b64encode(val.tobytes()).decode(), 'type': dtype_str_map[dtype],
                                "shape": val.shape}
 
-    result = post_restful("localhost", 5500, base.servable_name, "int_plus_1", instances)
+    result = post_restful("localhost:5500", base.servable_name, "int_plus_1", instances)
     result = result["instances"]
     assert result[0]["value"] == [[1]]
     assert result[1]["value"] == [[3, 3], [3, 3]]
@@ -451,7 +450,7 @@ def test_restful_base64_float_scalar_input_output_success():
         val = np.float32(i * 2.2)
         instance["float_val"] = {"b64": base64.b64encode(val.tobytes()).decode(), 'type': "fp32"}
 
-    result = post_restful("localhost", 5500, base.servable_name, "float_plus_1", instances)
+    result = post_restful("localhost:5500", base.servable_name, "float_plus_1", instances)
     result = result["instances"]
     assert result[0]["value"] == 1.0
     assert abs(result[1]["value"] - (2.2 + 1)) < 0.001
@@ -470,7 +469,7 @@ def test_restful_base64_float_1d_array_input_output_success():
         y_data_list.append(val + 1)
         instance["float_val"] = {"b64": base64.b64encode(val.tobytes()).decode(), 'type': "fp32", 'shape': [i + 1]}
 
-    result = post_restful("localhost", 5500, base.servable_name, "float_plus_1", instances)
+    result = post_restful("localhost:5500", base.servable_name, "float_plus_1", instances)
     check_number_result(result, y_data_list, "value")
 
 
@@ -493,7 +492,7 @@ def common_test_restful_base64_float_type_2d_array_input_output_success(dtype, d
         instance["float_val"] = {"b64": base64.b64encode(val.tobytes()).decode(), 'type': dtype_str,
                                  'shape': [i + 1, i + 1]}
 
-    result = post_restful("localhost", 5500, base.servable_name, "float_plus_1", instances)
+    result = post_restful("localhost:5500", base.servable_name, "float_plus_1", instances)
     check_number_result(result, y_data_list, "value")
 
 
@@ -548,8 +547,8 @@ def mix_all_type(bool_val, int_val, float_val, str_val, bytes_val):
     return bool_val, int_val, float_val, str_val, bytes_val
 """
     base.init_servable_with_servable_config(1, servable_content)
-    worker.start_servable_in_master(base.servable_dir, base.servable_name)
-    master.start_restful_server("0.0.0.0", 5500)
+    server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
+    server.start_restful_server("0.0.0.0:5500")
     # Client
     instances = [{}, {}, {}]
     for i, instance in enumerate(instances):
@@ -568,7 +567,7 @@ def mix_all_type(bool_val, int_val, float_val, str_val, bytes_val):
         bytes_val = "DEF"
         instance["bytes_val"] = {"b64": base64.b64encode(str.encode(bytes_val)).decode(), 'type': "bytes", 'shape': []}
 
-    result = post_restful("localhost", 5500, base.servable_name, "mix_all_type", instances)
+    result = post_restful("localhost:5500", base.servable_name, "mix_all_type", instances)
     result = result["instances"]
 
     for i in range(3):
@@ -597,7 +596,7 @@ def test_restful_base64_without_b64_key_failed():
         y_data_list.append(val + 1)
         instance["float_val"] = {'type': dtype_str_map[dtype], 'shape': [i + 1, i + 1]}
 
-    result = post_restful("localhost", 5500, base.servable_name, "float_plus_1", instances)
+    result = post_restful("localhost:5500", base.servable_name, "float_plus_1", instances)
     assert "'b64' should be specified only one time" in result["error_msg"]
 
 
@@ -619,7 +618,7 @@ def test_restful_base64_b64_invalid_type_failed():
         y_data_list.append(val + 1)
         instance["float_val"] = {'b64': 123, 'type': dtype_str_map[dtype], 'shape': [i + 1, i + 1]}
 
-    result = post_restful("localhost", 5500, base.servable_name, "float_plus_1", instances)
+    result = post_restful("localhost:5500", base.servable_name, "float_plus_1", instances)
     assert "get scalar data failed, type is string, but json is not string type" in result["error_msg"]
 
 
@@ -643,7 +642,7 @@ def test_restful_base64_b64_invalid_value_failed():
         b64_val = '+==+==' + b64_val[:len('+==+==')]
         instance["float_val"] = {'b64': b64_val, 'type': dtype_str_map[dtype], 'shape': [i + 1, i + 1]}
 
-    result = post_restful("localhost", 5500, base.servable_name, "float_plus_1", instances)
+    result = post_restful("localhost:5500", base.servable_name, "float_plus_1", instances)
     assert "is illegal b64 encode string" in result["error_msg"]
 
 
@@ -660,7 +659,7 @@ def test_restful_base64_b64_value_empty_failed():
     for i, instance in enumerate(instances):
         instance["float_val"] = {'b64': "", 'type': dtype_str_map[dtype], 'shape': [i + 1, i + 1]}
 
-    result = post_restful("localhost", 5500, base.servable_name, "float_plus_1", instances)
+    result = post_restful("localhost:5500", base.servable_name, "float_plus_1", instances)
     assert "decode base64 size:0; Given info: type:float16; type size:2; element nums:1" in result["error_msg"]
 
 
@@ -683,7 +682,7 @@ def test_restful_base64_dtype_unknow_failed():
         instance["float_val"] = {"b64": base64.b64encode(val.tobytes()).decode(), 'type': "dtype_unknow",
                                  'shape': [i + 1, i + 1]}
 
-    result = post_restful("localhost", 5500, base.servable_name, "float_plus_1", instances)
+    result = post_restful("localhost:5500", base.servable_name, "float_plus_1", instances)
     assert "Parser request failed, json object, specified type:'dtype_unknow' is illegal" in result["error_msg"]
 
 
@@ -706,7 +705,7 @@ def test_restful_base64_dtype_empty_failed():
         instance["float_val"] = {"b64": base64.b64encode(val.tobytes()).decode(), 'type': "",
                                  'shape': [i + 1, i + 1]}
 
-    result = post_restful("localhost", 5500, base.servable_name, "float_plus_1", instances)
+    result = post_restful("localhost:5500", base.servable_name, "float_plus_1", instances)
     assert "Parser request failed, json object, specified type:'' is illegal" in result["error_msg"]
 
 
@@ -729,7 +728,7 @@ def test_restful_base64_dtype_invalid_type_failed():
         instance["float_val"] = {"b64": base64.b64encode(val.tobytes()).decode(), 'type': 1,
                                  'shape': [i + 1, i + 1]}
 
-    result = post_restful("localhost", 5500, base.servable_name, "float_plus_1", instances)
+    result = post_restful("localhost:5500", base.servable_name, "float_plus_1", instances)
     assert "json object, key is 'type', value should be string type" in result["error_msg"]
 
 
@@ -748,7 +747,7 @@ def test_restful_base64_float16_2d_array_dtype_not_match_empty_data_failed():
         instance["float_val"] = {"b64": base64.b64encode(val.tobytes()).decode(), 'type': "fp16",
                                  'shape': [i + 1, i + 1]}
 
-    result = post_restful("localhost", 5500, base.servable_name, "float_plus_1", instances)
+    result = post_restful("localhost:5500", base.servable_name, "float_plus_1", instances)
     assert "Parser request failed, size is not matched" in result["error_msg"]
 
 
@@ -768,7 +767,7 @@ def test_restful_base64_float16_2d_array_dtype_not_match_size_failed():
         instance["float_val"] = {"b64": base64.b64encode(val.tobytes()).decode(), 'type': "fp32",
                                  'shape': [i + 2, i + 2]}
 
-    result = post_restful("localhost", 5500, base.servable_name, "float_plus_1", instances)
+    result = post_restful("localhost:5500", base.servable_name, "float_plus_1", instances)
     assert "Parser request failed, size is not matched" in result["error_msg"]
 
 
@@ -791,7 +790,7 @@ def test_restful_base64_float16_2d_array_shape_large_failed():
         instance["float_val"] = {"b64": base64.b64encode(val.tobytes()).decode(), 'type': dtype_str_map[dtype],
                                  'shape': [i + 2, i + 2]}
 
-    result = post_restful("localhost", 5500, base.servable_name, "float_plus_1", instances)
+    result = post_restful("localhost:5500", base.servable_name, "float_plus_1", instances)
     assert "Parser request failed, size is not matched" in result["error_msg"]
 
 
@@ -814,7 +813,7 @@ def test_restful_base64_float16_2d_array_shape_small_failed():
         instance["float_val"] = {"b64": base64.b64encode(val.tobytes()).decode(), 'type': dtype_str_map[dtype],
                                  'shape': [i + 1, i + 1]}
 
-    result = post_restful("localhost", 5500, base.servable_name, "float_plus_1", instances)
+    result = post_restful("localhost:5500", base.servable_name, "float_plus_1", instances)
     assert "Parser request failed, size is not matched" in result["error_msg"]
 
 
@@ -837,7 +836,7 @@ def test_restful_base64_float16_2d_array_shape_small2_failed():
         instance["float_val"] = {"b64": base64.b64encode(val.tobytes()).decode(), 'type': dtype_str_map[dtype],
                                  'shape': [i + 2, i]}
 
-    result = post_restful("localhost", 5500, base.servable_name, "float_plus_1", instances)
+    result = post_restful("localhost:5500", base.servable_name, "float_plus_1", instances)
     assert "Parser request failed, size is not matched" in result["error_msg"]
 
 
@@ -857,7 +856,7 @@ def test_restful_base64_float16_2d_array_empty_shape_failed():
         instance["float_val"] = {"b64": base64.b64encode(val.tobytes()).decode(), 'type': "fp16",
                                  'shape': []}
 
-    result = post_restful("localhost", 5500, base.servable_name, "float_plus_1", instances)
+    result = post_restful("localhost:5500", base.servable_name, "float_plus_1", instances)
     assert "Parser request failed, size is not matched" in result["error_msg"]
 
 
@@ -876,7 +875,7 @@ def test_restful_base64_float16_2d_array_none_shape_failed():
         y_data_list.append(val + 1)
         instance["float_val"] = {"b64": base64.b64encode(val.tobytes()).decode(), 'type': "fp16"}
 
-    result = post_restful("localhost", 5500, base.servable_name, "float_plus_1", instances)
+    result = post_restful("localhost:5500", base.servable_name, "float_plus_1", instances)
     assert "Parser request failed, size is not matched" in result["error_msg"]
 
 
@@ -895,7 +894,7 @@ def test_restful_base64_float16_2d_array_invalid_2d_shape_failed():
         y_data_list.append(val + 1)
         instance["float_val"] = {"b64": base64.b64encode(val.tobytes()).decode(), 'type': "fp16", "shape": [[]]}
 
-    result = post_restful("localhost", 5500, base.servable_name, "float_plus_1", instances)
+    result = post_restful("localhost:5500", base.servable_name, "float_plus_1", instances)
     assert "json object, key is 'shape', array value should be unsigned integer" in result["error_msg"]
 
 
@@ -914,7 +913,7 @@ def test_restful_base64_float16_2d_array_invalid_shape_str_shape_failed():
         y_data_list.append(val + 1)
         instance["float_val"] = {"b64": base64.b64encode(val.tobytes()).decode(), 'type': "fp16", "shape": ["abc"]}
 
-    result = post_restful("localhost", 5500, base.servable_name, "float_plus_1", instances)
+    result = post_restful("localhost:5500", base.servable_name, "float_plus_1", instances)
     assert "json object, key is 'shape', array value should be unsigned integer" in result["error_msg"]
 
 
@@ -933,7 +932,7 @@ def test_restful_base64_float16_2d_array_float_shape_failed():
         y_data_list.append(val + 1)
         instance["float_val"] = {"b64": base64.b64encode(val.tobytes()).decode(), 'type': "fp16", "shape": [1.1]}
 
-    result = post_restful("localhost", 5500, base.servable_name, "float_plus_1", instances)
+    result = post_restful("localhost:5500", base.servable_name, "float_plus_1", instances)
     assert "json object, key is 'shape', array value should be unsigned integer" in result["error_msg"]
 
 
@@ -952,5 +951,5 @@ def test_restful_base64_float16_2d_array_negative_shape_failed():
         y_data_list.append(val + 1)
         instance["float_val"] = {"b64": base64.b64encode(val.tobytes()).decode(), 'type': "fp16", "shape": [-1]}
 
-    result = post_restful("localhost", 5500, base.servable_name, "float_plus_1", instances)
+    result = post_restful("localhost:5500", base.servable_name, "float_plus_1", instances)
     assert "json object, key is 'shape', array value should be unsigned integer" in result["error_msg"]

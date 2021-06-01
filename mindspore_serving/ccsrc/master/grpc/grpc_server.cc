@@ -20,36 +20,5 @@
 #include "common/grpc_async_server.h"
 
 namespace mindspore {
-namespace serving {
-std::unique_ptr<MSServiceServer> grpc_async_server_;
-
-MSServiceServer::~MSServiceServer() { Stop(); }
-
-MSServiceServer::MSServiceServer(std::shared_ptr<MSServiceImpl> service, const std::string &hostname, int32_t port) {
-  service_impl_ = service;
-  async_server_ = std::make_unique<MasterGrpcServer>(hostname, port, service_impl_.get());
-}
-Status MSServiceServer::Init(int max_msg_mb_size) {
-  Status status = async_server_->Run("Serving gRPC", max_msg_mb_size);
-  if (status != SUCCESS) return status;
-  auto grpc_server_run = [this]() { StartAsyncRpcService(); };
-  grpc_thread_ = std::thread(grpc_server_run);
-  in_running_ = true;
-  return SUCCESS;
-}
-Status MSServiceServer::StartAsyncRpcService() {
-  Status status = async_server_->HandleRequest();
-  return status;
-}
-
-Status MSServiceServer::Stop() {
-  if (in_running_) {
-    async_server_->Stop();
-    grpc_thread_.join();
-  }
-  in_running_ = false;
-  return SUCCESS;
-}
-
-}  // namespace serving
+namespace serving {}  // namespace serving
 }  // namespace mindspore

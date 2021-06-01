@@ -1,4 +1,4 @@
-# Copyright 2020 Huawei Technologies Co., Ltd
+# Copyright 2021 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,9 +14,9 @@
 # ============================================================================
 """MindSpore Serving Worker, for servable config."""
 
-from .servable import declare_servable, AclOptions, GpuOptions
-from .method import register_method, call_preprocess, call_servable, call_postprocess
-from .method import call_preprocess_pipeline, call_postprocess_pipeline
+from ._register import declare_servable, AclOptions, GpuOptions
+from ._register import register_method, call_preprocess, call_servable, call_postprocess
+from ._register import call_preprocess_pipeline, call_postprocess_pipeline
 
 __all__ = []
 __all__.extend([
