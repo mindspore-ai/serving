@@ -141,8 +141,32 @@ def _check_int(arg_name, int_val, minimum=None, maximum=None):
 
 
 class SSLConfig:
-    def __init__(self, custom_ca=None, private_key=None, cert=None):
-        pass
+    """
+    The client's ssl_config encapsulates grpc's ssl channel credentials for SSL-enabled connections.
+
+    Args:
+        certificate (str): File holding the PEM-encoded certificate chain as a byte string to use or None if no
+            certificate chain should be used.
+        private_key (str): File holding the PEM-encoded private key as a byte string, or None if no private key should
+            be used.
+        custom_ca (str): File holding the PEM-encoded root certificates as a byte string, or None to retrieve them from
+            a default location chosen by gRPC runtime.
+    Raises:
+        RuntimeError: The type or value of the parameters is invalid.
+
+    """
+
+    def __init__(self, certificate=None, private_key=None, custom_ca=None):
+        if certificate is not None:
+            _check_str("certificate", certificate)
+        if private_key is not None:
+            _check_str("private_key", private_key)
+        if custom_ca is not None:
+            _check_str("custom_ca", custom_ca)
+
+        self.certificate = certificate
+        self.private_key = private_key
+        self.custom_ca = custom_ca
 
 
 class Client:
@@ -171,7 +195,7 @@ class Client:
         >>> print(result)
     """
 
-    def __init__(self, address, servable_name, method_name, version_number=0):
+    def __init__(self, address, servable_name, method_name, version_number=0, ssl_config=None):
         _check_str("address", address)
         _check_str("servable_name", servable_name)
         _check_str("method_name", method_name)
@@ -183,12 +207,31 @@ class Client:
         self.version_number = version_number
 
         msg_bytes_size = 512 * 1024 * 1024  # 512MB
-        channel = grpc.insecure_channel(address,
-                                        options=[
-                                            ('grpc.max_send_message_length', msg_bytes_size),
-                                            ('grpc.max_receive_message_length', msg_bytes_size),
-                                        ])
-        self.stub = ms_service_pb2_grpc.MSServiceStub(channel)
+        options = [
+            ('grpc.max_send_message_length', msg_bytes_size),
+            ('grpc.max_receive_message_length', msg_bytes_size),
+        ]
+        if ssl_config is not None:
+            if not isinstance(ssl_config, SSLConfig):
+                raise RuntimeError("The type of ssl_config should be type of SSLConfig")
+            rc_bytes = pk_bytes = c_bytes = None
+            if ssl_config.certificate is not None:
+                with open(ssl_config.certificate, 'rb') as c_fs:
+                    c_bytes = c_fs.read()
+            if ssl_config.private_key is not None:
+                with open(ssl_config.private_key, 'rb') as pk_fs:
+                    pk_bytes = pk_fs.read()
+            if ssl_config.custom_ca is not None:
+                with open(ssl_config.custom_ca, 'rb') as rc_fs:
+                    rc_bytes = rc_fs.read()
+            creds = grpc.ssl_channel_credentials(root_certificates=rc_bytes,
+                                                 private_key=pk_bytes,
+                                                 certificate_chain=c_bytes)
+            self.channel = grpc.secure_channel(address, creds, options=options)
+        else:
+            self.channel = grpc.insecure_channel(address, options=options)
+
+        self.stub = ms_service_pb2_grpc.MSServiceStub(self.channel)
 
     def infer(self, instances):
         """

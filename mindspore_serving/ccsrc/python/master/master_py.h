@@ -23,6 +23,7 @@
 #include <string>
 #include <memory>
 #include "common/serving_common.h"
+#include "common/ssl_config.h"
 
 namespace py = pybind11;
 
@@ -31,9 +32,11 @@ namespace serving {
 
 class MS_API PyMaster {
  public:
-  static void StartGrpcServer(const std::string &socket_address, int max_msg_mb_size = 100);
+  static void StartGrpcServer(const std::string &socket_address, const SSLConfig &ssl_config,
+                              int max_msg_mb_size = 100);
   static void StartGrpcMasterServer(const std::string &master_address);
-  static void StartRestfulServer(const std::string &socket_address, int max_msg_mb_size = 100);
+  static void StartRestfulServer(const std::string &socket_address, const SSLConfig &ssl_config,
+                                 int max_msg_mb_size = 100);
   static void WaitAndClear();
   static void StopAndClear();
 };

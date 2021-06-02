@@ -25,6 +25,7 @@
 #include <string>
 #include <future>
 #include "common/serving_common.h"
+#include "common/ssl_config.h"
 
 namespace mindspore::serving {
 
@@ -81,7 +82,8 @@ class GrpcAsyncServer {
 
   /// \brief Brings up gRPC server
   /// \return none
-  Status Start(const std::string &socket_address, int max_msg_mb_size, const std::string &server_tag) {
+  Status Start(const std::string &socket_address, const SSLConfig &ssl_config, int max_msg_mb_size,
+               const std::string &server_tag) {
     if (in_running_) {
       return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Serving Error: " << server_tag << " server is already running";
     }
@@ -93,7 +95,8 @@ class GrpcAsyncServer {
     }
     builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
     int port_tcpip = 0;
-    builder.AddListeningPort(socket_address, grpc::InsecureServerCredentials(), &port_tcpip);
+    auto creds = BuildServerCredentialsFromSSLConfigFile(ssl_config);
+    builder.AddListeningPort(socket_address, creds, &port_tcpip);
     Status status = RegisterService(&builder);
     if (status != SUCCESS) return status;
     cq_ = builder.AddCompletionQueue();
@@ -108,6 +111,22 @@ class GrpcAsyncServer {
     MSI_LOG(INFO) << server_tag << " server start success, listening on " << socket_address;
     std::cout << "Serving: " << server_tag << " server start success, listening on " << socket_address << std::endl;
     return SUCCESS;
+  }
+  std::shared_ptr<grpc::ServerCredentials> BuildServerCredentialsFromSSLConfigFile(const SSLConfig &ssl_config) {
+    if (!ssl_config.use_ssl) {
+      return grpc::InsecureServerCredentials();
+    }
+    grpc::SslServerCredentialsOptions ssl_ops(ssl_config.verify_client
+                                                ? GRPC_SSL_REQUEST_AND_REQUIRE_CLIENT_CERTIFICATE_AND_VERIFY
+                                                : GRPC_SSL_DONT_REQUEST_CLIENT_CERTIFICATE);
+
+    if (!ssl_config.custom_ca.empty()) {
+      ssl_ops.pem_root_certs = ssl_config.custom_ca;
+    }
+    grpc::SslServerCredentialsOptions::PemKeyCertPair keycert = {ssl_config.private_key, ssl_config.certificate};
+    ssl_ops.pem_key_cert_pairs.push_back(keycert);
+
+    return grpc::SslServerCredentials(ssl_ops);
   }
   /// \brief Entry function to handle async server request
   Status HandleRequest() {

@@ -35,7 +35,7 @@
 namespace mindspore {
 namespace serving {
 
-Status Server::StartGrpcServer(const std::string &socket_address, int max_msg_mb_size) {
+Status Server::StartGrpcServer(const std::string &socket_address, const SSLConfig &ssl_config, int max_msg_mb_size) {
   if (grpc_async_server_) {
     return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Serving Error: Serving gRPC server is already running";
   }
@@ -45,7 +45,7 @@ Status Server::StartGrpcServer(const std::string &socket_address, int max_msg_mb
     max_msg_mb_size = gRpcMaxMBMsgSize;
   }
   grpc_async_server_ = std::make_shared<MasterGrpcServer>(dispatcher_);
-  return grpc_async_server_->Start(socket_address, max_msg_mb_size, "Serving gRPC");
+  return grpc_async_server_->Start(socket_address, ssl_config, max_msg_mb_size, "Serving gRPC");
 }
 
 Status Server::StartGrpcMasterServer(const std::string &master_address) {
@@ -53,8 +53,9 @@ Status Server::StartGrpcMasterServer(const std::string &master_address) {
                                     gRpcMaxMBMsgSize, "Master");
 }
 
-Status Server::StartRestfulServer(const std::string &socket_address, int max_msg_mb_size, int time_out_second) {
-  return restful_server_.Start(socket_address, max_msg_mb_size, time_out_second);
+Status Server::StartRestfulServer(const std::string &socket_address, const SSLConfig &ssl_config, int max_msg_mb_size,
+                                  int time_out_second) {
+  return restful_server_.Start(socket_address, ssl_config, max_msg_mb_size, time_out_second);
 }
 
 void Server::Clear() {

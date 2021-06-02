@@ -21,6 +21,7 @@
 #include "python/worker/servable_py.h"
 #include "python/tensor_py.h"
 #include "common/servable.h"
+#include "common/ssl_config.h"
 #include "master/server.h"
 #include "master/master_context.h"
 #include "master/worker_context.h"
@@ -155,6 +156,13 @@ void PyRegMaster(pybind11::module *m_ptr) {
     .def_property_readonly("is_unavailable", &WorkerContext::IsUnavailable)
     .def_property_readonly("normal_handled_count", &WorkerContext::GetNormalHandledCount)
     .def_property_readonly("address", &WorkerContext::GetWorkerAddress);
+  py::class_<SSLConfig>(m, "SSLConfig_")
+    .def(py::init<>())
+    .def_readwrite("certificate", &SSLConfig::certificate)
+    .def_readwrite("private_key", &SSLConfig::private_key)
+    .def_readwrite("custom_ca", &SSLConfig::custom_ca)
+    .def_readwrite("verify_client", &SSLConfig::verify_client)
+    .def_readwrite("use_ssl", &SSLConfig::use_ssl);
 }
 
 void PyRegWorker(pybind11::module *m_ptr) {

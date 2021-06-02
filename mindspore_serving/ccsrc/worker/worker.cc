@@ -100,7 +100,8 @@ Status Worker::StartGrpcServer(const std::string &server_address) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Worker gRPC server is already running";
   }
   worker_grpc_server_ = std::make_shared<WorkerGrpcServer>();
-  return worker_grpc_server_->Start(server_address, gRpcMaxMBMsgSize, "Worker gRPC");
+  SSLConfig ssl_config;
+  return worker_grpc_server_->Start(server_address, ssl_config, gRpcMaxMBMsgSize, "Worker gRPC");
 }
 
 Status Worker::StartDistributedGrpcServer(std::shared_ptr<DistributedServable> servable,
@@ -109,7 +110,8 @@ Status Worker::StartDistributedGrpcServer(std::shared_ptr<DistributedServable> s
     return INFER_STATUS_LOG_ERROR(FAILED) << "Distributed gRPC server is already running";
   }
   distributed_grpc_server_ = std::make_shared<DistributedWorkerGrpcServer>(servable, server_address);
-  return distributed_grpc_server_->Start(server_address, gRpcMaxMBMsgSize, "Distributed gRPC");
+  SSLConfig ssl_config;
+  return distributed_grpc_server_->Start(server_address, ssl_config, gRpcMaxMBMsgSize, "Distributed gRPC");
 }
 
 Status Worker::StartServable(std::shared_ptr<ServableBase> servable, std::shared_ptr<BaseNotifyMaster> notify_master) {

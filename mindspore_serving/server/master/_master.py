@@ -19,6 +19,7 @@ from functools import wraps
 
 from mindspore_serving._mindspore_serving import ExitSignalHandle_
 from mindspore_serving._mindspore_serving import Master_
+from mindspore_serving._mindspore_serving import SSLConfig_
 
 from mindspore_serving import log as logger
 from mindspore_serving.server.common import check_type
@@ -85,8 +86,38 @@ def stop_on_except(func):
     return handle_except
 
 
+class SSLConfig:
+    r"""
+    The server's ssl_config encapsulates necessary parameters for SSL-enabled connections
+
+    Args:
+        certificate (str): File holding the PEM-encoded certificate chain as a byte string to use or None if no
+            certificate chain should be used.
+        private_key (str): File holding the PEM-encoded private key as a byte string, or None if no private key should
+            be used.
+        custom_ca (str): File holding the PEM-encoded root certificates as a byte string, or None to retrieve them from
+            a default location.
+        verify_client (bool): If true, use mutual authentication, default one-way authentication.
+    Raises:
+        RuntimeError: The type or value of the parameters is invalid.
+
+    """
+
+    def __init__(self, certificate, private_key, custom_ca=None, verify_client=False):
+        check_type.check_str("certificate", certificate)
+        check_type.check_str("private_key", private_key)
+        check_type.check_bool("verify_client", verify_client)
+
+        self.custom_ca = custom_ca
+        self.certificate = certificate
+        self.private_key = private_key
+        if self.custom_ca is not None:
+            check_type.check_str("custom_ca", custom_ca)
+        self.verify_client = verify_client
+
+
 @stop_on_except
-def start_grpc_server(address="0.0.0.0:5500", max_msg_mb_size=100):
+def start_grpc_server(address="0.0.0.0:5500", max_msg_mb_size=100, ssl_config=None):
     r"""
     Start gRPC server for the communication between serving client and server.
 
@@ -100,22 +131,39 @@ def start_grpc_server(address="0.0.0.0:5500", max_msg_mb_size=100):
 
         max_msg_mb_size (int): The maximum acceptable RESTful message size in megabytes(MB), default 100,
             value range [1, 512].
+        ssl_config (SSLConfig): The server's ssl_config, if None, disabled ssl.
     Raises:
         RuntimeError: Failed to start the RESTful server.
 
     Examples:
         >>> from mindspore_serving import server
         >>>
-        >>> server.start_grpc_server("0.0.0.0:1500")
+        >>> server.start_grpc_server("0.0.0.0:5500")
     """
     check_type.check_str('address', address)
     check_type.check_int('max_msg_mb_size', max_msg_mb_size, 1, 512)
 
-    Master_.start_grpc_server(address, max_msg_mb_size)
+    config = SSLConfig_()
+    if ssl_config is not None:
+        if not isinstance(ssl_config, SSLConfig):
+            raise RuntimeError("The type of ssl_config should be type of SSLConfig")
+        with open(ssl_config.certificate, 'rb') as c_fs:
+            c_bytes = c_fs.read()
+        with open(ssl_config.private_key, 'rb') as pk_fs:
+            pk_bytes = pk_fs.read()
+        if ssl_config.custom_ca is not None:
+            with open(ssl_config.custom_ca, 'rb') as rc_fs:
+                rc_bytes = rc_fs.read()
+            config.custom_ca = rc_bytes
+        config.certificate = c_bytes
+        config.private_key = pk_bytes
+        config.verify_client = ssl_config.verify_client
+        config.use_ssl = True
+    Master_.start_grpc_server(address, config, max_msg_mb_size)
 
 
 @stop_on_except
-def start_restful_server(address="0.0.0.0:5900", max_msg_mb_size=100):
+def start_restful_server(address="0.0.0.0:1500", max_msg_mb_size=100, ssl_config=None):
     r"""
     Start RESTful server for the communication between serving client and server.
 
@@ -123,6 +171,7 @@ def start_restful_server(address="0.0.0.0:5900", max_msg_mb_size=100):
         address (str): RESTful server address, the address should be Internet domain socket address.
         max_msg_mb_size (int): The maximum acceptable RESTful message size in megabytes(MB), default 100,
             value range [1, 512].
+        ssl_config (SSLConfig): The server's ssl_config, if None, disabled ssl.
     Raises:
         RuntimeError: Failed to start the RESTful server.
 
@@ -134,7 +183,17 @@ def start_restful_server(address="0.0.0.0:5900", max_msg_mb_size=100):
     check_type.check_str('address', address)
     check_type.check_int('max_msg_mb_size', max_msg_mb_size, 1, 512)
 
-    Master_.start_restful_server(address, max_msg_mb_size)
+    config = SSLConfig_()
+    if ssl_config is not None:
+        if not isinstance(ssl_config, SSLConfig):
+            raise RuntimeError("The type of ssl_config should be class of SSLConfig")
+        if ssl_config.custom_ca is not None:
+            config.custom_ca = ssl_config.custom_ca
+        config.certificate = ssl_config.certificate
+        config.private_key = ssl_config.private_key
+        config.verify_client = ssl_config.verify_client
+        config.use_ssl = True
+    Master_.start_restful_server(address, config, max_msg_mb_size)
 
 
 def start_master_server(address):
