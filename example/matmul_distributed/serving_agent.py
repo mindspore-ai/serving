@@ -18,7 +18,7 @@ from mindspore_serving.server import distributed
 
 
 def start_agents():
-    """Start all the worker agents in current machine"""
+    """Start all the agents in current machine"""
     model_files = []
     group_configs = []
     for i in range(8):

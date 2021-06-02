@@ -46,8 +46,7 @@ Status GrpcServer::Start(std::shared_ptr<grpc::Service> service, const std::stri
   }
 
   auto grpc_server_run = [this, server_address, server_tag]() {
-    MSI_LOG(INFO) << server_tag << " server start success,  listening on " << server_address;
-    std::cout << "Serving: " << server_tag << " server start success, listening on " << server_address << std::endl;
+    MSI_LOG(INFO) << server_tag << " server start success, listening on " << server_address;
     server_->Wait();
   };
 

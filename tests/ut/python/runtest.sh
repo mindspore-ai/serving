@@ -43,6 +43,7 @@ export LD_LIBRARY_PATH=${BUILD_PATH}/mindspore_serving/tests/ut/python:${LD_LIBR
 
 echo "PYTHONPATH=$PYTHONPATH"
 echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+export GLOG_v=1
 
 unset http_proxy
 unset https_proxy

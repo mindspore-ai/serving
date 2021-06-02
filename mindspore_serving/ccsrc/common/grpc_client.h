@@ -44,7 +44,7 @@ using AsyncPredictCallback = std::function<void(Status status)>;
 template <typename Request, typename Reply, typename MSStub>
 class MSServiceClient {
  public:
-  MSServiceClient() = default;
+  explicit MSServiceClient(const std::string &address) : address_(address) {}
   ~MSServiceClient() {
     if (in_running_) {
       cq_.Shutdown();
@@ -73,7 +73,8 @@ class MSServiceClient {
       if (call->status.ok()) {
         call->callback(SUCCESS);
       } else {
-        MSI_LOG_ERROR << "RPC failed: " << call->status.error_code() << ", " << call->status.error_message();
+        MSI_LOG_ERROR << "RPC failed: " << call->status.error_code() << ", " << call->status.error_message()
+                      << ", target address: " << address_;
         call->callback(Status(WORKER_UNAVAILABLE, call->status.error_message()));
       }
       delete call;
@@ -101,6 +102,7 @@ class MSServiceClient {
   grpc::CompletionQueue cq_;
   std::thread client_thread_;
   bool in_running_ = false;
+  std::string address_;
 };
 
 using MSPredictClient = MSServiceClient<proto::PredictRequest, proto::PredictReply, proto::MSWorker::Stub>;

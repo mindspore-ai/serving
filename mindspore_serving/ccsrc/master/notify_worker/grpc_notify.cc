@@ -55,7 +55,7 @@ Status GrpcNotifyWorker::DispatchAsync(const proto::PredictRequest &request, pro
            << worker_address_;
   }
   if (!client_) {
-    client_ = std::make_unique<MSPredictClient>();
+    client_ = std::make_unique<MSPredictClient>(worker_address_);
     client_->Start();
   }
   AsyncPredictCallback callback = [reply, on_finish](Status status) {

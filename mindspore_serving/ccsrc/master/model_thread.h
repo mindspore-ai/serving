@@ -66,13 +66,15 @@ class MS_API ModelThread {
   Status DelWorker(uint64_t pid);
   Status AddWorker(uint64_t pid, const std::shared_ptr<WorkerContext> &notify);
   Status DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply, PredictOnFinish callback);
-  Status Commit(const std::shared_ptr<PredictContext> &context);
+  void Commit(const std::shared_ptr<PredictContext> &context);
 
  private:
   void Clear();
   void InnerClear();
   Status FindProcessQueue(uint64_t *pid);
+  Status PushTasks(const proto::PredictRequest &request, proto::PredictReply *reply, PredictOnFinish callback);
   Status Combine(const std::vector<std::pair<uint64_t, uint64_t>> &ids, uint64_t pid, proto::PredictRequest *msg);
+  void OnTasksFinished(const std::shared_ptr<PredictContext> &context);
   void SendTasks();
   std::map<uint64_t, std::shared_ptr<WorkerContext>> pid_process_;
   uint64_t last_worker_pid_ = 0;
