@@ -16,7 +16,6 @@
 
 import os
 from functools import wraps
-from shutil import rmtree
 
 from mindspore_serving import server
 from mindspore_serving.client import Client
@@ -28,11 +27,7 @@ class ServingTestBase:
     def __init__(self):
         servable_dir = "serving_python_ut_servables"
         self.servable_dir = os.path.join(os.getcwd(), servable_dir)
-        try:
-            rmtree(self.servable_dir, True)
-        # pylint: disable=broad-except
-        except Exception:
-            pass
+        os.system(f"rm -rf {self.servable_dir}")
 
     def init_servable(self, version_number, config_file, model_file="tensor_add.mindir"):
         cur_dir = os.path.dirname(os.path.abspath(__file__))
@@ -132,13 +127,19 @@ def serving_test(func):
     def wrap_test(*args, **kwargs):
         try:
             func(*args, **kwargs)
+        except Exception:
+            serving_logs_dir = os.path.join(os.getcwd(), "serving_logs")
+            os.system(f"ll {serving_logs_dir}/*.log && cat {serving_logs_dir}/*.log")
+            raise
         finally:
             server.master.context.set_max_enqueued_requests(10000)
             server.stop()
             servable_dir = os.path.join(os.getcwd(), "serving_python_ut_servables")
-            rmtree(servable_dir, True)
+            os.system(f"rm -rf {servable_dir}")
             temp_rank_dir = os.path.join(os.getcwd(), "temp_rank_table")
-            rmtree(temp_rank_dir, True)
+            os.system(f"rm -rf {temp_rank_dir}")
+            serving_logs_dir = os.path.join(os.getcwd(), "serving_logs")
+            os.system(f"rm -rf {serving_logs_dir}")
             global client_create_list
             for client in client_create_list:
                 del client.stub

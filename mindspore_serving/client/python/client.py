@@ -151,8 +151,7 @@ class Client:
     access serving, and parse results.
 
     Args:
-        ip (str): Serving ip.
-        port (int): Serving port.
+        address (str): Serving address.
         servable_name (str): The name of servable supplied by Serving.
         method_name (str): The name of method supplied by servable.
         version_number (int): The version number of servable, default 0,
@@ -163,7 +162,7 @@ class Client:
     Examples:
         >>> from mindspore_serving.client import Client
         >>> import numpy as np
-        >>> client = Client("localhost", 5500, "add", "add_cast")
+        >>> client = Client("localhost:5500", "add", "add_cast")
         >>> instances = []
         >>> x1 = np.ones((2, 2), np.int32)
         >>> x2 = np.ones((2, 2), np.int32)
@@ -206,7 +205,7 @@ class Client:
         Examples:
             >>> from mindspore_serving.client import Client
             >>> import numpy as np
-            >>> client = Client("localhost", 5500, "add", "add_cast")
+            >>> client = Client("localhost:5500", "add", "add_cast")
             >>> instances = []
             >>> x1 = np.ones((2, 2), np.int32)
             >>> x2 = np.ones((2, 2), np.int32)
@@ -240,7 +239,7 @@ class Client:
         Examples:
             >>> from mindspore_serving.client import Client
             >>> import numpy as np
-            >>> client = Client("localhost", 5500, "add", "add_cast")
+            >>> client = Client("localhost:5500", "add", "add_cast")
             >>> instances = []
             >>> x1 = np.ones((2, 2), np.int32)
             >>> x2 = np.ones((2, 2), np.int32)
@@ -326,7 +325,7 @@ class ClientGrpcAsyncResult:
     Examples:
         >>> from mindspore_serving.client import Client
         >>> import numpy as np
-        >>> client = Client("localhost", 5500, "add", "add_cast")
+        >>> client = Client("localhost:5500", "add", "add_cast")
         >>> instances = []
         >>> x1 = np.ones((2, 2), np.int32)
         >>> x2 = np.ones((2, 2), np.int32)

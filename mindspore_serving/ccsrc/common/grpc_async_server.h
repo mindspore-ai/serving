@@ -98,15 +98,15 @@ class GrpcAsyncServer {
     if (status != SUCCESS) return status;
     cq_ = builder.AddCompletionQueue();
     server_ = builder.BuildAndStart();
-    if (server_) {
-      MSI_LOG(INFO) << server_tag << " server start success, listening on " << socket_address;
-    } else {
+    if (!server_) {
       return INFER_STATUS_LOG_ERROR(FAILED) << "Serving Error: " << server_tag
                                             << " server start failed, create server failed, address " << socket_address;
     }
     auto grpc_server_run = [this]() { HandleRequest(); };
     grpc_thread_ = std::thread(grpc_server_run);
     in_running_ = true;
+    MSI_LOG(INFO) << server_tag << " server start success, listening on " << socket_address;
+    std::cout << "Serving: " << server_tag << " server start success, listening on " << socket_address << std::endl;
     return SUCCESS;
   }
   /// \brief Entry function to handle async server request
@@ -139,10 +139,7 @@ class GrpcAsyncServer {
       if (cq_) {
         cq_->Shutdown();
       }
-
-      if (grpc_thread_.joinable()) {
-        grpc_thread_.join();
-      }
+      grpc_thread_.join();
     }
     in_running_ = false;
   }

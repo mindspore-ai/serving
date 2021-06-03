@@ -187,8 +187,14 @@ void Worker::Clear() {
   if (exit_notify_master_ && servable_started_) {
     notify_master_->Unregister();
   }
-  worker_grpc_server_ = nullptr;
-  distributed_grpc_server_ = nullptr;
+  if (worker_grpc_server_) {
+    worker_grpc_server_->Stop();
+    worker_grpc_server_ = nullptr;
+  }
+  if (distributed_grpc_server_) {
+    distributed_grpc_server_->Stop();
+    distributed_grpc_server_ = nullptr;
+  }
   py_task_queue_group_.Stop();
   cpp_preprocess_.Stop();
   cpp_postprocess_.Stop();

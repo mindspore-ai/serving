@@ -119,18 +119,18 @@ class AclOptions(_Options):
         self.output_type = ""
         self.precision_mode = ""
         self.op_select_impl_mode = ""
-        val_set_fun = {"insert_op_cfg_path": self.set_insert_op_cfg_path,
-                       "input_format": self.set_input_format,
-                       "input_shape": self.set_input_shape,
-                       "output_type": self.set_output_type,
-                       "precision_mode": self.set_precision_mode,
-                       "op_select_impl_mode": self.set_op_select_impl_mode}
+        val_set_fun = {"insert_op_cfg_path": self._set_insert_op_cfg_path,
+                       "input_format": self._set_input_format,
+                       "input_shape": self._set_input_shape,
+                       "output_type": self._set_output_type,
+                       "precision_mode": self._set_precision_mode,
+                       "op_select_impl_mode": self._set_op_select_impl_mode}
         for k, w in kwargs.items():
             if k not in val_set_fun:
                 raise RuntimeError("Set acl option failed, unsupported option " + k)
             val_set_fun[k](w)
 
-    def set_insert_op_cfg_path(self, val):
+    def _set_insert_op_cfg_path(self, val):
         """Set option 'insert_op_cfg_path'
 
         Args:
@@ -142,7 +142,7 @@ class AclOptions(_Options):
         check_type.check_str('insert_op_cfg_path', val)
         self.insert_op_cfg_path = val
 
-    def set_input_format(self, val):
+    def _set_input_format(self, val):
         """Set option 'input_format', manually specify the model input format, and the value can be
         "ND", "NCHW", "NHWC", "CHWN", "NC1HWC0", or "NHWC1C0".
 
@@ -159,7 +159,7 @@ class AclOptions(_Options):
                                f"'NHWC1C0', actually given '{val}'")
         self.input_format = val
 
-    def set_input_shape(self, val):
+    def _set_input_shape(self, val):
         """Set option 'input_shape', manually specify the model input shape, such as
         "input_op_name1: n1,c2,h3,w4;input_op_name2: n4,c3,h2,w1".
 
@@ -172,7 +172,7 @@ class AclOptions(_Options):
         check_type.check_str('input_shape', val)
         self.input_shape = val
 
-    def set_output_type(self, val):
+    def _set_output_type(self, val):
         """Set option 'output_type', manually specify the model output type, and the value can be "FP16", "UINT8", or
         "FP32", default "FP32".
 
@@ -188,7 +188,7 @@ class AclOptions(_Options):
                                f"'UINT8', actually given '{val}'")
         self.output_type = val
 
-    def set_precision_mode(self, val):
+    def _set_precision_mode(self, val):
         """Set option 'precision_mode',  which means operator selection mode, and the value can be "force_fp16"，
         "force_fp16", "must_keep_origin_dtype", or "allow_mix_precision", default "force_fp16".
 
@@ -206,7 +206,7 @@ class AclOptions(_Options):
                                f"actually given '{val}'")
         self.precision_mode = val
 
-    def set_op_select_impl_mode(self, val):
+    def _set_op_select_impl_mode(self, val):
         """Set option 'op_select_impl_mode', which means model precision mode, and the value can be "high_performance"
         or "high_precision",  default "high_performance".
 
@@ -260,13 +260,13 @@ class GpuOptions(_Options):
     def __init__(self, **kwargs):
         super(GpuOptions, self).__init__()
         self.enable_trt_infer = False
-        val_set_fun = {"enable_trt_infer": self.set_trt_infer_mode}
+        val_set_fun = {"enable_trt_infer": self._set_trt_infer_mode}
         for k, w in kwargs.items():
             if k not in val_set_fun:
                 raise RuntimeError("Set gpu option failed, unsupported option " + k)
             val_set_fun[k](w)
 
-    def set_trt_infer_mode(self, val):
+    def _set_trt_infer_mode(self, val):
         """Set option 'enable_trt_infer'
 
         Args:

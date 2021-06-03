@@ -149,40 +149,48 @@ Status ModelThread::FindProcessQueue(uint64_t *pid) {
   return FAILED;
 }
 
+Status ModelThread::PushTasks(const proto::PredictRequest &request, proto::PredictReply *reply,
+                              PredictOnFinish callback) {
+  auto status = GrpcTensorHelper::CheckRequestInstances(request, method_info_.input_names);
+  if (status != SUCCESS) {
+    MSI_LOG_ERROR << "Check request failed";
+    return status;
+  }
+  std::unique_lock<std::mutex> lock(lock_);
+  std::vector<const proto::Instance *> instances_data;
+  for (auto &item : request.instances()) {
+    // cppcheck-suppress useStlAlgorithm
+    instances_data.push_back(&item);
+  }
+  auto it = job_.find(job_id_);
+  if (it != job_.end()) {
+    MSI_LOG(ERROR) << "job_id has existed: " << job_id_;
+    return FAILED;
+  }
+  Job job;
+  job.job_id = job_id_;
+  job.wait_task_num = instances_data.size();
+  job.callback = callback;
+  job.request = &request;
+  job.reply = reply;
+  job.task.resize(instances_data.size());
+  for (unsigned int i = 0; i < instances_data.size(); i++) {
+    Task &task = job.task[i];
+    task.input = instances_data[i];
+    task.pid = 0;
+    task_wait_queue_.push(std::make_pair(job_id_, i));
+  }
+  job_.insert(std::make_pair(job_id_, job));
+  job_id_++;
+  return SUCCESS;
+}
+
 Status ModelThread::DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
                                   PredictOnFinish callback) {
-  {
-    auto status = GrpcTensorHelper::CheckRequestInstances(request, method_info_.input_names);
-    if (status != SUCCESS) {
-      MSI_LOG_ERROR << "Check request failed";
-      return status;
-    }
-    std::unique_lock<std::mutex> lock(lock_);
-    std::vector<const proto::Instance *> instances_data;
-    for (auto &item : request.instances()) {
-      // cppcheck-suppress useStlAlgorithm
-      instances_data.push_back(&item);
-    }
-    auto it = job_.find(job_id_);
-    if (it != job_.end()) {
-      MSI_LOG(ERROR) << "job_id has existed: " << job_id_;
-      return FAILED;
-    }
-    Job job;
-    job.job_id = job_id_;
-    job.wait_task_num = instances_data.size();
-    job.callback = callback;
-    job.request = &request;
-    job.reply = reply;
-    job.task.resize(instances_data.size());
-    for (unsigned int i = 0; i < instances_data.size(); i++) {
-      Task &task = job.task[i];
-      task.input = instances_data[i];
-      task.pid = 0;
-      task_wait_queue_.push(std::make_pair(job_id_, i));
-    }
-    job_.insert(std::make_pair(job_id_, job));
-    job_id_++;
+  auto status = PushTasks(request, reply, std::move(callback));
+  if (status != SUCCESS) {
+    MSI_LOG_ERROR << "Push tasks into queue failed";
+    return status;
   }
   SendTasks();
   return SUCCESS;
@@ -205,7 +213,7 @@ void ModelThread::SendTasks() {
   while (true) {
     std::shared_ptr<PredictContext> context;
     std::shared_ptr<WorkerContext> worker;
-    {
+    {  // pop tasks
       std::unique_lock<std::mutex> lock(lock_);
       if (task_wait_queue_.empty()) {
         return;
@@ -241,80 +249,81 @@ void ModelThread::SendTasks() {
       auto error_msg = context->reply.add_error_msg();
       error_msg->set_error_code(WORKER_UNAVAILABLE);
       error_msg->set_error_msg(status.StatusMessage());
-      callback();
+      worker->NotifyNotAvailable();
     }
   }
 }
 
-Status ModelThread::Commit(const std::shared_ptr<PredictContext> &context) {
-  {
-    std::unique_lock<std::mutex> lock(lock_);
-    const auto pid = context->pid;
-    const auto &inputs = context->inputs;
-    if (pid_process_.find(pid) != pid_process_.end()) {
-      worker_wait_map_[pid]++;
+void ModelThread::OnTasksFinished(const std::shared_ptr<PredictContext> &context) {
+  std::unique_lock<std::mutex> lock(lock_);
+  const auto pid = context->pid;
+  const auto &inputs = context->inputs;
+  if (pid_process_.find(pid) != pid_process_.end()) {
+    worker_wait_map_[pid]++;
+  }
+  std::vector<proto::ErrorMsg> error;
+  std::vector<const proto::Instance *> output;
+  auto status = GrpcTensorHelper::CreateInstanceFromPredictReply(spec_, context->reply, &error, &output);
+  if (status != SUCCESS) {
+    status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
+             << "Get reply failed, servable name: " << spec_.servable_name << ", method name: " << spec_.method_name
+             << ", version number: " << spec_.version_number;
+  }
+  if (!output.empty() && output.size() != inputs.size()) {
+    status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
+             << "The instance count " << output.size() << " of reply is not equal to the count " << inputs.size()
+             << " of request";
+  }
+  if (status != SUCCESS) {
+    output.clear();
+    error.clear();
+    proto::ErrorMsg error_msg;
+    error_msg.set_error_code(status.StatusCode());
+    error_msg.set_error_msg(status.StatusMessage());
+    error.push_back(error_msg);
+  }
+  for (unsigned int i = 0; i < inputs.size(); i++) {
+    uint64_t task_id = inputs[i].second;
+    uint64_t job_id = inputs[i].first;
+    auto iter2 = job_.find(job_id);
+    if (iter2 == job_.end()) {
+      MSI_LOG_ERROR << "job_id not exist: " << job_id;
+      continue;
     }
-    std::vector<proto::ErrorMsg> error;
-    std::vector<const proto::Instance *> output;
-    auto status = GrpcTensorHelper::CreateInstanceFromPredictReply(spec_, context->reply, &error, &output);
-    if (status != SUCCESS) {
-      status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
-               << "Get reply failed, servable name: " << spec_.servable_name << ", method name: " << spec_.method_name
-               << ", version number: " << spec_.version_number;
+    auto &job_item = iter2->second;
+    // collect result
+    auto &task_item = job_item.task[task_id];
+    task_item.pid = 0;
+    if (i < output.size()) {
+      task_item.output = output[i];
     }
-    if (!output.empty() && output.size() != inputs.size()) {
-      status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
-               << "The instance count " << output.size() << " of reply is not equal to the count " << inputs.size()
-               << " of request";
+    if (error.empty()) {
+      task_item.error.set_error_code(0);
+    } else if (error.size() == 1) {
+      task_item.error = error[0];
+    } else {
+      task_item.error = error[i];
     }
-    if (status != SUCCESS) {
-      output.clear();
-      error.clear();
-      proto::ErrorMsg error_msg;
-      error_msg.set_error_code(status.StatusCode());
-      error_msg.set_error_msg(status.StatusMessage());
-      error.push_back(error_msg);
-    }
-    for (unsigned int i = 0; i < inputs.size(); i++) {
-      uint64_t task_id = inputs[i].second;
-      uint64_t job_id = inputs[i].first;
-      auto iter2 = job_.find(job_id);
-      if (iter2 == job_.end()) {
-        MSI_LOG_ERROR << "job_id not exist: " << job_id;
-        continue;
+    job_item.wait_task_num--;
+    job_item.reply_context_list.push_back(context);
+    if (job_item.wait_task_num == 0) {
+      // reply job
+      std::vector<const proto::Instance *> out;
+      std::vector<proto::ErrorMsg> error_reply;
+      for (auto &item : job_item.task) {
+        out.push_back(item.output);
+        error_reply.push_back(item.error);
       }
-      auto &job_item = iter2->second;
-      // collect result
-      auto &task_item = job_item.task[task_id];
-      task_item.pid = 0;
-      if (i < output.size()) {
-        task_item.output = output[i];
-      }
-      if (error.empty()) {
-        task_item.error.set_error_code(0);
-      } else if (error.size() == 1) {
-        task_item.error = error[0];
-      } else {
-        task_item.error = error[i];
-      }
-      job_item.wait_task_num--;
-      job_item.reply_context_list.push_back(context);
-      if (job_item.wait_task_num == 0) {
-        // reply job
-        std::vector<const proto::Instance *> out;
-        std::vector<proto::ErrorMsg> error_reply;
-        for (auto &item : job_item.task) {
-          out.push_back(item.output);
-          error_reply.push_back(item.error);
-        }
-        GrpcTensorHelper::CreatePredictReplyFromInstances(*job_item.request, error_reply, out, job_item.reply);
-        job_item.callback();
-        job_.erase(iter2);
-      }
+      GrpcTensorHelper::CreatePredictReplyFromInstances(*job_item.request, error_reply, out, job_item.reply);
+      job_item.callback();
+      job_.erase(iter2);
     }
   }
+}
+
+void ModelThread::Commit(const std::shared_ptr<PredictContext> &context) {
+  OnTasksFinished(context);
   SendTasks();
-  return SUCCESS;
 }
 
 }  // namespace serving

@@ -61,7 +61,7 @@ Status GrpcNotifyAgent::DispatchAsync(const proto::DistributedPredictRequest &re
            << "Predict failed, agent gRPC has not been inited or has already exited, agent address " << agent_address_;
   }
   if (!distributed_client_) {
-    distributed_client_ = std::make_unique<MSDistributedClient>();
+    distributed_client_ = std::make_unique<MSDistributedClient>(agent_address_);
     distributed_client_->Start();
   }
   distributed_client_->PredictAsync(request, reply, stub_.get(), callback);

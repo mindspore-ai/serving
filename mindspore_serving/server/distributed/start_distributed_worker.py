@@ -30,6 +30,7 @@ from mindspore_serving._mindspore_serving import Worker_
 
 def start_listening_parent_thread(servable_name):
     """listening to parent process status"""
+
     def worker_listening_parent_thread():
         parent_process = psutil.Process(os.getppid())
         while not ExitSignalHandle_.has_stopped():

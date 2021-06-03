@@ -94,7 +94,7 @@ start_serving_server()
   do
     sleep 1
     get_serving_server_count
-    if [ ${num} -eq 0 ]
+    if [ $? -eq 0 ]
     then
       clean_pid
 

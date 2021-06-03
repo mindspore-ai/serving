@@ -62,7 +62,10 @@ void Server::Clear() {
   dispatcher_->Clear();
   restful_server_.Stop();
   grpc_manager_server_.Stop();
-  grpc_async_server_ = nullptr;
+  if (grpc_async_server_) {
+    grpc_async_server_->Stop();
+    grpc_async_server_ = nullptr;
+  }
   MSI_LOG_INFO << "Server end to clean";
 }
 
