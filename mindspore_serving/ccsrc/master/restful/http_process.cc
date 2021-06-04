@@ -24,6 +24,7 @@
 #include "common/serving_common.h"
 #include "master/restful/http_handle.h"
 #include "common/float16.h"
+#include "master/server.h"
 
 using mindspore::serving::proto::Instance;
 using mindspore::serving::proto::PredictReply;
@@ -678,35 +679,33 @@ Status RestfulService::GetScalarData(const json &js, size_t index, bool is_bytes
   return status;
 }
 // 2.main
-Status RestfulService::RunRestful(const std::shared_ptr<RestfulRequest> &restful_request,
-                                  const std::shared_ptr<RestfulService> &restful_service) {
+void RestfulService::RunRestful(const std::shared_ptr<RestfulRequest> &restful_request) {
+  auto restful_service = std::make_shared<RestfulService>();
+  restful_service->RunRestfulInner(restful_request, restful_service);
+}
+
+void RestfulService::RunRestfulInner(const std::shared_ptr<RestfulRequest> &restful_request,
+                                     const std::shared_ptr<RestfulService> &restful_service) {
   MSI_TIME_STAMP_START(RunRestful)
   auto status = ParseRequest(restful_request, &request_);
   if (status != SUCCESS) {
-    std::string error_msg = status.StatusMessage();
-    std::string msg = "Parser request failed, " + error_msg;
-    nlohmann::json js;
-    js["error_msg"] = msg;
-    restful_request->RestfulReplay(js.dump());
-    status = msg;
-    return status;
+    std::string msg = "Parser request failed, " + status.StatusMessage();
+    restful_request->ErrorMessage(Status(status.StatusCode(), msg));
+    return;
   }
   auto callback = [restful_service, restful_request, time_start_RunRestful]() {
     nlohmann::json predict_json;
     auto status = restful_service->ParseReply(restful_service->reply_, &predict_json);
     if (status != SUCCESS) {
-      std::string error_msg = status.StatusMessage();
-      std::string msg = "Parse reply failed, " + error_msg;
-      nlohmann::json js;
-      js["error_msg"] = msg;
-      restful_request->RestfulReplay(js.dump());
+      std::string msg = "Parse reply failed, " + status.StatusMessage();
+      restful_request->ErrorMessage(Status(status.StatusCode(), msg));
     } else {
       restful_request->RestfulReplay(predict_json.dump());
     }
     MSI_TIME_STAMP_END(RunRestful)
   };
-  dispatcher_->DispatchAsync(request_, &reply_, callback);
-  return SUCCESS;
+  auto dispatcher = Server::Instance().GetDispatcher();
+  dispatcher->DispatchAsync(request_, &reply_, callback);
 }
 
 // 3.parse request

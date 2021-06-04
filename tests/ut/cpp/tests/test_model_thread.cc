@@ -134,7 +134,7 @@ TEST_F(TestModelThead, Dispatch1) {
   proto::PredictReply reply;
   PredictOnFinish callback = []() {};
   Status status = thread.DispatchAsync(request, &reply, callback);
-  ASSERT_EQ(status.StatusCode(), SUCCESS);
+  ASSERT_NE(status.StatusCode(), SUCCESS);
   status = thread.AddWorker(pid, worker_context);
   ASSERT_EQ(status.StatusCode(), SUCCESS);
   status = thread.DelWorker(pid);

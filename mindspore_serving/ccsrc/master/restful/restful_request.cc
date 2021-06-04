@@ -164,7 +164,7 @@ RestfulRequest::~RestfulRequest() {
 Status RestfulRequest::RestfulReplayBufferInit() {
   replay_buffer_ = evbuffer_new();
   if (replay_buffer_ == nullptr) {
-    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "create restful replay buffer fail";
+    return INFER_STATUS_LOG_ERROR(FAILED) << "create restful replay buffer fail";
   }
   return SUCCESS;
 }
@@ -181,19 +181,13 @@ Status RestfulRequest::RestfulReplay(const std::string &replay) {
   }
   evbuffer_add(replay_buffer_, replay.data(), replay.size());
   evhttp_send_reply(decompose_event_request_->event_request_, HTTP_OK, "Client", replay_buffer_);
-
-  MSI_LOG_INFO << "---------------------------- RestfulReplay";
   return SUCCESS;
 }
 
-Status RestfulRequest::ErrorMessage(Status status) {
-  Status error_status(SUCCESS);
+void RestfulRequest::ErrorMessage(Status status) {
   nlohmann::json error_json = {{"error_msg", status.StatusMessage()}};
   std::string out_error_str = error_json.dump();
-  if ((error_status = RestfulReplay(out_error_str)) != SUCCESS) {
-    return error_status;
-  }
-  return error_status;
+  (void)RestfulReplay(out_error_str);
 }
 
 }  // namespace serving

@@ -62,8 +62,6 @@ class MS_API Worker {
   void StopServable(bool notify_master = true);
   bool IsRunning();
   Status RegisterWorker();
-  void Update();
-  Status StartVersionController();
 
   PyTaskQueueGroup &GetPyTaskQueueGroup() { return py_task_queue_group_; }
   size_t GetBatchSize() const;

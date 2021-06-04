@@ -7,9 +7,9 @@ export BUILD_PATH="${PROJECTPATH}/build/"
 usage()
 {
   echo "Usage:"
-  echo "    bash build.sh [-p {mindspore_shared_lib}] [-j[n]] [-d]"
-  echo "    bash build.sh [-e gpu|ascend|cpu|npu] [-V 9.2|10.1|310|910] [-j[n]] [-d] "
-  echo "    bash build.sh [-t on|off] [-j[n]] [-d]"
+  echo "    bash build.sh -p {mindspore_shared_lib}] [-j[n]] [-d]"
+  echo "    bash build.sh -e gpu|ascend|cpu|npu [-V 9.2|10.1|310|910] [-j[n]] [-d] "
+  echo "    bash build.sh -t on [-j[n]] [-d]"
   echo ""
   echo "Options:"
   echo "    -p MindSpore lib {mindspore_shared_lib} path."
@@ -17,7 +17,7 @@ usage()
   echo "    -V Specify the device version, if -e gpu, default CUDA 10.1, if -e ascend, default Ascend 910"
   echo "    -j[n] Set the threads when building (Default: -j8)"
   echo "    -d Debug model"
-  echo "    -t Run testcases, default off."
+  echo "    -t Build testcases."
 
 }
 

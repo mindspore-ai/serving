@@ -91,6 +91,7 @@ class TestMasterWorker : public UT::Common {
     }
     Worker::GetInstance().Clear();
     Server::Instance().Clear();
+    UT::Common::TearDown();
   }
 
   void StartAddServable() {

@@ -38,6 +38,20 @@ def start_listening_parent_thread(servable_name, device_id):
                 logger.warning(f"Worker {servable_name} device_id {device_id}, detect parent "
                                f"pid={parent_process.pid} has exited, worker begin to exit")
                 worker.stop()
+                cur_process = psutil.Process(os.getpid())
+                for _ in range(100):  # 100x0.1=10s
+                    try:
+                        children = cur_process.children(recursive=True)
+                        if not children:
+                            logger.info(f"All current children processes have exited")
+                            break
+                        for child in children:
+                            os.kill(child.pid, signal.SIGTERM)
+                        time.sleep(0.1)
+                    # pylint: disable=broad-except
+                    except Exception as e:
+                        logger.warning(f"Kill children catch exception {e}")
+
                 return
             time.sleep(0.1)
 

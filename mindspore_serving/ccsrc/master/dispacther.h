@@ -53,10 +53,7 @@ class MS_API Dispatcher {
   std::vector<std::shared_ptr<WorkerContext>> worker_list_;
 
   std::shared_mutex servable_shared_lock_;
-  // avoid invoke Clear and then UnregisterServable is invoked by Clear in other thread
-  std::atomic_bool clearing_flag = false;
   std::atomic_uint32_t enqueued_requests_ = 0;
-  bool worker_error_reported_ = false;
 
   Status JudgeInferNum();
   std::shared_ptr<ServableEndPoint> GetWorkerEndpoint(const RequestSpec &request_spec) const;

@@ -31,6 +31,7 @@ class TestParseRankTableFile : public UT::Common {
     for (auto &item : config_file_list_) {
       remove(item.c_str());
     }
+    UT::Common::TearDown();
   }
   std::set<std::string> config_file_list_;
 };

@@ -71,7 +71,7 @@ else
   pytest -v .
 fi
 
-RET=$?
+#RET=$?
 cd -
 
-exit ${RET}
+#exit ${RET}

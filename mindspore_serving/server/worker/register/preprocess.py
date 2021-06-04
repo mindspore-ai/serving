@@ -40,9 +40,6 @@ class PreprocessStorage:
         self.preprocess = {}
         self.storage = PreprocessStorage_.get_instance()
 
-    def clear(self):
-        self.preprocess = {}
-
     def register(self, fun, preprocess_name, inputs_count, outputs_count):
         check_preprocess(preprocess_name, inputs_count, outputs_count)
         self.preprocess[preprocess_name] = {"fun": fun, "inputs_count": inputs_count, "outputs_count": outputs_count}

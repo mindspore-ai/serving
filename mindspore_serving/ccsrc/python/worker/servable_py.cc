@@ -43,5 +43,4 @@ void PyServableStorage::RegisterInputOutputInfo(const std::string &servable_name
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
 }
-void PyServableStorage::Clear() { ServableStorage::Instance().Clear(); }
 }  // namespace mindspore::serving

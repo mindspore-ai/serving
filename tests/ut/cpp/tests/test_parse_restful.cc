@@ -72,8 +72,8 @@ TEST_F(TestParseInput, test_parse_SUCCESS) {
   request_msg->request_message_ = js;
   std::shared_ptr<RestfulRequest> restful_request = std::make_shared<RestfulRequest>(request_msg);
   proto::PredictRequest predict_request;
-  std::shared_ptr<Dispatcher> dispatcher_ = Server::Instance().GetDispatcher();
-  RestfulService restful_service(dispatcher_);
+
+  RestfulService restful_service;
   Status status = restful_service.ParseRequest(restful_request, &predict_request);
   ASSERT_EQ(status.StatusCode(), SUCCESS);
   ASSERT_EQ(predict_request.instances().size(), 3);
@@ -267,8 +267,8 @@ TEST_F(TestParseInput, test_instances_empty_FAIL) {
   request_msg->request_message_ = js;
   std::shared_ptr<RestfulRequest> restful_request = std::make_shared<RestfulRequest>(request_msg);
   proto::PredictRequest predict_request;
-  std::shared_ptr<Dispatcher> dispatcher_ = Server::Instance().GetDispatcher();
-  RestfulService restful_service(dispatcher_);
+
+  RestfulService restful_service;
   Status status = restful_service.ParseRequest(restful_request, &predict_request);
   ASSERT_NE(status.StatusCode(), SUCCESS);
 }
@@ -294,8 +294,8 @@ TEST_F(TestParseInput, test_instances_incorrect_FAIL) {
   request_msg->request_message_ = js;
   std::shared_ptr<RestfulRequest> restful_request = std::make_shared<RestfulRequest>(request_msg);
   proto::PredictRequest predict_request;
-  std::shared_ptr<Dispatcher> dispatcher_ = Server::Instance().GetDispatcher();
-  RestfulService restful_service(dispatcher_);
+
+  RestfulService restful_service;
   Status status = restful_service.ParseRequest(restful_request, &predict_request);
   ASSERT_NE(status.StatusCode(), SUCCESS);
 }
@@ -321,8 +321,8 @@ TEST_F(TestParseInput, test_key_empty_FAIL) {
   request_msg->request_message_ = js;
   std::shared_ptr<RestfulRequest> restful_request = std::make_shared<RestfulRequest>(request_msg);
   proto::PredictRequest predict_request;
-  std::shared_ptr<Dispatcher> dispatcher_ = Server::Instance().GetDispatcher();
-  RestfulService restful_service(dispatcher_);
+
+  RestfulService restful_service;
   Status status = restful_service.ParseRequest(restful_request, &predict_request);
   ASSERT_NE(status.StatusCode(), SUCCESS);
 }
@@ -348,8 +348,8 @@ TEST_F(TestParseInput, test_value_empty_SUCCESS) {
   request_msg->request_message_ = js;
   std::shared_ptr<RestfulRequest> restful_request = std::make_shared<RestfulRequest>(request_msg);
   proto::PredictRequest predict_request;
-  std::shared_ptr<Dispatcher> dispatcher_ = Server::Instance().GetDispatcher();
-  RestfulService restful_service(dispatcher_);
+
+  RestfulService restful_service;
   Status status = restful_service.ParseRequest(restful_request, &predict_request);
   ASSERT_EQ(status.StatusCode(), SUCCESS);
 }
@@ -375,8 +375,8 @@ TEST_F(TestParseInput, test_obj_unknown_key_FAIL) {
   request_msg->request_message_ = js;
   std::shared_ptr<RestfulRequest> restful_request = std::make_shared<RestfulRequest>(request_msg);
   proto::PredictRequest predict_request;
-  std::shared_ptr<Dispatcher> dispatcher_ = Server::Instance().GetDispatcher();
-  RestfulService restful_service(dispatcher_);
+
+  RestfulService restful_service;
   Status status = restful_service.ParseRequest(restful_request, &predict_request);
   ASSERT_NE(status.StatusCode(), SUCCESS);
 }
@@ -402,8 +402,8 @@ TEST_F(TestParseInput, test_obj_nob64_key_FAIL) {
   request_msg->request_message_ = js;
   std::shared_ptr<RestfulRequest> restful_request = std::make_shared<RestfulRequest>(request_msg);
   proto::PredictRequest predict_request;
-  std::shared_ptr<Dispatcher> dispatcher_ = Server::Instance().GetDispatcher();
-  RestfulService restful_service(dispatcher_);
+
+  RestfulService restful_service;
   Status status = restful_service.ParseRequest(restful_request, &predict_request);
   ASSERT_NE(status.StatusCode(), SUCCESS);
 }
@@ -429,8 +429,8 @@ TEST_F(TestParseInput, test_obj_illegal_b64value_FAIL) {
   request_msg->request_message_ = js;
   std::shared_ptr<RestfulRequest> restful_request = std::make_shared<RestfulRequest>(request_msg);
   proto::PredictRequest predict_request;
-  std::shared_ptr<Dispatcher> dispatcher_ = Server::Instance().GetDispatcher();
-  RestfulService restful_service(dispatcher_);
+
+  RestfulService restful_service;
   Status status = restful_service.ParseRequest(restful_request, &predict_request);
   ASSERT_NE(status.StatusCode(), SUCCESS);
 }
@@ -456,8 +456,8 @@ TEST_F(TestParseInput, test_obj_unknown_type_FAIL) {
   request_msg->request_message_ = js;
   std::shared_ptr<RestfulRequest> restful_request = std::make_shared<RestfulRequest>(request_msg);
   proto::PredictRequest predict_request;
-  std::shared_ptr<Dispatcher> dispatcher_ = Server::Instance().GetDispatcher();
-  RestfulService restful_service(dispatcher_);
+
+  RestfulService restful_service;
   Status status = restful_service.ParseRequest(restful_request, &predict_request);
   ASSERT_NE(status.StatusCode(), SUCCESS);
 }
@@ -483,8 +483,8 @@ TEST_F(TestParseInput, test_obj_error_shape_format_FAIL) {
   request_msg->request_message_ = js;
   std::shared_ptr<RestfulRequest> restful_request = std::make_shared<RestfulRequest>(request_msg);
   proto::PredictRequest predict_request;
-  std::shared_ptr<Dispatcher> dispatcher_ = Server::Instance().GetDispatcher();
-  RestfulService restful_service(dispatcher_);
+
+  RestfulService restful_service;
   Status status = restful_service.ParseRequest(restful_request, &predict_request);
   ASSERT_NE(status.StatusCode(), SUCCESS);
 }
@@ -510,8 +510,8 @@ TEST_F(TestParseInput, test_obj_error_shape_format2_FAIL) {
   request_msg->request_message_ = js;
   std::shared_ptr<RestfulRequest> restful_request = std::make_shared<RestfulRequest>(request_msg);
   proto::PredictRequest predict_request;
-  std::shared_ptr<Dispatcher> dispatcher_ = Server::Instance().GetDispatcher();
-  RestfulService restful_service(dispatcher_);
+
+  RestfulService restful_service;
   Status status = restful_service.ParseRequest(restful_request, &predict_request);
   ASSERT_NE(status.StatusCode(), SUCCESS);
 }
@@ -537,8 +537,8 @@ TEST_F(TestParseInput, test_obj_error_shape_value_FAIL) {
   request_msg->request_message_ = js;
   std::shared_ptr<RestfulRequest> restful_request = std::make_shared<RestfulRequest>(request_msg);
   proto::PredictRequest predict_request;
-  std::shared_ptr<Dispatcher> dispatcher_ = Server::Instance().GetDispatcher();
-  RestfulService restful_service(dispatcher_);
+
+  RestfulService restful_service;
   Status status = restful_service.ParseRequest(restful_request, &predict_request);
   ASSERT_NE(status.StatusCode(), SUCCESS);
 }
@@ -564,8 +564,8 @@ TEST_F(TestParseInput, test_obj_error_shape_value2_FAIL) {
   request_msg->request_message_ = js;
   std::shared_ptr<RestfulRequest> restful_request = std::make_shared<RestfulRequest>(request_msg);
   proto::PredictRequest predict_request;
-  std::shared_ptr<Dispatcher> dispatcher_ = Server::Instance().GetDispatcher();
-  RestfulService restful_service(dispatcher_);
+
+  RestfulService restful_service;
   Status status = restful_service.ParseRequest(restful_request, &predict_request);
   ASSERT_NE(status.StatusCode(), SUCCESS);
 }
@@ -591,8 +591,8 @@ TEST_F(TestParseInput, test_obj_error_shape_value3_FAIL) {
   request_msg->request_message_ = js;
   std::shared_ptr<RestfulRequest> restful_request = std::make_shared<RestfulRequest>(request_msg);
   proto::PredictRequest predict_request;
-  std::shared_ptr<Dispatcher> dispatcher_ = Server::Instance().GetDispatcher();
-  RestfulService restful_service(dispatcher_);
+
+  RestfulService restful_service;
   Status status = restful_service.ParseRequest(restful_request, &predict_request);
   ASSERT_NE(status.StatusCode(), SUCCESS);
 }
@@ -618,8 +618,8 @@ TEST_F(TestParseInput, test_tensor_value_empty_FAIL) {
   request_msg->request_message_ = js;
   std::shared_ptr<RestfulRequest> restful_request = std::make_shared<RestfulRequest>(request_msg);
   proto::PredictRequest predict_request;
-  std::shared_ptr<Dispatcher> dispatcher_ = Server::Instance().GetDispatcher();
-  RestfulService restful_service(dispatcher_);
+
+  RestfulService restful_service;
   Status status = restful_service.ParseRequest(restful_request, &predict_request);
   ASSERT_NE(status.StatusCode(), SUCCESS);
 }
@@ -645,8 +645,8 @@ TEST_F(TestParseInput, test_tensor_value_diff_type_FAIL) {
   request_msg->request_message_ = js;
   std::shared_ptr<RestfulRequest> restful_request = std::make_shared<RestfulRequest>(request_msg);
   proto::PredictRequest predict_request;
-  std::shared_ptr<Dispatcher> dispatcher_ = Server::Instance().GetDispatcher();
-  RestfulService restful_service(dispatcher_);
+
+  RestfulService restful_service;
   Status status = restful_service.ParseRequest(restful_request, &predict_request);
   ASSERT_NE(status.StatusCode(), SUCCESS);
 }
@@ -672,8 +672,8 @@ TEST_F(TestParseInput, test_tensor_value_diff_dimention_FAIL) {
   request_msg->request_message_ = js;
   std::shared_ptr<RestfulRequest> restful_request = std::make_shared<RestfulRequest>(request_msg);
   proto::PredictRequest predict_request;
-  std::shared_ptr<Dispatcher> dispatcher_ = Server::Instance().GetDispatcher();
-  RestfulService restful_service(dispatcher_);
+
+  RestfulService restful_service;
   Status status = restful_service.ParseRequest(restful_request, &predict_request);
   ASSERT_NE(status.StatusCode(), SUCCESS);
 }
@@ -699,8 +699,8 @@ TEST_F(TestParseInput, test_tensor_multi_object_FAIL) {
   request_msg->request_message_ = js;
   std::shared_ptr<RestfulRequest> restful_request = std::make_shared<RestfulRequest>(request_msg);
   proto::PredictRequest predict_request;
-  std::shared_ptr<Dispatcher> dispatcher_ = Server::Instance().GetDispatcher();
-  RestfulService restful_service(dispatcher_);
+
+  RestfulService restful_service;
   Status status = restful_service.ParseRequest(restful_request, &predict_request);
   ASSERT_NE(status.StatusCode(), SUCCESS);
 }
@@ -734,8 +734,8 @@ TEST_F(TestParseReply, test_reply_SUCCESS) {
   request_msg->request_message_ = js;
   std::shared_ptr<RestfulRequest> restful_request = std::make_shared<RestfulRequest>(request_msg);
   proto::PredictRequest predict_request;
-  std::shared_ptr<Dispatcher> dispatcher_ = Server::Instance().GetDispatcher();
-  RestfulService restful_service(dispatcher_);
+
+  RestfulService restful_service;
   Status status(INVALID_INPUTS);
   status = restful_service.ParseRequest(restful_request, &predict_request);
   ASSERT_EQ(status.StatusCode(), SUCCESS);
@@ -976,8 +976,8 @@ TEST_F(TestParseReply, test_reply_instances_num_not_match_FAIL) {
   request_msg->request_message_ = js;
   std::shared_ptr<RestfulRequest> restful_request = std::make_shared<RestfulRequest>(request_msg);
   proto::PredictRequest predict_request;
-  std::shared_ptr<Dispatcher> dispatcher_ = Server::Instance().GetDispatcher();
-  RestfulService restful_service(dispatcher_);
+
+  RestfulService restful_service;
   Status status(INVALID_INPUTS);
   status = restful_service.ParseRequest(restful_request, &predict_request);
   ASSERT_EQ(status.StatusCode(), SUCCESS);
@@ -1126,8 +1126,8 @@ TEST_F(TestParseReply, test_reply_error_num_not_match_FAIL) {
   request_msg->request_message_ = js;
   std::shared_ptr<RestfulRequest> restful_request = std::make_shared<RestfulRequest>(request_msg);
   proto::PredictRequest predict_request;
-  std::shared_ptr<Dispatcher> dispatcher_ = Server::Instance().GetDispatcher();
-  RestfulService restful_service(dispatcher_);
+
+  RestfulService restful_service;
   Status status(INVALID_INPUTS);
   status = restful_service.ParseRequest(restful_request, &predict_request);
   ASSERT_EQ(status.StatusCode(), SUCCESS);
@@ -1166,8 +1166,8 @@ TEST_F(TestParseReply, test_reply_type_not_set_FAIL) {
   request_msg->request_message_ = js;
   std::shared_ptr<RestfulRequest> restful_request = std::make_shared<RestfulRequest>(request_msg);
   proto::PredictRequest predict_request;
-  std::shared_ptr<Dispatcher> dispatcher_ = Server::Instance().GetDispatcher();
-  RestfulService restful_service(dispatcher_);
+
+  RestfulService restful_service;
   Status status(INVALID_INPUTS);
   status = restful_service.ParseRequest(restful_request, &predict_request);
   ASSERT_EQ(status.StatusCode(), SUCCESS);
@@ -1212,8 +1212,7 @@ TEST_F(TestParseReply, test_reply_type_fp16_SUCCESS) {
   request_msg->request_message_ = js;
   std::shared_ptr<RestfulRequest> restful_request = std::make_shared<RestfulRequest>(request_msg);
   proto::PredictRequest predict_request;
-  std::shared_ptr<Dispatcher> dispatcher_ = Server::Instance().GetDispatcher();
-  RestfulService restful_service(dispatcher_);
+  RestfulService restful_service;
   Status status(INVALID_INPUTS);
   status = restful_service.ParseRequest(restful_request, &predict_request);
   ASSERT_EQ(status.StatusCode(), SUCCESS);

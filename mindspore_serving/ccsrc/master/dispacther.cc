@@ -205,7 +205,6 @@ Status Dispatcher::NotifyWorkerNotAvailable(WorkerContext *worker_context) {
 
 void Dispatcher::Clear() {
   std::unique_lock<std::shared_mutex> lock(servable_shared_lock_);
-  clearing_flag = true;
 
   for (auto &endpoint : servable_list_) {
     endpoint->Clear();

@@ -44,7 +44,7 @@ using AsyncPredictCallback = std::function<void(Status status)>;
 template <typename Request, typename Reply, typename MSStub>
 class MSServiceClient {
  public:
-  explicit MSServiceClient(const std::string &address) : address_(address) {}
+  MSServiceClient() = default;
   ~MSServiceClient() {
     if (in_running_) {
       cq_.Shutdown();
@@ -74,17 +74,19 @@ class MSServiceClient {
         call->callback(SUCCESS);
       } else {
         MSI_LOG_ERROR << "RPC failed: " << call->status.error_code() << ", " << call->status.error_message()
-                      << ", target address: " << address_;
+                      << ", target address: " << call->target_address;
         call->callback(Status(WORKER_UNAVAILABLE, call->status.error_message()));
       }
       delete call;
     }
   }
 
-  void PredictAsync(const Request &request, Reply *reply, MSStub *stub, AsyncPredictCallback callback) {
+  void PredictAsync(const Request &request, Reply *reply, MSStub *stub, AsyncPredictCallback callback,
+                    const std::string &target_address) {
     AsyncClientCall *call = new AsyncClientCall;
     call->reply = reply;
     call->callback = std::move(callback);
+    call->target_address = target_address;
     call->response_reader = stub->PrepareAsyncPredict(&call->context, request, &cq_);
     call->response_reader->StartCall();
     call->response_reader->Finish(call->reply, &call->status, call);
@@ -95,6 +97,7 @@ class MSServiceClient {
     grpc::ClientContext context;
     grpc::Status status;
     Reply *reply;
+    std::string target_address;
     AsyncPredictCallback callback;
     std::shared_ptr<grpc::ClientAsyncResponseReader<Reply>> response_reader;
   };
@@ -102,7 +105,6 @@ class MSServiceClient {
   grpc::CompletionQueue cq_;
   std::thread client_thread_;
   bool in_running_ = false;
-  std::string address_;
 };
 
 using MSPredictClient = MSServiceClient<proto::PredictRequest, proto::PredictReply, proto::MSWorker::Stub>;
