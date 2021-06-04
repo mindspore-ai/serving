@@ -246,41 +246,44 @@ class GpuOptions(_Options):
     Helper class to set gpu options.
 
     Args:
-        enable_trt_infer (bool): Whether enable inference with TensorRT.
+        precision_mode(str): inference operator selection, and the value can be "origin", "fp16", default "origin".
 
     Raises:
         RuntimeError: Gpu option is invalid, or value is not str.
 
     Examples:
         >>> from mindspore_serving.worker import register
-        >>> options = register.GpuOptions(enable_trt_infer=True)
+        >>> options = register.GpuOptions(precision_mode="origin")
         >>> register.declare_servable(servable_file="deeptext.mindir", model_format="MindIR", options=options)
     """
 
     def __init__(self, **kwargs):
         super(GpuOptions, self).__init__()
-        self.enable_trt_infer = False
-        val_set_fun = {"enable_trt_infer": self._set_trt_infer_mode}
+        self.precision_mode = "origin"
+        val_set_fun = {"precision_mode": self._set_precision_mode}
         for k, w in kwargs.items():
             if k not in val_set_fun:
                 raise RuntimeError("Set gpu option failed, unsupported option " + k)
             val_set_fun[k](w)
 
-    def _set_trt_infer_mode(self, val):
-        """Set option 'enable_trt_infer'
+    def _set_precision_mode(self, val):
+        """Set option 'precision_mode', which means inference operator selection, and the value can be "origin",
+        "fp16", default "origin".
 
         Args:
-            val (bool): Value of option 'enable_trt_infer'.
+            val (str): Value of option 'precision_mode'. "origin" inference with model definition.
+            "fp16" enable FP16 operator selection, with FP32 fallback. Default: "origin".
 
         Raises:
-            RuntimeError: The type of value is not bool.
+            RuntimeError: The type of value is not str, or the value is invalid.
         """
-        check_type.check_bool('enable_trt_infer', val)
-        self.enable_trt_infer = val
+        check_type.check_str('precision_mode', val)
+        if val not in ("origin", "fp16"):
+            raise RuntimeError(f"Gpu Options 'precision_mode' can only be 'origin', 'fp16'. given '{val}'")
+        self.precision_mode = val
 
     def _as_options_map(self):
         """Transfer GpuOptions to dict of str,str"""
         options = {}
-        if self.enable_trt_infer:
-            options['gpu_option.enable_trt_infer'] = str(self.enable_trt_infer)
+        options['gpu_option.precision_mode'] = self.precision_mode
         return options

@@ -172,12 +172,8 @@ std::shared_ptr<DeviceInfoContext> MindSporeModelWrap::TransformNvidiaGPUModelCo
   for (auto &item : options) {
     const auto &key = item.first;
     const auto &value = item.second;
-    if (key == "gpu_option.enable_trt_infer") {
-      if (value == "True") {
-        context_info->SetGpuTrtInferMode(true);
-      } else {
-        context_info->SetGpuTrtInferMode(false);
-      }
+    if (key == "gpu_option.precision_mode") {
+      context_info->SetPrecisionMode(value);
     }
   }
   return context_info;

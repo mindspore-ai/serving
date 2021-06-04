@@ -26,7 +26,7 @@ constexpr auto kModelOptionMaliGpuEnableFP16 = "mindspore.option.mali_gpu.enable
 constexpr auto kModelOptionKirinNpuFrequency = "mindspore.option.kirin_npu.frequency";
 constexpr auto kModelOptionDeviceID = "mindspore.option.device_id";
 constexpr auto kModelOptionNvidiaGpuDeviceID = kModelOptionDeviceID;
-constexpr auto kModelOptionNvidiaGpuTrtInferMode = "mindspore.option.nvidia_gpu.trt_infer_mode";
+constexpr auto kModelOptionNvidiaGpuPrecisionMode = "mindspore.option.nvidia_gpu.precsion_mode";
 constexpr auto kModelOptionAscend910DeviceID = kModelOptionDeviceID;
 constexpr auto kModelOptionAscend310DeviceID = kModelOptionDeviceID;
 constexpr auto kModelOptionAscend310DumpCfgPath = "mindspore.option.ascend310.dump_config_file_path";
@@ -148,13 +148,14 @@ uint32_t NvidiaGPUDeviceInfo::GetDeviceID() const {
   return GetValue<uint32_t>(data_, kModelOptionNvidiaGpuDeviceID);
 }
 
-void NvidiaGPUDeviceInfo::SetGpuTrtInferMode(bool gpu_trt_infer_mode) {
+void NvidiaGPUDeviceInfo::SetPrecisionMode(const std::vector<char> &precision_mode) {
   MS_EXCEPTION_IF_NULL(data_);
-  data_->params[kModelOptionNvidiaGpuTrtInferMode] = gpu_trt_infer_mode;
+  data_->params[kModelOptionNvidiaGpuPrecisionMode] = CharToString(precision_mode);
 }
-bool NvidiaGPUDeviceInfo::GetGpuTrtInferMode() const {
+std::vector<char> NvidiaGPUDeviceInfo::GetPrecisionModeChar() const {
   MS_EXCEPTION_IF_NULL(data_);
-  return GetValue<bool>(data_, kModelOptionNvidiaGpuTrtInferMode);
+  const std::string &ref = GetValue<std::string>(data_, kModelOptionNvidiaGpuPrecisionMode);
+  return StringToChar(ref);
 }
 
 void Ascend910DeviceInfo::SetDeviceID(uint32_t device_id) {
