@@ -28,9 +28,14 @@
 #include <string>
 #include <utility>
 
+#include "openssl/ssl.h"
+#include "openssl/err.h"
+#include "event2/bufferevent.h"
+
 #include "master/restful/restful_request.h"
 #include "common/serving_common.h"
 #include "common/thread_pool.h"
+#include "common/ssl_config.h"
 
 namespace mindspore::serving {
 
@@ -43,18 +48,24 @@ class MS_API RestfulServer {
   RestfulServer() : thread_pool_(kDefaultRestfulThreadPoolNum) {}
   ~RestfulServer() { Stop(); }
 
-  Status Start(const std::string &socket_address, int max_msg_size, int time_out_second);
+  Status Start(const std::string &socket_address, const SSLConfig &ssl_config, int max_msg_size, int time_out_second);
   void Stop();
 
  private:
   Status CreatRestfulServer(int time_out_second);
+  Status CreatHttpsServer(int time_out_second, const SSLConfig &ssl_config);
   static void EvCallBack(evhttp_request *request, void *arg);
   void DispatchEvHttpRequest(evhttp_request *request);
   void Committer(const std::shared_ptr<RestfulRequest> &restful_request);
   Status Run(const std::shared_ptr<RestfulRequest> &restful_request);
   Status StartRestfulServer();
-  bool IsUnixAddress(const std::string &socket_address);
-  bool GetSocketAddress(const std::string &socket_address, uint32_t *ip, uint16_t *port);
+  Status GetSocketAddress(std::string *ip, uint16_t *port);
+  static void InitOpenSSL();
+  static Status ServerSetupCerts(SSL_CTX *ctx, const SSLConfig &ssl_config);
+  static struct bufferevent *bevcb(struct event_base *base, void *args);
+  Status InitEvHttp();
+  void FreeEvhttp();
+  void RunEvhttp();
 
   std::string socket_address_;
   int max_msg_size_{};

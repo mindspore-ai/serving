@@ -23,6 +23,7 @@
 #include "master/restful/restful_server.h"
 #include "master/dispacther.h"
 #include "master/grpc/grpc_server.h"
+#include "common/ssl_config.h"
 
 namespace mindspore {
 namespace serving {
@@ -31,9 +32,10 @@ class MS_API Server {
  public:
   Server();
   ~Server();
-  Status StartGrpcServer(const std::string &socket_address, int max_msg_mb_size = gRpcDefaultMsgMBSize);
-  Status StartRestfulServer(const std::string &socket_address, int max_msg_mb_size = gRpcDefaultMsgMBSize,
-                            int time_out_second = 100);
+  Status StartGrpcServer(const std::string &socket_address, const SSLConfig &ssl_config,
+                         int max_msg_mb_size = gRpcDefaultMsgMBSize);
+  Status StartRestfulServer(const std::string &socket_address, const SSLConfig &ssl_config,
+                            int max_msg_mb_size = gRpcDefaultMsgMBSize, int time_out_second = 100);
   Status StartGrpcMasterServer(const std::string &master_address);
   void Clear();
 

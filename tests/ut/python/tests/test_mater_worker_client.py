@@ -137,7 +137,7 @@ def test_grpc_alone_repeat_grpc_and_restful_port_failed():
         server.start_restful_server("0.0.0.0:7600")
         assert False
     except RuntimeError as e:
-        assert "Serving Error: RESTful server start failed, create http listener failed, address 0.0.0.0:7600" in str(e)
+        assert "Serving Error: RESTful server start failed, bind to the socket address 0.0.0.0:7600 failed" in str(e)
 
 
 @serving_test

@@ -101,6 +101,7 @@ target_link_libraries(serving_common PRIVATE mindspore_serving::grpc++_reflectio
 target_link_libraries(serving_common PRIVATE ${_PROTOBUF_LIBPROTOBUF} pthread)
 target_link_libraries(serving_common PRIVATE mindspore_serving::event mindspore_serving::event_pthreads)
 target_link_libraries(serving_common PRIVATE mindspore_serving::event_core)
+target_link_libraries(serving_common PRIVATE mindspore_serving::event_openssl)
 target_link_libraries(serving_common PRIVATE mindspore_serving::glog)
 target_link_libraries(serving_common PRIVATE mindspore_serving::eigen)
 target_link_libraries(serving_common PRIVATE ${SECUREC_LIBRARY})

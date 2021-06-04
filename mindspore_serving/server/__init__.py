@@ -14,7 +14,7 @@
 # ============================================================================
 """MindSpore Serving Server."""
 
-from .master import start_grpc_server, start_restful_server, stop
+from .master import start_grpc_server, start_restful_server, stop, SSLConfig
 from ._server import start_servables, ServableStartConfig
 from .worker import register
 from . import distributed
@@ -26,6 +26,7 @@ __all__.extend([
     "stop",
     "start_servables",
     'ServableStartConfig',
+    "SSLConfig"
 ])
 
 __all__.extend(register.__all__)

@@ -15,8 +15,10 @@
 """MindSpore Serving Client"""
 
 from .python.client import Client
+from .python.client import SSLConfig
 
 __all__ = []
 __all__.extend([
-    "Client"
+    "Client",
+    "SSLConfig"
 ])

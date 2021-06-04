@@ -14,6 +14,6 @@
 # ============================================================================
 """The master process of serving server: used to receive requests and dispatcher them to worker process"""
 
-from ._master import start_grpc_server, start_restful_server, stop, stop_on_except
+from ._master import start_grpc_server, start_restful_server, stop, stop_on_except, SSLConfig
 from ._master import start_master_server, at_stop_list
 from . import context
