@@ -39,9 +39,7 @@
 
 namespace mindspore::serving {
 
-constexpr const uint32_t kDefaultRestfulThreadPoolNum = 20;
-
-typedef void (*RestfulFunc)(struct evhttp_request *const req, void *const arg);
+constexpr const uint32_t kDefaultRestfulThreadPoolNum = 3;
 
 class MS_API RestfulServer {
  public:
@@ -57,7 +55,6 @@ class MS_API RestfulServer {
   static void EvCallBack(evhttp_request *request, void *arg);
   void DispatchEvHttpRequest(evhttp_request *request);
   void Committer(const std::shared_ptr<RestfulRequest> &restful_request);
-  Status Run(const std::shared_ptr<RestfulRequest> &restful_request);
   Status StartRestfulServer();
   Status GetSocketAddress(std::string *ip, uint16_t *port);
   static void InitOpenSSL();

@@ -398,6 +398,4 @@ std::vector<size_t> ServableStorage::GetInputOutputInfo(const std::string &serva
   return result;
 }
 
-void ServableStorage::Clear() { servable_signatures_map_.clear(); }
-
 }  // namespace mindspore::serving

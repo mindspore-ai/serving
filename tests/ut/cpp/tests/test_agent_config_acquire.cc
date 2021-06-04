@@ -28,7 +28,9 @@ class TestAgentConfigAcquire : public UT::Common {
  public:
   TestAgentConfigAcquire() = default;
   virtual void SetUp() {}
-  virtual void TearDown() {}
+  virtual void TearDown() {
+    UT::Common::TearDown();
+  }
 };
 
 TEST_F(TestAgentConfigAcquire, test_agent_config_acquire_success) {

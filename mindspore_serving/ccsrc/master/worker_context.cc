@@ -95,7 +95,9 @@ void WorkerContext::OnStartError(const std::string &notified_error) {
 void WorkerContext::OnNotAvailable() {
   std::unique_lock<std::mutex> lock(lock_);
   MSI_LOG_ERROR << "Notify worker not available, " << servable_repr_.repr << ", worker pid: " << worker_pid_;
-  status_ = kWorkerStatusNotAvailable;
+  if (status_ != kWorkerStatusNotifyExit && status_ != kWorkerStatusNotAlive) {
+    status_ = kWorkerStatusNotAvailable;
+  }
   notify_worker_ = nullptr;
 }
 
@@ -106,7 +108,9 @@ void WorkerContext::OnNotAlive() {
   std::unique_lock<std::mutex> lock(lock_);
   MSI_LOG_INFO << "Notify worker not alive, " << servable_repr_.repr << ", worker pid: " << worker_pid_
                << ", worker address: " << worker_spec_.worker_address;
-  status_ = kWorkerStatusNotAlive;
+  if (status_ != kWorkerStatusNotifyExit) {
+    status_ = kWorkerStatusNotAlive;
+  }
   notify_worker_ = nullptr;
 }
 
@@ -117,6 +121,7 @@ void WorkerContext::NotifyNotAvailable() { Server::Instance().GetDispatcher()->N
 
 void WorkerContext::UpdateWorkerPid(uint64_t new_worker_pid) {
   std::unique_lock<std::mutex> lock(lock_);
+  MSI_LOG_INFO << "Update worker pid from " << worker_pid_ << " to " << new_worker_pid;
   if (status_ != kWorkerStatusReady) {
     status_ = kWorkerStatusStarting;
   }

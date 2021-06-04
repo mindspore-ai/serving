@@ -149,7 +149,6 @@ class MS_API ServableStorage {
 
   Status RegisterInputOutputInfo(const std::string &servable_name, size_t inputs_count, size_t outputs_count);
   std::vector<size_t> GetInputOutputInfo(const std::string &servable_name) const;
-  void Clear();
 
   static ServableStorage &Instance();
 

@@ -38,7 +38,7 @@ class MS_API GrpcNotifyMaster : public BaseNotifyMaster {
   std::string master_address_;
   std::string worker_address_;
 
-  std::atomic<bool> is_stoped_{false};
+  std::atomic<bool> is_running_ = false;
 };
 
 }  // namespace serving

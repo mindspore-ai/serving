@@ -24,14 +24,12 @@
 #include "master/restful/http_handle.h"
 #include "master/restful/restful_server.h"
 
+#include "master/restful/http_process.h"
+
 namespace mindspore::serving {
 
-Status RestfulServer::Run(const std::shared_ptr<RestfulRequest> &restful_request) {
-  return HandleRestfulRequest(restful_request);
-}
-
 void RestfulServer::Committer(const std::shared_ptr<RestfulRequest> &restful_request) {
-  thread_pool_.commit([restful_request, this]() { Run(restful_request); });
+  thread_pool_.commit([restful_request]() { RestfulService::RunRestful(restful_request); });
 }
 
 void RestfulServer::DispatchEvHttpRequest(evhttp_request *request) {
@@ -42,14 +40,12 @@ void RestfulServer::DispatchEvHttpRequest(evhttp_request *request) {
   auto restful_request = std::make_shared<RestfulRequest>(std::move(de_request));
   status = restful_request->RestfulReplayBufferInit();
   if (status != SUCCESS) {
-    if ((status = restful_request->ErrorMessage(status)) != SUCCESS) {
-      return;
-    }
+    restful_request->ErrorMessage(status);
     return;
   }
 
   if (de_status != SUCCESS) {
-    (void)restful_request->ErrorMessage(de_status);
+    restful_request->ErrorMessage(de_status);
     return;
   }
   Committer(restful_request);

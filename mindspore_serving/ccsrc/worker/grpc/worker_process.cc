@@ -27,22 +27,18 @@ void MSWorkerImpl::Exit(grpc::ServerContext *context, const proto::ExitRequest *
 
 void MSWorkerImpl::PredictAsync(grpc::ServerContext *context, const proto::PredictRequest *request,
                                 proto::PredictReply *reply, PredictOnFinish on_finish) {
-  Status status(FAILED);
+  Status status(WORKER_UNAVAILABLE);
   MSI_LOG(INFO) << "Begin call service Eval";
   try {
     status = Worker::GetInstance().RunAsync(*request, reply, on_finish);
   } catch (const std::bad_alloc &ex) {
     MSI_LOG(ERROR) << "Serving Error: malloc memory failed";
-    std::cout << "Serving Error: malloc memory failed" << std::endl;
   } catch (const std::runtime_error &ex) {
     MSI_LOG(ERROR) << "Serving Error: runtime error occurred: " << ex.what();
-    std::cout << "Serving Error: runtime error occurred: " << ex.what() << std::endl;
   } catch (const std::exception &ex) {
     MSI_LOG(ERROR) << "Serving Error: exception occurred: " << ex.what();
-    std::cout << "Serving Error: exception occurred: " << ex.what() << std::endl;
   } catch (...) {
     MSI_LOG(ERROR) << "Serving Error: exception occurred";
-    std::cout << "Serving Error: exception occurred";
   }
   MSI_LOG(INFO) << "Finish call service Eval";
 

@@ -633,7 +633,7 @@ uint32_t WorkExecutor::GetWorkerId() const { return worker_id_; }
 
 void WorkExecutor::ClearInstances() {
   std::unique_lock<std::mutex> lock(infer_session_map_mutex_);
-  Status error_msg = Status(FAILED, "Servable stopped");
+  Status error_msg = Status(WORKER_UNAVAILABLE, "Servable stopped");
   for (auto &item : infer_session_map_) {
     auto &infer_session = item.second;
     for (auto &instance : infer_session.instances) {

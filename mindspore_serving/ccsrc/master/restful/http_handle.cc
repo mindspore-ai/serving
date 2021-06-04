@@ -133,13 +133,5 @@ size_t GetTailEqualSize(const std::string &str) {
   return count;
 }
 
-Status HandleRestfulRequest(const std::shared_ptr<RestfulRequest> &restful_request) {
-  Status status(SUCCESS);
-  std::shared_ptr<Dispatcher> dispatcher_ = Server::Instance().GetDispatcher();
-  auto restful_service = std::make_shared<RestfulService>(dispatcher_);
-  status = restful_service->RunRestful(restful_request, restful_service);
-
-  return status;
-}
 }  // namespace serving
 }  // namespace mindspore

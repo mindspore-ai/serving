@@ -56,7 +56,7 @@ class RestfulRequest {
 
   Status RestfulReplayBufferInit();
   Status RestfulReplay(const std::string &replay);
-  Status ErrorMessage(Status status);
+  void ErrorMessage(Status status);
   std::shared_ptr<DecomposeEvRequest> decompose_event_request() { return decompose_event_request_; }
 
  private:

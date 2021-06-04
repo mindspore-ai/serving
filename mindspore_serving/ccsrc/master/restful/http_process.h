@@ -43,12 +43,14 @@ enum InstancesType { kNokeyWay = 0, kKeyWay, kInvalidWay };
 enum HTTP_DATA_TYPE { HTTP_DATA_NONE, HTTP_DATA_INT, HTTP_DATA_FLOAT, HTTP_DATA_BOOL, HTTP_DATA_STR, HTTP_DATA_OBJ };
 class RestfulService {
  public:
-  explicit RestfulService(const std::shared_ptr<Dispatcher> &dispatcher) : dispatcher_(dispatcher) {}
+  RestfulService() = default;
   ~RestfulService() = default;
-  Status RunRestful(const std::shared_ptr<RestfulRequest> &restful_request,
-                    const std::shared_ptr<RestfulService> &restful_service);
+
+  static void RunRestful(const std::shared_ptr<RestfulRequest> &restful_request);
 
  private:
+  void RunRestfulInner(const std::shared_ptr<RestfulRequest> &restful_request,
+                       const std::shared_ptr<RestfulService> &restful_service);
   Status CheckObjTypeMatchShape(DataType data_type, const std::vector<int64_t> &shape);
   std::string GetString(const uint8_t *ptr, size_t length);
   Status CheckObj(const json &js);
@@ -103,7 +105,6 @@ class RestfulService {
   RequestType request_type_{kInvalidType};
   InstancesType instances_type_{kInvalidWay};
   int64_t instances_nums_{0};
-  std::shared_ptr<Dispatcher> dispatcher_;
   std::vector<std::string> request_type_list_ = {kInstancesRequest};
   proto::PredictRequest request_;
   proto::PredictReply reply_;

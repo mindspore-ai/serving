@@ -132,18 +132,15 @@ class WorkerContext:
             return False
         return self.context.is_unavailable
 
-    def is_fault_exit(self):
-        """Whether there is a segment error in the worker process"""
-        if self.is_alive():
-            return False
+    def may_be_able_restart(self):
         if self.has_exit_notified():  # Exit message of worker notifying master
             return False
         if self.has_error_notified():  # Error message of worker notifying master
             return False
-        # wait 1s for worker exit or error message
+        # whether has exited for 1s, wait 1s for worker exit or error message
         if not self.last_not_alive_time_ or (time.time() - self.last_not_alive_time_ < 1):
-            return False
-        return True
+            return True
+        return self.can_be_restart()
 
     def update_worker_pid(self, worker_pid):
         """Update worker process pid"""

@@ -184,8 +184,9 @@ void PyRegWorker(pybind11::module *m_ptr) {
     .def_readwrite("context_list", &TaskItem::context_list);
 
   py::class_<PyWorker>(m, "Worker_")
-    .def_static("start_servable", &PyWorker::StartServable)
-    .def_static("start_distributed_servable", &PyWorker::StartDistributedServable)
+    .def_static("start_servable", &PyWorker::StartServable, py::call_guard<py::gil_scoped_release>())
+    .def_static("start_distributed_servable", &PyWorker::StartDistributedServable,
+                py::call_guard<py::gil_scoped_release>())
     .def_static("get_batch_size", &PyWorker::GetBatchSize)
     .def_static("wait_and_clear", &PyWorker::WaitAndClear)
     .def_static("stop_and_clear", PyWorker::StopAndClear)

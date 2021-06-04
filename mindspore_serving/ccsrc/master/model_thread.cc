@@ -41,9 +41,12 @@ void ModelThread::InnerClear() {
     bool has_error = false;
     proto::ErrorMsg detect_error;
     proto::ErrorMsg exit_error;
-    exit_error.set_error_code(FAILED);
-    exit_error.set_error_msg("Servable is not available, servable name: " + spec_.servable_name +
-                             ", method name: " + spec_.method_name);
+    RequestSpec request_spec;
+    GrpcTensorHelper::GetRequestSpec(*job_item.second.request, &request_spec);
+    auto status = INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
+                  << "Request " << request_spec.Repr() << ", servable is not available";
+    exit_error.set_error_code(status.StatusCode());
+    exit_error.set_error_msg(status.StatusMessage());
     for (auto &task_item : job_item.second.task) {
       auto instance = reply->add_instances();
       auto error = reply->add_error_msg();
@@ -75,6 +78,8 @@ void ModelThread::InnerClear() {
   }
   job_.clear();
   pid_process_.clear();
+  task_wait_queue_ = std::queue<std::pair<uint64_t, uint64_t>>();
+  worker_wait_map_.clear();
 }
 
 ModelThread::~ModelThread() { Clear(); }
@@ -157,6 +162,11 @@ Status ModelThread::PushTasks(const proto::PredictRequest &request, proto::Predi
     return status;
   }
   std::unique_lock<std::mutex> lock(lock_);
+  if (pid_process_.empty()) {
+    RequestSpec request_spec;
+    GrpcTensorHelper::GetRequestSpec(request, &request_spec);
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Request " << request_spec.Repr() << ", servable is not available";
+  }
   std::vector<const proto::Instance *> instances_data;
   for (auto &item : request.instances()) {
     // cppcheck-suppress useStlAlgorithm

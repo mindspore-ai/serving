@@ -15,6 +15,10 @@
  */
 #include "common/common_test.h"
 
+#define private public
+#include "common/servable.h"
+#undef private
+
 #ifdef __cplusplus
 #if __cplusplus
 extern "C" {
@@ -29,7 +33,9 @@ void Common::TearDownTestCase() {}
 
 void Common::SetUp() {}
 
-void Common::TearDown() {}
+void Common::TearDown() {
+  mindspore::serving::ServableStorage::Instance().servable_signatures_map_.clear();
+}
 
 }  // namespace UT
 

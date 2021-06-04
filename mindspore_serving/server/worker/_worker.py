@@ -22,17 +22,9 @@ from mindspore_serving.server.worker import init_mindspore
 from mindspore_serving._mindspore_serving import ExitSignalHandle_
 from mindspore_serving._mindspore_serving import Worker_
 from mindspore_serving._mindspore_serving import ServableContext_
-from .register.preprocess import preprocess_storage
-from .register.postprocess import postprocess_storage
 from .task import _start_py_task, _join_py_task
 
 _wait_and_clear_thread = None
-
-
-def _clear_python():
-    """Clear python storage data"""
-    preprocess_storage.clear()
-    postprocess_storage.clear()
 
 
 def _set_device_id(device_id):
@@ -55,7 +47,6 @@ def _start_wait_and_clear():
     def thread_func():
         Worker_.wait_and_clear()
         _join_py_task()
-        _clear_python()
         logger.info("Serving worker: exited ------------------------------------")
         print("Serving worker: exited ------------------------------------")
 
@@ -83,7 +74,6 @@ def stop():
 
     Worker_.stop_and_clear()
     _join_py_task()
-    _clear_python()
 
 
 def stop_on_except(func):

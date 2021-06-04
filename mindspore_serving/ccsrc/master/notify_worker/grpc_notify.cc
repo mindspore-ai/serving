@@ -55,14 +55,14 @@ Status GrpcNotifyWorker::DispatchAsync(const proto::PredictRequest &request, pro
            << worker_address_;
   }
   if (!client_) {
-    client_ = std::make_unique<MSPredictClient>(worker_address_);
+    client_ = std::make_unique<MSPredictClient>();
     client_->Start();
   }
   AsyncPredictCallback callback = [reply, on_finish](Status status) {
     GrpcTensorHelper::CreateReplyFromErrorMsg(status, reply);
     on_finish();
   };
-  client_->PredictAsync(request, reply, stub_.get(), callback);
+  client_->PredictAsync(request, reply, stub_.get(), callback, worker_address_);
   return SUCCESS;
 }
 

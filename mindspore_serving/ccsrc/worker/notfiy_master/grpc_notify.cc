@@ -60,6 +60,7 @@ Status GrpcNotifyMaster::Register(const WorkerRegSpec &worker_spec) {
   grpc::Status status = stub->Register(&context, request, &reply);
   if (status.ok()) {
     MSI_LOG(INFO) << "Register SUCCESS ";
+    is_running_ = true;
     return SUCCESS;
   }
   return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
@@ -67,10 +68,10 @@ Status GrpcNotifyMaster::Register(const WorkerRegSpec &worker_spec) {
 }
 
 Status GrpcNotifyMaster::Unregister() {
-  if (is_stoped_.load()) {
+  if (!is_running_) {
     return SUCCESS;
   }
-  is_stoped_ = true;
+  is_running_ = false;
   proto::ExitRequest request;
   request.set_address(worker_address_);
   MSI_LOG(INFO) << "Unregister to " << master_address_;

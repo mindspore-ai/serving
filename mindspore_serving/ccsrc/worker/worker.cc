@@ -46,11 +46,6 @@ Status Worker::RegisterWorker() {
   return status;
 }
 
-Status Worker::StartVersionController() {
-  // first disable auto updated
-  return SUCCESS;
-}
-
 Status Worker::RunAsync(const proto::PredictRequest &request, proto::PredictReply *reply, PredictOnFinish on_finish) {
   while (true) {
     if (worker_shared_lock_.try_lock_shared()) {
@@ -92,8 +87,6 @@ Status Worker::RunAsyncInner(const proto::PredictRequest &request, proto::Predic
   };
   return servable_context_.worker_service->Work(request_spec, instances_data, on_process_done);
 }
-
-void Worker::Update() {}
 
 Status Worker::StartGrpcServer(const std::string &server_address) {
   if (worker_grpc_server_ != nullptr) {
@@ -186,7 +179,7 @@ void Worker::Clear() {
   if (servable_context_.worker_service) {
     servable_context_.worker_service = nullptr;
   }
-  if (exit_notify_master_ && servable_started_) {
+  if (exit_notify_master_ && notify_master_) {
     notify_master_->Unregister();
   }
   if (worker_grpc_server_) {
@@ -201,7 +194,6 @@ void Worker::Clear() {
   cpp_preprocess_.Stop();
   cpp_postprocess_.Stop();
 
-  ServableStorage::Instance().Clear();
   MSI_LOG_INFO << "End clear worker session";
 }
 
