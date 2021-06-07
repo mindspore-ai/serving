@@ -27,7 +27,8 @@ MindSpore Serving是一个轻量级、高性能的服务模块，旨在帮助Min
 
 MindSpore Serving架构：
 
-当前MindSpore Serving服务节点分为client、master和worker三部分。client为客户端节点，用户可以直接通过gRPC或RESTful接口方式下发推理服务命令。执行机worker部署了模型服务Servable，这里的Servable可以是单个模型，也可以是多个模型的组合，一个Servable可以通过提供多种方法来提供不同的服务。master节点用来管理所有的执行机worker及其部署的模型信息，并进行任务管理与分发。master和worker可以部署在一个进程中，也可以部署在不同进程中。当前client和master不依赖特定硬件平台，worker节点支持GPU，Ascend 310和Ascend 910平台，后续会逐步支持CPU场景。  
+MindSpore Serving分为客户端、服务器两个部分。在客户端中，用户通过gRPC或RESTful接口向服务器下发推理服务命令。服务器包括主（`Main`）节点和一个或多个工作（`Worker`）节点，主节点管理所有的工作节点及其部署的模型信息，接受客户端的用户请求，并将请求分发给工作节点。每个工作节点部署了一个可服务对象，即`Servable`，这里的`Servable`可以是单个模型，也可以是多个模型的组合，一个`Servable`可以围绕相同的模型通过多种方法来提供不同的服务。客户端不依赖特定硬件平台，服务器支持GPU、Ascend 310和Ascend 910平台，后续会逐步支持CPU场景。  
+
 <img src="docs/architecture.png" alt="MindSpore Architecture" width="600"/>
 
 MindSpore Serving提供以下功能：
@@ -93,8 +94,7 @@ MindSpore Serving依赖MindSpore训练推理框架，安装完[MindSpore](https:
 执行以下命令，验证安装结果。导入Python模块不报错即安装成功：
 
 ```python
-from mindspore_serving import master
-from mindspore_serving import worker
+from mindspore_serving import server
 ```
 
 ### 配置环境变量
