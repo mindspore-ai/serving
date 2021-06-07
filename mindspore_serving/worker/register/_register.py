@@ -55,7 +55,7 @@ def call_preprocess_pipeline(preprocess_fun, *args):
         ...     y = register.call_servable(x1, x2)
         ...     return y
     """
-    return register.call_preprocess_pipeline(preprocess_fun=preprocess_fun, *args)
+    return register.call_preprocess_pipeline(preprocess_fun, *args)
 
 
 @deprecated("1.3.0", "mindspore_serving.server.register.call_preprocess")
@@ -84,7 +84,7 @@ def call_preprocess(preprocess_fun, *args):
         ...     y = register.call_servable(x1, x2)
         ...     return y
     """
-    return register.call_preprocess(preprocess_fun=preprocess_fun, *args)
+    return register.call_preprocess(preprocess_fun, *args)
 
 
 @deprecated("1.3.0", "mindspore_serving.server.register.call_servable")
@@ -132,7 +132,7 @@ def call_postprocess_pipeline(postprocess_fun, *args):
     Raises:
         RuntimeError: The type or value of the parameters is invalid, or other error happened.
     """
-    return register.call_postprocess_pipeline(postprocess_fun=postprocess_fun, *args)
+    return register.call_postprocess_pipeline(postprocess_fun, *args)
 
 
 @deprecated("1.3.0", "mindspore_serving.server.register.call_postprocess")
@@ -147,7 +147,7 @@ def call_postprocess(postprocess_fun, *args):
     Raises:
         RuntimeError: The type or value of the parameters is invalid, or other error happened.
     """
-    return register.call_postprocess(postprocess_fun=postprocess_fun, *args)
+    return register.call_postprocess(postprocess_fun, *args)
 
 
 @deprecated("1.3.0", "mindspore_serving.server.register.register_method")

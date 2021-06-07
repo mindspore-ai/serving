@@ -134,6 +134,16 @@ def _check_and_merge_config(configs):
                                    f"multiple configurations, device type: "
                                    f"{config.device_type} and {servable_device_types[config.device_type]}")
         else:
+            config_dir = os.path.join(config.servable_directory, config.servable_name)
+            if not os.path.isdir(config_dir):
+                raise RuntimeError(f"Check servable config failed, directory '{config_dir}' not exist, servable "
+                                   f"directory '{config.servable_directory}', servable name '{config.servable_name}'")
+
+            config_file = os.path.join(config_dir, "servable_config.py")
+            if not os.path.isfile(config_file):
+                raise RuntimeError(f"Check servable config failed, file '{config_file}' not exist,  servable directory "
+                                   f"'{config.servable_directory}', servable name '{config.servable_name}'")
+
             newest_version = get_newest_version_number(config)
             if newest_version == 0:
                 raise RuntimeError(f"There is no valid version of servable, servable directory: "

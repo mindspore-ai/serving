@@ -129,7 +129,7 @@ def start_grpc_server(address="0.0.0.0:5500", max_msg_mb_size=100, ssl_config=No
               processes on the same machine. {unix_domain_file_path} can be relative or absolute file path,
               but the directory where the file is located must already exist.
 
-        max_msg_mb_size (int): The maximum acceptable RESTful message size in megabytes(MB), default 100,
+        max_msg_mb_size (int): The maximum acceptable gRPC message size in megabytes(MB), default 100,
             value range [1, 512].
         ssl_config (SSLConfig): The server's ssl_config, if None, disabled ssl.
     Raises:

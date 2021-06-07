@@ -129,7 +129,7 @@ def serving_test(func):
             func(*args, **kwargs)
         except Exception:
             serving_logs_dir = os.path.join(os.getcwd(), "serving_logs")
-            os.system(f"ll {serving_logs_dir}/*.log && cat {serving_logs_dir}/*.log")
+            os.system(f"ls -l {serving_logs_dir}/*.log && cat {serving_logs_dir}/*.log")
             raise
         finally:
             server.master.context.set_max_enqueued_requests(10000)
