@@ -16,10 +16,11 @@
 
 import numpy as np
 
-from common import ServingTestBase, serving_test, create_client
+from common import ServingTestBase, serving_test, create_client, generate_cert
 from common import servable_config_import, servable_config_declare_servable, servable_config_preprocess_cast
 from common import servable_config_method_add_common, servable_config_method_add_cast
 from mindspore_serving import server
+from mindspore_serving.client import SSLConfig
 
 
 def create_multi_instances_fp32(instance_count):
@@ -168,6 +169,46 @@ def test_grpc_servable_content_success():
     instance_count = 3
     instances, y_data_list = create_multi_instances_fp32(instance_count)
     client = create_client("localhost:5500", base.servable_name, "add_common")
+    result = client.infer(instances)
+
+    print(result)
+    check_result(result, y_data_list)
+
+
+@serving_test
+def test_grpc_one_way_auth_success():
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    generate_cert()
+    ssl_config = server.SSLConfig(certificate="server.crt", private_key="server.key", custom_ca="ca.crt",
+                                  verify_client=False)
+    server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
+    server.start_grpc_server("0.0.0.0:5500", ssl_config=ssl_config)
+
+    ssl_config = SSLConfig(custom_ca="ca.crt")
+    client = create_client("0.0.0.0:5500", base.servable_name, "add_common", ssl_config=ssl_config)
+    instance_count = 3
+    instances, y_data_list = create_multi_instances_fp32(instance_count)
+    result = client.infer(instances)
+
+    print(result)
+    check_result(result, y_data_list)
+
+
+@serving_test
+def test_grpc_mutual_auth_success():
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    generate_cert(server_ip="127.0.0.1")
+    ssl_config = server.SSLConfig(certificate="server.crt", private_key="server.key", custom_ca="ca.crt",
+                                  verify_client=True)
+    server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
+    server.start_grpc_server("127.0.0.1:5500", ssl_config=ssl_config)
+
+    ssl_config = SSLConfig(certificate="client.crt", private_key="client.key", custom_ca="ca.crt")
+    client = create_client("127.0.0.1:5500", base.servable_name, "add_common", ssl_config=ssl_config)
+    instance_count = 3
+    instances, y_data_list = create_multi_instances_fp32(instance_count)
     result = client.infer(instances)
 
     print(result)

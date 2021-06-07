@@ -153,10 +153,21 @@ def serving_test(func):
     return wrap_test
 
 
-def create_client(address, servable_name, method_name, version_number=0):
-    client = Client(address, servable_name, method_name, version_number)
+def create_client(address, servable_name, method_name, version_number=0, ssl_config=None):
+    client = Client(address, servable_name, method_name, version_number, ssl_config)
     client_create_list.append(client)
     return client
+
+
+def generate_cert(server_ip="0.0.0.0", server_host_name="serving", common_name="serving.com"):
+    cur_dir = os.path.dirname(os.path.abspath(__file__))
+    shell_path = os.path.join(os.path.join(cur_dir, "../servable_config/"), "generate_certs.sh")
+    os.environ["SERVING_IP"] = server_ip
+    os.environ["SERVING_HOSTNAME"] = server_host_name
+    os.environ["SERVING_COMMON_NAME"] = common_name
+    with open(shell_path, 'r') as f:
+        command = f.read()
+    os.system(command)
 
 
 def release_client(client):
