@@ -30,7 +30,7 @@ def test_start_servable_servable_dir_invalid_failed():
             server.ServableStartConfig(base.servable_dir + "_error", base.servable_name, device_ids=0))
         assert False
     except RuntimeError as e:
-        assert "Start servables failed: There is no valid version of servable, " in str(e)
+        assert "Check servable config failed, directory " in str(e)
 
 
 # start_servable
@@ -43,7 +43,7 @@ def test_start_worker_no_servable_config_file_failed():
             server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0, version_number=0))
         assert False
     except RuntimeError as e:
-        assert "Load servable config failed, file " in str(e)
+        assert "Check servable config failed, file " in str(e)
 
 
 @serving_test
@@ -100,7 +100,7 @@ def test_start_servable_version_number_invalid_failed():
             server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0, version_number=2))
         assert False
     except RuntimeError as e:
-        assert "Start servables failed: There is no servable of the specified version number, " \
+        assert "There is no servable of the specified version number, " \
                "specified version number: " in str(e)
 
 
@@ -113,7 +113,7 @@ def test_start_servable_version_number_invalid2_failed():
             server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0, version_number=0))
         assert False
     except RuntimeError as e:
-        assert "Start servables failed: There is no valid version of servable, " in str(e)
+        assert "There is no valid version of servable, " in str(e)
 
 
 @serving_test

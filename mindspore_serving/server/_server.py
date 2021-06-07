@@ -13,7 +13,6 @@
 # limitations under the License.
 # ============================================================================
 """Interface for start up servable"""
-import logging
 import os
 import time
 import threading
@@ -73,8 +72,8 @@ def start_servables(servable_configs):
     try:
         servable_configs = merge_config(servable_configs)
     except RuntimeError as e:
-        logging.exception(e)
-        raise RuntimeError(f"Start servables failed: {str(e)}")
+        logger.error(f"Start servables failed: {str(e)}")
+        raise
     logger.info("Servable configs:")
     for config in servable_configs:
         if isinstance(config, ServableStartConfig):

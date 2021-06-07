@@ -56,7 +56,7 @@ Status ServableEndPoint::RegisterWorker(const ServableRegSpec &servable_spec, st
   for (auto &model_thread : model_thread_list_) {
     model_thread.second->AddWorker(worker->GetWorkerPid(), worker);
   }
-  MSI_LOG_INFO << "Register worker success, " << worker_repr_.repr
+  MSI_LOG_INFO << "Register to servable endpoint success, servable name: " << worker_repr_.servable_name
                << ", version number: " << servable_spec.version_number << ", methods: " << method_names
                << ", worker address: " << worker->GetWorkerAddress();
   return SUCCESS;
