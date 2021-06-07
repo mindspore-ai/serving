@@ -14,6 +14,7 @@
 # ============================================================================
 """test Serving, Common"""
 
+from multiprocessing import Process, Pipe
 import json
 import requests
 import numpy as np
@@ -59,14 +60,32 @@ def post_restful(address, servable_name, method_name, json_instances, version_nu
     instances_map = {"instances": json_instances}
     post_payload = json.dumps(instances_map)
     print("request:", post_payload[:200])
+
+    def post_request(request_url, post_payload, send_pipe):
+        try:
+            result = requests.post(request_url, data=post_payload)
+            print(f"result inner: {result}")
+            result = json.loads(result.text)
+            send_pipe.send(result)
+        # pylint: disable=broad-except
+        except Exception as e:
+            print(f"post failed: {e}")
+            send_pipe.send("post failed")
+
     if version_number is not None:
         request_url = f"http://{address}/model/{servable_name}/version/{version_number}:{method_name}"
-        result = requests.post(request_url, data=post_payload)
     else:
         request_url = f"http://{address}/model/{servable_name}:{method_name}"
-        result = requests.post(request_url, data=post_payload)
-    print("result", result.text[:200])
-    result = json.loads(result.text)
+
+    send_pipe, recv_pipe = Pipe()
+    sub_process = Process(target=post_request, args=(request_url, post_payload, send_pipe))
+    sub_process.start()
+    sub_process.join()
+    if recv_pipe.poll(0.1):
+        result = recv_pipe.recv()
+    else:
+        result = "post failed"
+    print(f"result outer: {result}")
     return result
 
 
