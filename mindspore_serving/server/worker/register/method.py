@@ -75,12 +75,13 @@ def _wrap_fun_to_pipeline(fun, input_count):
 def call_preprocess_pipeline(preprocess_fun, *args):
     r"""For method registration, define the preprocessing pipeline function and its' parameters.
 
-    A single request can include multiple instances, and multiple queued requests will also have multiple instances.
+    A single request can include multiple instances, so multiple queued requests will also have multiple instances.
     If you need to process multiple instances through multi thread or other parallel processing capability
     in `preprocess` or `postprocess`, such as using MindData concurrency ability to process multiple input
     images in `preprocess`, MindSpore Serving provides 'call_preprocess_pipeline' and 'call_pstprocess_pipeline'
     to register such preprocessing and postprocessing. For more detail,
-    please refer to `Resnet50 model configuration example <https://gitee.com/mindspore/serving/blob/master/example/resnet/resnet50/servable_config.py>`_.
+    please refer to `Resnet50 model configuration example
+    <https://gitee.com/mindspore/serving/blob/master/example/resnet/resnet50/servable_config.py>`_.
 
     Args:
         preprocess_fun (function): Python pipeline function for preprocess.
@@ -88,7 +89,7 @@ def call_preprocess_pipeline(preprocess_fun, *args):
             of implemented python function.
 
     Raises:
-        RuntimeError: The type or value of the parameters is invalid, or other error happened.
+        RuntimeError: The type or value of the parameters are invalid, or other error happened.
 
     Examples:
         >>> from mindspore_serving.server import register
@@ -148,7 +149,7 @@ def call_preprocess(preprocess_fun, *args):
             of implemented python function.
 
     Raises:
-        RuntimeError: The type or value of the parameters is invalid, or other error happened.
+        RuntimeError: The type or value of the parameters are invalid, or other error happened.
 
     Examples:
         >>> from mindspore_serving.server import register
@@ -207,7 +208,7 @@ def call_servable(*args):
         args: Model's inputs, the length of 'args' should be equal to the inputs number of model.
 
     Raises:
-        RuntimeError: The type or value of the parameters is invalid, or other error happened.
+        RuntimeError: The type or value of the parameters are invalid, or other error happened.
 
     Examples:
         >>> from mindspore_serving.server import register
@@ -242,7 +243,7 @@ def call_servable(*args):
 def call_postprocess_pipeline(postprocess_fun, *args):
     r"""For method registration, define the postprocessing pipeline function and its' parameters.
 
-    A single request can include multiple instances, and multiple queued requests will also have multiple instances.
+    A single request can include multiple instances, so multiple queued requests will also have multiple instances.
     If you need to process multiple instances through multi thread or other parallel processing capability
     in `preprocess` or `postprocess`, such as using MindData concurrency ability to process multiple input
     images in `preprocess`, MindSpore Serving provides 'call_preprocess_pipeline' and 'call_pstprocess_pipeline'
@@ -256,7 +257,7 @@ def call_postprocess_pipeline(postprocess_fun, *args):
             of implemented python function.
 
     Raises:
-        RuntimeError: The type or value of the parameters is invalid, or other error happened.
+        RuntimeError: The type or value of the parameters are invalid, or other error happened.
     """
     global method_def_context_
     if method_def_context_.postprocess_name:
@@ -293,7 +294,7 @@ def call_postprocess(postprocess_fun, *args):
             of implemented python function.
 
     Raises:
-        RuntimeError: The type or value of the parameters is invalid, or other error happened.
+        RuntimeError: The type or value of the parameters are invalid, or other error happened.
     """
     global method_def_context_
     if method_def_context_.postprocess_name:
@@ -384,11 +385,11 @@ def register_method(output_names):
     Preprocess and postprocess are optional.
 
     Args:
-        output_names (str, tuple or list of str): The output names of method. The input names is
+        output_names (Union[str, tuple[str], list[str]]): The output names of method. The input names is
             the args names of the registered function.
 
     Raises:
-        RuntimeError: The type or value of the parameters is invalid, or other error happened.
+        RuntimeError: The type or value of the parameters are invalid, or other error happened.
 
     Examples:
         >>> from mindspore_serving.server import register

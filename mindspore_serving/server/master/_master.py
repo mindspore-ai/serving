@@ -88,19 +88,19 @@ def stop_on_except(func):
 
 class SSLConfig:
     r"""
-    The server's ssl_config encapsulates necessary parameters for SSL-enabled connections
+    The server's ssl_config encapsulates necessary parameters for SSL-enabled connections.
 
     Args:
         certificate (str): File holding the PEM-encoded certificate chain as a byte string to use or None if no
             certificate chain should be used.
         private_key (str): File holding the PEM-encoded private key as a byte string, or None if no private key should
             be used.
-        custom_ca (str): File holding the PEM-encoded root certificates as a byte string, or None to retrieve them from
-            a default location.
-        verify_client (bool): If true, use mutual authentication, default one-way authentication.
-    Raises:
-        RuntimeError: The type or value of the parameters is invalid.
+        custom_ca (str, optional): File holding the PEM-encoded root certificates as a byte string, or None to retrieve
+            them from a default location.
+        verify_client (bool, optional): If true, use mutual authentication, default one-way authentication.
 
+    Raises:
+        RuntimeError: The type or value of the parameters are invalid.
     """
 
     def __init__(self, certificate, private_key, custom_ca=None, verify_client=False):
@@ -117,7 +117,7 @@ class SSLConfig:
 
 
 @stop_on_except
-def start_grpc_server(address="0.0.0.0:5500", max_msg_mb_size=100, ssl_config=None):
+def start_grpc_server(address, max_msg_mb_size=100, ssl_config=None):
     r"""
     Start gRPC server for the communication between serving client and server.
 
@@ -129,11 +129,13 @@ def start_grpc_server(address="0.0.0.0:5500", max_msg_mb_size=100, ssl_config=No
               processes on the same machine. {unix_domain_file_path} can be relative or absolute file path,
               but the directory where the file is located must already exist.
 
-        max_msg_mb_size (int): The maximum acceptable gRPC message size in megabytes(MB), default 100,
+        max_msg_mb_size (int, optional): The maximum acceptable gRPC message size in megabytes(MB), default 100,
             value range [1, 512].
-        ssl_config (SSLConfig): The server's ssl_config, if None, disabled ssl.
+        ssl_config (SSLConfig, optional): The server's ssl_config, if None, disabled ssl.
+
     Raises:
-        RuntimeError: Failed to start the RESTful server.
+        RuntimeError: Failed to start the gRPC server: parameter verification failed, the gRPC address is wrong or
+            the port is duplicate.
 
     Examples:
         >>> from mindspore_serving import server
@@ -163,22 +165,24 @@ def start_grpc_server(address="0.0.0.0:5500", max_msg_mb_size=100, ssl_config=No
 
 
 @stop_on_except
-def start_restful_server(address="0.0.0.0:1500", max_msg_mb_size=100, ssl_config=None):
+def start_restful_server(address, max_msg_mb_size=100, ssl_config=None):
     r"""
     Start RESTful server for the communication between serving client and server.
 
     Args:
         address (str): RESTful server address, the address should be Internet domain socket address.
-        max_msg_mb_size (int): The maximum acceptable RESTful message size in megabytes(MB), default 100,
+        max_msg_mb_size (int, optional): The maximum acceptable RESTful message size in megabytes(MB), default 100,
             value range [1, 512].
-        ssl_config (SSLConfig): The server's ssl_config, if None, disabled ssl.
+        ssl_config (SSLConfig, optional): The server's ssl_config, if None, disabled ssl.
+
     Raises:
-        RuntimeError: Failed to start the RESTful server.
+        RuntimeError: Failed to start the RESTful server: parameter verification failed, the RESTful address is wrong
+            or the port is duplicate.
 
     Examples:
         >>> from mindspore_serving import server
         >>>
-        >>> server.start_restful_server("0.0.0.0:1500")
+        >>> server.start_restful_server("0.0.0.0:5900")
     """
     check_type.check_str('address', address)
     check_type.check_int('max_msg_mb_size', max_msg_mb_size, 1, 512)

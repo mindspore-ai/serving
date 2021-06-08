@@ -29,7 +29,6 @@ service MSMaster {
 message ServableRegSpec {
   string name = 1;
   uint64 version_number = 2;
-  uint64 config_version_number = 3;
   uint64 batch_size = 4;
   message MethodInfo{
     string name = 1;

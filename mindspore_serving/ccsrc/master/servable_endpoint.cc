@@ -19,7 +19,7 @@
 namespace mindspore::serving {
 
 ServableEndPoint::ServableEndPoint(const ServableReprInfo &repr) : worker_repr_(repr) {
-  running_version_number_ = worker_repr_.config_version_number;
+  version_number_ = worker_repr_.version_number;
 }
 
 ServableEndPoint::~ServableEndPoint() { Clear(); }
@@ -37,8 +37,8 @@ Status ServableEndPoint::DispatchAsync(const proto::PredictRequest &request, pro
 
 Status ServableEndPoint::RegisterWorker(const ServableRegSpec &servable_spec, std::shared_ptr<WorkerContext> worker) {
   worker_contexts_.push_back(worker);
-  if (running_version_number_ == 0) {
-    running_version_number_ = servable_spec.version_number;
+  if (version_number_ == 0) {
+    version_number_ = servable_spec.version_number;
   }
   methods_ = servable_spec.methods;
   std::vector<std::string> method_names;
@@ -69,8 +69,8 @@ Status ServableEndPoint::UnregisterWorker(const std::string &worker_address) {
                          });
   if (it != worker_contexts_.end()) {
     auto worker = *it;
-    MSI_LOG_INFO << "Unregister worker success, " << worker_repr_.repr
-                 << ", version number: " << running_version_number_ << ", worker address: " << worker_address;
+    MSI_LOG_INFO << "Unregister worker success, " << worker_repr_.repr << ", version number: " << version_number_
+                 << ", worker address: " << worker_address;
     for (auto &model_thread : model_thread_list_) {
       model_thread.second->DelWorker(worker->GetWorkerPid());
     }
@@ -78,7 +78,7 @@ Status ServableEndPoint::UnregisterWorker(const std::string &worker_address) {
     return SUCCESS;
   }
   MSI_LOG_INFO << "Worker has already been unregistered, " << worker_repr_.repr
-               << ", version number: " << running_version_number_ << ", worker address: " << worker_address;
+               << ", version number: " << version_number_ << ", worker address: " << worker_address;
   return FAILED;
 }
 

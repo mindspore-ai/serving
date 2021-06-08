@@ -31,8 +31,7 @@ std::shared_ptr<ServableEndPoint> Dispatcher::GetWorkerEndpoint(const RequestSpe
   Status status;
   if (request_spec.version_number > 0) {
     auto item = find_if(servable_list_.begin(), servable_list_.end(), [&](const std::shared_ptr<ServableEndPoint> &v) {
-      return v->GetServableName() == request_spec.servable_name &&
-             v->GetRunningVersionNumber() == request_spec.version_number;
+      return v->GetServableName() == request_spec.servable_name && v->GetVersionNumber() == request_spec.version_number;
     });
     if (item != servable_list_.end()) {
       return *item;
@@ -42,9 +41,9 @@ std::shared_ptr<ServableEndPoint> Dispatcher::GetWorkerEndpoint(const RequestSpe
   uint64_t max_version_number = 0;
   std::shared_ptr<ServableEndPoint> endpoint = nullptr;
   for (const auto &item : servable_list_) {
-    if (item->GetServableName() == request_spec.servable_name && max_version_number < item->GetRunningVersionNumber()) {
+    if (item->GetServableName() == request_spec.servable_name && max_version_number < item->GetVersionNumber()) {
       endpoint = item;
-      max_version_number = item->GetRunningVersionNumber();
+      max_version_number = item->GetVersionNumber();
     }
   }
   return endpoint;
@@ -78,16 +77,12 @@ void Dispatcher::DispatchAsync(const proto::PredictRequest &request, proto::Pred
     status = DispatchAsyncInner(request, reply, callback);
   } catch (const std::bad_alloc &ex) {
     MSI_LOG(ERROR) << "Serving Error: malloc memory failed";
-    std::cout << "Serving Error: malloc memory failed" << std::endl;
   } catch (const std::runtime_error &ex) {
     MSI_LOG(ERROR) << "Serving Error: runtime error occurred: " << ex.what();
-    std::cout << "Serving Error: runtime error occurred: " << ex.what() << std::endl;
   } catch (const std::exception &ex) {
     MSI_LOG(ERROR) << "Serving Error: exception occurred: " << ex.what();
-    std::cout << "Serving Error: exception occurred: " << ex.what() << std::endl;
   } catch (...) {
     MSI_LOG(ERROR) << "Serving Error: exception occurred";
-    std::cout << "Serving Error: exception occurred";
   }
   MSI_LOG(INFO) << "Finish call service Eval";
 
@@ -135,7 +130,7 @@ Status Dispatcher::UnregisterServableCommon(const std::string &worker_address) {
   std::shared_ptr<ServableEndPoint> endpoint = nullptr;
   for (auto &item : servable_list_) {
     if (item->GetServableName() == servable_spec.servable_name &&
-        item->GetConfigVersionNumber() == servable_spec.config_version_number) {
+        item->GetVersionNumber() == servable_spec.version_number) {
       endpoint = item;
       break;
     }
@@ -171,7 +166,7 @@ Status Dispatcher::NotifyWorkerNotAlive(WorkerContext *worker_context) {
   std::shared_ptr<ServableEndPoint> endpoint = nullptr;
   for (auto &item : servable_list_) {
     if (item->GetServableName() == servable_spec.servable_name &&
-        item->GetConfigVersionNumber() == servable_spec.config_version_number) {
+        item->GetVersionNumber() == servable_spec.version_number) {
       endpoint = item;
       break;
     }
@@ -191,7 +186,7 @@ Status Dispatcher::NotifyWorkerNotAvailable(WorkerContext *worker_context) {
   std::shared_ptr<ServableEndPoint> endpoint = nullptr;
   for (auto &item : servable_list_) {
     if (item->GetServableName() == servable_spec.servable_name &&
-        item->GetConfigVersionNumber() == servable_spec.config_version_number) {
+        item->GetVersionNumber() == servable_spec.version_number) {
       endpoint = item;
       break;
     }
@@ -306,7 +301,7 @@ Status Dispatcher::RegisterWorkerContext(std::shared_ptr<WorkerContext> worker_c
   std::shared_ptr<ServableEndPoint> endpoint = nullptr;
   for (auto &item : servable_list_) {
     if (item->GetServableName() == servable_spec.servable_name &&
-        item->GetConfigVersionNumber() == servable_spec.config_version_number) {
+        item->GetVersionNumber() == servable_spec.version_number) {
       endpoint = item;
       break;
     }

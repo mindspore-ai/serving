@@ -27,7 +27,7 @@
 #include "worker/work_executor.h"
 #include "common/serving_common.h"
 #include "proto/ms_service.pb.h"
-#include "worker/notfiy_master/base_notify.h"
+#include "worker/notfiy_master/grpc_notify.h"
 #include "common/grpc_server.h"
 #include "worker/task_queue.h"
 #include "common/grpc_async_server.h"
@@ -54,19 +54,21 @@ class MS_API Worker {
   void Clear();
 
   Status RunAsync(const proto::PredictRequest &request, proto::PredictReply *reply, PredictOnFinish on_finish);
-  Status StartServable(std::shared_ptr<ServableBase> servable, std::shared_ptr<BaseNotifyMaster> notify_master);
+  Status StartServable(const std::shared_ptr<ServableBase> &servable, const std::string &master_address,
+                       const std::string &worker_address);
 
   Status StartGrpcServer(const std::string &server_address);
   Status StartDistributedGrpcServer(std::shared_ptr<DistributedServable> servable, const std::string &server_address);
 
   void StopServable(bool notify_master = true);
   bool IsRunning();
-  Status RegisterWorker();
+  Status RegisterWorker(const std::string &master_address, const std::string &worker_address);
 
   PyTaskQueueGroup &GetPyTaskQueueGroup() { return py_task_queue_group_; }
   size_t GetBatchSize() const;
   void PushPyPreprocessResult(std::vector<ResultInstance> outputs);
   void PushPyPostprocessResult(std::vector<ResultInstance> outputs);
+  void ClearOnSystemFailed(const Status &error_msg);
 
  private:
   uint64_t worker_pid = 0;
@@ -78,11 +80,13 @@ class MS_API Worker {
   std::atomic_bool exit_notify_master_ = true;
   std::atomic_bool servable_started_ = false;
   std::atomic_flag clear_flag_ = ATOMIC_FLAG_INIT;
-  std::shared_ptr<BaseNotifyMaster> notify_master_ = nullptr;
+  std::shared_ptr<GrpcNotifyMaster> notify_master_ = nullptr;
   std::shared_ptr<WorkerGrpcServer> worker_grpc_server_ = nullptr;
   std::shared_ptr<DistributedWorkerGrpcServer> distributed_grpc_server_ = nullptr;
 
   std::shared_mutex worker_shared_lock_;
+
+  Status StartServableInner(const std::shared_ptr<ServableBase> &servable);
 
   Status RunAsyncInner(const proto::PredictRequest &request, proto::PredictReply *reply, PredictOnFinish on_finish);
   bool CheckServableRequest(const RequestSpec &request_spec);

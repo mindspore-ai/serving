@@ -30,7 +30,7 @@ def set_max_enqueued_requests(max_enqueued_requests):
             Max infer number should be a positive integer.
 
     Raises:
-        RuntimeError: The type or value of the parameters is invalid, or other error happened.
+        RuntimeError: The type or value of the parameters are invalid, or other error happened.
     """
     check_type.check_int("max_enqueued_requests", max_enqueued_requests, 1)
     _context.set_max_enqueued_requests(max_enqueued_requests)

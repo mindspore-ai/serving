@@ -59,6 +59,7 @@ class MS_API DistributedServable : public ServableBase {
   std::vector<TensorInfo> GetInputInfos() const override;
   std::vector<TensorInfo> GetOutputInfos() const override;
   uint64_t GetBatchSize() const override;
+  std::string GetServableDirectory() const override;
   std::string GetServableName() const override;
   uint64_t GetServableVersion() const override;
   uint64_t GetConfigVersion() const override;
@@ -69,6 +70,7 @@ class MS_API DistributedServable : public ServableBase {
   DistributedServableConfig config_;
   std::atomic_bool config_loaded_ = false;
 
+  std::string servable_directory_;
   std::string servable_name_;
   uint64_t version_number_ = 0;
   std::atomic_bool model_loaded_ = false;

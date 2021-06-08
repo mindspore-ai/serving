@@ -194,8 +194,9 @@ def declare_servable(servable_file, model_format, with_batch_dim=True, options=N
         options (None, AclOptions, GpuOptions, map): Options of model, currently AclOptions, GpuOptions works.
         without_batch_dim_inputs (None, int, tuple or list of int): Index of inputs that without batch dim
             when with_batch_dim is True.
+
     Raises:
-        RuntimeError: The type or value of the parameters is invalid.
+        RuntimeError: The type or value of the parameters are invalid.
     """
     return register.declare_servable(servable_file=servable_file, model_format=model_format,
                                      with_batch_dim=with_batch_dim, options=options,

@@ -30,6 +30,9 @@ def declare_servable(rank_size, stage_size, with_batch_dim=True, without_batch_d
         without_batch_dim_inputs (None, int, tuple or list of int): Index of inputs that without batch dim
             when with_batch_dim is True.
 
+    Raises:
+        RuntimeError: The type or value of the parameters are invalid.
+
     Examples:
         >>> from mindspore_serving.server import distributed
         >>> distributed.declare_servable(rank_size=8, stage_size=1)

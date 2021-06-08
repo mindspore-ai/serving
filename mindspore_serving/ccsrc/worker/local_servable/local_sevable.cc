@@ -33,6 +33,8 @@ namespace mindspore::serving {
 
 LocalModelServable::~LocalModelServable() { Clear(); }
 
+std::string LocalModelServable::GetServableDirectory() const { return base_spec_.servable_directory; }
+
 std::string LocalModelServable::GetServableName() const { return servable_name_; }
 
 uint64_t LocalModelServable::GetServableVersion() const { return running_version_number_; }

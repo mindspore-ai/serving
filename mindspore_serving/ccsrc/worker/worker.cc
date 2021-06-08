@@ -15,11 +15,7 @@
  */
 
 #include "worker/worker.h"
-#include <atomic>
 #include <condition_variable>
-#include <set>
-#include <utility>
-#include <map>
 #include "pybind11/pybind11.h"
 #include "common/proto_tensor.h"
 #include "common/file_system_operation.h"
@@ -39,7 +35,8 @@ Worker &Worker::GetInstance() {
   return instance;
 }
 
-Status Worker::RegisterWorker() {
+Status Worker::RegisterWorker(const std::string &master_address, const std::string &worker_address) {
+  notify_master_ = std::make_shared<GrpcNotifyMaster>(master_address, worker_address);
   WorkerRegSpec worker_spec;
   worker_spec.servable_spec = servable_context_.servable_spec;
   auto status = notify_master_->Register(worker_spec);
@@ -107,10 +104,34 @@ Status Worker::StartDistributedGrpcServer(std::shared_ptr<DistributedServable> s
   return distributed_grpc_server_->Start(server_address, ssl_config, gRpcMaxMBMsgSize, "Distributed gRPC");
 }
 
-Status Worker::StartServable(std::shared_ptr<ServableBase> servable, std::shared_ptr<BaseNotifyMaster> notify_master) {
+Status Worker::StartServable(const std::shared_ptr<ServableBase> &servable, const std::string &master_address,
+                             const std::string &worker_address) {
+  auto status = StartServableInner(servable);
+  if (status != SUCCESS) {
+    return status;
+  }
+  status = RegisterWorker(master_address, worker_address);
+  if (status != SUCCESS) {
+    return status;
+  }
+  status = StartGrpcServer(worker_address);
+  if (status != SUCCESS) {
+    return status;
+  }
+  status = INFER_STATUS(SUCCESS) << "Serving: Start servable success, servable directory: '"
+                                 << servable->GetServableDirectory() << "', servable name: '"
+                                 << servable->GetServableName()
+                                 << "', version number: " << servable->GetServableVersion();
+  MSI_LOG_INFO << status.StatusMessage();
+  std::cout << status.StatusMessage() << std::endl;
+  return SUCCESS;
+}
+
+Status Worker::StartServableInner(const std::shared_ptr<ServableBase> &servable) {
   ExitSignalHandle::Instance().Start();  // handle ctrl+c to exit
   if (servable_started_) {
-    MSI_LOG_EXCEPTION << "A servable has been started, only one servable can run in a process currently.";
+    return INFER_STATUS_LOG_ERROR(FAILED)
+           << "A servable has been started, only one servable can run in a process currently.";
   }
   clear_flag_.clear();
 
@@ -119,7 +140,6 @@ Status Worker::StartServable(std::shared_ptr<ServableBase> servable, std::shared
   cpp_preprocess_.Start(2);
   cpp_postprocess_.Start(2);
 
-  notify_master_ = std::move(notify_master);
   auto servable_name = servable->GetServableName();
   ServableSignature signature;
   if (!ServableStorage::Instance().GetServableDef(servable_name, &signature)) {
@@ -135,7 +155,6 @@ Status Worker::StartServable(std::shared_ptr<ServableBase> servable, std::shared
   ServableRegSpec &servable_spec = servable_context.servable_spec;
   servable_spec.servable_name = servable_name;
   servable_spec.version_number = servable->GetServableVersion();
-  servable_spec.config_version_number = servable->GetConfigVersion();
   servable_spec.batch_size = servable->GetBatchSize();
   if (servable_spec.batch_size == 0) {  // with_batch_size=False
     servable_spec.batch_size = 1;
@@ -153,12 +172,6 @@ Status Worker::StartServable(std::shared_ptr<ServableBase> servable, std::shared
   servable_context.servable = servable;
 
   servable_context_ = servable_context;
-
-  status = RegisterWorker();
-  if (status != SUCCESS) {
-    MSI_LOG_ERROR << "Register worker failed";
-    return status;
-  }
   servable_started_ = true;
   return SUCCESS;
 }
@@ -237,6 +250,13 @@ void Worker::PushPyPostprocessResult(std::vector<ResultInstance> outputs) {
     return;
   }
   GetPyTaskQueuePostprocess()->PushTaskPyResult(outputs);
+}
+
+void Worker::ClearOnSystemFailed(const Status &error_msg) {
+  std::shared_lock<std::shared_mutex> lock(worker_shared_lock_);
+  if (servable_context_.worker_service) {
+    servable_context_.worker_service->ClearInstances(error_msg);
+  }
 }
 
 }  // namespace serving

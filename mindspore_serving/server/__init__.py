@@ -12,7 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-"""MindSpore Serving Server."""
+"""
+MindSpore Serving is a lightweight and high-performance service module that helps MindSpore developers efficiently
+deploy online inference services in the production environment.
+
+MindSpore Serving server API, which can be used to start servables, gRPC and RESTful server. A servable corresponds to
+the service provided by a model. The client sends inference tasks and receives inference results through gRPC and
+RESTful server.
+"""
 
 from .master import start_grpc_server, start_restful_server, stop, SSLConfig
 from ._server import start_servables, ServableStartConfig

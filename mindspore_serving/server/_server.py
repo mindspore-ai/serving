@@ -37,15 +37,16 @@ def start_servables(servable_configs):
 
     On Ascend 910 hardware platform, each copy of each servable owns one chip. Different servables or different versions
     of the same servable need to be deployed on different chips.
-    On Ascend 310 and GPU hardware platform, a chip can be shared, and different servables or different versions of
-    the same servable can be deployed on the same chip to realize chip reuse.
+    On Ascend 310 and GPU hardware platform, one chip can be shared by multi servables, and different servables or
+    different versions of the same servable can be deployed on the same chip to realize chip reuse.
 
     Args:
         servable_configs (Union[ServableStartConfig, list[ServableStartConfig], tuple[ServableStartConfig]]): The
             startup configs of one or more servables.
 
     Raises:
-        RuntimeError: Failed to start one or more servables.
+        RuntimeError: Failed to start one or more servables. For log of one servable, please refer to subdirectory
+            serving_logs.
 
     Examples:
         >>> import os
@@ -54,7 +55,8 @@ def start_servables(servable_configs):
         >>> servable_dir = os.path.abspath(".")
         >>> resnet_config = server.ServableStartConfig(servable_dir, "resnet", device_ids=(0,1))
         >>> add_config = server.ServableStartConfig(servable_dir, "add", device_ids=(2,3))
-        >>> server.start_servables(servable_configs=(resnet_config, add_config))
+        >>> server.start_servables(servable_configs=(resnet_config, add_config))  # press Ctrl+C to stop
+        >>> server.start_grpc_server("0.0.0.0:5500")
     """
     if isinstance(servable_configs, (ServableStartConfig, DistributedStartConfig)):
         servable_configs = (servable_configs,)

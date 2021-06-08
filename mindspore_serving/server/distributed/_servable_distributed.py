@@ -115,7 +115,7 @@ class DistributedContextData(ServableContextDataBase):
         return self.distributed_config_.servable_name
 
     @property
-    def config_version_number(self):
+    def version_number(self):
         return self.distributed_config_.version_number
 
     def to_string(self):

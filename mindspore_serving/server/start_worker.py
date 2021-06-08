@@ -83,6 +83,8 @@ def start_worker(servable_directory, servable_name, version_number,
     except FileExistsError:
         pass
     worker_address = f"unix:{unix_socket_dir}/serving_worker_{servable_name}_device{device_id}_{worker_pid}"
+    if len(worker_address) > 107:  # maximum unix domain socket address length
+        worker_address = worker_address[:50] + "___" + worker_address[-50:]
     try:
         worker.start_servable(servable_directory=servable_directory, servable_name=servable_name,
                               version_number=version_number, device_type=device_type, device_id=device_id,

@@ -26,39 +26,21 @@
 
 namespace mindspore::serving {
 
-void PyWorker::OnEndStartServable(const std::string &servable_directory, const std::string &servable_name,
-                                  uint32_t spec_version_number, uint32_t started_version_number) {
-  auto status = INFER_STATUS(SUCCESS) << "Serving: Start servable success, servable directory: '" << servable_directory
-                                      << "', servable name: '" << servable_name
-                                      << "', specified version number: " << spec_version_number
-                                      << ", started version numbers: " << started_version_number;
-  MSI_LOG_INFO << status.StatusMessage();
-  std::cout << status.StatusMessage() << std::endl;
-}
-
 void PyWorker::StartServable(const std::string &model_directory, const std::string &model_name, uint32_t version_number,
                              const std::string &master_address, const std::string &worker_address) {
   if (Worker::GetInstance().IsRunning()) {
     MSI_LOG_EXCEPTION << "A servable has been started, only one servable can run in a process currently.";
   }
-
-  auto notify_master = std::make_shared<GrpcNotifyMaster>(master_address, worker_address);
   auto servable = std::make_shared<LocalModelServable>();
   auto status = servable->StartServable(model_directory, model_name, version_number);
   if (status != SUCCESS) {
     servable->Clear();
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
-  status = Worker::GetInstance().StartServable(servable, notify_master);
+  status = Worker::GetInstance().StartServable(servable, master_address, worker_address);
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
-  // start grpc server
-  status = Worker::GetInstance().StartGrpcServer(worker_address);
-  if (status != SUCCESS) {
-    MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
-  }
-  OnEndStartServable(model_directory, model_name, version_number, servable->GetServableVersion());
 }
 
 void PyWorker::StartDistributedServable(const std::string &servable_directory, const std::string &servable_name,
@@ -76,24 +58,16 @@ void PyWorker::StartDistributedServable(const std::string &servable_directory, c
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
 
-  auto notify_master = std::make_shared<GrpcNotifyMaster>(master_address, worker_address);
   status = servable->StartServable(servable_directory, servable_name, rank_table_json_file, version_number,
                                    wait_agents_time_in_seconds);
   if (status != SUCCESS) {
     servable->Clear();
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
-  status = Worker::GetInstance().StartServable(servable, notify_master);
+  status = Worker::GetInstance().StartServable(servable, master_address, worker_address);
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
-  // start grpc server
-
-  status = Worker::GetInstance().StartGrpcServer(worker_address);
-  if (status != SUCCESS) {
-    MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
-  }
-  OnEndStartServable(servable_directory, servable_name, version_number, servable->GetServableVersion());
 }
 
 TaskItem PyWorker::GetPyTask() {
@@ -156,6 +130,14 @@ void PyWorker::PushPostprocessPyFailed(int count) {
     results.push_back(result_instance);
   }
   Worker::GetInstance().PushPyPostprocessResult(results);
+}
+
+void PyWorker::PushPreprocessPySystemFailed() {
+  Worker::GetInstance().ClearOnSystemFailed(Status(SYSTEM_ERROR, "Preprocess Failed"));
+}
+
+void PyWorker::PushPostprocessPySystemFailed() {
+  Worker::GetInstance().ClearOnSystemFailed(Status(SYSTEM_ERROR, "Postprocess Failed"));
 }
 
 void PyWorker::WaitAndClear() {

@@ -47,6 +47,8 @@ class MS_API PyWorker {
 
   static void PushPostprocessPyResult(const py::tuple &output_batch);
   static void PushPostprocessPyFailed(int count);
+  static void PushPreprocessPySystemFailed();
+  static void PushPostprocessPySystemFailed();
 
   static std::string GetDeviceType();
   // for grpc notify failed of worker
