@@ -44,6 +44,7 @@ class MS_API LocalModelServable : public ServableBase {
   Status StartServable(const std::string &servable_directory, const std::string &servable_name,
                        uint64_t version_number);
   Status InitDevice(ModelType model_type, const std::map<std::string, std::string> &other_options);
+  std::string GetServableDirectory() const override;
   std::string GetServableName() const override;
   uint64_t GetServableVersion() const override;
   uint64_t GetConfigVersion() const override;

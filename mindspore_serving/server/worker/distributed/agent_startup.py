@@ -424,21 +424,25 @@ def _get_worker_distributed_config(distributed_address):
 def startup_agents(distributed_address, model_files, group_config_files=None,
                    agent_start_port=7000, agent_ip=None, rank_start=None):
     r"""
-    Start up all needed worker agent on current machine.
+    Start up all needed agents on current machine.
 
     Args:
         distributed_address (str): The distributed worker address the agents linked to.
-        model_files (list or tuple of str): All model files need in current machine, absolute path or path relative to
-            this startup python script.
-        group_config_files (None, list or tuple of str): All group config files need in current machine, absolute path
-            or path relative to this startup python script, default None, which means there are no configuration files.
-        agent_start_port (int): The starting agent port of the agents link to worker.
-        agent_ip (str or None): The local agent ip, if it's None, the agent ip will be obtained from rank table file.
+        model_files (Union[list[str], tuple[str]]): All model files need in current machine, absolute path or path
+            relative to this startup python script.
+        group_config_files (Union[list[str], tuple[str]], optional): All group config files need in current machine,
+            absolute path or path relative to this startup python script, default None, which means there are no
+            configuration files.
+        agent_start_port (int, optional): The starting agent port of the agents link to worker. Default 7000.
+        agent_ip (str, optional): The local agent ip, if it's None, the agent ip will be obtained from rank table file.
             Default None. Parameter agent_ip and parameter rank_start must have values at the same time,
             or both None at the same time.
-        rank_start (int or None): The starting rank id of this machine, if it's None, the rank ip will be obtained from
-            rank table file. Default None. Parameter agent_ip and parameter rank_start must have values at the same
+        rank_start (int, optional): The starting rank id of this machine, if it's None, the rank ip will be obtained
+            from rank table file. Default None. Parameter agent_ip and parameter rank_start must have values at the same
             time, or both None at the same time.
+
+    Raises:
+        RuntimeError: Failed to start agents.
 
     Examples:
         >>> import os

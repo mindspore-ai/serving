@@ -41,8 +41,7 @@ class ServableEndPoint {
   void Clear();
 
   std::string GetServableName() const { return worker_repr_.servable_name; }
-  uint64_t GetRunningVersionNumber() const { return running_version_number_; }
-  uint64_t GetConfigVersionNumber() const { return worker_repr_.config_version_number; }
+  uint64_t GetVersionNumber() const { return version_number_; }
   std::vector<ServableMethodInfo> GetMethods() const { return methods_; }
 
  private:
@@ -50,7 +49,7 @@ class ServableEndPoint {
   ServableReprInfo worker_repr_;
   std::vector<ServableMethodInfo> methods_;
   std::vector<std::shared_ptr<WorkerContext>> worker_contexts_;
-  uint32_t running_version_number_ = 0;
+  uint32_t version_number_ = 0;
 };
 
 }  // namespace mindspore::serving

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-"""MindSpore Serving Client"""
+"""MindSpore Serving Client API, which can be used to access the Serving Server through gRPC"""
 
 from .python.client import Client
 from .python.client import SSLConfig

@@ -24,11 +24,10 @@
 #include "worker/postprocess.h"
 #include "mindspore_serving/ccsrc/common/tensor.h"
 #include "common/buffer_tensor.h"
+#include "worker/worker.h"
 
 namespace mindspore {
 namespace serving {
-
-#define NO_THREAD_POOL
 
 WorkExecutor::WorkExecutor(std::shared_ptr<TaskQueue> py_preprocess_task_queue,
                            std::shared_ptr<TaskQueue> py_postprocess_task_queue,
@@ -44,7 +43,7 @@ WorkExecutor::WorkExecutor(std::shared_ptr<TaskQueue> py_preprocess_task_queue,
 
 WorkExecutor::~WorkExecutor() {
   predict_thread_.Stop();
-  ClearInstances();
+  ClearInstances(Status(WORKER_UNAVAILABLE, "Servable stopped"));
 }
 
 Status WorkExecutor::CheckServableSignature() {
@@ -631,9 +630,8 @@ uint64_t WorkExecutor::GetNextUserId() {
 
 uint32_t WorkExecutor::GetWorkerId() const { return worker_id_; }
 
-void WorkExecutor::ClearInstances() {
+void WorkExecutor::ClearInstances(Status error_msg) {
   std::unique_lock<std::mutex> lock(infer_session_map_mutex_);
-  Status error_msg = Status(WORKER_UNAVAILABLE, "Servable stopped");
   for (auto &item : infer_session_map_) {
     auto &infer_session = item.second;
     for (auto &instance : infer_session.instances) {
@@ -643,6 +641,7 @@ void WorkExecutor::ClearInstances() {
     }
     item.second.call_back(item.second.instances);
   }
+  infer_session_map_.clear();
 }
 
 }  // namespace serving

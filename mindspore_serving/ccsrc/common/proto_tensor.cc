@@ -183,7 +183,6 @@ void GrpcTensorHelper::GetWorkerSpec(const proto::RegisterRequest &request, Work
   auto &servable_spec = worker_spec->servable_spec;
   servable_spec.servable_name = proto_spec.name();
   servable_spec.version_number = proto_spec.version_number();
-  servable_spec.config_version_number = proto_spec.config_version_number();
   servable_spec.batch_size = proto_spec.batch_size();
   for (const auto &proto_method : proto_spec.methods()) {
     ServableMethodInfo method_info;

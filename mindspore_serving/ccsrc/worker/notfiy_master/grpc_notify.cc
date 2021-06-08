@@ -39,7 +39,6 @@ Status GrpcNotifyMaster::Register(const WorkerRegSpec &worker_spec) {
   auto proto_spec = proto_worker_spec->mutable_servable_spec();
   proto_spec->set_name(spec.servable_name);
   proto_spec->set_version_number(spec.version_number);
-  proto_spec->set_config_version_number(spec.config_version_number);
   proto_spec->set_batch_size(spec.batch_size);
   for (auto &method : spec.methods) {
     auto proto_method = proto_spec->add_methods();

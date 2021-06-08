@@ -61,7 +61,6 @@ std::shared_ptr<WorkerContext> InitWorkerContext(proto::PredictReply *reply = nu
   WorkerRegSpec spec;
   spec.worker_pid = 1;
   spec.servable_spec.servable_name = "test_servable";
-  spec.servable_spec.config_version_number = 1;
   spec.servable_spec.version_number = 1;
   spec.servable_spec.batch_size = 1;
   spec.servable_spec.methods.push_back(ServableMethodInfo{"add_cast", {}});

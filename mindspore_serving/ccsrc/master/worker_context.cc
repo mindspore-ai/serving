@@ -21,12 +21,11 @@
 namespace mindspore::serving {
 
 // from py
-std::shared_ptr<WorkerContext> WorkerContext::PyInitWorkerContext(std::string servable_name,
-                                                                  uint32_t config_version_number, std::string repr,
-                                                                  uint64_t worker_pid) {
+std::shared_ptr<WorkerContext> WorkerContext::PyInitWorkerContext(std::string servable_name, uint32_t version_number,
+                                                                  std::string repr, uint64_t worker_pid) {
   ServableReprInfo servable_repr;
   servable_repr.servable_name = servable_name;
-  servable_repr.config_version_number = config_version_number;
+  servable_repr.version_number = version_number;
   servable_repr.repr = repr;
   return Server::Instance().GetDispatcher()->InitWorkerContext(servable_repr, worker_pid);
 }

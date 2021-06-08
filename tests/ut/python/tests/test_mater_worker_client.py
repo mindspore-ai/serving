@@ -199,11 +199,7 @@ def add_cast(x1, x2):
     result = client.infer(instances)
 
     print(result)
-    if "error" in result:
-        assert "Preprocess Failed" in str(result["error"])
-    else:
-        assert len(result) == 3
-        assert "Preprocess Failed" in str(result[0]["error"])
+    assert "Preprocess Failed" in str(result["error"])
 
 
 @serving_test
@@ -231,11 +227,7 @@ def add_cast(x1, x2):
     result = client.infer(instances)
 
     print(result)
-    if "error" in result:
-        assert "Postprocess Failed" in str(result["error"])
-    else:
-        assert len(result) == 3
-        assert "Postprocess Failed" in str(result[0]["error"])
+    assert "Postprocess Failed" in str(result["error"])
 
 
 @serving_test
@@ -341,8 +333,7 @@ def add_common(x1, x2):
     client = create_client("localhost:5500", base.servable_name, "add_common")
     result = client.infer(instances)
     print(result)
-    assert len(result) == instance_count
-    assert "Postprocess Failed" in str(result[1]["error"]) or "servable is not available" in str(result[1]["error"])
+    assert "Postprocess Failed" in str(result["error"])
 
 
 @serving_test
@@ -422,12 +413,7 @@ def add_common(x1, x2):
     client = create_client("localhost:5500", base.servable_name, "add_common")
     result = client.infer(instances)
     print(result)
-    if "error" in result:
-        assert "Postprocess Failed" in str(result["error"])
-    else:
-        assert len(result) == instance_count
-        assert "Postprocess Failed" in str(result[0]["error"]) or "servable is not available" in str(result[0]["error"])
-        assert "Postprocess Failed" in str(result[1]["error"]) or "servable is not available" in str(result[1]["error"])
+    assert "Postprocess Failed" in str(result["error"])
 
 
 @serving_test
@@ -510,9 +496,7 @@ def add_common(x1, x2):
     client = create_client("localhost:5500", base.servable_name, "add_common")
     result = client.infer(instances)
     print(result)
-    assert len(result) == instance_count
-
-    assert "Preprocess Failed" in str(result[2]["error"]) or "servable is not available" in str(result[2]["error"])
+    assert "Preprocess Failed" in str(result["error"])
 
 
 @serving_test
@@ -593,13 +577,7 @@ def add_common(x1, x2):
     client = create_client("localhost:5500", base.servable_name, "add_common")
     result = client.infer(instances)
     print(result)
-    if "error" in result:
-        assert "Preprocess Failed" in str(result["error"])
-    else:
-        assert len(result) == instance_count
-        assert "Preprocess Failed" in str(result[0]["error"]) or "servable is not available" in str(result[0]["error"])
-        assert "Preprocess Failed" in str(result[1]["error"]) or "servable is not available" in str(result[1]["error"])
-        assert "Preprocess Failed" in str(result[2]["error"]) or "servable is not available" in str(result[2]["error"])
+    assert "Preprocess Failed" in str(result["error"])
 
 
 @serving_test

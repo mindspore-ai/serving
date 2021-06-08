@@ -32,7 +32,7 @@ def start_servable(servable_directory, servable_name, rank_table_json_file, vers
             starting from 1, and 0 means to load the latest version. Default: 0.
         rank_table_json_file (str): The ranke table json file name.
         distributed_address (str): The distributed worker address the worker agents linked to.
-        wait_agents_time_in_seconds(int): The maximum time in seconds the worker waiting ready of all agents,
+        wait_agents_time_in_seconds(int, optional): The maximum time in seconds the worker waiting ready of all agents,
             0 means unlimited time, default 0
 
     Raises:

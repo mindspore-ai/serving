@@ -35,7 +35,7 @@ class ServableContextDataBase:
         raise NotImplementedError
 
     @property
-    def config_version_number(self):
+    def version_number(self):
         raise NotImplementedError
 
     def to_string(self):
@@ -59,7 +59,7 @@ class WorkerContext:
         self.worker_pid_ = worker_pid
         self.last_not_alive_time_ = None
         self.is_in_process_switching_ = False
-        self.context = WorkerContext_.init_worker(context_data.servable_name, context_data.config_version_number,
+        self.context = WorkerContext_.init_worker(context_data.servable_name, context_data.version_number,
                                                   context_data.to_string(), worker_pid)
 
     @property

@@ -70,6 +70,10 @@ class PyTask:
         """Base method to push failed result"""
         raise NotImplementedError
 
+    def push_system_failed_impl(self):
+        """Base method to push failed result"""
+        raise NotImplementedError
+
     def push_result_batch_impl(self, result_batch):
         """Base method to push success result"""
         raise NotImplementedError
@@ -83,6 +87,10 @@ class PyTask:
         self.push_result_batch()  # push success first
         self.push_failed_impl(count)
         self.index += count
+
+    def push_system_failed(self):
+        """Push failed result"""
+        self.push_system_failed_impl()
 
     def push_result_batch(self):
         """Push success result"""
@@ -152,13 +160,12 @@ class PyTask:
 
             except StopIteration:
                 result_count = self.index + len(self.result_batch)
-                self.push_failed(instances_size - result_count)
+                self.push_system_failed()
                 raise RuntimeError(
                     f"expecting '{self.task_name}' yield count {result_count} equal to "
                     f"instance size {instances_size}")
             except ServingSystemException as e:
-                result_count = self.index + len(self.result_batch)
-                self.push_failed(instances_size - result_count)
+                self.push_system_failed()
                 raise e
             except ServingExitException as e:
                 raise e
@@ -172,6 +179,8 @@ class PyTask:
 
     def _handle_task(self, instance_list):
         """Continue to handle task on new task or task exception happened"""
+        if not instance_list:
+            return None
         try:
             outputs = self.task_info["fun"](instance_list)
             return outputs
@@ -179,8 +188,8 @@ class PyTask:
         except Exception as e:
             logger.warning(f"{self.task_name} invoke catch exception: ")
             logging.exception(e)
-            self.push_failed(len(instance_list))
-            return None
+            self.push_system_failed()
+            raise
 
     def _handle_result(self, output):
         """Further processing results of preprocess or postprocess"""
@@ -204,6 +213,10 @@ class PyPreprocess(PyTask):
         """Push failed preprocess result to c++ env"""
         Worker_.push_preprocess_failed(count)
 
+    def push_system_failed_impl(self):
+        """Push failed preprocess result to c++ env"""
+        Worker_.push_preprocess_system_failed()
+
     def push_result_batch_impl(self, result_batch):
         """Push success preprocess result to c++ env"""
         Worker_.push_preprocess_result(result_batch)
@@ -222,6 +235,10 @@ class PyPostprocess(PyTask):
     def push_failed_impl(self, count):
         """Push failed postprocess result to c++ env"""
         Worker_.push_postprocess_failed(count)
+
+    def push_system_failed_impl(self):
+        """Push failed preprocess result to c++ env"""
+        Worker_.push_postprocess_system_failed()
 
     def push_result_batch_impl(self, result_batch):
         """Push success postprocess result to c++ env"""

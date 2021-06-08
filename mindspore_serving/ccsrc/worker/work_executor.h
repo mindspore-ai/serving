@@ -56,6 +56,8 @@ class WorkExecutor : public std::enable_shared_from_this<WorkExecutor> {
   static uint64_t GetNextUserId();
   uint32_t GetWorkerId() const;
 
+  void ClearInstances(Status error_msg);
+
  private:
   std::set<std::string> python_preprocess_names_;
   std::set<std::string> python_postprocess_names_;
@@ -77,8 +79,6 @@ class WorkExecutor : public std::enable_shared_from_this<WorkExecutor> {
 
   std::map<uint64_t, InferSession> infer_session_map_;
   std::mutex infer_session_map_mutex_;
-
-  void ClearInstances();
 
   Status CheckServableSignature();
 

@@ -27,22 +27,27 @@ class ServableStartConfig:
     r"""
     Servable startup configuration.
 
+    For more detail, please refer to
+    `MindSpore-based Inference Service Deployment
+     <https://www.mindspore.cn/tutorial/inference/zh-CN/master/serving_example.html>`_ and
+    `Servable Provided Through Model Configuration
+     <https://www.mindspore.cn/tutorial/inference/zh-CN/master/serving_model.html>`_.
+
     Args:
         servable_directory (str): The directory where the servable is located in. There expects to has a directory
-            named `servable_name`. For more detail:
-            `How to config Servable <https://www.mindspore.cn/tutorial/inference/zh-CN/master/serving_model.html>`_ .
+            named `servable_name`.
         servable_name (str): The servable name.
         device_ids (Union[int, list[int], tuple[int]]): The device list the model loads into and runs in.
         version_number (int, optional): Servable version number to be loaded. The version number should be a positive
             integer, starting from 1, and 0 means to load the latest version. Default: 0.
-        device_type (str, optional): Currently only supports "Ascend", "Davinci", "GPU" and None, Default: None.
-            - "Ascend": means the device type can be Ascend910 or Ascend310, etc.
-            - "Davinci": has the same meaning as "Ascend".
-            - "GPU": indicates that it is expected to run on GPU hardware.
-            - None: means the device type is determined by the MindSpore environment.
+        device_type (str, optional): Currently supports "Ascend", "GPU" and None, Default: None.
+
+            - "Ascend": the platform expected to be Ascend910 or Ascend310, etc.
+            - "GPU": the platform expected to be Nvidia GPU.
+            - None: the platform is determined by the MindSpore environment.
 
     Raises:
-        RuntimeError: Input parameters are invalid.
+        RuntimeError: The type or value of the parameters are invalid.
     """
 
     def __init__(self, servable_directory, servable_name, device_ids, version_number=0, device_type=None):
@@ -53,7 +58,7 @@ class ServableStartConfig:
 
         self.servable_directory_ = servable_directory
         self.servable_name_ = servable_name
-        self.config_version_number_ = version_number
+        self.version_number_ = version_number
 
         self.device_ids_ = check_type.check_and_as_int_tuple_list("device_ids", device_ids, 0)
         if device_type is not None:
@@ -72,7 +77,7 @@ class ServableStartConfig:
 
     @property
     def version_number(self):
-        return self.config_version_number_
+        return self.version_number_
 
     @property
     def device_type(self):
@@ -220,7 +225,7 @@ class ServableContextData(ServableContextDataBase):
         return self.servable_config.servable_name
 
     @property
-    def config_version_number(self):
+    def version_number(self):
         return self.servable_config.version_number
 
     def to_string(self):
@@ -249,7 +254,7 @@ class ServableContextData(ServableContextDataBase):
         write_mode = "w" if self.log_new_file else "a"
         self.log_new_file = False
         log_file_name = f"{serving_logs_dir}/log_{servable_config.servable_name}_device{self.device_id}" \
-                        f"_version{self.config_version_number}.log"
+                        f"_version{self.version_number}.log"
         with open(log_file_name, write_mode) as fp:
             sub = subprocess.Popen(args=args, shell=False, stdout=fp, stderr=fp)
         return sub.pid

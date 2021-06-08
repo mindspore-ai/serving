@@ -28,14 +28,6 @@
 
 namespace mindspore::serving {
 
-struct ServableStartConfig {
-  std::string servable_directory;
-  std::string servable_name;
-  uint32_t config_version_number = 0;
-  std::string device_type;
-  std::vector<uint32_t> device_ids;
-};
-
 class ServableEndPoint;
 
 enum WorkerStatus {
@@ -49,7 +41,7 @@ enum WorkerStatus {
 
 struct ServableReprInfo {
   std::string servable_name;
-  uint32_t config_version_number = 0;
+  uint32_t version_number = 0;
   std::string repr;
 };
 
@@ -72,7 +64,7 @@ class MS_API WorkerContext : public std::enable_shared_from_this<WorkerContext> 
 
   void InitServableReprInfo(const ServableReprInfo &repr) { servable_repr_ = repr; }
   // from py
-  static std::shared_ptr<WorkerContext> PyInitWorkerContext(std::string servable_name, uint32_t config_version_number,
+  static std::shared_ptr<WorkerContext> PyInitWorkerContext(std::string servable_name, uint32_t version_number,
                                                             std::string repr, uint64_t worker_pid);
   void PyNotifyNotAlive();
   void PyNotifyStartFailed(const std::string &notified_error);

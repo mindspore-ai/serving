@@ -248,7 +248,14 @@ void ModelThread::SendTasks() {
     }
     // send request
     PredictOnFinish callback = [context, worker, this]() {
-      if (context->reply.error_msg_size() == 1 && context->reply.error_msg(0).error_code() == WORKER_UNAVAILABLE) {
+      bool worker_not_available = false;
+      for (auto &error : context->reply.error_msg()) {
+        if (error.error_code() == WORKER_UNAVAILABLE) {
+          worker_not_available = true;
+          break;
+        }
+      }
+      if (worker_not_available) {
         worker->NotifyNotAvailable();
       } else {
         Commit(context);

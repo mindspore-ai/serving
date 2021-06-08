@@ -24,7 +24,10 @@
 #include <vector>
 #include "common/common_test.h"
 #include "master/server.h"
+
+#define private public
 #include "worker/worker.h"
+#undef private
 #include "worker/notfiy_master/base_notify.h"
 #include "worker/context.h"
 #include "worker/local_servable/local_sevable.h"
@@ -115,7 +118,7 @@ class TestMasterWorker : public UT::Common {
     if (status != SUCCESS) {
       return status;
     }
-    status = Worker::GetInstance().StartServable(servable, notify_master);
+    status = Worker::GetInstance().StartServableInner(servable);
     return status;
   }
   static void DeclareServable(const std::string &servable_name, const std::string &servable_file,

@@ -37,6 +37,8 @@ struct DistributedPredictMsg {
 
 DistributedServable::~DistributedServable() { Clear(); }
 
+std::string DistributedServable::GetServableDirectory() const { return servable_directory_; }
+
 std::string DistributedServable::GetServableName() const { return servable_name_; }
 
 uint64_t DistributedServable::GetServableVersion() const { return version_number_; }
@@ -223,6 +225,7 @@ Status DistributedServable::StartServable(const std::string &servable_directory,
   if (model_loaded_) {
     MSI_LOG_EXCEPTION << "Model has loaded";
   }
+  servable_directory_ = servable_directory;
   version_number_ = version_number;
   servable_name_ = servable_name;
   rank_table_json_file_ = rank_table_json_file;

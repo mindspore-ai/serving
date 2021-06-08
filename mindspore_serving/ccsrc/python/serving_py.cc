@@ -134,14 +134,6 @@ void PyRegMaster(pybind11::module *m_ptr) {
     .def_static("wait_and_clear", &PyMaster::WaitAndClear)
     .def_static("stop_and_clear", &PyMaster::StopAndClear);
 
-  py::class_<ServableStartConfig>(m, "ServableStartConfig_")
-    .def(py::init<>())
-    .def_readwrite("servable_directory", &ServableStartConfig::servable_directory)
-    .def_readwrite("servable_name", &ServableStartConfig::servable_name)
-    .def_readwrite("config_version_number", &ServableStartConfig::config_version_number)
-    .def_readwrite("device_type", &ServableStartConfig::device_type)
-    .def_readwrite("device_ids", &ServableStartConfig::device_ids);
-
   py::class_<WorkerContext, std::shared_ptr<WorkerContext>>(m, "WorkerContext_")
     .def_static("init_worker", &WorkerContext::PyInitWorkerContext)
     .def("has_error_notified", &WorkerContext::HasErrorNotified)
@@ -195,8 +187,10 @@ void PyRegWorker(pybind11::module *m_ptr) {
     .def_static("try_get_postprocess_py_task", &PyWorker::TryGetPostprocessPyTask)
     .def_static("push_preprocess_result", &PyWorker::PushPreprocessPyResult)
     .def_static("push_preprocess_failed", &PyWorker::PushPreprocessPyFailed)
+    .def_static("push_preprocess_system_failed", &PyWorker::PushPreprocessPySystemFailed)
     .def_static("push_postprocess_result", &PyWorker::PushPostprocessPyResult)
     .def_static("push_postprocess_failed", &PyWorker::PushPostprocessPyFailed)
+    .def_static("push_postprocess_system_failed", &PyWorker::PushPostprocessPySystemFailed)
     .def_static("get_device_type", &PyWorker::GetDeviceType)
     .def_static("notify_failed", &PyWorker::NotifyFailed);
 

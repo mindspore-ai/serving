@@ -69,7 +69,6 @@ struct ServableMethodInfo {
 struct ServableRegSpec {
   std::string servable_name;
   uint64_t version_number = 0;
-  uint64_t config_version_number = 0;
   uint64_t batch_size = 0;
   std::vector<ServableMethodInfo> methods;
 };
