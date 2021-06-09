@@ -131,7 +131,7 @@ def start_grpc_server(address, max_msg_mb_size=100, ssl_config=None):
 
         max_msg_mb_size (int, optional): The maximum acceptable gRPC message size in megabytes(MB), default 100,
             value range [1, 512].
-        ssl_config (SSLConfig, optional): The server's ssl_config, if None, disabled ssl.
+        ssl_config (mindspore_serving.server.SSLConfig, optional): The server's ssl_config, if None, disabled ssl.
 
     Raises:
         RuntimeError: Failed to start the gRPC server: parameter verification failed, the gRPC address is wrong or
@@ -173,7 +173,7 @@ def start_restful_server(address, max_msg_mb_size=100, ssl_config=None):
         address (str): RESTful server address, the address should be Internet domain socket address.
         max_msg_mb_size (int, optional): The maximum acceptable RESTful message size in megabytes(MB), default 100,
             value range [1, 512].
-        ssl_config (SSLConfig, optional): The server's ssl_config, if None, disabled ssl.
+        ssl_config (mindspore_serving.server.SSLConfig, optional): The server's ssl_config, if None, disabled ssl.
 
     Raises:
         RuntimeError: Failed to start the RESTful server: parameter verification failed, the RESTful address is wrong

@@ -151,6 +151,7 @@ class SSLConfig:
             be used.
         custom_ca (str): File holding the PEM-encoded root certificates as a byte string, or None to retrieve them from
             a default location chosen by gRPC runtime.
+
     Raises:
         RuntimeError: The type or value of the parameters is invalid.
 
@@ -180,6 +181,8 @@ class Client:
         method_name (str): The name of method supplied by servable.
         version_number (int): The version number of servable, default 0,
             which means the maximum version number in all running versions.
+        ssl_config (mindspore_serving.client.SSLConfig, optional): The server's ssl_config, if None, disabled ssl.
+
     Raises:
         RuntimeError: The type or value of the parameters is invalid, or other errors happened.
 
