@@ -45,8 +45,11 @@ uint64_t DistributedServable::GetServableVersion() const { return version_number
 
 uint64_t DistributedServable::GetConfigVersion() const { return version_number_; }
 
-Status DistributedServable::Predict(const std::vector<TensorBasePtr> &input, std::vector<TensorBasePtr> *output) {
-  auto status = PredictInner(input, output);
+uint64_t DistributedServable::GetGraphNum() const { return graph_num_; }
+
+Status DistributedServable::Predict(const std::vector<TensorBasePtr> &input, std::vector<TensorBasePtr> *output,
+                                    uint64_t subgraph) {
+  auto status = PredictInner(input, output, subgraph);
   if (status != SUCCESS) {
     MSI_LOG_ERROR << "Predict error happened, now exit distributed servable";
     Worker::GetInstance().StopServable();
@@ -54,7 +57,8 @@ Status DistributedServable::Predict(const std::vector<TensorBasePtr> &input, std
   return status;
 }
 
-Status DistributedServable::PredictInner(const std::vector<TensorBasePtr> &input, std::vector<TensorBasePtr> *output) {
+Status DistributedServable::PredictInner(const std::vector<TensorBasePtr> &input, std::vector<TensorBasePtr> *output,
+                                         uint64_t subgraph) {
   MSI_EXCEPTION_IF_NULL(output);
   std::unique_lock<std::mutex> lock{mutex_};
   if (!model_loaded_) {
@@ -63,6 +67,8 @@ Status DistributedServable::PredictInner(const std::vector<TensorBasePtr> &input
 
   proto::DistributedPredictRequest request;
   proto::DistributedPredictRequest empty_request;
+  request.set_subgraph(subgraph);
+  request.set_subgraph(subgraph);
   for (const auto &tensor_ptr : input) {
     auto tensor = request.add_inputs();
     ProtoTensor proto_tensor(tensor);
@@ -137,25 +143,40 @@ Status DistributedServable::PredictInner(const std::vector<TensorBasePtr> &input
   return SUCCESS;
 }
 
-std::vector<TensorInfo> DistributedServable::GetInputInfos() const {
+std::vector<TensorInfo> DistributedServable::GetInputInfos(uint64_t subgraph) const {
   if (!model_loaded_) {
     MSI_LOG_EXCEPTION << "Model has not been loaded";
   }
-  return input_infos_;
+  auto iter = input_infos_.find(subgraph);
+  if (iter != input_infos_.end()) {
+    return iter->second;
+  }
+  MSI_LOG_EXCEPTION << "subgraph: " << subgraph << " is not existed";
+  return {};
 }
 
-std::vector<TensorInfo> DistributedServable::GetOutputInfos() const {
+std::vector<TensorInfo> DistributedServable::GetOutputInfos(uint64_t subgraph) const {
   if (!model_loaded_) {
     MSI_LOG_EXCEPTION << "Model has not been loaded";
   }
-  return output_infos_;
+  auto iter = output_infos_.find(subgraph);
+  if (iter != output_infos_.end()) {
+    return iter->second;
+  }
+  MSI_LOG_EXCEPTION << "subgraph: " << subgraph << " is not existed";
+  return {};
 }
 
-uint64_t DistributedServable::GetBatchSize() const {
+uint64_t DistributedServable::GetBatchSize(uint64_t subgraph) const {
   if (!model_loaded_) {
     MSI_LOG_EXCEPTION << "Model has not been loaded";
   }
-  return batch_size_;
+  auto iter = batch_size_.find(subgraph);
+  if (iter != batch_size_.end()) {
+    return iter->second;
+  }
+  MSI_LOG_EXCEPTION << "subgraph: " << subgraph << " is not existed";
+  return {};
 }
 
 Status DistributedServable::GetDistributedServableConfig(DistributedServableConfig *config) const {
@@ -173,27 +194,27 @@ void DistributedServable::SetWaitAgentsPromise(bool flag) {
   }
 }
 
-Status DistributedServable::RegisterAgent(const WorkerAgentSpec &agent_spec) {
+Status DistributedServable::RegisterAgent(const std::vector<WorkerAgentSpec> &agent_specs) {
   std::unique_lock<std::mutex> lock{mutex_};
   if (registered_end_flag_) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Distributed servable has ended up registration";
   }
 
-  if (agent_spec.rank_id >= config_.distributed_meta.rank_size) {
+  if (agent_specs[0].rank_id >= config_.distributed_meta.rank_size) {
     return INFER_STATUS_LOG_ERROR(FAILED)
-           << "Invalid rank id " << agent_spec.rank_id << ", rank size " << config_.distributed_meta.rank_size;
+           << "Invalid rank id " << agent_specs[0].rank_id << ", rank size " << config_.distributed_meta.rank_size;
   }
   DistributedAgentContext context;
-  auto it = agent_spec_map_.find(agent_spec.rank_id);
+  auto it = agent_spec_map_.find(agent_specs[0].rank_id);
   if (it != agent_spec_map_.end()) {
-    MSI_LOG_WARNING << "rank_id " << agent_spec.rank_id << " has been registered";
+    MSI_LOG_WARNING << "rank_id " << agent_specs[0].rank_id << " has been registered";
     return SUCCESS;
   }
-  context.agent_spec_ = agent_spec;
-  std::shared_ptr<BaseNotifyAgent> notify_agent = std::make_shared<GrpcNotifyAgent>(agent_spec.agent_address);
+  context.agent_spec_ = agent_specs;
+  std::shared_ptr<BaseNotifyAgent> notify_agent = std::make_shared<GrpcNotifyAgent>(agent_specs[0].agent_address);
   context.notify_agent_ = notify_agent;
-  agent_spec_map_[agent_spec.rank_id] = context;
-  MSI_LOG_INFO << "Rank " << agent_spec.rank_id << " been registered";
+  agent_spec_map_[agent_specs[0].rank_id] = context;
+  MSI_LOG_INFO << "Rank " << agent_specs[0].rank_id << " been registered";
 
   if (agent_spec_map_.size() >= config_.distributed_meta.rank_size) {
     SetWaitAgentsPromise(true);
@@ -547,51 +568,61 @@ Status DistributedServable::CheckAgentsInfosAndInitTensorInfos() {
     return INFER_STATUS_LOG_ERROR(FAILED)
            << "Registered agents size " << agent_spec_map_.size() << " not match rank size " << rank_size;
   }
-
-  input_infos_ = agent_spec_map_[0].agent_spec_.input_infos;
-  output_infos_ = agent_spec_map_[rank_size - 1].agent_spec_.output_infos;
-  batch_size_ = agent_spec_map_[0].agent_spec_.batch_size;
-  if (input_infos_.empty()) {
-    return INFER_STATUS_LOG_ERROR(FAILED) << "Rank " << 0 << " input count cannot be 0";
-  }
-  if (output_infos_.empty()) {
-    return INFER_STATUS_LOG_ERROR(FAILED) << "Rank " << rank_size - 1 << " output count cannot be 0";
-  }
-  Status status;
-  for (size_t i = 0; i < parallel_count; i++) {
-    auto &agent_spec = agent_spec_map_[i];
-    status = CompareTensorInfos(agent_spec.agent_spec_.input_infos, input_infos_);
-    if (status != SUCCESS) {
-      status = INFER_STATUS_LOG_ERROR(FAILED)
-               << "Rank " << i << " input infos not match rank 0, details: " << status.StatusMessage();
-      return status;
+  graph_num_ = agent_spec_map_[0].agent_spec_.size();
+  for (size_t i = 1; i < rank_size; i++) {
+    if (graph_num_ != agent_spec_map_[i].agent_spec_.size()) {
+      return INFER_STATUS_LOG_ERROR(FAILED) << "The number of graph not match in different agent";
     }
   }
-  for (size_t i = parallel_count; i < rank_size; i++) {
-    auto &agent_spec = agent_spec_map_[i];
-    if (!agent_spec.agent_spec_.input_infos.empty()) {
-      return INFER_STATUS_LOG_ERROR(FAILED) << "Expect rank " << i << " input count equal to 0";
+  for (size_t subgraph = 0; subgraph < agent_spec_map_[0].agent_spec_.size(); subgraph++) {
+    input_infos_[subgraph] = agent_spec_map_[0].agent_spec_[subgraph].input_infos;
+    output_infos_[subgraph] = agent_spec_map_[rank_size - 1].agent_spec_[subgraph].output_infos;
+    batch_size_[subgraph] = agent_spec_map_[0].agent_spec_[subgraph].batch_size;
+    if (input_infos_[subgraph].empty()) {
+      return INFER_STATUS_LOG_ERROR(FAILED) << "Rank " << 0 << " input count cannot be 0";
     }
-  }
-  for (size_t i = 0; i < rank_size; i += parallel_count) {
-    auto &first_item = agent_spec_map_[i];
-    for (size_t k = 0; k < parallel_count && i + k < rank_size; k++) {
-      auto rank_id = i + k;
-      auto &agent_spec = agent_spec_map_[i + k];
-      status = CompareTensorInfos(agent_spec.agent_spec_.output_infos, first_item.agent_spec_.output_infos);
+    if (output_infos_[subgraph].empty()) {
+      return INFER_STATUS_LOG_ERROR(FAILED) << "Rank " << rank_size - 1 << " output count cannot be 0";
+    }
+    Status status;
+    for (size_t i = 0; i < parallel_count; i++) {
+      auto &agent_spec = agent_spec_map_[i];
+      status = CompareTensorInfos(agent_spec.agent_spec_[subgraph].input_infos, input_infos_[subgraph]);
       if (status != SUCCESS) {
-        status = INFER_STATUS_LOG_ERROR(FAILED) << "Rank " << rank_id << " output infos not match rank " << i
-                                                << ", details: " << status.StatusMessage();
+        status = INFER_STATUS_LOG_ERROR(FAILED)
+                 << "Rank " << i << " input infos not match rank 0, details: " << status.StatusMessage();
         return status;
       }
-      if (agent_spec.agent_spec_.batch_size != 0 && agent_spec.agent_spec_.batch_size != batch_size_) {
-        if (!agent_spec.agent_spec_.output_infos.empty()) {
-          MSI_LOG_WARNING << "Rank " << rank_id << " output 0 shape: " << agent_spec.agent_spec_.output_infos[0].shape
-                          << ", batch size " << agent_spec.agent_spec_.batch_size;
+    }
+    for (size_t i = parallel_count; i < rank_size; i++) {
+      auto &agent_spec = agent_spec_map_[i];
+      if (!agent_spec.agent_spec_[subgraph].input_infos.empty()) {
+        return INFER_STATUS_LOG_ERROR(FAILED) << "Expect rank " << i << " input count equal to 0";
+      }
+    }
+    for (size_t i = 0; i < rank_size; i += parallel_count) {
+      auto &first_item = agent_spec_map_[i];
+      for (size_t k = 0; k < parallel_count && i + k < rank_size; k++) {
+        auto rank_id = i + k;
+        auto &agent_spec = agent_spec_map_[i + k];
+        status = CompareTensorInfos(agent_spec.agent_spec_[subgraph].output_infos,
+                                    first_item.agent_spec_[subgraph].output_infos);
+        if (status != SUCCESS) {
+          status = INFER_STATUS_LOG_ERROR(FAILED) << "Rank " << rank_id << " output infos not match rank " << i
+                                                  << ", details: " << status.StatusMessage();
+          return status;
         }
-        return INFER_STATUS_LOG_ERROR(FAILED)
-               << "Expect rank " << rank_id << " batch size  " << agent_spec.agent_spec_.batch_size
-               << " equal to 0 or rank 0's batch size " << batch_size_;
+        if (agent_spec.agent_spec_[subgraph].batch_size != 0 &&
+            agent_spec.agent_spec_[subgraph].batch_size != batch_size_[subgraph]) {
+          if (!agent_spec.agent_spec_[subgraph].output_infos.empty()) {
+            MSI_LOG_WARNING << "Rank " << rank_id
+                            << " output 0 shape: " << agent_spec.agent_spec_[subgraph].output_infos[0].shape
+                            << ", batch size " << agent_spec.agent_spec_[subgraph].batch_size;
+          }
+          return INFER_STATUS_LOG_ERROR(FAILED)
+                 << "Expect rank " << rank_id << " batch size  " << agent_spec.agent_spec_[subgraph].batch_size
+                 << " equal to 0 or rank 0's batch size " << batch_size_[subgraph];
+        }
       }
     }
   }

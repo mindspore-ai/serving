@@ -35,11 +35,12 @@ class MS_API LocalModelServable : public ServableBase {
   LocalModelServable() = default;
   ~LocalModelServable() override;
 
-  Status Predict(const std::vector<TensorBasePtr> &input, std::vector<TensorBasePtr> *output) override;
+  Status Predict(const std::vector<TensorBasePtr> &input, std::vector<TensorBasePtr> *output,
+                 uint64_t subgraph = 0) override;
 
-  std::vector<TensorInfo> GetInputInfos() const override;
-  std::vector<TensorInfo> GetOutputInfos() const override;
-  uint64_t GetBatchSize() const override;
+  std::vector<TensorInfo> GetInputInfos(uint64_t subgraph = 0) const override;
+  std::vector<TensorInfo> GetOutputInfos(uint64_t subgraph = 0) const override;
+  uint64_t GetBatchSize(uint64_t subgraph = 0) const override;
 
   Status StartServable(const std::string &servable_directory, const std::string &servable_name,
                        uint64_t version_number);
@@ -48,13 +49,14 @@ class MS_API LocalModelServable : public ServableBase {
   std::string GetServableName() const override;
   uint64_t GetServableVersion() const override;
   uint64_t GetConfigVersion() const override;
+  uint64_t GetGraphNum() const override;
   void Clear() override;
 
  private:
   ServableLoadSpec base_spec_;
   std::string servable_name_;
   uint64_t running_version_number_ = 0;
-
+  uint64_t graph_num_ = 0;
   std::shared_ptr<InferenceBase> session_ = nullptr;
   std::string version_strategy_;
   bool model_loaded_ = false;

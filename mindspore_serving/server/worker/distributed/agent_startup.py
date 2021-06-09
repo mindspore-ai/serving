@@ -66,6 +66,29 @@ def _check_local_ip(agent_ip, port):
                 pass
     return False
 
+def _check_model_files(num, files, model_files, group_config_files):
+    """Check the number of model files or group config files"""
+    if isinstance(files, tuple):
+        for item in files:
+            if isinstance(item, list):
+                if num == -1:
+                    num = len(item)
+                else:
+                    if num != len(item):
+                        raise RuntimeError(f"please check the number of  model files and group config files, "
+                                           f"model files: {model_files}, group config files: {group_config_files}")
+            else:
+                if num not in (-1, 1):
+                    raise RuntimeError(f"please check the number of  model files and group config files, "
+                                       f"model files: {model_files}, group config files: {group_config_files}")
+                num = 1
+    return num
+
+def _check_model_num(model_files, group_config_files):
+    """Check the number of model files or group config files"""
+    num = _check_model_files(-1, model_files, model_files, group_config_files)
+    if group_config_files is not None:
+        _check_model_files(num, group_config_files, model_files, group_config_files)
 
 def _update_model_files_path(model_files, group_config_files):
     """Check and return model files or group config files"""
@@ -74,18 +97,36 @@ def _update_model_files_path(model_files, group_config_files):
     logger.info(f"input group config files: {group_config_files}")
     model_files_temp = []
     for item in model_files:
-        file_name = os.path.realpath(os.path.join(script_dir, item))
-        if not os.access(file_name, os.R_OK):
-            raise RuntimeError(f"Cannot access model file '{file_name}'")
-        model_files_temp.append(file_name)
+        if isinstance(item, list):
+            inner_files = []
+            for inner in item:
+                file_name = os.path.realpath(os.path.join(script_dir, inner))
+                if not os.access(file_name, os.R_OK):
+                    raise RuntimeError(f"Cannot access model file '{file_name}'")
+                inner_files.append(file_name)
+            model_files_temp.append(inner_files)
+        else:
+            file_name = os.path.realpath(os.path.join(script_dir, item))
+            if not os.access(file_name, os.R_OK):
+                raise RuntimeError(f"Cannot access model file '{file_name}'")
+            model_files_temp.append(file_name)
 
     if group_config_files is not None:
         group_files_temp = []
         for item in group_config_files:
-            file_name = os.path.realpath(os.path.join(script_dir, item))
-            if not os.access(file_name, os.R_OK):
-                raise RuntimeError(f"Cannot access group config file '{file_name}'")
-            group_files_temp.append(file_name)
+            if isinstance(item, list):
+                inner_files = []
+                for inner in item:
+                    file_name = os.path.realpath(os.path.join(script_dir, inner))
+                    if not os.access(file_name, os.R_OK):
+                        raise RuntimeError(f"Cannot access group config file '{file_name}'")
+                    inner_files.append(file_name)
+                group_files_temp.append(inner_files)
+            else:
+                file_name = os.path.realpath(os.path.join(script_dir, item))
+                if not os.access(file_name, os.R_OK):
+                    raise RuntimeError(f"Cannot access group config file '{file_name}'")
+                group_files_temp.append(file_name)
     else:
         group_files_temp = None
     logger.info(f"absolute model files: {model_files_temp}")
@@ -315,8 +356,9 @@ def _startup_agents(common_meta, distributed_address,
         start_config = AgentStartUpConfig_()
         start_config.rank_id = rank_id
         start_config.device_id = device_id
-        start_config.model_file_name = model_file
-        start_config.group_file_name = group_file
+        start_config.model_file_names = model_file
+        if group_config_files is not None:
+            start_config.group_file_names = group_file
         start_config.rank_table_json_file_name = rank_table_file
         start_config.agent_address = agent_ip + ":" + str(agent_port)
         start_config.distributed_address = distributed_address
@@ -454,9 +496,9 @@ def startup_agents(distributed_address, model_files, group_config_files=None,
     """
     check_type.check_str("distributed_address", distributed_address)
     check_type.check_int("agent_start_port", agent_start_port, 1, 65535 - 7)
-    model_files = check_type.check_and_as_str_tuple_list("model_files", model_files)
+    model_files = check_type.check_and_as_tuple_with_str_list("model_files", model_files)
     if group_config_files is not None:
-        group_config_files = check_type.check_and_as_str_tuple_list("group_config_files", group_config_files)
+        group_config_files = check_type.check_and_as_tuple_with_str_list("group_config_files", group_config_files)
 
     ExitSignalHandle_.start()
     distributed_config = _get_worker_distributed_config(distributed_address)
@@ -502,6 +544,7 @@ def startup_agents(distributed_address, model_files, group_config_files=None,
                            f"count {len(group_config_files)} when group_config_files is not None, "
                            f"model files: {model_files}, group config files: {group_config_files}")
 
+    _check_model_num(model_files, group_config_files)
     model_files, group_config_files = _update_model_files_path(model_files, group_config_files)
 
     # make json table file and export env

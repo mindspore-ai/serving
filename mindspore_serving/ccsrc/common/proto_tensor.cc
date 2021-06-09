@@ -23,6 +23,7 @@
 #include "common/buffer_tensor.h"
 #include "common/servable.h"
 #include "master/dispacther.h"
+#include "worker/pipeline.h"
 
 using std::string;
 using std::unordered_map;
@@ -214,6 +215,41 @@ Status GrpcTensorHelper::CreateInstanceFromRequest(const proto::PredictRequest &
   if (!servable_signature.GetMethodDeclare(request_spec->method_name, &method_signature)) {
     return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
            << "Method " << method_name << " is not registered for servable " << servable_name;
+  }
+
+  if (request.instances_size() == 0) {
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
+           << "Instances count of request cannot be 0, servable: " << servable_name << ", method: " << method_name;
+  }
+  status = CreateInstanceFromRequestInstances(request, method_signature.inputs, results);
+  if (status != SUCCESS) {
+    MSI_LOG_ERROR << "Create instances from request instances failed";
+    return status;
+  }
+  return SUCCESS;
+}
+
+Status GrpcTensorHelper::CreatePipelineInstanceFromRequest(const proto::PredictRequest &request,
+                                                           RequestSpec *request_spec,
+                                                           std::vector<InstanceData> *results) {
+  MSI_EXCEPTION_IF_NULL(request_spec);
+  MSI_EXCEPTION_IF_NULL(results);
+  results->clear();
+
+  Status status;
+  GetRequestSpec(request, request_spec);
+
+  auto servable_name = request_spec->servable_name;
+  auto method_name = request_spec->method_name;
+
+  ServableSignature servable_signature;
+  if (!ServableStorage::Instance().GetServableDef(servable_name, &servable_signature)) {
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Pipeline " << servable_name << " is not declared";
+  }
+  PipelineSignature method_signature;
+  if (!PipelineStorage::Instance().GetMethodDeclare(request_spec->method_name, &method_signature)) {
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
+           << "Method " << method_name << " is not registered for pipeline " << servable_name;
   }
 
   if (request.instances_size() == 0) {

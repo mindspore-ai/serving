@@ -48,6 +48,10 @@ Status ServableEndPoint::RegisterWorker(const ServableRegSpec &servable_spec, st
   }
   if (model_thread_list_.empty()) {
     for (auto &method : methods_) {
+      if (servable_spec.batch_size <= 0) {
+        MSI_LOG_ERROR << "Register Worker,method batch_size should be greater than 0";
+        return FAILED;
+      }
       auto model_thread = std::make_shared<ModelThread>(servable_spec.servable_name, method.name,
                                                         servable_spec.version_number, servable_spec.batch_size, method);
       model_thread_list_.emplace(method.name, model_thread);

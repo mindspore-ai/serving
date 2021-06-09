@@ -76,6 +76,12 @@ TaskItem PyWorker::GetPyTask() {
   return item;
 }
 
+TaskItem PyWorker::GetPipelineTask() {
+  TaskItem item;
+  Worker::GetInstance().GetPyTaskQueueGroup().PopPipelineTask(&item);
+  return item;
+}
+
 TaskItem PyWorker::TryGetPreprocessPyTask() {
   TaskItem item;
   Worker::GetInstance().GetPyTaskQueueGroup().TryPopPreprocessTask(&item);
@@ -88,6 +94,33 @@ TaskItem PyWorker::TryGetPostprocessPyTask() {
   return item;
 }
 
+TaskItem PyWorker::TryGetPipelinePyTask() {
+  TaskItem item;
+  Worker::GetInstance().GetPyTaskQueueGroup().TryPopPipelineTask(&item);
+  return item;
+}
+void PyWorker::PushPipelinePyResult(const py::tuple &output_batch) {
+  MSI_TIME_STAMP_START(PushPipelinePyResult)
+  std::vector<ResultInstance> outputs;
+  for (auto &output : output_batch) {
+    ResultInstance instance;
+    instance.data = PyTensor::AsInstanceData(py::cast<py::tuple>(output));
+    outputs.push_back(instance);
+  }
+  Worker::GetInstance().PushPyPipelineResult(outputs);
+  MSI_TIME_STAMP_END(PushPipelinePyResult)
+}
+
+void PyWorker::PushPipelinePyFailed(int count) {
+  std::vector<ResultInstance> results;
+  Status error_msg(INVALID_INPUTS, "Pipeline Failed");
+  for (int i = 0; i < count; i++) {
+    ResultInstance result_instance;
+    result_instance.error_msg = error_msg;
+    results.push_back(result_instance);
+  }
+  Worker::GetInstance().PushPyPipelineResult(results);
+}
 void PyWorker::PushPreprocessPyResult(const py::tuple &output_batch) {
   MSI_TIME_STAMP_START(PushPreprocessPyResult)
   std::vector<ResultInstance> outputs;
@@ -138,6 +171,10 @@ void PyWorker::PushPreprocessPySystemFailed() {
 
 void PyWorker::PushPostprocessPySystemFailed() {
   Worker::GetInstance().ClearOnSystemFailed(Status(SYSTEM_ERROR, "Postprocess Failed"));
+}
+
+void PyWorker::PushPipelinePySystemFailed() {
+  Worker::GetInstance().ClearOnSystemFailed(Status(SYSTEM_ERROR, "Pipeline Failed"));
 }
 
 void PyWorker::WaitAndClear() {

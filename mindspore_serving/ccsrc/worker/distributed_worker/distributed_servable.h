@@ -32,7 +32,7 @@ namespace mindspore {
 namespace serving {
 
 struct DistributedAgentContext {
-  WorkerAgentSpec agent_spec_;
+  std::vector<WorkerAgentSpec> agent_spec_;
   std::shared_ptr<BaseNotifyAgent> notify_agent_ = nullptr;
 };
 
@@ -50,21 +50,23 @@ class MS_API DistributedServable : public ServableBase {
   // send model and group
 
   // register and unregister agent, agent_spec_list_
-  Status RegisterAgent(const WorkerAgentSpec &agent_spec);
+  Status RegisterAgent(const std::vector<WorkerAgentSpec> &agent_specs);
   Status OnAgentExit();
 
   // predict, use config_ and agent_spec_list_
-  Status Predict(const std::vector<TensorBasePtr> &input, std::vector<TensorBasePtr> *output) override;
+  Status Predict(const std::vector<TensorBasePtr> &input, std::vector<TensorBasePtr> *output,
+                 uint64_t subgraph = 0) override;
 
-  std::vector<TensorInfo> GetInputInfos() const override;
-  std::vector<TensorInfo> GetOutputInfos() const override;
-  uint64_t GetBatchSize() const override;
+  std::vector<TensorInfo> GetInputInfos(uint64_t subgraph = 0) const override;
+  std::vector<TensorInfo> GetOutputInfos(uint64_t subgraph = 0) const override;
+  uint64_t GetBatchSize(uint64_t subgraph = 0) const override;
   std::string GetServableDirectory() const override;
   std::string GetServableName() const override;
   uint64_t GetServableVersion() const override;
   uint64_t GetConfigVersion() const override;
   void Clear() override;
   void OnAgentFailed();
+  uint64_t GetGraphNum() const override;
 
  private:
   DistributedServableConfig config_;
@@ -74,14 +76,15 @@ class MS_API DistributedServable : public ServableBase {
   std::string servable_name_;
   uint64_t version_number_ = 0;
   std::atomic_bool model_loaded_ = false;
-
+  uint64_t graph_num_ = 0;
   std::mutex mutex_;
   std::map<uint32_t, DistributedAgentContext> agent_spec_map_;
   std::string rank_table_json_file_;
 
-  std::vector<TensorInfo> input_infos_;
-  std::vector<TensorInfo> output_infos_;
-  uint64_t batch_size_ = 0;
+  std::map<uint64_t, std::vector<TensorInfo>> input_infos_;
+  std::map<uint64_t, std::vector<TensorInfo>> output_infos_;
+  std::map<uint64_t, uint64_t> batch_size_;
+
   std::atomic_flag promise_set_flag_ = ATOMIC_FLAG_INIT;
   std::atomic_bool registered_end_flag_ = false;
   std::promise<bool> agents_promise_;
@@ -92,7 +95,8 @@ class MS_API DistributedServable : public ServableBase {
   Status CompareTensorInfos(const std::vector<TensorInfo> &lefts, const std::vector<TensorInfo> &rights);
   Status CheckRankConfig();
   void SetWaitAgentsPromise(bool flag);
-  Status PredictInner(const std::vector<TensorBasePtr> &input, std::vector<TensorBasePtr> *output);
+  Status PredictInner(const std::vector<TensorBasePtr> &input, std::vector<TensorBasePtr> *output,
+                      uint64_t subgraph = 0);
   // agent stubs
   Status ParserRankTableWithGroupList(const std::string &rank_table_json_file, const json &rank_table_json);
 

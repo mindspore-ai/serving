@@ -43,8 +43,8 @@ struct DistributedServableConfig {
 struct AgentStartUpConfig {
   uint32_t rank_id;
   uint32_t device_id;
-  std::string model_file_name;
-  std::string group_file_name;
+  std::vector<std::string> model_file_names;
+  std::vector<std::string> group_file_names;
   std::string rank_table_json_file_name;
 
   std::string agent_address;

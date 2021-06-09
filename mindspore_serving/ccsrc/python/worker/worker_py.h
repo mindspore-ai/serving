@@ -40,8 +40,12 @@ class MS_API PyWorker {
   static void WaitAndClear();
   static void StopAndClear();
   static TaskItem GetPyTask();
+  static TaskItem GetPipelineTask();
   static TaskItem TryGetPreprocessPyTask();
   static TaskItem TryGetPostprocessPyTask();
+  static TaskItem TryGetPipelinePyTask();
+  static void PushPipelinePyResult(const py::tuple &output_batch);
+  static void PushPipelinePyFailed(int count);
   static void PushPreprocessPyResult(const py::tuple &output_batch);
   static void PushPreprocessPyFailed(int count);
 
@@ -49,7 +53,7 @@ class MS_API PyWorker {
   static void PushPostprocessPyFailed(int count);
   static void PushPreprocessPySystemFailed();
   static void PushPostprocessPySystemFailed();
-
+  static void PushPipelinePySystemFailed();
   static std::string GetDeviceType();
   // for grpc notify failed of worker
   static void NotifyFailed(const std::string &master_address, const std::string &error_msg);

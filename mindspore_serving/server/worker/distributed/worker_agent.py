@@ -29,7 +29,7 @@ def start_worker_agent(start_config):
     if not isinstance(start_config, AgentStartUpConfig_):
         raise RuntimeError("Parameter 'start_config' should be instance of AgentStartUpConfig_")
     logger.info(f"rank_id={start_config.rank_id}, device_id={start_config.device_id}, "
-                f"model_file='{start_config.model_file_name}', group_file='{start_config.group_file_name}', "
+                f"model_file='{start_config.model_file_names}', group_file='{start_config.group_file_names}', "
                 f"rank_table_file='{start_config.rank_table_json_file_name}',"
                 f"agent_address='{start_config.agent_address}', "
                 f"distributed_address='{start_config.distributed_address}'"
@@ -42,8 +42,9 @@ def start_worker_agent(start_config):
     os.environ["RANK_ID"] = str(start_config.rank_id)
     os.environ["DEVICE_ID"] = str(start_config.device_id)
     os.environ["MS_ENABLE_HCCL"] = "1"
-    if start_config.group_file_name:
-        os.environ["PARA_GROUP_FILE"] = start_config.group_file_name
+    if start_config.group_file_names:
+        os.environ["PARA_GROUP_FILE"] = ';'.join(start_config.group_file_names)
+
     os.environ["RANK_TABLE_FILE"] = start_config.rank_table_json_file_name
 
     for item in ("RANK_ID", "DEVICE_ID", "MS_ENABLE_HCCL", "PARA_GROUP_FILE", "RANK_TABLE_FILE",

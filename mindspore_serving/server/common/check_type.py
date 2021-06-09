@@ -15,6 +15,44 @@
 """T check for worker"""
 
 
+def check_and_as_tuple_with_str_list(arg_name, strs):
+    """Check whether the input parameters are reasonable multiple str inputs,
+    which can be single str, tuple or list of str, tuple with list of str.
+    finally, return tuple with list of str"""
+    if isinstance(strs, str):
+        strs = (list(strs),)
+        return tuple(strs)
+
+    if not isinstance(strs, (tuple, list)):
+        raise RuntimeError(f"Parameter '{arg_name}' should be str or tuple/list of str, but actually {type(strs)}")
+
+    if isinstance(strs, (tuple, list)):
+        str_list = []
+        for item in strs:
+            it_list = []
+            if isinstance(item, list):
+                for inner in item:
+                    if not isinstance(inner, str):
+                        raise RuntimeError(f"The inner of parameter '{arg_name}' should be str, "
+                                           f"but actually {type(inner)}")
+                    if not inner:
+                        raise RuntimeError(f"The inner of parameter '{arg_name}' should not be empty str")
+                    if item in it_list:
+                        raise RuntimeError(f"The inner value '{inner}' in parameter '{arg_name}' "
+                                           f"should not be repeated")
+                    it_list.append(inner)
+            else:
+                if not isinstance(item, str):
+                    raise RuntimeError(f"The item of parameter '{arg_name}' should be str, but actually {type(item)}")
+                if not item:
+                    raise RuntimeError(f"The item of parameter '{arg_name}' should not be empty str")
+                if item in str_list:
+                    raise RuntimeError(f"The item value '{item}' in parameter '{arg_name}' should not be repeated")
+                it_list.append(item)
+            str_list.append(it_list)
+
+    return tuple(str_list)
+
 def check_and_as_str_tuple_list(arg_name, strs):
     """Check whether the input parameters are reasonable multiple str inputs,
     which can be single str, tuple or list of str.
@@ -37,7 +75,6 @@ def check_and_as_str_tuple_list(arg_name, strs):
             str_list.append(item)
 
     return tuple(strs)
-
 
 def check_str(arg_name, str_val):
     """Check whether the input parameters are reasonable str input"""

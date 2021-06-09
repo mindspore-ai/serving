@@ -52,7 +52,8 @@ class MS_API Worker {
 
   static Worker &GetInstance();
   void Clear();
-
+  Status Run(const RequestSpec &request_spec, const std::vector<InstanceData> instances_data,
+             std::vector<InstancePtr> *out);
   Status RunAsync(const proto::PredictRequest &request, proto::PredictReply *reply, PredictOnFinish on_finish);
   Status StartServable(const std::shared_ptr<ServableBase> &servable, const std::string &master_address,
                        const std::string &worker_address);
@@ -69,10 +70,16 @@ class MS_API Worker {
   void PushPyPreprocessResult(std::vector<ResultInstance> outputs);
   void PushPyPostprocessResult(std::vector<ResultInstance> outputs);
   void ClearOnSystemFailed(const Status &error_msg);
+  void PushPyPipelineResult(std::vector<ResultInstance> outputs);
+  void InitPipeline(const std::string &servable_name, uint64_t version_number);
+  Status RunPipeline(const proto::PredictRequest &request, proto::PredictReply *reply, PredictOnFinish on_finish);
+  Status CreatePipelineInstanceFromRequest(const proto::PredictRequest &request, RequestSpec *request_spec,
+                                           std::vector<InstanceData> *results);
 
  private:
   uint64_t worker_pid = 0;
   ServableWorkerContext servable_context_;
+  ServableRegSpec pipeline_spec_;
   PyTaskQueueGroup py_task_queue_group_;
   PreprocessThreadPool cpp_preprocess_;
   PostprocessThreadPool cpp_postprocess_;
@@ -94,6 +101,7 @@ class MS_API Worker {
   std::shared_ptr<TaskQueue> GetPyTaskQueuePostprocess() { return py_task_queue_group_.GetPostprocessTaskQueue(); }
   std::shared_ptr<TaskQueue> GetCppTaskQueuePreprocess() { return cpp_preprocess_.GetTaskQueue(); }
   std::shared_ptr<TaskQueue> GetCppTaskQueuePostprocess() { return cpp_postprocess_.GetTaskQueue(); }
+  std::shared_ptr<TaskQueue> GetPyTaskQueuePipeline() { return py_task_queue_group_.GetPipelineTaskQueue(); }
 };
 
 }  // namespace serving

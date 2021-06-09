@@ -20,6 +20,7 @@
 #include <map>
 #include "worker/preprocess.h"
 #include "worker/postprocess.h"
+#include "worker/pipeline.h"
 
 namespace mindspore::serving {
 
@@ -222,7 +223,7 @@ Status ServableSignature::CheckReturn(const MethodSignature &method, size_t prep
   return SUCCESS;
 }
 
-Status ServableSignature::Check() const {
+Status ServableSignature::Check(uint64_t graph_num) const {
   std::set<std::string> method_set;
   Status status;
   for (auto &method : methods) {
@@ -231,7 +232,10 @@ Status ServableSignature::Check() const {
              << "Model " << servable_meta.Repr() << " " << method.method_name << " has been defined repeatedly";
     }
     method_set.emplace(method.method_name);
-
+    if (method.subgraph >= graph_num) {
+      return INFER_STATUS_LOG_ERROR(FAILED) << "Total Load Graph number is " << graph_num << ", Method "
+                                            << method.method_name << " subgrah is " << method.subgraph;
+    }
     size_t preprocess_outputs_count = 0;
     size_t postprocess_outputs_count = 0;
     status = CheckPreprocessInput(method, &preprocess_outputs_count);

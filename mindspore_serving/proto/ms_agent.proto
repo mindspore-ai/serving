@@ -23,6 +23,7 @@ import "mindspore_serving/proto/ms_service.proto";
 message DistributedPredictRequest {
   repeated Tensor inputs = 1;
   bool return_result = 2;
+  int64 subgraph = 3;
 }
 
 message DistributedPredictReply {

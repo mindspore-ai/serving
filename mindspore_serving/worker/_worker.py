@@ -17,9 +17,9 @@
 from mindspore_serving import server
 from mindspore_serving.server.common.decorator import deprecated
 
-
 @deprecated("1.3.0", "mindspore_serving.server.start_servables")
 def start_servable_in_master(servable_directory, servable_name, version_number=0, device_type=None, device_id=0):
+
     r"""
     Start up the servable named 'servable_name' defined in 'svable_directory', and the worker will run in
     the process of the master.
@@ -55,7 +55,6 @@ def start_servable_in_master(servable_directory, servable_name, version_number=0
     config = server.ServableStartConfig(servable_directory=servable_directory, servable_name=servable_name,
                                         version_number=version_number, device_type=device_type, device_ids=device_id)
     server.start_servables(config)
-
 
 @deprecated("1.3.0", "mindspore_serving.server.stop")
 def stop():

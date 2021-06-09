@@ -19,11 +19,13 @@
 #include <unordered_map>
 #include "worker/preprocess.h"
 #include "worker/postprocess.h"
+#include "worker/pipeline.h"
 
 static const char *kTaskTypeStop = "stop";
 static const char *kTaskTypeEmpty = "empty";
 static const char *kTaskTypePreprocess = "preprocess";
 static const char *kTaskTypePostprocess = "postprocess";
+static const char *kTaskTypePipeline = "pipeline";
 
 namespace mindspore::serving {
 
@@ -226,6 +228,7 @@ PyTaskQueueGroup::~PyTaskQueueGroup() = default;
 
 std::shared_ptr<TaskQueue> PyTaskQueueGroup::GetPreprocessTaskQueue() { return preprocess_task_que_; }
 std::shared_ptr<TaskQueue> PyTaskQueueGroup::GetPostprocessTaskQueue() { return postprocess_task_que_; }
+std::shared_ptr<TaskQueue> PyTaskQueueGroup::GetPipelineTaskQueue() { return pipeline_task_que_; }
 void PyTaskQueueGroup::PopPyTask(TaskItem *task_item) {
   MSI_EXCEPTION_IF_NULL(task_item);
   while (true) {
@@ -252,7 +255,26 @@ void PyTaskQueueGroup::PopPyTask(TaskItem *task_item) {
     }
   }
 }
-
+void PyTaskQueueGroup::PopPipelineTask(TaskItem *task_item) {
+  MSI_EXCEPTION_IF_NULL(task_item);
+  while (true) {
+    {
+      std::unique_lock<std::mutex> lock{*pipeline_lock_};
+      if (pipeline_task_que_->Empty()) {
+        cond_pipeline_->wait(lock, [this] { return !is_running || !(pipeline_task_que_->Empty()); });
+        if (!is_running) {
+          task_item->task_type = kTaskTypeStop;
+          return;
+        }
+      }
+    }
+    pipeline_task_que_->TryPopPyTask(task_item);
+    if (TaskQueue::IsValidTask(*task_item)) {
+      task_item->task_type = kTaskTypePipeline;
+      break;
+    }
+  }
+}
 void PyTaskQueueGroup::TryPopPreprocessTask(TaskItem *task_item) {
   MSI_EXCEPTION_IF_NULL(task_item);
   preprocess_task_que_->TryPopPyTask(task_item);
@@ -268,6 +290,13 @@ void PyTaskQueueGroup::TryPopPostprocessTask(TaskItem *task_item) {
     task_item->task_type = kTaskTypePostprocess;
   }
 }
+void PyTaskQueueGroup::TryPopPipelineTask(TaskItem *task_item) {
+  MSI_EXCEPTION_IF_NULL(task_item);
+  pipeline_task_que_->TryPopPyTask(task_item);
+  if (TaskQueue::IsValidTask(*task_item)) {
+    task_item->task_type = kTaskTypePipeline;
+  }
+}
 
 void PyTaskQueueGroup::Start() {
   if (is_running) {
@@ -276,12 +305,14 @@ void PyTaskQueueGroup::Start() {
   is_running = true;
   preprocess_task_que_->Start();
   postprocess_task_que_->Start();
+  pipeline_task_que_->Start();
 }
 
 void PyTaskQueueGroup::Stop() {
   is_running = false;
   preprocess_task_que_->Stop();
   postprocess_task_que_->Stop();
+  pipeline_task_que_->Stop();
 }
 
 TaskQueueThreadPool::TaskQueueThreadPool() = default;
