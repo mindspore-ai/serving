@@ -227,6 +227,8 @@ class Client:
             if ssl_config.custom_ca is not None:
                 with open(ssl_config.custom_ca, 'rb') as rc_fs:
                     rc_bytes = rc_fs.read()
+            if (c_bytes is None and pk_bytes is not None) or (c_bytes is not None and pk_bytes is None):
+                raise RuntimeError("The certificate and private_key should be passed at the same time")
             creds = grpc.ssl_channel_credentials(root_certificates=rc_bytes,
                                                  private_key=pk_bytes,
                                                  certificate_chain=c_bytes)

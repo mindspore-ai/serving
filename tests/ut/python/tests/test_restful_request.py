@@ -19,7 +19,7 @@ import json
 import requests
 import numpy as np
 
-from common import ServingTestBase, serving_test
+from common import ServingTestBase, serving_test, generate_cert
 from common import servable_config_import, servable_config_declare_servable
 from common_restful import create_multi_instances_fp32, check_number_result, post_restful
 from mindspore_serving import server
@@ -35,6 +35,38 @@ def test_restful_request_success():
     instance_count = 3
     instances, y_data_list = create_multi_instances_fp32(instance_count)
     result = post_restful("localhost:5500", base.servable_name, "add_common", instances)
+    check_number_result(result, y_data_list)
+
+
+@serving_test
+def test_restful_request_one_way_auth_success():
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    generate_cert()
+    server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
+    ssl_config = server.SSLConfig(certificate="server.crt", private_key="server.key", custom_ca="ca.crt",
+                                  verify_client=False)
+    server.start_restful_server("0.0.0.0:5500", ssl_config=ssl_config)
+    # Client
+    instance_count = 3
+    instances, y_data_list = create_multi_instances_fp32(instance_count)
+    result = post_restful("0.0.0.0:5500", base.servable_name, "add_common", instances, https=True)
+    check_number_result(result, y_data_list)
+
+
+@serving_test
+def test_restful_request_mutual_auth_success():
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    generate_cert(server_ip="127.0.0.1")
+    server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
+    ssl_config = server.SSLConfig(certificate="server.crt", private_key="server.key", custom_ca="ca.crt",
+                                  verify_client=True)
+    server.start_restful_server("0.0.0.0:5500", ssl_config=ssl_config)
+    # Client
+    instance_count = 3
+    instances, y_data_list = create_multi_instances_fp32(instance_count)
+    result = post_restful("127.0.0.1:5500", base.servable_name, "add_common", instances, https=True)
     check_number_result(result, y_data_list)
 
 

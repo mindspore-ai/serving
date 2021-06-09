@@ -91,6 +91,15 @@ test_temp_summary_event_file/
 mindspore_serving/version.py
 mindspore_serving/default_config.py
 mindspore_serving/.commit_id
+tests/ut/python/tests/ca.crt
+tests/ut/python/tests/ca.key
+tests/ut/python/tests/ca.srl
+tests/ut/python/tests/server.crt
+tests/ut/python/tests/server.csr
+tests/ut/python/tests/server.key
+tests/ut/python/tests/client.crt
+tests/ut/python/tests/client.csr
+tests/ut/python/tests/client.key
 tests/ut/python/tests/serving_logs/
 tests/ut/python/tests/unix_socket_files/
 tests/ut/python/tests/serving_python_ut_servables/

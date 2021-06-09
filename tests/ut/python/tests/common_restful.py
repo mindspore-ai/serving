@@ -56,14 +56,20 @@ def check_number_result(result, y_data_list, output_name="y"):
         assert (np.abs(result_item - expected_item) < 0.001).all()
 
 
-def post_restful(address, servable_name, method_name, json_instances, version_number=None):
+def post_restful(address, servable_name, method_name, json_instances, version_number=None, https=False):
     instances_map = {"instances": json_instances}
     post_payload = json.dumps(instances_map)
     print("request:", post_payload[:200])
+    protocol = "http"
+    if https:
+        protocol = "https"
 
-    def post_request(request_url, post_payload, send_pipe):
+    def post_request(request_url, post_payload, send_pipe, verify="ca.crt", cert=("client.crt", "client.key")):
         try:
-            result = requests.post(request_url, data=post_payload)
+            if https:
+                result = requests.post(request_url, data=post_payload, verify=verify, cert=cert)
+            else:
+                result = requests.post(request_url, data=post_payload)
             print(f"result inner: {result}")
             result = json.loads(result.text)
             send_pipe.send(result)
@@ -73,9 +79,9 @@ def post_restful(address, servable_name, method_name, json_instances, version_nu
             send_pipe.send("post failed")
 
     if version_number is not None:
-        request_url = f"http://{address}/model/{servable_name}/version/{version_number}:{method_name}"
+        request_url = f"{protocol}://{address}/model/{servable_name}/version/{version_number}:{method_name}"
     else:
-        request_url = f"http://{address}/model/{servable_name}:{method_name}"
+        request_url = f"{protocol}://{address}/model/{servable_name}:{method_name}"
 
     send_pipe, recv_pipe = Pipe()
     sub_process = Process(target=post_request, args=(request_url, post_payload, send_pipe))
