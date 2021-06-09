@@ -188,8 +188,8 @@ class PyTask:
         except Exception as e:
             logger.warning(f"{self.task_name} invoke catch exception: ")
             logging.exception(e)
-            self.push_system_failed()
-            raise
+            self.push_failed(len(instance_list))
+            return None
 
     def _handle_result(self, output):
         """Further processing results of preprocess or postprocess"""
