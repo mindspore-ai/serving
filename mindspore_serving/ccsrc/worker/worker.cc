@@ -110,11 +110,11 @@ Status Worker::StartServable(const std::shared_ptr<ServableBase> &servable, cons
   if (status != SUCCESS) {
     return status;
   }
-  status = RegisterWorker(master_address, worker_address);
+  status = StartGrpcServer(worker_address);
   if (status != SUCCESS) {
     return status;
   }
-  status = StartGrpcServer(worker_address);
+  status = RegisterWorker(master_address, worker_address);
   if (status != SUCCESS) {
     return status;
   }

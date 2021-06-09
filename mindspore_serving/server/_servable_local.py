@@ -257,4 +257,4 @@ class ServableContextData(ServableContextDataBase):
                         f"_version{self.version_number}.log"
         with open(log_file_name, write_mode) as fp:
             sub = subprocess.Popen(args=args, shell=False, stdout=fp, stderr=fp)
-        return sub.pid
+        return sub

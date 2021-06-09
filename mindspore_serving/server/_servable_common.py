@@ -50,17 +50,17 @@ class ServableContextDataBase:
 class WorkerContext:
     """Used to monitor and manage workers"""
 
-    def __init__(self, context_data, master_address, worker_pid):
+    def __init__(self, context_data, master_address, sub_process):
         if not isinstance(context_data, ServableContextDataBase):
             raise RuntimeError(f"Parameter '{context_data}' should be instance of ServableReprInfo, "
                                f"but actually {type(context_data)}")
         self.context_data_ = context_data
         self.master_address_ = master_address
-        self.worker_pid_ = worker_pid
+        self.sub_process_ = sub_process
         self.last_not_alive_time_ = None
         self.is_in_process_switching_ = False
         self.context = WorkerContext_.init_worker(context_data.servable_name, context_data.version_number,
-                                                  context_data.to_string(), worker_pid)
+                                                  context_data.to_string(), sub_process.pid)
 
     @property
     def servable_name(self):
@@ -68,7 +68,7 @@ class WorkerContext:
 
     @property
     def worker_pid(self):
-        return self.worker_pid_
+        return self.sub_process_.pid
 
     @property
     def master_address(self):
@@ -112,10 +112,7 @@ class WorkerContext:
 
     def is_alive(self):
         """Whether the worker process is alive"""
-        try:
-            alive = psutil.Process(self.worker_pid).is_running()
-        except psutil.NoSuchProcess:
-            alive = False
+        alive = (self.sub_process_.poll() is None)
         if not alive:
             if not self.last_not_alive_time_:
                 self.context.notify_not_alive()
@@ -142,17 +139,20 @@ class WorkerContext:
             return True
         return self.can_be_restart()
 
-    def update_worker_pid(self, worker_pid):
+    def update_worker_process(self, new_sub_process):
         """Update worker process pid"""
-        self.context.update_worker_pid(worker_pid)
-        self.worker_pid_ = worker_pid
+        self.context.update_worker_pid(new_sub_process.pid)
+        self.sub_process_ = new_sub_process
         self.last_not_alive_time_ = None
+
+    def _terminate(self):
+        self.sub_process_.terminate()
 
     def _shutdown_worker(self):
         """Shutdown worker process"""
         if not self.is_alive():
             return
-        self.send_exit_signal(signal.SIGINT)
+        self._terminate()
         for _ in range(100):  # 10s
             if not self.is_alive():
                 return
@@ -165,12 +165,12 @@ class WorkerContext:
         logger.info(f"restart worker, {self.to_string()}")
         self._shutdown_worker()
         try:
-            new_worker_pid = self.context_data_.new_worker_process()
+            new_sub_process = self.context_data_.new_worker_process()
         except RuntimeError as e:
             logger.error(f"Start worker failed: {e}")
             self.context.notify_start_failed(f"Start worker failed: {e}")
             return
-        self.update_worker_pid(new_worker_pid)
+        self.update_worker_process(new_sub_process)
 
     def shutdown_worker(self):
         """Shutdown worker process in thread"""
@@ -203,7 +203,7 @@ class WorkerContext:
             children_of_child = child_process.children(recursive=True)
             for item in children_of_child:
                 os.kill(item.pid, sig)
-            os.kill(self.worker_pid, sig)
+            self.sub_process_.send_signal(sig)
         except psutil.NoSuchProcess:
             return
         except Exception as e:  # pylint: disable=broad-except

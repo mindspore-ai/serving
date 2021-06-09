@@ -144,4 +144,4 @@ class DistributedContextData(ServableContextDataBase):
         log_file_name = f"{serving_logs_dir}/log_{self.servable_name}_distributed.log"
         with open(log_file_name, write_mode) as fp:
             sub = subprocess.Popen(args=args, shell=False, stdout=fp, stderr=fp)
-        return sub.pid
+        return sub

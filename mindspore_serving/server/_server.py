@@ -105,8 +105,8 @@ def start_servables(servable_configs):
             for device_id in config.device_ids:
                 try:
                     context_data = ServableContextData(config, device_id, master_address)
-                    worker_pid = context_data.new_worker_process()
-                    worker_context = WorkerContext(context_data, master_address, worker_pid)
+                    sub_process = context_data.new_worker_process()
+                    worker_context = WorkerContext(context_data, master_address, sub_process)
                 except RuntimeError as e:
                     _send_exit_signal_to_children(worker_list)
                     raise RuntimeError(f"Start worker failed: {e}")
@@ -114,8 +114,8 @@ def start_servables(servable_configs):
         elif isinstance(config, DistributedStartConfig):
             try:
                 context_data = DistributedContextData(config, master_address)
-                worker_pid = context_data.new_worker_process()
-                worker_context = WorkerContext(context_data, master_address, worker_pid)
+                sub_process = context_data.new_worker_process()
+                worker_context = WorkerContext(context_data, master_address, sub_process)
             except RuntimeError as e:
                 _send_exit_signal_to_children(worker_list)
                 raise RuntimeError(f"Start worker failed: {e}")
