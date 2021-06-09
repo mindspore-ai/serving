@@ -13,8 +13,8 @@
 # limitations under the License.
 # ============================================================================
 """Servable register interface, used in servable_config.py of one servable.
-See how to configure servable_config.py file, please refer to `Servable Provided Through Model Configuration
-<https://www.mindspore.cn/tutorial/inference/zh-CN/master/serving_model.html>`_."""
+See how to configure servable_config.py file, please refer to
+`Servable Provided Through Model Configuration <https://www.mindspore.cn/tutorial/inference/zh-CN/master/serving_model.html>`_."""
 
 from .servable import declare_servable, AclOptions, GpuOptions
 from .method import register_method, call_preprocess, call_servable, call_postprocess

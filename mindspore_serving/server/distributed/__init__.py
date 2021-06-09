@@ -13,8 +13,8 @@
 # limitations under the License.
 # ============================================================================
 """The interface to startup serving server with distributed servable.
-See how to configure and startup distributed model, please refer to `MindSpore Serving-based Distributed Inference
-Service Deployment <https://www.mindspore.cn/tutorial/inference/zh-CN/master/serving_distributed_example.html>`_."""
+See how to configure and startup distributed model, please refer to
+`MindSpore Serving-based Distributed Inference Service Deployment <https://www.mindspore.cn/tutorial/inference/zh-CN/master/serving_distributed_example.html>`_."""
 
 from mindspore_serving.server.worker.distributed import startup_agents
 from mindspore_serving.server.worker.distributed.register import declare_servable
