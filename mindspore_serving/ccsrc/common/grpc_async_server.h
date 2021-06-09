@@ -26,6 +26,7 @@
 #include <future>
 #include "common/serving_common.h"
 #include "common/ssl_config.h"
+#include "common/utils.h"
 
 namespace mindspore::serving {
 
@@ -98,7 +99,7 @@ class GrpcAsyncServer {
     auto creds = BuildServerCredentialsFromSSLConfigFile(ssl_config);
 
     Status status;
-    status = CheckAddress(socket_address);
+    status = CheckServerAddress(socket_address, server_tag);
     if (status != SUCCESS) {
       return status;
     }
@@ -119,25 +120,19 @@ class GrpcAsyncServer {
     return SUCCESS;
   }
 
-  Status CheckAddress(const std::string &address) {
+  Status CheckServerAddress(const std::string &address, const std::string &server_tag) {
     Status status;
     std::string prefix = "unix:";
     if (address.substr(0, prefix.size()) == prefix) {
       if (address.size() > prefix.size()) {
         return SUCCESS;
       } else {
-        status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Serving Error: Empty grpc server unix domain socket address";
+        status = INFER_STATUS_LOG_ERROR(FAILED) << "Serving Error: Empty grpc server unix domain socket address";
         return status;
       }
     }
-    auto position = address.find_last_of(':');
-    if (position == std::string::npos) {
-      status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
-               << "Serving Error: The format of the grpc server address is illegal";
-      return status;
-    }
-    if (position == 0 || position == address.size() - 1) {
-      status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Serving Error: Missing ip or port of the grpc server address";
+    status = common::CheckAddress(address, server_tag, nullptr, nullptr);
+    if (status != SUCCESS) {
       return status;
     }
     return SUCCESS;
