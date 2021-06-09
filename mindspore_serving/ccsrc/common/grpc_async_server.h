@@ -96,8 +96,14 @@ class GrpcAsyncServer {
     builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
     int port_tcpip = 0;
     auto creds = BuildServerCredentialsFromSSLConfigFile(ssl_config);
+
+    Status status;
+    status = CheckAddress(socket_address);
+    if (status != SUCCESS) {
+      return status;
+    }
     builder.AddListeningPort(socket_address, creds, &port_tcpip);
-    Status status = RegisterService(&builder);
+    status = RegisterService(&builder);
     if (status != SUCCESS) return status;
     cq_ = builder.AddCompletionQueue();
     server_ = builder.BuildAndStart();
@@ -112,6 +118,31 @@ class GrpcAsyncServer {
     std::cout << "Serving: " << server_tag << " server start success, listening on " << socket_address << std::endl;
     return SUCCESS;
   }
+
+  Status CheckAddress(const std::string &address) {
+    Status status;
+    std::string prefix = "unix:";
+    if (address.substr(0, prefix.size()) == prefix) {
+      if (address.size() > prefix.size()) {
+        return SUCCESS;
+      } else {
+        status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Serving Error: Empty grpc server unix domain socket address";
+        return status;
+      }
+    }
+    auto position = address.find_last_of(':');
+    if (position == std::string::npos) {
+      status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
+               << "Serving Error: The format of the grpc server address is illegal";
+      return status;
+    }
+    if (position == 0 || position == address.size() - 1) {
+      status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Serving Error: Missing ip or port of the grpc server address";
+      return status;
+    }
+    return SUCCESS;
+  }
+
   std::shared_ptr<grpc::ServerCredentials> BuildServerCredentialsFromSSLConfigFile(const SSLConfig &ssl_config) {
     if (!ssl_config.use_ssl) {
       return grpc::InsecureServerCredentials();

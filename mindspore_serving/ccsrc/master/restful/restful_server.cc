@@ -191,7 +191,10 @@ Status RestfulServer::StartRestfulServer() {
   Status status(SUCCESS);
   uint16_t port;
   std::string ip;
-  GetSocketAddress(&ip, &port);
+  status = GetSocketAddress(&ip, &port);
+  if (status != SUCCESS) {
+    return status;
+  }
   auto ret = evhttp_bind_socket(event_http_, ip.c_str(), port);
   if (ret != 0) {
     FreeEvhttp();
@@ -208,13 +211,41 @@ Status RestfulServer::GetSocketAddress(std::string *ip, uint16_t *port) {
   MSI_EXCEPTION_IF_NULL(ip);
   MSI_EXCEPTION_IF_NULL(port);
   Status status;
-  auto position = socket_address_.find(':');
-  if (position >= socket_address_.size()) {
-    status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "The format of the address " << socket_address_ << " is illegal";
+  std::string prefix = "unix:";
+  if (socket_address_.substr(0, prefix.size()) == prefix) {
+    status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
+             << "Serving Error: RESTful server does not support binding to unix domain socket";
+    return status;
+  }
+  auto position = socket_address_.find_last_of(':');
+  if (position == std::string::npos) {
+    status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
+             << "Serving Error: The format of the RESTful server address is illegal";
+    return status;
+  }
+  if (position == 0 || position == socket_address_.size() - 1) {
+    status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Serving Error: Missing ip or port of the RESTful server address";
     return status;
   }
   *ip = socket_address_.substr(0, position);
-  *port = std::stoi(socket_address_.substr(position + 1, socket_address_.size()));
+
+  try {
+    auto port_number = std::stoi(socket_address_.substr(position + 1, socket_address_.size()));
+    if (port_number < 0 || port_number > 65535) {
+      status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
+               << "Serving Error: The port of the RESTful server address is out of legal range (0 ~ 65535)";
+      return status;
+    }
+    *port = port_number;
+  } catch (const std::invalid_argument &) {
+    status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
+             << "Serving Error: The type of RESTful server address port is not a number";
+    return status;
+  } catch (const std::out_of_range &) {
+    status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
+             << "Serving Error: The port of the RESTful server address is out of legal range (0 ~ 65535)";
+    return status;
+  }
   return SUCCESS;
 }
 
