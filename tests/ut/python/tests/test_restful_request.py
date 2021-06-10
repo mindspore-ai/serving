@@ -39,7 +39,7 @@ def test_restful_request_success():
 
 
 @serving_test
-def test_restful_request_one_way_auth_success():
+def test_https_one_way_auth_success():
     base = ServingTestBase()
     base.init_servable(1, "add_servable_config.py")
     generate_cert()
@@ -55,7 +55,7 @@ def test_restful_request_one_way_auth_success():
 
 
 @serving_test
-def test_restful_request_mutual_auth_success():
+def test_https_mutual_auth_success():
     base = ServingTestBase()
     base.init_servable(1, "add_servable_config.py")
     generate_cert(server_ip="127.0.0.1")
@@ -68,6 +68,57 @@ def test_restful_request_mutual_auth_success():
     instances, y_data_list = create_multi_instances_fp32(instance_count)
     result = post_restful("127.0.0.1:5500", base.servable_name, "add_common", instances, https=True)
     check_number_result(result, y_data_list)
+
+
+@serving_test
+def test_https_client_auth_failed():
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    generate_cert(server_ip="127.0.0.1")
+    ssl_config = server.SSLConfig(certificate="server.crt", private_key="server.key", custom_ca="ca.crt",
+                                  verify_client=False)
+    server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
+    server.start_grpc_server("127.0.0.1:5500", ssl_config=ssl_config)
+    # Client
+    instance_count = 3
+    data = create_multi_instances_fp32(instance_count)
+    result = post_restful("127.0.0.1:5500", base.servable_name, "add_common", data[0], verify="client.crt",
+                          https=True)
+
+    print(result)
+    assert "post failed" in result
+
+
+@serving_test
+def test_https_missing_cert_failed():
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    generate_cert(server_ip="127.0.0.1")
+    ssl_config = server.SSLConfig(certificate="server.crt", private_key="server.key", custom_ca="ca.crt",
+                                  verify_client=True)
+    server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
+    server.start_grpc_server("127.0.0.1:5500", ssl_config=ssl_config)
+    # Client
+    instance_count = 3
+    data = create_multi_instances_fp32(instance_count)
+    result = post_restful("127.0.0.1:5500", base.servable_name, "add_common", data[0], cert=None, https=True)
+
+    print(result)
+    assert "post failed" in result
+
+
+@serving_test
+def test_https_unmatched_cert_failed():
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    generate_cert(server_ip="127.0.0.1")
+    ssl_config = server.SSLConfig(certificate="server.crt", private_key="client.key", custom_ca="ca.crt",
+                                  verify_client=False)
+    server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
+    try:
+        server.start_restful_server("127.0.0.1:5500", ssl_config=ssl_config)
+    except RuntimeError as e:
+        assert "Serving Error: load private_key from client.key failed" in str(e)
 
 
 @serving_test

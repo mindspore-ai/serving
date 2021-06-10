@@ -82,10 +82,16 @@ Status RestfulServer::CreatHttpsServer(int time_out_second, const SSLConfig &ssl
 
   if (ssl_config.verify_client) {
     SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
-    if (SSL_CTX_load_verify_locations(ctx, ssl_config.custom_ca.c_str(), nullptr) != 1) {
+    if (!ssl_config.custom_ca.empty() &&
+        SSL_CTX_load_verify_locations(ctx, ssl_config.custom_ca.c_str(), nullptr) != 1) {
       status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
-               << "Serving Error: load root certificate from " << ssl_config.custom_ca << "failed";
+               << "Serving Error: load root certificate from " << ssl_config.custom_ca << " failed";
       return status;
+    } else {
+      if (SSL_CTX_set_default_verify_paths(ctx) != 1) {
+        status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Serving Error: set default verify paths failed";
+        return status;
+      }
     }
   }
   EC_KEY *ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
@@ -113,17 +119,17 @@ Status RestfulServer::ServerSetupCerts(SSL_CTX *ctx, const SSLConfig &ssl_config
   Status status;
   if (SSL_CTX_use_certificate_chain_file(ctx, ssl_config.certificate.c_str()) != 1) {
     status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
-             << "Serving Error: load certificate_chain from " << ssl_config.certificate << "failed";
+             << "Serving Error: load certificate_chain from " << ssl_config.certificate << " failed";
     return status;
   }
   if (SSL_CTX_use_PrivateKey_file(ctx, ssl_config.private_key.c_str(), SSL_FILETYPE_PEM) != 1) {
     status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
-             << "Serving Error: load private_key from " << ssl_config.private_key << "failed";
+             << "Serving Error: load private_key from " << ssl_config.private_key << " failed";
     return status;
   }
   if (SSL_CTX_check_private_key(ctx) != 1) {
     status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
-             << "Serving Error: private_key is not consist with certificate " << ssl_config.certificate << "failed";
+             << "Serving Error: private_key is not consistent with certificate " << ssl_config.certificate;
     return status;
   }
   return SUCCESS;

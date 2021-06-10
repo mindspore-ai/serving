@@ -56,7 +56,8 @@ def check_number_result(result, y_data_list, output_name="y"):
         assert (np.abs(result_item - expected_item) < 0.001).all()
 
 
-def post_restful(address, servable_name, method_name, json_instances, version_number=None, https=False):
+def post_restful(address, servable_name, method_name, json_instances, version_number=None, verify="ca.crt",
+                 cert=("client.crt", "client.key"), https=False):
     instances_map = {"instances": json_instances}
     post_payload = json.dumps(instances_map)
     print("request:", post_payload[:200])
@@ -64,7 +65,7 @@ def post_restful(address, servable_name, method_name, json_instances, version_nu
     if https:
         protocol = "https"
 
-    def post_request(request_url, post_payload, send_pipe, verify="ca.crt", cert=("client.crt", "client.key")):
+    def post_request(request_url, post_payload, send_pipe, verify=verify, cert=cert):
         try:
             if https:
                 result = requests.post(request_url, data=post_payload, verify=verify, cert=cert)
