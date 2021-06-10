@@ -16,7 +16,7 @@
 
 from mindspore_serving import log as logger
 from mindspore_serving.server.common import check_type
-from mindspore_serving.server.worker.utils import get_servable_dir
+from mindspore_serving.server.register.utils import get_servable_dir
 from mindspore_serving._mindspore_serving import ServableMeta_, ServableStorage_
 
 

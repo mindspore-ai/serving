@@ -16,7 +16,7 @@
 
 from mindspore_serving._mindspore_serving import PostprocessStorage_
 from mindspore_serving import log as logger
-from mindspore_serving.server.worker.utils import get_servable_dir, get_func_name
+from .utils import get_servable_dir, get_func_name
 
 
 def check_postprocess(postprocess_name, inputs_count, outputs_count):

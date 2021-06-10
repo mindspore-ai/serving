@@ -16,7 +16,7 @@
 import numpy as np
 from mindspore_serving.server import distributed
 from mindspore_serving.server import register
-from mindspore_serving.server.worker.register import PipelineServable
+from mindspore_serving.server.register import PipelineServable
 
 distributed.declare_servable(rank_size=8, stage_size=1, with_batch_dim=False)
 

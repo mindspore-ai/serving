@@ -23,7 +23,7 @@ RESTful server.
 
 from .master import start_grpc_server, start_restful_server, stop, SSLConfig
 from ._server import start_servables, ServableStartConfig
-from .worker import register
+from . import register
 from . import distributed
 
 __all__ = []
