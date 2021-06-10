@@ -111,24 +111,27 @@ class InferenceBase {
  public:
   InferenceBase() = default;
   virtual ~InferenceBase() = default;
-  virtual Status LoadModelFromFile(DeviceType device_type, uint32_t device_id, const std::string &file_name,
-                                   ModelType model_type, bool with_batch_dim,
+  virtual Status LoadModelFromFile(DeviceType device_type, uint32_t device_id,
+                                   const std::vector<std::string> &file_name, ModelType model_type, bool with_batch_dim,
                                    const std::vector<int> &without_batch_dim_inputs,
                                    const std::map<std::string, std::string> &other_options) = 0;
 
   virtual Status UnloadModel() = 0;
 
-  virtual Status ExecuteModel(const RequestBase &request, ReplyBase *reply, bool return_result) = 0;
+  virtual Status ExecuteModel(const RequestBase &request, ReplyBase *reply, bool return_result,
+                              uint64_t subgraph = 0) = 0;
   virtual Status ExecuteModel(const std::vector<TensorBasePtr> &request, std::vector<TensorBasePtr> *reply,
-                              bool return_result) = 0;
+                              bool return_result, uint64_t subgraph = 0) = 0;
 
-  virtual std::vector<TensorInfo> GetInputInfos() const = 0;
+  virtual std::vector<TensorInfo> GetInputInfos(uint64_t subgraph = 0) const = 0;
 
-  virtual std::vector<TensorInfo> GetOutputInfos() const = 0;
+  virtual std::vector<TensorInfo> GetOutputInfos(uint64_t subgraph = 0) const = 0;
 
-  virtual ssize_t GetBatchSize() const = 0;
+  virtual ssize_t GetBatchSize(uint64_t subgraph = 0) const = 0;
 
   virtual bool CheckModelSupport(DeviceType device_type, ModelType model_type) const = 0;
+
+  virtual uint64_t GetSubGraphNum() const = 0;
 };
 
 class MS_API InferenceLoader {

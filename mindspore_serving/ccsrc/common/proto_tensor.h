@@ -85,6 +85,9 @@ class MS_API GrpcTensorHelper {
   static Status CheckRequestInstances(const proto::PredictRequest &request,
                                       const std::vector<std::string> &input_names);
 
+  static Status CreatePipelineInstanceFromRequest(const proto::PredictRequest &request, RequestSpec *request_spec,
+                                                  std::vector<InstanceData> *results);
+
  private:
   static Status CreateInstanceFromRequestInstances(const proto::PredictRequest &request,
                                                    const std::vector<std::string> &input_names,

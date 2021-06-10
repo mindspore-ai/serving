@@ -41,7 +41,7 @@ struct TaskContext {
 };
 
 struct TaskItem {
-  std::string task_type;  // preprocess, postprocess, stop
+  std::string task_type;  // preprocess, postprocess, pipeline, stop
   std::string name;       // preprocess name, postprocess name
   std::vector<TaskContext> context_list;
   std::vector<InstancePtr> instance_list;
@@ -64,7 +64,6 @@ class MS_API TaskQueue {
   void PushTaskResult(uint64_t worker_id, const InstancePtr &input, const ResultInstance &output);
   void PushTaskResult(uint64_t worker_id, const std::vector<InstancePtr> &inputs,
                       const std::vector<ResultInstance> &outputs);
-
   void TryPopPyTask(TaskItem *task_item);
   Status PushTaskPyResult(const std::vector<ResultInstance> &outputs);
 
@@ -79,7 +78,6 @@ class MS_API TaskQueue {
   std::queue<std::string> task_priority_list_;
   TaskItem task_item_processing_;
   std::unordered_map<uint64_t, TaskCallBack> callback_map_;
-
   std::shared_ptr<std::mutex> lock_ = std::make_shared<std::mutex>();
   std::shared_ptr<std::condition_variable> cond_var_ = std::make_shared<std::condition_variable>();
   std::atomic<bool> is_running = false;
@@ -92,18 +90,24 @@ class MS_API PyTaskQueueGroup {
 
   std::shared_ptr<TaskQueue> GetPreprocessTaskQueue();
   std::shared_ptr<TaskQueue> GetPostprocessTaskQueue();
+  std::shared_ptr<TaskQueue> GetPipelineTaskQueue();
   void PopPyTask(TaskItem *task_item);
+  void PopPipelineTask(TaskItem *task_item);
   void TryPopPreprocessTask(TaskItem *task_item);
   void TryPopPostprocessTask(TaskItem *task_item);
+  void TryPopPipelineTask(TaskItem *task_item);
   void Start();
   void Stop();
 
  private:
   std::shared_ptr<std::mutex> lock_ = std::make_shared<std::mutex>();
   std::shared_ptr<std::condition_variable> cond_var_ = std::make_shared<std::condition_variable>();
+  std::shared_ptr<std::mutex> pipeline_lock_ = std::make_shared<std::mutex>();
+  std::shared_ptr<std::condition_variable> cond_pipeline_ = std::make_shared<std::condition_variable>();
   std::atomic<bool> is_running = false;
   std::shared_ptr<TaskQueue> preprocess_task_que_ = std::make_shared<TaskQueue>(lock_, cond_var_);
   std::shared_ptr<TaskQueue> postprocess_task_que_ = std::make_shared<TaskQueue>(lock_, cond_var_);
+  std::shared_ptr<TaskQueue> pipeline_task_que_ = std::make_shared<TaskQueue>(pipeline_lock_, cond_pipeline_);
 };
 
 class TaskQueueThreadPool {

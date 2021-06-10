@@ -30,6 +30,7 @@ namespace mindspore::serving {
 
 enum PredictPhaseTag {
   kPredictPhaseTag_Input,
+  kPredictPhaseTag_Pipeline,
   kPredictPhaseTag_Preproces,
   kPredictPhaseTag_Predict,
   kPredictPhaseTag_Postprocess,
@@ -38,8 +39,12 @@ enum PredictPhaseTag {
 
 struct MethodSignature {
   std::string method_name;
+  uint64_t subgraph = 0;
   std::vector<std::string> inputs;
   std::vector<std::string> outputs;
+
+  std::string pipeline_name;
+  std::vector<std::pair<PredictPhaseTag, uint64_t>> pipeline_inputs;
 
   std::string preprocess_name;
   // the output index of the 'predict phase'
@@ -122,11 +127,16 @@ struct MS_API ServableMeta {
   std::string Repr() const;
 };
 
+struct PipelineSignature {
+  std::string pipeline_name;
+  std::vector<std::string> inputs;
+  std::vector<std::string> outputs;
+};
+
 struct ServableSignature {
   ServableMeta servable_meta;
   std::vector<MethodSignature> methods;
-
-  Status Check() const;
+  Status Check(uint64_t graph_num) const;
   bool GetMethodDeclare(const std::string &method_name, MethodSignature *method);
 
  private:
@@ -140,9 +150,7 @@ class MS_API ServableStorage {
  public:
   void Register(const ServableSignature &def);
   Status RegisterMethod(const MethodSignature &method);
-
   bool GetServableDef(const std::string &model_name, ServableSignature *def) const;
-
   Status DeclareServable(ServableMeta servable);
   Status DeclareDistributedServable(ServableMeta servable);
 
@@ -159,6 +167,9 @@ static inline LogStream &operator<<(LogStream &stream, PredictPhaseTag data_type
   switch (data_type) {
     case kPredictPhaseTag_Input:
       stream << "Input";
+      break;
+    case kPredictPhaseTag_Pipeline:
+      stream << "Pipeline";
       break;
     case kPredictPhaseTag_Preproces:
       stream << "Preprocess";
@@ -182,6 +193,7 @@ struct WorkerAgentSpec {
   std::vector<TensorInfo> input_infos;
   std::vector<TensorInfo> output_infos;
   uint32_t batch_size = 0;
+  uint64_t subgraph = 0;
 };
 
 }  // namespace mindspore::serving

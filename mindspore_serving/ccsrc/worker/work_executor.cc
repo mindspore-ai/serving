@@ -22,6 +22,7 @@
 #include <map>
 #include "worker/preprocess.h"
 #include "worker/postprocess.h"
+#include "worker/pipeline.h"
 #include "mindspore_serving/ccsrc/common/tensor.h"
 #include "common/buffer_tensor.h"
 #include "worker/worker.h"
@@ -32,11 +33,13 @@ namespace serving {
 WorkExecutor::WorkExecutor(std::shared_ptr<TaskQueue> py_preprocess_task_queue,
                            std::shared_ptr<TaskQueue> py_postprocess_task_queue,
                            std::shared_ptr<TaskQueue> cpp_preprocess_task_queue,
-                           std::shared_ptr<TaskQueue> cpp_postprocess_task_queue)
+                           std::shared_ptr<TaskQueue> cpp_postprocess_task_queue,
+                           std::shared_ptr<TaskQueue> py_pipeline_task_queue)
     : py_preprocess_task_queue_(std::move(py_preprocess_task_queue)),
       py_postprocess_task_queue_(std::move(py_postprocess_task_queue)),
       cpp_preprocess_task_queue_(std::move(cpp_preprocess_task_queue)),
-      cpp_postprocess_task_queue_(std::move(cpp_postprocess_task_queue)) {
+      cpp_postprocess_task_queue_(std::move(cpp_postprocess_task_queue)),
+      py_pipeline_task_queue_(std::move(py_pipeline_task_queue)) {
   static std::atomic_uint64_t g_worker_id;
   worker_id_ = ++g_worker_id;
 }
@@ -46,9 +49,9 @@ WorkExecutor::~WorkExecutor() {
   ClearInstances(Status(WORKER_UNAVAILABLE, "Servable stopped"));
 }
 
-Status WorkExecutor::CheckServableSignature() {
+Status WorkExecutor::CheckServableSignature(uint64_t subgraph) {
   Status status;
-  const auto &input_infos = input_infos_;
+  const auto &input_infos = input_infos_[subgraph];
   if (servable_declare_.methods.empty()) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "There is no method registered for servable";
   }
@@ -57,17 +60,17 @@ Status WorkExecutor::CheckServableSignature() {
     return INFER_STATUS_LOG_ERROR(FAILED) << "The inputs count " << common_meta.inputs_count << " registered in method "
                                           << "not equal to the count " << input_infos.size() << " defined in servable";
   }
-  if (output_infos_.size() != common_meta.outputs_count) {
+  if (output_infos_[subgraph].size() != common_meta.outputs_count) {
     return INFER_STATUS_LOG_ERROR(FAILED)
            << "The outputs count " << common_meta.outputs_count << " registered in method "
-           << "not equal to the count " << output_infos_.size() << " defined in servable";
+           << "not equal to the count " << output_infos_[subgraph].size() << " defined in servable";
   }
   MSI_LOG_INFO << "Model input infos: count " << input_infos.size();
   for (auto &item : input_infos) {
     MSI_LOG_INFO << item.shape << ", " << item.data_type << ", " << item.size;
   }
-  MSI_LOG_INFO << "Model output infos: count " << output_infos_.size();
-  for (auto &item : output_infos_) {
+  MSI_LOG_INFO << "Model output infos: count " << output_infos_[subgraph].size();
+  for (auto &item : output_infos_[subgraph]) {
     MSI_LOG_INFO << item.tensor_info.shape << ", " << item.tensor_info.data_type << ", " << item.tensor_info.size;
   }
   if (common_meta.with_batch_dim) {
@@ -84,7 +87,7 @@ Status WorkExecutor::CheckServableSignature() {
                << "Servable batch size " << model_batch_size_ << " not match model input shape " << item.shape;
       }
     }
-    for (auto &item : output_infos_) {
+    for (auto &item : output_infos_[subgraph]) {
       auto &tensor_info = item.tensor_info;
       if (tensor_info.shape.empty() || static_cast<uint32_t>(tensor_info.shape[0]) != model_batch_size_) {
         return INFER_STATUS_LOG_ERROR(FAILED)
@@ -95,7 +98,7 @@ Status WorkExecutor::CheckServableSignature() {
       item.size_one_batch = tensor_info.size / model_batch_size_;
     }
   } else {
-    for (auto &item : output_infos_) {
+    for (auto &item : output_infos_[subgraph]) {
       auto &tensor_info = item.tensor_info;
       item.shape_one_batch = tensor_info.shape;
       item.size_one_batch = tensor_info.size;
@@ -114,32 +117,36 @@ Status WorkExecutor::Init(const ServableSignature &servable_declare, const std::
   }
   servable_declare_ = servable_declare;
   servable_ = servable;
-  input_infos_ = servable_->GetInputInfos();
-  auto output_infos = servable_->GetOutputInfos();
-  for (auto &item : output_infos) {
-    TensorInfoWithBatch info;
-    info.tensor_info = item;
-    output_infos_.push_back(info);
-  }
-  if (servable_declare_.servable_meta.common_meta.with_batch_dim) {
-    model_batch_size_ = servable_->GetBatchSize();
-  } else {
-    model_batch_size_ = 1;
+  uint64_t graph_num = servable_->GetGraphNum();
+  for (uint64_t i = 0; i < graph_num; i++) {
+    input_infos_[i] = servable_->GetInputInfos();
+    auto output_infos = servable_->GetOutputInfos();
+    for (auto &item : output_infos) {
+      TensorInfoWithBatch info;
+      info.tensor_info = item;
+      output_infos_[i].push_back(info);
+    }
+    if (servable_declare_.servable_meta.common_meta.with_batch_dim) {
+      model_batch_size_ = servable_->GetBatchSize();
+    } else {
+      model_batch_size_ = 1;
+    }
+    status = CheckServableSignature(i);
+    if (status != SUCCESS) {
+      MSI_LOG_ERROR << "Check servable definition failed";
+      return status;
+    }
+    InitInputTensors(i);
   }
 
-  status = servable_declare_.Check();
+  status = servable_declare_.Check(graph_num);
   if (status != SUCCESS) {
     MSI_LOG_ERROR << "Check servable declare failed";
     return status;
   }
-  status = CheckServableSignature();
-  if (status != SUCCESS) {
-    MSI_LOG_ERROR << "Check servable definition failed";
-    return status;
-  }
-  InitInputTensors();
   // init python preprocess and postprocess
   InitPrePostprocess();
+  InitPipeline();
   // init predict fun
   auto predict_fun = [this](const std::vector<InstancePtr> &inputs) { this->PredictHandle(inputs); };
 
@@ -208,15 +215,42 @@ void WorkExecutor::InitPrePostprocess() {
   py_postprocess_task_queue_->SetWorkerCallback(GetWorkerId(), postprocess_callback);
   cpp_postprocess_task_queue_->SetWorkerCallback(GetWorkerId(), postprocess_callback);
 }
-
-void WorkExecutor::InitInputTensors() {
-  inference_inputs_.clear();
-  for (auto &input_info : input_infos_) {
+void WorkExecutor::InitPipeline() {
+  std::vector<PipelineSignature> pipelines;
+  PipelineStorage::Instance().GetPipelineDef(&pipelines);
+  for (auto &method : pipelines) {
+    auto name = servable_declare_.servable_meta.common_meta.servable_name + "." + method.pipeline_name;
+    python_pipeline_names_.emplace(name);
+  }
+  auto pipeline_callback = [this](const std::vector<InstancePtr> &instances,
+                                  const std::vector<ResultInstance> &outputs) {
+    if (instances.empty() || instances.size() != outputs.size()) {
+      MSI_LOG_ERROR << "Invalid inputs size " << instances.size() << ", result size " << outputs.size();
+      return;
+    }
+    std::vector<InstancePtr> outputs_real;
+    for (size_t i = 0; i < instances.size(); i++) {
+      auto &instance = instances[i];
+      auto &output = outputs[i];
+      if (output.error_msg != SUCCESS) {
+        ReplyError(instance, output.error_msg);
+        continue;
+      }
+      CreateResultInstance(instance, output, kPredictPhaseTag_Pipeline);
+      outputs_real.push_back(instance);
+    }
+    ReplyRequest(outputs_real);
+  };
+  py_pipeline_task_queue_->SetWorkerCallback(GetWorkerId(), pipeline_callback);
+}
+void WorkExecutor::InitInputTensors(uint64_t subgraph) {
+  inference_inputs_[subgraph].clear();
+  for (auto &input_info : input_infos_[subgraph]) {
     auto tensor = std::make_shared<Tensor>();
     tensor->set_data_type(input_info.data_type);
     tensor->set_shape(input_info.shape);
     tensor->resize_data(input_info.size);
-    inference_inputs_.push_back(tensor);
+    inference_inputs_[subgraph].push_back(tensor);
   }
 }
 
@@ -262,6 +296,48 @@ Status WorkExecutor::Work(const RequestSpec &request_spec, const std::vector<Ins
   }
   return SUCCESS;
 }
+Status WorkExecutor::Pipe(const RequestSpec &request_spec, const std::vector<InstanceData> &instances_data,
+                          const PipelineSignature &method_signature, WorkCallBack on_process_done) {
+  if (!init_flag_) {
+    MSI_LOG_EXCEPTION << "Worker service has not been initialized";
+  }
+  auto user_id = WorkExecutor::GetNextUserId();
+  InferSession infer_session;
+  infer_session.call_back = std::move(on_process_done);
+
+  auto user_context = std::make_shared<WorkerUserContext>();
+  user_context->request_spec = request_spec;
+
+  MethodSignature &method_def = user_context->method_def;
+  method_def.pipeline_name = request_spec.servable_name + "." + method_signature.pipeline_name;
+  for (size_t i = 0; i < method_signature.inputs.size(); i++) {
+    method_def.pipeline_inputs.push_back(std::make_pair(kPredictPhaseTag_Pipeline, i));
+  }
+  for (size_t i = 0; i < method_signature.outputs.size(); i++) {
+    method_def.returns.push_back(std::make_pair(kPredictPhaseTag_Pipeline, i));
+  }
+  method_def.inputs = method_signature.inputs;
+  method_def.outputs = method_signature.outputs;
+  std::vector<InstancePtr> instances;
+  for (size_t i = 0; i < instances_data.size(); i++) {
+    auto instance = std::make_shared<Instance>();
+    instances.push_back(instance);
+
+    instance->pipeline_data = instances_data[i];
+    auto &context = instance->context;
+    context.user_id = user_id;
+    context.instance_index = i;
+    context.user_context = user_context;
+  }
+  infer_session.instances = instances;
+  {
+    std::unique_lock<std::mutex> lock(infer_session_map_mutex_);
+    infer_session_map_[user_id] = infer_session;
+  }
+
+  OnReceivePipelineInputs(instances);
+  return SUCCESS;
+}
 
 void WorkExecutor::OnReceivePreprocessInputs(const std::vector<InstancePtr> &instances) {
   if (instances.empty()) {
@@ -289,6 +365,16 @@ void WorkExecutor::OnReceivePostprocessInputs(const std::vector<InstancePtr> &in
   }
 }
 
+void WorkExecutor::OnReceivePipelineInputs(const std::vector<InstancePtr> &instances) {
+  if (instances.empty()) {
+    MSI_LOG_EXCEPTION << "Inputs cannot be empty";
+  }
+  const MethodSignature &method_def = instances[0]->context.user_context->method_def;
+  CreateInputInstance(instances, kPredictPhaseTag_Pipeline);
+  if (python_pipeline_names_.count(method_def.pipeline_name) > 0) {
+    py_pipeline_task_queue_->PushTask(method_def.pipeline_name, GetWorkerId(), instances);
+  }
+}
 void WorkExecutor::OnReceivePredictInputs(const std::vector<InstancePtr> &instances) {
   // create input for predict, and check
   CreateInputInstance(instances, kPredictPhaseTag_Predict);
@@ -318,7 +404,7 @@ bool WorkExecutor::ReplyRequest(const InstancePtr &instance) {
   instance->preprocess_data.clear();
   instance->predict_data.clear();
   instance->postprocess_data.clear();
-
+  instance->pipeline_data.clear();
   std::unique_lock<std::mutex> lock(infer_session_map_mutex_);
   auto it = infer_session_map_.find(instance->context.user_id);
   if (it == infer_session_map_.end()) {
@@ -347,6 +433,7 @@ bool WorkExecutor::ReplyError(const InstancePtr &instance, const Status &error_m
   instance->preprocess_data.clear();
   instance->predict_data.clear();
   instance->postprocess_data.clear();
+  instance->pipeline_data.clear();
   instance->phase = kInstancePhaseDone;
 
   std::unique_lock<std::mutex> lock(infer_session_map_mutex_);
@@ -402,14 +489,16 @@ void WorkExecutor::PredictHandle(const std::vector<InstancePtr> &instances) {
 }
 
 Status WorkExecutor::PrePredict(const std::vector<InstancePtr> &instances) {
+  auto subgraph = instances[0]->context.user_context->method_def.subgraph;
   auto input_batch_size = static_cast<uint32_t>(instances.size());
   uint32_t model_batch_size = model_batch_size_;
   if (input_batch_size == 0 || input_batch_size > model_batch_size) {
     MSI_LOG_ERROR << "Input batch size " << input_batch_size << " invalid, model batch size " << model_batch_size;
     return SYSTEM_ERROR;
   }
-  for (size_t i = 0; i < inference_inputs_.size(); i++) {
-    auto &tensor = inference_inputs_[i];
+  for (size_t i = 0; i < inference_inputs_[subgraph].size(); i++) {
+    auto &inputs = inference_inputs_[subgraph];
+    auto &tensor = inputs[i];
     auto data_size = tensor->data_size();
     auto dst_buffer = reinterpret_cast<uint8_t *>(tensor->mutable_data());
     if (IsNoBatchDimInput(i)) {
@@ -442,21 +531,23 @@ Status WorkExecutor::PrePredict(const std::vector<InstancePtr> &instances) {
 
 Status WorkExecutor::PostPredict(const std::vector<InstancePtr> &instances,
                                  const std::vector<TensorBasePtr> &predict_result) {
+  auto subgraph = instances[0]->context.user_context->method_def.subgraph;
   auto input_batch_size = static_cast<uint32_t>(instances.size());
   uint32_t model_batch_size = model_batch_size_;
   if (input_batch_size == 0 || input_batch_size > model_batch_size) {
     MSI_LOG_ERROR << "Input batch size " << input_batch_size << " invalid, model batch size " << model_batch_size;
     return SYSTEM_ERROR;
   }
-  if (predict_result.size() != output_infos_.size()) {
+  if (predict_result.size() != output_infos_[subgraph].size()) {
     MSI_LOG_ERROR << "Output result count " << predict_result.size() << " not equal to output_infos_ count "
-                  << output_infos_.size();
+                  << output_infos_[subgraph].size();
     return SYSTEM_ERROR;
   }
   std::vector<ResultInstance> results_data(input_batch_size);
+  auto &output = output_infos_[subgraph];
   for (size_t i = 0; i < predict_result.size(); i++) {
     auto &item = predict_result[i];
-    auto &output_info = output_infos_[i];
+    auto &output_info = output[i];
     if (item->data_size() != output_info.tensor_info.size) {
       MSI_LOG_ERROR << "Output result " << i << " data size " << item->data_size() << " not equal to size "
                     << output_info.tensor_info.size << " in output_infos_ ";
@@ -484,7 +575,8 @@ Status WorkExecutor::Predict(const std::vector<InstancePtr> &instances) {
     MSI_LOG_ERROR << "Call Pre Predict failed, model info " << servable_declare_.servable_meta.Repr();
     return status;
   }
-  status = servable_->Predict(inference_inputs_, &predict_outputs);
+  status = servable_->Predict(inference_inputs_[instances[0]->context.user_context->method_def.subgraph],
+                              &predict_outputs, instances[0]->context.user_context->method_def.subgraph);
   if (status != SUCCESS) {
     MSI_LOG_ERROR << "Predict failed, model info " << servable_declare_.servable_meta.Repr();
     return status;
@@ -508,7 +600,8 @@ bool WorkExecutor::IsNoBatchDimInput(int input_index) const {
 }
 
 Status WorkExecutor::CheckPredictInput(const InstancePtr &instance) {
-  const auto &inputs_info = input_infos_;
+  auto subgraph = instance->context.user_context->method_def.subgraph;
+  const auto &inputs_info = input_infos_[subgraph];
   if (instance->data.size() < inputs_info.size()) {
     return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Given model inputs size " << instance->data.size()
                                                   << " less than model inputs size " << inputs_info.size();
@@ -558,6 +651,10 @@ void WorkExecutor::CreateInputInstance(const InstancePtr &instance, PredictPhase
       inputs = &method_def.postprocess_inputs;
       instance->phase = kInstancePhasePostprocess;
       break;
+    case kPredictPhaseTag_Pipeline:
+      inputs = &method_def.pipeline_inputs;
+      instance->phase = kInstancePhasePipeline;
+      break;
     case kPredictPhaseTag_Output:
       inputs = &method_def.returns;
       instance->phase = kInstancePhaseDone;
@@ -571,6 +668,9 @@ void WorkExecutor::CreateInputInstance(const InstancePtr &instance, PredictPhase
     switch (item.first) {
       case kPredictPhaseTag_Input:
         data = &instance->input_data;
+        break;
+      case kPredictPhaseTag_Pipeline:
+        data = &instance->pipeline_data;
         break;
       case kPredictPhaseTag_Preproces:
         data = &instance->preprocess_data;
@@ -607,6 +707,9 @@ void WorkExecutor::CreateResultInstance(const InstancePtr &instance, const Resul
   switch (phase) {
     case kPredictPhaseTag_Input:
       instance->input_data = result.data;
+      break;
+    case kPredictPhaseTag_Pipeline:
+      instance->pipeline_data = result.data;
       break;
     case kPredictPhaseTag_Preproces:
       instance->preprocess_data = result.data;

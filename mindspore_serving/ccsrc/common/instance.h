@@ -39,6 +39,7 @@ struct WorkerUserContext {
 
 enum InstancePhase {
   kInstancePhaseNone,
+  kInstancePhasePipeline,
   kInstancePhasePreprocess,
   kInstancePhasePredict,
   kInstancePhasePostprocess,
@@ -58,9 +59,10 @@ struct InstanceContext {
 };
 
 struct Instance {
-  InstanceData data;  // for inputs of preprocess, predict, postprocess or output
+  InstanceData data;  // for inputs of pipeline, preprocess, predict, postprocess or output
 
   InstanceData input_data;        // input data
+  InstanceData pipeline_data;     // pipeline data
   InstanceData preprocess_data;   // preprocess result
   InstanceData predict_data;      // predict result
   InstanceData postprocess_data;  // postprocess result

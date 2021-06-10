@@ -19,15 +19,18 @@ import ast
 from functools import wraps
 from easydict import EasyDict
 
-from mindspore_serving._mindspore_serving import ServableStorage_, MethodSignature_, PredictPhaseTag_
+from mindspore_serving._mindspore_serving import ServableStorage_, PipelineStorage_
+from mindspore_serving._mindspore_serving import PipelineSignature_, MethodSignature_, PredictPhaseTag_
 from mindspore_serving import log as logger
 from mindspore_serving.server.common import check_type
 from mindspore_serving.server.worker.utils import get_func_name, get_servable_dir
 from .preprocess import register_preprocess, check_preprocess
 from .postprocess import register_postprocess, check_postprocess
+from .pipeline import register_pipeline
 
 method_def_context_ = MethodSignature_()
 method_def_ast_meta_ = EasyDict()
+pipeline_def_context_ = PipelineSignature_()
 
 method_tag_input = PredictPhaseTag_.kPredictPhaseTag_Input
 method_tag_preprocess = PredictPhaseTag_.kPredictPhaseTag_Preproces
@@ -378,7 +381,7 @@ def _get_method_def_func_meta(method_def_func):
     return func_meta
 
 
-def register_method(output_names):
+def register_method(output_names, subgraph=0):
     """register method for servable.
 
     Define the data flow of preprocess, model inference and postprocess in the method.
@@ -387,6 +390,7 @@ def register_method(output_names):
     Args:
         output_names (Union[str, tuple[str], list[str]]): The output names of method. The input names is
             the args names of the registered function.
+        subgraph (int): The number of subgraph in model. Number starts at 0, The default value is 0.
 
     Raises:
         RuntimeError: The type or value of the parameters are invalid, or other error happened.
@@ -403,6 +407,81 @@ def register_method(output_names):
         >>> def add_cast(x1, x2):
         ...     x1, x2 = register.call_preprocess(add_trans_datatype, x1, x2)  # cast input to float32
         ...     y = register.call_servable(x1, x2)
+        ...     return y
+    """
+    output_names = check_type.check_and_as_str_tuple_list('output_names', output_names)
+    check_type.check_int('subgraph', subgraph, 0)
+    def register(func):
+        name = get_func_name(func)
+        sig = inspect.signature(func)
+        input_names = []
+        for k, v in sig.parameters.items():
+            if v.kind == inspect.Parameter.VAR_POSITIONAL:
+                raise RuntimeError(f"'{name}' input {k} cannot be VAR_POSITIONAL !")
+            if v.kind == inspect.Parameter.VAR_KEYWORD:
+                raise RuntimeError(f"'{name}' input {k} cannot be VAR_KEYWORD !")
+            if v.kind == inspect.Parameter.KEYWORD_ONLY:
+                raise RuntimeError(f"'{name}' input {k} cannot be KEYWORD_ONLY !")
+            input_names.append(k)
+
+        input_tensors = []
+        for i in range(len(input_names)):
+            input_tensors.append(_TensorDef(method_tag_input, i))
+
+        global method_def_context_
+        method_def_context_ = MethodSignature_()
+        method_def_context_.method_name = name
+        method_def_context_.subgraph = subgraph
+        method_def_context_.inputs = input_names
+        method_def_context_.outputs = output_names
+
+        global method_def_ast_meta_
+        method_def_ast_meta_ = _get_method_def_func_meta(func)
+
+        output_tensors = func(*tuple(input_tensors))
+        if isinstance(output_tensors, _TensorDef):
+            output_tensors = (output_tensors,)
+        if len(output_tensors) != len(output_names):
+            raise RuntimeError(
+                f"Method return output size {len(output_tensors)} not match registered {len(output_names)}")
+
+        method_def_context_.returns = [item.as_pair() for item in output_tensors]
+        logger.info(f"Register method: method_name {method_def_context_.method_name} "
+                    f", servable_name {method_def_context_.servable_name}, inputs: {input_names}, outputs: "
+                    f"{output_names}")
+
+        ServableStorage_.register_method(method_def_context_)
+        return func
+
+    return register
+
+
+def register_pineline(output_names):
+    """register method for Pipeline Servable.
+
+    Define the data flow of Pipeline Servable Method. Pipeline servable is optional.
+
+    Args:
+        output_names (str, tuple or list of str): The output names of pipeline. The input names is
+            the args names of the registered function.
+
+    Raises:
+        RuntimeError: The type or value of the parameters is invalid, or other error happened.
+
+    Examples:
+        >>> from mindspore_serving.server import distributed
+        >>> from mindspore_serving.server import register
+        >>> from mindspore_serving.server.worker.register import PipelineServable
+        >>>
+        >>> distributed.declare_servable(rank_size=8, stage_size=1, with_batch_dim=False)
+        >>> @register.register_method(output_names=["y"])
+        >>> def fun(x):
+        ...     y = register.call_servable(x)
+        ...     return y
+        >>> servable = PipelineServable(servable_name="service", method="fun", version_number=0)
+        >>> @register.register_pineline(output_names=["y"])
+        >>> def predict(x):
+        ...     y = servable.call(x)
         ...     return y
     """
     output_names = check_type.check_and_as_str_tuple_list('output_names', output_names)
@@ -424,28 +503,15 @@ def register_method(output_names):
         for i in range(len(input_names)):
             input_tensors.append(_TensorDef(method_tag_input, i))
 
-        global method_def_context_
-        method_def_context_ = MethodSignature_()
-        method_def_context_.method_name = name
-        method_def_context_.inputs = input_names
-        method_def_context_.outputs = output_names
-
-        global method_def_ast_meta_
-        method_def_ast_meta_ = _get_method_def_func_meta(func)
-
-        output_tensors = func(*tuple(input_tensors))
-        if isinstance(output_tensors, _TensorDef):
-            output_tensors = (output_tensors,)
-        if len(output_tensors) != len(output_names):
-            raise RuntimeError(
-                f"Method return output size {len(output_tensors)} not match registered {len(output_names)}")
-
-        method_def_context_.returns = [item.as_pair() for item in output_tensors]
-        logger.info(f"Register method: method_name {method_def_context_.method_name} "
-                    f", servable_name {method_def_context_.servable_name}, inputs: {input_names}, outputs: "
-                    f"{output_names}")
-
-        ServableStorage_.register_method(method_def_context_)
+        global pipeline_def_context_
+        pipeline_def_context_ = PipelineSignature_()
+        pipeline_def_context_.pipeline_name = name
+        pipeline_def_context_.inputs = input_names
+        pipeline_def_context_.outputs = output_names
+        PipelineStorage_.get_instance().register(pipeline_def_context_)
+        inputs_count = len(input_names)
+        outputs_count = len(output_names)
+        register_pipeline(func, inputs_count, outputs_count)
         return func
 
     return register

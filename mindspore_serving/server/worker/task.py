@@ -21,6 +21,7 @@ from mindspore_serving._mindspore_serving import Worker_
 from mindspore_serving._mindspore_serving import ExitSignalHandle_
 from mindspore_serving.server.worker.register.preprocess import preprocess_storage
 from mindspore_serving.server.worker.register.postprocess import postprocess_storage
+from mindspore_serving.server.worker.register.pipeline import pipeline_storage
 from mindspore_serving import log as logger
 
 
@@ -46,7 +47,7 @@ task_type_stop = "stop"
 task_type_empty = "empty"
 task_type_preprocess = "preprocess"
 task_type_postprocess = "postprocess"
-
+task_type_pipeline = "pipeline"
 
 def has_worker_stopped():
     """Whether worker has stopped"""
@@ -54,7 +55,7 @@ def has_worker_stopped():
 
 
 class PyTask:
-    """Base class for preprocess and postprocess"""
+    """Base class for pipeline, preprocess and postprocess"""
 
     def __init__(self, switch_batch, task_name):
         super(PyTask, self).__init__()
@@ -120,6 +121,22 @@ class PyTask:
                 self.temp_result = None
         except StopIteration:
             raise RuntimeError(f"Get next '{self.task_name}' result failed")
+
+    def runpipeline(self, task):
+        """Run pipeline"""
+        instance_list = task.instance_list
+        get_begin_time = time.time()
+        self.task_info = self.get_task_info(task.name)
+        for item in instance_list:
+            result = self._handle_one_task(item)
+            if result is not None:
+                output = self._handle_result(result)
+                self.result_batch.append(output)
+        get_end_time = time.time()
+        logger.info(f"{self.task_name} get result, "
+                    f"cost time "
+                    f"{(get_end_time - get_begin_time) * 1000} ms")
+        self.push_result_batch()
 
     def _run_inner(self, task):
         """Iterator get next result, and push it to c++"""
@@ -191,8 +208,23 @@ class PyTask:
             self.push_failed(len(instance_list))
             return None
 
+    def _handle_one_task(self, instance):
+        """Continue to handle task on new task or task exception happened"""
+        try:
+            inputs = []
+            for i in range(self.task_info["inputs_count"]):
+                inputs.append(instance[i])
+            output = self.task_info["fun"](*inputs)
+            return output
+        # pylint: disable=broad-except
+        except Exception as e:
+            logger.warning(f"{self.task_name} invoke catch exception: ")
+            logging.exception(e)
+            self.push_failed(1)
+            return None
+
     def _handle_result(self, output):
-        """Further processing results of preprocess or postprocess"""
+        """Further pipeline, processing results of preprocess or postprocess"""
         if not isinstance(output, (tuple, list)):
             output = (output,)
         if len(output) != self.task_info["outputs_count"]:
@@ -248,6 +280,27 @@ class PyPostprocess(PyTask):
         """Get postprocess task info, including inputs, outputs count, function of postprocess"""
         return postprocess_storage.get(task_name)
 
+class PyPipeline(PyTask):
+    """PyPipeline implement"""
+
+    def __init__(self, switch_batch):
+        super(PyPipeline, self).__init__(switch_batch, "pipeline")
+
+    def push_failed_impl(self, count):
+        """Push failed pipeline result to c++ env"""
+        Worker_.push_pipeline_failed(count)
+
+    def push_system_failed_impl(self):
+        """Push failed pipeline result to c++ env"""
+        Worker_.push_pipeline_system_failed()
+
+    def push_result_batch_impl(self, result_batch):
+        """Push success pipeline result to c++ env"""
+        Worker_.push_pipeline_result(result_batch)
+
+    def get_task_info(self, task_name):
+        """Get pipeline task info, including inputs, outputs count, function of pipeline"""
+        return pipeline_storage.get(task_name)
 
 class PyTaskThread(threading.Thread):
     """Thread for handling preprocess and postprocess"""
@@ -269,6 +322,7 @@ class PyTaskThread(threading.Thread):
                 if has_worker_stopped():
                     logger.info("Worker has exited, exit py task")
                     break
+
                 if not self.preprocess.has_next() and not self.postprocess.has_next():
                     task = Worker_.get_py_task()
                     if task.task_type == task_type_stop:
@@ -279,7 +333,6 @@ class PyTaskThread(threading.Thread):
                     elif task.task_type == task_type_postprocess:
                         self.postprocess.run(task)
                         preprocess_turn = True
-
                 # in preprocess turn, when preprocess is still running, switch to running preprocess
                 # otherwise try get next preprocess task when postprocess is running
                 # when next preprocess is not available, switch to running postprocess
@@ -313,21 +366,62 @@ class PyTaskThread(threading.Thread):
         logger.info("end py task for preprocess and postprocess")
         Worker_.stop_and_clear()
 
+class PyPinelineThread(threading.Thread):
+    """Thread for handling pipeline"""
+
+    def __init__(self, switch_batch):
+        super(PyPinelineThread, self).__init__()
+        self.switch_batch = switch_batch
+        if self.switch_batch <= 0:
+            self.switch_batch = 1
+        self.pipeline = PyPipeline(self.switch_batch)
+
+    def run(self):
+        """Run tasks of pipeline, switch to other type of process when some instances are handled"""
+        logger.info(f"start py task for pipeline, switch_batch {self.switch_batch}")
+        while True:
+            try:
+                if has_worker_stopped():
+                    logger.info("Worker has exited, exit py task")
+                    break
+                task = Worker_.get_pipeline_task()
+                if task.task_type == task_type_stop:
+                    break
+                if task.task_type != task_type_empty:
+                    self.pipeline.runpipeline(task)
+
+            except ServingExitException:
+                logger.info("Catch ServingExitException and exit py task")
+                break
+            except Exception as e:  # pylint: disable=broad-except
+                logger.error(f"py task catch exception and exit: {e}")
+                logging.exception(e)
+                break
+        logger.info("end py task for pipeline")
 
 py_task_thread = None
-
+py_pipeline_thread = None
 
 def _start_py_task(switch_batch):
-    """Start python thread for proprocessing and postprocessing"""
+    """Start python thread for pipelining, proprocessing and postprocessing"""
     global py_task_thread
     if py_task_thread is None:
         py_task_thread = PyTaskThread(switch_batch)
         py_task_thread.start()
-
+    if pipeline_storage.has_registered():
+        global py_pipeline_thread
+        if py_pipeline_thread is None:
+            py_pipeline_thread = PyPinelineThread(switch_batch)
+            py_pipeline_thread.start()
 
 def _join_py_task():
-    """Join python thread for proprocessing and postprocessing"""
+    """Join python thread for pipelining, proprocessing and postprocessing"""
     global py_task_thread
     if py_task_thread is not None:
         py_task_thread.join()
         py_task_thread = None
+    if pipeline_storage.has_registered():
+        global py_pipeline_thread
+        if py_pipeline_thread is not None:
+            py_pipeline_thread.join()
+            py_pipeline_thread = None

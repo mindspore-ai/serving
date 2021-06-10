@@ -47,11 +47,14 @@ struct InferSession {
 class WorkExecutor : public std::enable_shared_from_this<WorkExecutor> {
  public:
   WorkExecutor(std::shared_ptr<TaskQueue> py_preprocess, std::shared_ptr<TaskQueue> py_postprocess,
-               std::shared_ptr<TaskQueue> cpp_preprocess, std::shared_ptr<TaskQueue> cpp_postprocess);
+               std::shared_ptr<TaskQueue> cpp_preprocess, std::shared_ptr<TaskQueue> cpp_postprocess,
+               std::shared_ptr<TaskQueue> py_pipeline);
   ~WorkExecutor();
 
   Status Init(const ServableSignature &servable_declare, const std::shared_ptr<ServableBase> &servable);
   Status Work(const RequestSpec &request_spec, const std::vector<InstanceData> &inputs, WorkCallBack on_process_done);
+  Status Pipe(const RequestSpec &request_spec, const std::vector<InstanceData> &inputs,
+              const PipelineSignature &method_signature, WorkCallBack on_process_done);
 
   static uint64_t GetNextUserId();
   uint32_t GetWorkerId() const;
@@ -61,13 +64,16 @@ class WorkExecutor : public std::enable_shared_from_this<WorkExecutor> {
  private:
   std::set<std::string> python_preprocess_names_;
   std::set<std::string> python_postprocess_names_;
+  std::set<std::string> python_pipeline_names_;
   PredictThread predict_thread_;
 
   ServableSignature servable_declare_;
   std::shared_ptr<ServableBase> servable_;
-  std::vector<TensorInfo> input_infos_;
-  std::vector<TensorInfoWithBatch> output_infos_;
+
+  std::map<uint64_t, std::vector<TensorInfo>> input_infos_;
+  std::map<uint64_t, std::vector<TensorInfoWithBatch>> output_infos_;
   uint32_t model_batch_size_ = 0;
+
   uint64_t worker_id_ = 0;
   bool init_flag_ = false;
 
@@ -75,12 +81,13 @@ class WorkExecutor : public std::enable_shared_from_this<WorkExecutor> {
   std::shared_ptr<TaskQueue> py_postprocess_task_queue_;
   std::shared_ptr<TaskQueue> cpp_preprocess_task_queue_;
   std::shared_ptr<TaskQueue> cpp_postprocess_task_queue_;
-  std::vector<TensorBasePtr> inference_inputs_;
+  std::shared_ptr<TaskQueue> py_pipeline_task_queue_;
+  std::map<uint64_t, std::vector<TensorBasePtr>> inference_inputs_;
 
   std::map<uint64_t, InferSession> infer_session_map_;
   std::mutex infer_session_map_mutex_;
 
-  Status CheckServableSignature();
+  Status CheckServableSignature(uint64_t subgraph);
 
   bool ReplyError(const std::vector<InstancePtr> &context, const Status &error_msg);
   bool ReplyError(const InstancePtr &context, const Status &error_msg);
@@ -90,12 +97,15 @@ class WorkExecutor : public std::enable_shared_from_this<WorkExecutor> {
   void OnReceivePreprocessInputs(const std::vector<InstancePtr> &instances);   //  callback
   void OnReceivePredictInputs(const std::vector<InstancePtr> &instances);      //  callback
   void OnReceivePostprocessInputs(const std::vector<InstancePtr> &instances);  //  callback
+  void OnReceivePipelineInputs(const std::vector<InstancePtr> &instances);     //  callback
 
   void PredictHandle(const std::vector<InstancePtr> &instances);
   Status PrePredict(const std::vector<InstancePtr> &instances);
   Status PostPredict(const std::vector<InstancePtr> &instances, const std::vector<TensorBasePtr> &predict_result);
   Status Predict(const std::vector<InstancePtr> &instances);
+  Status Pipeline(const std::vector<InstancePtr> &instances);
   Status CheckPredictInput(const InstancePtr &instance);
+  Status CheckPipelineInput(const InstancePtr &instance);
   bool IsNoBatchDimInput(int input_index) const;
 
   void CreateInputInstance(const InstancePtr &instance, PredictPhaseTag phase);
@@ -104,7 +114,8 @@ class WorkExecutor : public std::enable_shared_from_this<WorkExecutor> {
   void CreateResultInstance(std::vector<InstancePtr> instances, const std::vector<ResultInstance> &results,
                             PredictPhaseTag phase);
   void InitPrePostprocess();
-  void InitInputTensors();
+  void InitPipeline();
+  void InitInputTensors(uint64_t subgraph);
 };
 
 }  // namespace serving

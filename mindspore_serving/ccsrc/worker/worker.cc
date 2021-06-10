@@ -15,6 +15,7 @@
  */
 
 #include "worker/worker.h"
+#include <algorithm>
 #include <condition_variable>
 #include "pybind11/pybind11.h"
 #include "common/proto_tensor.h"
@@ -24,6 +25,7 @@
 #include "worker/grpc/worker_process.h"
 #include "worker/task_queue.h"
 #include "worker/grpc/worker_server.h"
+#include "worker/pipeline.h"
 
 namespace py = pybind11;
 
@@ -38,7 +40,11 @@ Worker &Worker::GetInstance() {
 Status Worker::RegisterWorker(const std::string &master_address, const std::string &worker_address) {
   notify_master_ = std::make_shared<GrpcNotifyMaster>(master_address, worker_address);
   WorkerRegSpec worker_spec;
-  worker_spec.servable_spec = servable_context_.servable_spec;
+  if (pipeline_spec_.methods.empty()) {
+    worker_spec.servable_spec = servable_context_.servable_spec;
+  } else {
+    worker_spec.servable_spec = pipeline_spec_;
+  }
   auto status = notify_master_->Register(worker_spec);
   return status;
 }
@@ -58,8 +64,37 @@ Status Worker::RunAsync(const proto::PredictRequest &request, proto::PredictRepl
   }
 }
 
+Status Worker::RunPipeline(const proto::PredictRequest &request, proto::PredictReply *reply,
+                           PredictOnFinish on_finish) {
+  if (!servable_started_) {
+    return INFER_STATUS_LOG_ERROR(FAILED) << "RunPipeline worker for inference failed, worker has not been started";
+  }
+  MSI_EXCEPTION_IF_NULL(reply);
+  std::vector<InstanceData> instances_data;
+  RequestSpec request_spec;
+  auto status = GrpcTensorHelper::CreatePipelineInstanceFromRequest(request, &request_spec, &instances_data);
+  if (status != SUCCESS) {
+    MSI_LOG(ERROR) << "transfer request to instances failed";
+    return status;
+  }
+  if (instances_data.empty()) {
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Input instances count is 0";
+  }
+
+  WorkCallBack on_process_done = [request, reply, on_finish](const std::vector<InstancePtr> &instances) {
+    GrpcTensorHelper::CreateReplyFromInstances(request, instances, reply);
+    on_finish();
+  };
+  PipelineSignature method_signature;
+  PipelineStorage::Instance().GetMethodDeclare(request_spec.method_name, &method_signature);
+  return servable_context_.worker_service->Pipe(request_spec, instances_data, method_signature, on_process_done);
+}
+
 Status Worker::RunAsyncInner(const proto::PredictRequest &request, proto::PredictReply *reply,
                              PredictOnFinish on_finish) {
+  if (!pipeline_spec_.methods.empty()) {
+    return RunPipeline(request, reply, on_finish);
+  }
   if (!servable_started_) {
     return INFER_STATUS_LOG_ERROR(WORKER_UNAVAILABLE)
            << "RunAsync worker for inference failed, worker has not been started or stopped";
@@ -85,6 +120,26 @@ Status Worker::RunAsyncInner(const proto::PredictRequest &request, proto::Predic
   return servable_context_.worker_service->Work(request_spec, instances_data, on_process_done);
 }
 
+Status Worker::Run(const RequestSpec &request_spec, const std::vector<InstanceData> instances_data,
+                   std::vector<InstancePtr> *out) {
+  if (!servable_started_) {
+    return INFER_STATUS_LOG_ERROR(FAILED) << "Run worker for inference failed, worker has not been started";
+  }
+  MSI_EXCEPTION_IF_NULL(out);
+  auto promise = std::make_shared<std::promise<void>>();
+  auto future = promise->get_future();
+  WorkCallBack on_process_done = [promise, out](const std::vector<InstancePtr> &instances) {
+    std::copy(instances.begin(), instances.end(), std::back_inserter(*out));
+    promise->set_value();
+  };
+  auto status = servable_context_.worker_service->Work(request_spec, instances_data, on_process_done);
+  if (status != SUCCESS) {
+    return status;
+  }
+  future.get();
+  return SUCCESS;
+}
+
 Status Worker::StartGrpcServer(const std::string &server_address) {
   if (worker_grpc_server_ != nullptr) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Worker gRPC server is already running";
@@ -102,6 +157,22 @@ Status Worker::StartDistributedGrpcServer(std::shared_ptr<DistributedServable> s
   distributed_grpc_server_ = std::make_shared<DistributedWorkerGrpcServer>(servable, server_address);
   SSLConfig ssl_config;
   return distributed_grpc_server_->Start(server_address, ssl_config, gRpcMaxMBMsgSize, "Distributed gRPC");
+}
+void Worker::InitPipeline(const std::string &servable_name, uint64_t version_number) {
+  std::vector<PipelineSignature> pipelines;
+  if (PipelineStorage::Instance().GetPipelineDef(&pipelines)) {
+    pipeline_spec_.servable_name = servable_name;
+    pipeline_spec_.version_number = version_number;
+    pipeline_spec_.batch_size = 1;
+    for (auto &method : pipelines) {
+      ServableMethodInfo worker_method_info;
+      worker_method_info.name = method.pipeline_name;
+      for (auto &name : method.inputs) {
+        worker_method_info.input_names.push_back(name);
+      }
+      pipeline_spec_.methods.push_back(worker_method_info);
+    }
+  }
 }
 
 Status Worker::StartServable(const std::shared_ptr<ServableBase> &servable, const std::string &master_address,
@@ -145,8 +216,9 @@ Status Worker::StartServableInner(const std::shared_ptr<ServableBase> &servable)
   if (!ServableStorage::Instance().GetServableDef(servable_name, &signature)) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Servable " << servable_name << " has not been registered";
   }
-  auto service = std::make_shared<WorkExecutor>(GetPyTaskQueuePreprocess(), GetPyTaskQueuePostprocess(),
-                                                GetCppTaskQueuePreprocess(), GetCppTaskQueuePostprocess());
+  auto service =
+    std::make_shared<WorkExecutor>(GetPyTaskQueuePreprocess(), GetPyTaskQueuePostprocess(), GetCppTaskQueuePreprocess(),
+                                   GetCppTaskQueuePostprocess(), GetPyTaskQueuePipeline());
   auto status = service->Init(signature, servable);
   if (status != SUCCESS) {
     return status;
@@ -170,8 +242,8 @@ Status Worker::StartServableInner(const std::shared_ptr<ServableBase> &servable)
   servable_context.servable_signature = signature;
   servable_context.worker_service = service;
   servable_context.servable = servable;
-
   servable_context_ = servable_context;
+  InitPipeline(servable_spec.servable_name, servable_spec.version_number);
   servable_started_ = true;
   return SUCCESS;
 }
@@ -257,6 +329,14 @@ void Worker::ClearOnSystemFailed(const Status &error_msg) {
   if (servable_context_.worker_service) {
     servable_context_.worker_service->ClearInstances(error_msg);
   }
+}
+void Worker::PushPyPipelineResult(std::vector<ResultInstance> outputs) {
+  std::shared_lock<std::shared_mutex> lock(worker_shared_lock_);
+  if (!servable_started_) {
+    MSI_LOG_INFO << "Worker has not started or has exited";
+    return;
+  }
+  GetPyTaskQueuePipeline()->PushTaskPyResult(outputs);
 }
 
 }  // namespace serving

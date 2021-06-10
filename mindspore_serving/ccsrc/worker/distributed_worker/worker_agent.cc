@@ -53,14 +53,14 @@ Status WorkerAgent::StartAgent(const AgentStartUpConfig &config) {
   Status status;
   config_ = config;
   const auto &common_meta = config.common_meta;
-  status = session_->LoadModelFromFile(kDeviceTypeAscendMS, config.device_id, config.model_file_name, kMindIR,
+  status = session_->LoadModelFromFile(kDeviceTypeAscendMS, config.device_id, config.model_file_names, kMindIR,
                                        common_meta.with_batch_dim, common_meta.without_batch_dim_inputs, {});
   if (status != SUCCESS) {
     MSI_LOG_ERROR << "LoadModelFromFile failed, servable name: " << common_meta.servable_name
                   << ", rank_id: " << config.rank_id << ", device id: " << config.device_id
-                  << ", model file: " << config.model_file_name
+                  << ", model file: " << config.model_file_names
                   << ", rank table file: " << config.rank_table_json_file_name
-                  << ", group config file: " << config.group_file_name;
+                  << ", group config file: " << config.group_file_names;
     return status;
   }
   status = StartGrpcServer();
@@ -75,9 +75,9 @@ Status WorkerAgent::StartAgent(const AgentStartUpConfig &config) {
     return status;
   }
   MSI_LOG_INFO << "Start agent success, servable name: " << common_meta.servable_name << ", rank_id: " << config.rank_id
-               << ", device id: " << config.device_id << ", model file: " << config.model_file_name
+               << ", device id: " << config.device_id << ", model file: " << config.model_file_names
                << ", rank table file: " << config.rank_table_json_file_name
-               << ", group config file: " << config.group_file_name;
+               << ", group config file: " << config.group_file_names;
   return SUCCESS;
 }
 
@@ -88,13 +88,22 @@ Status WorkerAgent::StartGrpcServer() {
 
 Status WorkerAgent::RegisterAgent() {
   notify_worker_ = std::make_shared<GrpcNotifyDistributeWorker>(config_.distributed_address, config_.agent_address);
-  WorkerAgentSpec spec;
-  spec.agent_address = config_.agent_address;
-  spec.rank_id = config_.rank_id;
-  spec.batch_size = session_->GetBatchSize();
-  spec.input_infos = session_->GetInputInfos();
-  spec.output_infos = session_->GetOutputInfos();
-  return notify_worker_->Register({spec});
+  auto graph_num = session_->GetSubGraphNum();
+  if (graph_num == 0) {
+    return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "RegisterAgent failed, Agent graph_num error";
+  }
+  std::vector<WorkerAgentSpec> worker_specs;
+  for (uint64_t i = 0; i < graph_num; i++) {
+    WorkerAgentSpec spec;
+    spec.subgraph = i;
+    spec.agent_address = config_.agent_address;
+    spec.rank_id = config_.rank_id;
+    spec.batch_size = session_->GetBatchSize(i);
+    spec.input_infos = session_->GetInputInfos(i);
+    spec.output_infos = session_->GetOutputInfos(i);
+    worker_specs.push_back(spec);
+  }
+  return notify_worker_->Register(worker_specs);
 }
 
 void WorkerAgent::StopAgent(bool notify_worker) {
@@ -164,7 +173,7 @@ Status WorkerAgent::Run(const proto::DistributedPredictRequest &request, proto::
     MSI_TIME_STAMP_START(ExecuteModel)
     ProtoDistributedPredictRequest request_wrap(request);
     ProtoDistributedPredictReply reply_wrap(reply);
-    status = session_->ExecuteModel(request_wrap, &reply_wrap, request.return_result());
+    status = session_->ExecuteModel(request_wrap, &reply_wrap, request.return_result(), request.subgraph());
     MSI_TIME_STAMP_END(ExecuteModel)
   } catch (const std::bad_alloc &ex) {
     status = INFER_STATUS_LOG_ERROR(FAILED) << "Serving Error: malloc memory failed";

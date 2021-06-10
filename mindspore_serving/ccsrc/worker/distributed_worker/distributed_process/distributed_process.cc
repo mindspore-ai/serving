@@ -25,17 +25,22 @@ grpc::Status MSDistributedImpl::AgentRegister(grpc::ServerContext *context, cons
                                               proto::AgentRegisterReply *reply) {
   MSI_EXCEPTION_IF_NULL(request);
   MSI_EXCEPTION_IF_NULL(reply);
+  std::vector<WorkerAgentSpec> agent_specs;
   for (auto &spec : request->agent_spec()) {
     WorkerAgentSpec agent_spec;
     agent_spec.agent_address = request->address();
     GrpcTensorHelper::CopyFromAgentSpec(spec, &agent_spec);
-    Status status(FAILED);
-    status = servable_->RegisterAgent(agent_spec);
-    if (status != SUCCESS) {
-      MSI_LOG(ERROR) << "Agent Register FAILED";
-    }
-    watcher_->StartWatch(request->address());
+    agent_specs.push_back(agent_spec);
   }
+  if (agent_specs.size() == 0) {
+    MSI_LOG(ERROR) << "Agent Register FAILED, agent_specs size is 0";
+  }
+  Status status(FAILED);
+  status = servable_->RegisterAgent(agent_specs);
+  if (status != SUCCESS) {
+    MSI_LOG(ERROR) << "Agent Register FAILED";
+  }
+  watcher_->StartWatch(request->address());
   return grpc::Status::OK;
 }
 

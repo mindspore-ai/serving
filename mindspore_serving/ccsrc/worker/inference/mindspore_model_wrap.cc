@@ -75,48 +75,51 @@ DataType TransTypeId2InferDataType(mindspore::DataType type_id) {
 }
 
 Status MindSporeModelWrap::LoadModelFromFile(serving::DeviceType device_type, uint32_t device_id,
-                                             const std::string &file_name, ModelType model_type, bool with_batch_dim,
-                                             const std::vector<int> &without_batch_dim_inputs,
+                                             const std::vector<std::string> &file_names, ModelType model_type,
+                                             bool with_batch_dim, const std::vector<int> &without_batch_dim_inputs,
                                              const std::map<std::string, std::string> &other_options) {
   auto ms_model_type = GetMsModelType(model_type);
   if (ms_model_type == mindspore::kUnknownType) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Invalid model type " << model_type;
   }
-
-  std::shared_ptr<mindspore::Model> model = nullptr;
+  std::vector<std::shared_ptr<mindspore::Model>> models;
   try {
     mindspore::Graph graph;
-    auto ms_status = mindspore::Serialization::Load(file_name, ms_model_type, &graph);
+    auto ms_status = mindspore::Serialization::Load(file_names[0], ms_model_type, &graph);
     auto context = TransformModelContext(device_type, device_id, other_options);
-    model = std::make_shared<mindspore::Model>();
-    mindspore::Status status = model->Build(mindspore::GraphCell(graph), context);
-    if (!status.IsOk()) {
-      return INFER_STATUS_LOG_ERROR(FAILED)
-             << "Load model from file failed, model file: " << file_name << ", device_type: '" << device_type
-             << "', device_id: " << device_id << ", model type: " << model_type << ", options: " << other_options
-             << ", build error detail: " << status.ToString();
+    for (size_t i = 0; i < file_names.size(); i++) {
+      auto model = std::make_shared<mindspore::Model>();
+      mindspore::Status status = model->Build(mindspore::GraphCell(graph), context);
+      if (!status.IsOk()) {
+        return INFER_STATUS_LOG_ERROR(FAILED)
+               << "Load model from file failed, model file: " << file_names[i] << ", device_type: '" << device_type
+               << "', device_id: " << device_id << ", model type: " << model_type << ", options: " << other_options
+               << ", build error detail: " << status.ToString();
+      }
+      models.push_back(model);
     }
   } catch (std::runtime_error &ex) {
     return INFER_STATUS_LOG_ERROR(FAILED)
-           << "Load model from file failed, model file: " << file_name << ", device_type: '" << device_type
+           << "Load model from file failed, model file: " << file_names[0] << ", device_type: '" << device_type
            << "', device_id: " << device_id << ", model type: " << model_type << ", options: " << other_options
            << ", build error detail: " << ex.what();
   }
-
-  ApiModelInfo api_model_info;
-  api_model_info.model = model;
-  api_model_info.device_type = device_type;
-  api_model_info.device_id = device_id;
-  api_model_info.with_batch_dim = with_batch_dim;
-  api_model_info.without_batch_dim_inputs = without_batch_dim_inputs;
-  auto st = GetModelInfos(&api_model_info);
-  if (st != SUCCESS) {
-    return st;
+  for (size_t i = 0; i < file_names.size(); i++) {
+    ApiModelInfo api_model_info;
+    api_model_info.model = models[i];
+    api_model_info.device_type = device_type;
+    api_model_info.device_id = device_id;
+    api_model_info.with_batch_dim = with_batch_dim;
+    api_model_info.without_batch_dim_inputs = without_batch_dim_inputs;
+    auto st = GetModelInfos(&api_model_info);
+    if (st != SUCCESS) {
+      return st;
+    }
+    GetModelBatchSize(&api_model_info);
+    models_.push_back(api_model_info);
+    MSI_LOG_INFO << "Load model from file success, model file: " << file_names[i] << ", device_type: '" << device_type
+                 << "', device_id: " << device_id << ", model type: " << model_type << ", options: " << other_options;
   }
-  GetModelBatchSize(&api_model_info);
-  model_ = api_model_info;
-  MSI_LOG_INFO << "Load model from file success, model file: " << file_name << ", device_type: '" << device_type
-               << "', device_id: " << device_id << ", model type: " << model_type << ", options: " << other_options;
   return SUCCESS;
 }
 
@@ -281,11 +284,12 @@ void MindSporeModelWrap::GetModelBatchSize(ApiModelInfo *api_model_info) {
 }
 
 Status MindSporeModelWrap::UnloadModel() {
-  model_.model = nullptr;
+  for (auto iter : models_) iter.model = nullptr;
   return SUCCESS;
 }
 
-Status MindSporeModelWrap::ExecuteModel(const RequestBase &request, serving::ReplyBase *reply, bool return_result) {
+Status MindSporeModelWrap::ExecuteModel(const RequestBase &request, serving::ReplyBase *reply, bool return_result,
+                                        uint64_t subgraph) {
   MSI_EXCEPTION_IF_NULL(reply);
   FuncMakeInBuffer func_in = [&request](size_t index, const std::string &name) {
     auto input_tensor = request[index];
@@ -308,11 +312,15 @@ Status MindSporeModelWrap::ExecuteModel(const RequestBase &request, serving::Rep
     tensor->set_data_type(data_type);
     tensor->set_shape(shape);
   };
-  return ExecuteModelCommon(request.size(), func_in, func_out, return_result);
+  return ExecuteModelCommon(request.size(), func_in, func_out, return_result, subgraph);
 }
 
 Status MindSporeModelWrap::ExecuteModel(const std::vector<TensorBasePtr> &request, std::vector<TensorBasePtr> *reply,
-                                        bool return_result) {
+                                        bool return_result, uint64_t subgraph) {
+  if (subgraph >= models_.size()) {
+    return INFER_STATUS_LOG_ERROR(FAILED) << "Inputs subgraph label error, subgraph label is " << subgraph
+                                          << ", total graph number is " << models_.size();
+  }
   MSI_EXCEPTION_IF_NULL(reply);
   FuncMakeInBuffer func_in = [&request](size_t index, const std::string &name) {
     auto &input_tensor = request[index];
@@ -330,15 +338,16 @@ Status MindSporeModelWrap::ExecuteModel(const std::vector<TensorBasePtr> &reques
     tensor->set_shape(shape);
     reply->push_back(tensor);
   };
-  return ExecuteModelCommon(request.size(), func_in, func_out, return_result);
+  return ExecuteModelCommon(request.size(), func_in, func_out, return_result, subgraph);
 }
 
 Status MindSporeModelWrap::ExecuteModelCommon(size_t request_size, const FuncMakeInBuffer &in_func,
-                                              const FuncMakeOutTensor &out_func, bool return_result) {
-  if (model_.model == nullptr) {
+                                              const FuncMakeOutTensor &out_func, bool return_result,
+                                              uint64_t subgraph) {
+  if (models_[subgraph].model == nullptr) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Model is not loaded";
   }
-  auto &model_info = model_;
+  auto &model_info = models_[subgraph];
   auto model = model_info.model;
   auto &input_names = model_info.input_names;
   auto &output_names = model_info.output_names;
@@ -381,11 +390,17 @@ Status MindSporeModelWrap::ExecuteModelCommon(size_t request_size, const FuncMak
   return SUCCESS;
 }
 
-std::vector<serving::TensorInfo> MindSporeModelWrap::GetInputInfos() const { return model_.input_tensor_infos; }
+std::vector<serving::TensorInfo> MindSporeModelWrap::GetInputInfos(uint64_t subgraph) const {
+  return models_[subgraph].input_tensor_infos;
+}
 
-std::vector<serving::TensorInfo> MindSporeModelWrap::GetOutputInfos() const { return model_.output_tensor_infos; }
+std::vector<serving::TensorInfo> MindSporeModelWrap::GetOutputInfos(uint64_t subgraph) const {
+  return models_[subgraph].output_tensor_infos;
+}
 
-ssize_t MindSporeModelWrap::GetBatchSize() const { return model_.batch_size; }
+ssize_t MindSporeModelWrap::GetBatchSize(uint64_t subgraph) const { return models_[subgraph].batch_size; }
+
+uint64_t MindSporeModelWrap::GetSubGraphNum() const { return models_.size(); }
 
 bool MindSporeModelWrap::CheckModelSupport(DeviceType device_type, ModelType model_type) const {
   auto ms_device_type = GetMsDeviceType(device_type);

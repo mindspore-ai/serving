@@ -17,6 +17,7 @@
 #include <string>
 #include "python/worker/preprocess_py.h"
 #include "python/worker/postprocess_py.h"
+#include "python/worker/pipeline_py.h"
 #include "python/worker/worker_py.h"
 #include "python/worker/servable_py.h"
 #include "python/tensor_py.h"
@@ -60,6 +61,7 @@ void PyRegServable(pybind11::module *m_ptr) {
   py::class_<MethodSignature>(m, "MethodSignature_")
     .def(py::init<>())
     .def_readwrite("method_name", &MethodSignature::method_name)
+    .def_readwrite("subgraph", &MethodSignature::subgraph)
     .def_readwrite("inputs", &MethodSignature::inputs)
     .def_readwrite("outputs", &MethodSignature::outputs)
     .def_readwrite("preprocess_name", &MethodSignature::preprocess_name)
@@ -69,6 +71,12 @@ void PyRegServable(pybind11::module *m_ptr) {
     .def_readwrite("servable_name", &MethodSignature::servable_name)
     .def_readwrite("servable_inputs", &MethodSignature::servable_inputs)
     .def_readwrite("returns", &MethodSignature::returns);
+
+  py::class_<PipelineSignature>(m, "PipelineSignature_")
+    .def(py::init<>())
+    .def_readwrite("pipeline_name", &PipelineSignature::pipeline_name)
+    .def_readwrite("inputs", &PipelineSignature::inputs)
+    .def_readwrite("outputs", &PipelineSignature::outputs);
 
   py::class_<RequestSpec>(m, "RequestSpec_")
     .def(py::init<>())
@@ -111,6 +119,12 @@ void PyRegServable(pybind11::module *m_ptr) {
     .def_static("register_method", &PyServableStorage::RegisterMethod)
     .def_static("declare_servable", &PyServableStorage::DeclareServable)
     .def_static("declare_distributed_servable", &PyServableStorage::DeclareDistributedServable);
+
+  py::class_<PyPipelineStorage, std::shared_ptr<PyPipelineStorage>>(m, "PipelineStorage_")
+    .def(py::init<>())
+    .def_static("get_instance", &PyPipelineStorage::Instance)
+    .def("register", &PyPipelineStorage::Register)
+    .def("run", &PyPipelineStorage::Run);
 
   py::class_<OneRankConfig>(m, "OneRankConfig_")
     .def(py::init<>())
@@ -183,8 +197,13 @@ void PyRegWorker(pybind11::module *m_ptr) {
     .def_static("wait_and_clear", &PyWorker::WaitAndClear)
     .def_static("stop_and_clear", PyWorker::StopAndClear)
     .def_static("get_py_task", &PyWorker::GetPyTask, py::call_guard<py::gil_scoped_release>())
+    .def_static("get_pipeline_task", &PyWorker::GetPipelineTask, py::call_guard<py::gil_scoped_release>())
     .def_static("try_get_preprocess_py_task", &PyWorker::TryGetPreprocessPyTask)
     .def_static("try_get_postprocess_py_task", &PyWorker::TryGetPostprocessPyTask)
+    .def_static("try_get_pipeline_py_task", &PyWorker::TryGetPipelinePyTask)
+    .def_static("push_pipeline_result", &PyWorker::PushPipelinePyResult)
+    .def_static("push_pipeline_failed", &PyWorker::PushPipelinePyFailed)
+    .def_static("push_pipeline_system_failed", &PyWorker::PushPipelinePySystemFailed)
     .def_static("push_preprocess_result", &PyWorker::PushPreprocessPyResult)
     .def_static("push_preprocess_failed", &PyWorker::PushPreprocessPyFailed)
     .def_static("push_preprocess_system_failed", &PyWorker::PushPreprocessPySystemFailed)
@@ -226,8 +245,8 @@ void PyRegWorkerAgent(pybind11::module *m_ptr) {
     .def(py::init<>())
     .def_readwrite("rank_id", &AgentStartUpConfig::rank_id)
     .def_readwrite("device_id", &AgentStartUpConfig::device_id)
-    .def_readwrite("model_file_name", &AgentStartUpConfig::model_file_name)
-    .def_readwrite("group_file_name", &AgentStartUpConfig::group_file_name)
+    .def_readwrite("model_file_names", &AgentStartUpConfig::model_file_names)
+    .def_readwrite("group_file_names", &AgentStartUpConfig::group_file_names)
     .def_readwrite("rank_table_json_file_name", &AgentStartUpConfig::rank_table_json_file_name)
     .def_readwrite("agent_address", &AgentStartUpConfig::agent_address)
     .def_readwrite("distributed_address", &AgentStartUpConfig::distributed_address)

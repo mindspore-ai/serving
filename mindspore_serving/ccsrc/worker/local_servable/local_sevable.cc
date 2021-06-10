@@ -41,28 +41,31 @@ uint64_t LocalModelServable::GetServableVersion() const { return running_version
 
 uint64_t LocalModelServable::GetConfigVersion() const { return base_spec_.version_number; }
 
-Status LocalModelServable::Predict(const std::vector<TensorBasePtr> &input, std::vector<TensorBasePtr> *output) {
+uint64_t LocalModelServable::GetGraphNum() const { return graph_num_; }
+
+Status LocalModelServable::Predict(const std::vector<TensorBasePtr> &input, std::vector<TensorBasePtr> *output,
+                                   uint64_t subgraph) {
   if (!model_loaded_ || !session_) {
     MSI_LOG_EXCEPTION << "Model has not been loaded";
   }
-  return session_->ExecuteModel(input, output, true);
+  return session_->ExecuteModel(input, output, true, subgraph);
 }
 
-std::vector<TensorInfo> LocalModelServable::GetInputInfos() const {
+std::vector<TensorInfo> LocalModelServable::GetInputInfos(uint64_t subgraph) const {
   if (!model_loaded_ || !session_) {
     MSI_LOG_EXCEPTION << "Model has not been loaded";
   }
   return session_->GetInputInfos();
 }
 
-std::vector<TensorInfo> LocalModelServable::GetOutputInfos() const {
+std::vector<TensorInfo> LocalModelServable::GetOutputInfos(uint64_t subgraph) const {
   if (!model_loaded_ || !session_) {
     MSI_LOG_EXCEPTION << "Model has not been loaded";
   }
   return session_->GetOutputInfos();
 }
 
-uint64_t LocalModelServable::GetBatchSize() const {
+uint64_t LocalModelServable::GetBatchSize(uint64_t subgraph) const {
   if (!model_loaded_ || !session_) {
     MSI_LOG_EXCEPTION << "Model has not been loaded";
   }
@@ -117,6 +120,7 @@ Status LocalModelServable::StartServable(const std::string &servable_directory, 
   servable_name_ = base_spec_.servable_name;
   running_version_number_ = real_version_number;
   model_loaded_ = true;
+  graph_num_ = 1;
   MSI_LOG_INFO << status.StatusMessage();
   std::cout << status.StatusMessage() << std::endl;
   return SUCCESS;
@@ -225,7 +229,7 @@ Status LocalModelServable::LoadModel(uint64_t version_number) {
   std::string model_file_name = base_spec_.servable_directory + "/" + base_spec_.servable_name + "/" +
                                 std::to_string(version_number) + "/" + local_meta.servable_file;
   auto context = ServableContext::Instance();
-  Status status = session_->LoadModelFromFile(context->GetDeviceType(), context->GetDeviceId(), model_file_name,
+  Status status = session_->LoadModelFromFile(context->GetDeviceType(), context->GetDeviceId(), {model_file_name},
                                               local_meta.model_format, common_meta.with_batch_dim,
                                               common_meta.without_batch_dim_inputs, local_meta.load_options);
   if (status != SUCCESS) {
