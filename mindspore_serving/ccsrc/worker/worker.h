@@ -77,7 +77,6 @@ class MS_API Worker {
                                            std::vector<InstanceData> *results);
 
  private:
-  uint64_t worker_pid = 0;
   ServableWorkerContext servable_context_;
   ServableRegSpec pipeline_spec_;
   PyTaskQueueGroup py_task_queue_group_;

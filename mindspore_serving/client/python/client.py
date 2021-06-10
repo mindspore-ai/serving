@@ -184,7 +184,7 @@ class Client:
         ssl_config (mindspore_serving.client.SSLConfig, optional): The server's ssl_config, if None, disabled ssl.
 
     Raises:
-        RuntimeError: The type or value of the parameters is invalid, or other errors happened.
+        RuntimeError: The type or value of the parameters are invalid, or other errors happened.
 
     Examples:
         >>> from mindspore_serving.client import Client

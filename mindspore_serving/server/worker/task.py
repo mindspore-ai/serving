@@ -183,6 +183,7 @@ class PyTask:
                     f"instance size {instances_size}")
             except ServingSystemException as e:
                 self.push_system_failed()
+                logger.warning(f"{self.task_name} catch system exception: {e}")
                 raise e
             except ServingExitException as e:
                 raise e
@@ -360,7 +361,7 @@ class PyTaskThread(threading.Thread):
                 logger.info("Catch ServingExitException and exit py task")
                 break
             except Exception as e:  # pylint: disable=broad-except
-                logger.error(f"py task catch exception and exit: {e}")
+                logger.warning(f"py task catch exception and exit: {e}")
                 logging.exception(e)
                 break
         logger.info("end py task for preprocess and postprocess")

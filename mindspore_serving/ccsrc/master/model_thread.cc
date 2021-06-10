@@ -43,8 +43,7 @@ void ModelThread::InnerClear() {
     proto::ErrorMsg exit_error;
     RequestSpec request_spec;
     GrpcTensorHelper::GetRequestSpec(*job_item.second.request, &request_spec);
-    auto status = INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
-                  << "Request " << request_spec.Repr() << ", servable is not available";
+    auto status = INFER_STATUS(INVALID_INPUTS) << "Request " << request_spec.Repr() << ", servable is not available";
     exit_error.set_error_code(status.StatusCode());
     exit_error.set_error_msg(status.StatusMessage());
     for (auto &task_item : job_item.second.task) {

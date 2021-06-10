@@ -146,6 +146,9 @@ def call_preprocess_pipeline(preprocess_fun, *args):
 def call_preprocess(preprocess_fun, *args):
     r"""For method registration, define the preprocessing function and its' parameters.
 
+    Note:
+        The length of 'args' should be equal to the inputs number of preprocess_fun.
+
     Args:
         preprocess_fun (function): Python function for preprocess.
         args: Preprocess inputs. The length of 'args' should equal to the input parameters number
@@ -202,10 +205,10 @@ def call_preprocess(preprocess_fun, *args):
 
 
 def call_servable(*args):
-    r"""For method registration, define the inputs data of model inference
+    r"""For method registration, define the inputs data of model inference.
 
     Note:
-        The length of 'args' should be equal to the inputs number of model
+        The length of 'args' should be equal to the inputs number of model.
 
     Args:
         args: Model's inputs, the length of 'args' should be equal to the inputs number of model.
@@ -290,6 +293,9 @@ def call_postprocess_pipeline(postprocess_fun, *args):
 
 def call_postprocess(postprocess_fun, *args):
     r"""For method registration, define the postprocessing function and its' parameters.
+
+    Note:
+        The length of 'args' should be equal to the inputs number of postprocess_fun.
 
     Args:
         postprocess_fun (function): Python function for postprocess.
@@ -382,10 +388,14 @@ def _get_method_def_func_meta(method_def_func):
 
 
 def register_method(output_names, subgraph=0):
-    """register method for servable.
+    """Register method for servable.
 
-    Define the data flow of preprocess, model inference and postprocess in the method.
-    Preprocess and postprocess are optional.
+    Define the data flow of preprocess, model inference and postprocess in the method. Preprocess and postprocess
+    are optional.
+
+    Note:
+        The method definition is only used to define data flow of preprocess, model inference and postprocess,
+        and cannot contain branch structures such as if, for, and while.
 
     Args:
         output_names (Union[str, tuple[str], list[str]]): The output names of method. The input names is
