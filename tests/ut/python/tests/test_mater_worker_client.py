@@ -216,6 +216,60 @@ def test_grpc_mutual_auth_success():
 
 
 @serving_test
+def test_grpc_client_auth_failed():
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    generate_cert(server_ip="127.0.0.1")
+    ssl_config = server.SSLConfig(certificate="server.crt", private_key="server.key", custom_ca="ca.crt",
+                                  verify_client=False)
+    server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
+    server.start_grpc_server("127.0.0.1:5500", ssl_config=ssl_config)
+
+    ssl_config = SSLConfig(custom_ca="client.crt")
+    client = create_client("127.0.0.1:5500", base.servable_name, "add_common", ssl_config=ssl_config)
+    instance_count = 3
+    data = create_multi_instances_fp32(instance_count)
+    result = client.infer(data[0])
+
+    print(result)
+    assert "unavailable" in result["error"]
+
+
+@serving_test
+def test_grpc_missing_cert_failed():
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    generate_cert(server_ip="127.0.0.1")
+    ssl_config = server.SSLConfig(certificate="server.crt", private_key="server.key", custom_ca="ca.crt",
+                                  verify_client=True)
+    server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
+    server.start_grpc_server("127.0.0.1:5500", ssl_config=ssl_config)
+
+    ssl_config = SSLConfig(custom_ca="ca.crt")
+    client = create_client("127.0.0.1:5500", base.servable_name, "add_common", ssl_config=ssl_config)
+    instance_count = 3
+    data = create_multi_instances_fp32(instance_count)
+    result = client.infer(data[0])
+
+    print(result)
+    assert "unavailable" in result["error"]
+
+
+@serving_test
+def test_grpc_unmatched_cert_failed():
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    generate_cert(server_ip="127.0.0.1")
+    ssl_config = server.SSLConfig(certificate="server.crt", private_key="server.crt", custom_ca="ca.crt",
+                                  verify_client=True)
+    server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
+    try:
+        server.start_grpc_server("127.0.0.1:5500", ssl_config=ssl_config)
+    except RuntimeError as e:
+        assert "Serving Error: Serving gRPC server start failed, create server failed, address" in str(e)
+
+
+@serving_test
 def test_grpc_preprocess_outputs_count_not_match_failed():
     base = ServingTestBase()
     servable_content = servable_config_import
