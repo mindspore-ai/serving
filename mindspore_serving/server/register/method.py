@@ -26,7 +26,7 @@ from mindspore_serving.server.common import check_type
 from .utils import get_func_name, get_servable_dir
 from .preprocess import register_preprocess, check_preprocess
 from .postprocess import register_postprocess, check_postprocess
-from .pipeline import register_pipeline
+from .pipeline import register_pipeline_args
 
 method_def_context_ = MethodSignature_()
 method_def_ast_meta_ = EasyDict()
@@ -466,7 +466,7 @@ def register_method(output_names, subgraph=0):
     return register
 
 
-def register_pineline(output_names):
+def register_pipeline(output_names):
     """register method for Pipeline Servable.
 
     Define the data flow of Pipeline Servable Method. Pipeline servable is optional.
@@ -489,7 +489,7 @@ def register_pineline(output_names):
         ...     y = register.call_servable(x)
         ...     return y
         >>> servable = PipelineServable(servable_name="service", method="fun", version_number=0)
-        >>> @register.register_pineline(output_names=["y"])
+        >>> @register.register_pipeline(output_names=["y"])
         >>> def predict(x):
         ...     y = servable.call(x)
         ...     return y
@@ -521,7 +521,7 @@ def register_pineline(output_names):
         PipelineStorage_.get_instance().register(pipeline_def_context_)
         inputs_count = len(input_names)
         outputs_count = len(output_names)
-        register_pipeline(func, inputs_count, outputs_count)
+        register_pipeline_args(func, inputs_count, outputs_count)
         return func
 
     return register

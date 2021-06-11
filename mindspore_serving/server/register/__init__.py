@@ -17,7 +17,7 @@ See how to configure servable_config.py file, please refer to
 `Servable Provided Through Model Configuration <https://www.mindspore.cn/tutorial/inference/zh-CN/master/serving_model.html>`_."""
 
 from .servable import declare_servable, AclOptions, GpuOptions
-from .method import register_pineline, register_method, call_preprocess, call_servable, call_postprocess
+from .method import register_pipeline, register_method, call_preprocess, call_servable, call_postprocess
 from .method import call_preprocess_pipeline, call_postprocess_pipeline
 from .pipeline import PipelineServable
 
@@ -27,7 +27,7 @@ __all__.extend([
     "AclOptions",
     "GpuOptions",
     "PipelineServable",
-    "register_pineline",
+    "register_pipeline",
     'register_method',
     'call_preprocess',
     'call_preprocess_pipeline',

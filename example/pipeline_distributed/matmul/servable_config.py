@@ -39,7 +39,7 @@ def fun2(x):
 servable1 = PipelineServable(servable_name="matmul", method="fun1", version_number=0)
 servable2 = PipelineServable(servable_name="matmul", method="fun2", version_number=0)
 
-@register.register_pineline(output_names=["x", "z"])
+@register.register_pipeline(output_names=["x", "z"])
 def predict(x, y):
     x = servable1.run(x)
     for i in range(10):
