@@ -18,7 +18,7 @@ from mindspore_serving._mindspore_serving import ServableMeta_, ServableStorage_
 
 from mindspore_serving import log as logger
 from mindspore_serving.server.common import check_type
-from mindspore_serving.server.worker.utils import get_servable_dir
+from .utils import get_servable_dir
 
 
 def declare_servable(servable_file, model_format, with_batch_dim=True, options=None, without_batch_dim_inputs=None):

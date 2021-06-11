@@ -19,9 +19,9 @@ import time
 import logging
 from mindspore_serving._mindspore_serving import Worker_
 from mindspore_serving._mindspore_serving import ExitSignalHandle_
-from mindspore_serving.server.worker.register.preprocess import preprocess_storage
-from mindspore_serving.server.worker.register.postprocess import postprocess_storage
-from mindspore_serving.server.worker.register.pipeline import pipeline_storage
+from mindspore_serving.server.register.preprocess import preprocess_storage
+from mindspore_serving.server.register.postprocess import postprocess_storage
+from mindspore_serving.server.register.pipeline import pipeline_storage
 from mindspore_serving import log as logger
 
 

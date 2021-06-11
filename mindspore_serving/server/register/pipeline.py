@@ -16,7 +16,7 @@
 
 from mindspore_serving._mindspore_serving import PipelineStorage_, RequestSpec_
 from mindspore_serving import log as logger
-from mindspore_serving.server.worker.utils import get_servable_dir, get_func_name
+from .utils import get_servable_dir, get_func_name
 
 class PipelineStorage:
     """Register and get pipeline info, pipeline info include: func, name, input and output count"""
@@ -76,14 +76,13 @@ class PipelineServable:
         Examples:
             >>> from mindspore_serving.server import distributed
             >>> from mindspore_serving.server import register
-            >>> from mindspore_serving.server.worker.register import PipelineServable
             >>>
             >>> distributed.declare_servable(rank_size=8, stage_size=1, with_batch_dim=False)
             >>> @register.register_method(output_names=["y"])
             >>> def fun(x):
             ...     y = register.call_servable(x)
             ...     return y
-            >>> servable = PipelineServable(servable_name="service", method="fun", version_number=0)
+            >>> servable = register.PipelineServable(servable_name="service", method="fun", version_number=0)
             >>> @register.register_pineline(output_names=["y"])
             >>> def predict(x):
             ...     y = servable.call(x)

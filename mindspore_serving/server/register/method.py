@@ -23,7 +23,7 @@ from mindspore_serving._mindspore_serving import ServableStorage_, PipelineStora
 from mindspore_serving._mindspore_serving import PipelineSignature_, MethodSignature_, PredictPhaseTag_
 from mindspore_serving import log as logger
 from mindspore_serving.server.common import check_type
-from mindspore_serving.server.worker.utils import get_func_name, get_servable_dir
+from .utils import get_func_name, get_servable_dir
 from .preprocess import register_preprocess, check_preprocess
 from .postprocess import register_postprocess, check_postprocess
 from .pipeline import register_pipeline
