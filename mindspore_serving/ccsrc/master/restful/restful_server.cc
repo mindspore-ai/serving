@@ -23,7 +23,7 @@
 #include "event2/bufferevent_ssl.h"
 #include "master/restful/http_handle.h"
 #include "master/restful/restful_server.h"
-
+#include "common/utils.h"
 #include "master/restful/http_process.h"
 
 namespace mindspore::serving {
@@ -213,37 +213,12 @@ Status RestfulServer::GetSocketAddress(std::string *ip, uint16_t *port) {
   Status status;
   std::string prefix = "unix:";
   if (socket_address_.substr(0, prefix.size()) == prefix) {
-    status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
+    status = INFER_STATUS_LOG_ERROR(FAILED)
              << "Serving Error: RESTful server does not support binding to unix domain socket";
     return status;
   }
-  auto position = socket_address_.find_last_of(':');
-  if (position == std::string::npos) {
-    status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
-             << "Serving Error: The format of the RESTful server address is illegal";
-    return status;
-  }
-  if (position == 0 || position == socket_address_.size() - 1) {
-    status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Serving Error: Missing ip or port of the RESTful server address";
-    return status;
-  }
-  *ip = socket_address_.substr(0, position);
-
-  try {
-    auto port_number = std::stoi(socket_address_.substr(position + 1, socket_address_.size()));
-    if (port_number < 0 || port_number > 65535) {
-      status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
-               << "Serving Error: The port of the RESTful server address is out of legal range (0 ~ 65535)";
-      return status;
-    }
-    *port = port_number;
-  } catch (const std::invalid_argument &) {
-    status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
-             << "Serving Error: The type of RESTful server address port is not a number";
-    return status;
-  } catch (const std::out_of_range &) {
-    status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
-             << "Serving Error: The port of the RESTful server address is out of legal range (0 ~ 65535)";
+  status = common::CheckAddress(socket_address_, "RESTful server", ip, port);
+  if (status != SUCCESS) {
     return status;
   }
   return SUCCESS;
