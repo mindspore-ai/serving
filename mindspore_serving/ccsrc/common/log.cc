@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 #include "common/log.h"
-
 #include <sys/time.h>
+#include <thread>
 #include "glog/logging.h"
+#include "common/utils.h"
 
 namespace mindspore {
 namespace serving {
@@ -29,7 +30,7 @@ int g_ms_serving_log_level = LOG_WARNING;
     DlogInner((module_id), (level), (format), ##__VA_ARGS__); \
   } while (0)
 
-static std::string GetTime() {
+static std::string GetTimeString() {
 #define BUFLEN 80
   static char buf[BUFLEN];
 #if defined(_WIN32) || defined(_WIN64)
@@ -62,11 +63,11 @@ static std::string GetTime() {
 
 static std::string GetProcName() {
 #if defined(__APPLE__) || defined(__FreeBSD__)
-  const char *appname = getprogname();
+  const std::string appname = getprogname();
 #elif defined(_GNU_SOURCE)
-  const char *appname = program_invocation_name;
+  const std::string appname = program_invocation_name;
 #else
-  const char *appname = "?";
+  const std::string appname = "?";
 #endif
   // some times, the appname is an absolute path, its too long
   std::string app_name(appname);
@@ -108,30 +109,35 @@ static int GetGlogLevel(MsLogLevel level) {
   }
 }
 
+// get threshold level
+static int GetThresholdLevel(const std::string &threshold) {
+  if (threshold.empty()) {
+    return google::GLOG_WARNING;
+  } else if (threshold == std::to_string(LOG_DEBUG) || threshold == std::to_string(LOG_INFO)) {
+    return google::GLOG_INFO;
+  } else if (threshold == std::to_string(LOG_WARNING)) {
+    return google::GLOG_WARNING;
+  } else if (threshold == std::to_string(LOG_ERROR)) {
+    return google::GLOG_ERROR;
+  } else {
+    return google::GLOG_WARNING;
+  }
+}
+
 void LogWriter::OutputLog(const std::string &msg_str) const {
   if (log_level_ < g_ms_serving_log_level) {
     return;
   }
   auto submodule_name = "SERVING";
   google::LogMessage("", 0, GetGlogLevel(log_level_)).stream()
-    << "[" << GetLogLevel(log_level_) << "] " << submodule_name << "(" << getpid() << "," << GetProcName()
-    << "):" << GetTime() << " "
+    << "[" << GetLogLevel(log_level_) << "] " << submodule_name << "(" << getpid() << "," << std::hex
+    << std::this_thread::get_id() << std::dec << "," << GetProcName() << "):" << GetTimeString() << " "
     << "[" << file_ << ":" << line_ << "] " << func_ << "] " << msg_str << std::endl;
 }
 
 static MsLogLevel GetGlobalLogLevel() { return static_cast<MsLogLevel>(FLAGS_v); }
 
-static std::string GetEnv(const std::string &envvar) {
-  const char *value = ::getenv(envvar.c_str());
-
-  if (value == nullptr) {
-    return std::string();
-  }
-
-  return std::string(value);
-}
-
-enum LogConfigToken {
+enum class LogConfigToken : size_t {
   INVALID,      // indicate invalid token
   LEFT_BRACE,   // '{'
   RIGHT_BRACE,  // '}'
@@ -143,7 +149,7 @@ enum LogConfigToken {
   NUM_LOG_CFG_TOKENS
 };
 
-static const char *g_tok_names[NUM_LOG_CFG_TOKENS] = {
+static const char *g_tok_names[static_cast<size_t>(LogConfigToken::NUM_LOG_CFG_TOKENS)] = {
   "invalid",        // indicate invalid token
   "{",              // '{'
   "}",              // '}'
@@ -160,10 +166,7 @@ static inline bool IsDigit(char ch) { return ch >= '0' && ch <= '9'; }
 
 class LogConfigLexer {
  public:
-  explicit LogConfigLexer(const std::string &text) : buffer_(text) {
-    cur_idx_ = 0;
-    cur_token_ = LogConfigToken::INVALID;
-  }
+  explicit LogConfigLexer(const std::string &text) : buffer_(text) { cur_idx_ = 0; }
   ~LogConfigLexer() = default;
 
   // skip white space, and return the first char after white space
@@ -225,9 +228,6 @@ class LogConfigLexer {
  private:
   std::string buffer_;
   size_t cur_idx_;
-
-  LogConfigToken cur_token_;
-  std::string cur_text_;
 };
 
 class LogConfigParser {
@@ -235,9 +235,11 @@ class LogConfigParser {
   explicit LogConfigParser(const std::string &cfg) : lexer(cfg) {}
   ~LogConfigParser() = default;
 
-  bool Expect(LogConfigToken expected, LogConfigToken tok) {
+  bool Expect(LogConfigToken expected, LogConfigToken tok) const {
     if (expected != tok) {
-      MSI_LOG_WARNING << "`, but got `" << g_tok_names[tok] << "`. The whole configuration will be ignored.";
+      MSI_LOG(WARNING) << "Parse submodule log configuration text error, expect `"
+                       << g_tok_names[static_cast<size_t>(expected)] << "`, but got `"
+                       << g_tok_names[static_cast<size_t>(tok)] << "`. The whole configuration will be ignored.";
       return false;
     }
     return true;
@@ -319,7 +321,7 @@ void InitSubModulesLogLevel() {
   g_ms_serving_log_level = global_log_level;
 
   // set submodule's log level
-  auto submodule = GetEnv("MS_SUBMODULE_LOG_v");
+  auto submodule = common::GetEnv("MS_SUBMODULE_LOG_v");
   MSI_LOG(DEBUG) << "MS_SUBMODULE_LOG_v=`" << submodule << "`";
   LogConfigParser parser(submodule);
   auto configs = parser.Parse();
@@ -338,23 +340,30 @@ void InitSubModulesLogLevel() {
 void common_log_init(void) {
   // do not use glog predefined log prefix
   FLAGS_log_prefix = false;
+  // disable log buffer, real-time output
+  FLAGS_logbufsecs = 0;
   // set default log level to WARNING
-  if (mindspore::serving::GetEnv("GLOG_v").empty()) {
+  if (common::GetEnv("GLOG_v").empty()) {
     FLAGS_v = mindspore::serving::LOG_WARNING;
   }
 
   // set default log file mode to 0640
-  if (mindspore::serving::GetEnv("GLOG_logfile_mode").empty()) {
+  if (common::GetEnv("GLOG_logfile_mode").empty()) {
     FLAGS_logfile_mode = 0640;
   }
-  std::string logtostderr = mindspore::serving::GetEnv("GLOG_logtostderr");
+  std::string logtostderr = common::GetEnv("GLOG_logtostderr");
   // default print log to screen
   if (logtostderr.empty()) {
     FLAGS_logtostderr = true;
-  } else if (logtostderr == "0" && mindspore::serving::GetEnv("GLOG_log_dir").empty()) {
+  } else if (logtostderr == "0" && common::GetEnv("GLOG_log_dir").empty()) {
     FLAGS_logtostderr = true;
     MSI_LOG(WARNING) << "`GLOG_log_dir` is not set, output log to screen.";
   }
+
+  // default GLOG_stderrthreshold level to WARNING
+  auto threshold = common::GetEnv("GLOG_stderrthreshold");
+  FLAGS_stderrthreshold = GetThresholdLevel(threshold);
+
   mindspore::serving::InitSubModulesLogLevel();
 }
 
