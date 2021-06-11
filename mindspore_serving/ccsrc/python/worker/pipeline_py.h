@@ -38,8 +38,8 @@ class MS_API PyPipelineStorage {
 
   void Register(const PipelineSignature &method);
   void CheckServable(const RequestSpec &request_spec);
-  py::tuple Run(const RequestSpec &request_spec, const py::tuple &args);
-  py::tuple RunAsync(const RequestSpec &request_spec, const py::tuple &args);
+  std::vector<py::tuple> Run(const RequestSpec &request_spec, const std::vector<py::tuple> &args);
+  std::vector<py::tuple> RunAsync(const RequestSpec &request_spec, const std::vector<py::tuple> &args);
   PyPipelineStorage();
   ~PyPipelineStorage();
 
