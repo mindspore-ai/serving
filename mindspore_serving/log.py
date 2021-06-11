@@ -467,7 +467,7 @@ def _setup_logger(kwargs):
     # The name of Submodule
     sub_module = 'SERVING'
     # The name of Base log file
-    log_name = 'mindspore.log'
+    log_name = 'mindspore_serving.log'
 
     global _global_logger
 

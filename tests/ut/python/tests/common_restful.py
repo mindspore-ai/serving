@@ -45,6 +45,18 @@ def create_multi_instances_fp32(instance_count):
     return instances, y_data_list
 
 
+def create_multi_instances_with_batch_fp32(instance_count):
+    instances = []
+    # instance 1
+    y_data_list = []
+    for i in range(instance_count):
+        x1 = np.asarray([[1.1], [3.3]]).astype(np.float32) * (i + 1)
+        x2 = np.asarray([[5.5], [7.7]]).astype(np.float32) * (i + 1)
+        y_data_list.append(x1 + x2)
+        instances.append({"x1": x1.tolist(), "x2": x2.tolist()})
+    return instances, y_data_list
+
+
 def check_number_result(result, y_data_list, output_name="y"):
     result = result["instances"]
     assert len(result) == len(y_data_list)
