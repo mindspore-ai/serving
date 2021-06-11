@@ -43,7 +43,7 @@ class PipelineStorage:
 
 pipeline_storage = PipelineStorage()
 
-def register_pipeline(func, inputs_count, outputs_count):
+def register_pipeline_args(func, inputs_count, outputs_count):
     """register pipeline"""
     servable_name = get_servable_dir()
     func_name = get_func_name(func)
@@ -83,7 +83,7 @@ class PipelineServable:
             ...     y = register.call_servable(x)
             ...     return y
             >>> servable = register.PipelineServable(servable_name="service", method="fun", version_number=0)
-            >>> @register.register_pineline(output_names=["y"])
+            >>> @register.register_pipeline(output_names=["y"])
             >>> def predict(x):
             ...     y = servable.call(x)
             ...     return y
