@@ -271,7 +271,7 @@ class Client:
             status_code = e.code()
             print(status_code.name)
             print(status_code.value)
-            return {"error": "Grpc Error, " + str(status_code.value)}
+            return {"error": f"Grpc Error, {status_code.value}, {e.details()}"}
 
     def infer_async(self, instances):
         """
@@ -306,7 +306,7 @@ class Client:
             status_code = e.code()
             print(status_code.name)
             print(status_code.value)
-            return ClientGrpcAsyncError({"error": "Grpc Error, " + str(status_code.value)})
+            return ClientGrpcAsyncError({"error": f"Grpc Error, {status_code.value}, {e.details()}"})
 
     def _create_request(self, instances):
         """Used to create request spec."""

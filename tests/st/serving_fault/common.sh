@@ -121,7 +121,7 @@ init()
   rm -rf serving *.log *.mindir *.dat kernel_meta
   rm -rf unix_socket_files serving_logs
   rm -rf add export_model  serving_server.py serving_client.py serving_client_with_check.py
-  cp -r ../../../example/add/* .
+  cp -r ../../../example/tensor_add/* .
   prepare_model
   clean_pid
 }

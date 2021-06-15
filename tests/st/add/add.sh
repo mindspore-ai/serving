@@ -12,10 +12,10 @@ echo "PROJECT_PATH:"  ${PROJECT_PATH}
 echo "LD_LIBRARY_PATH: " ${LD_LIBRARY_PATH}
 echo "PYTHONPATH: " ${PYTHONPATH}
 
-rm -rf serving *.log *.mindir *.dat add kernel_meta
+rm -rf serving *.log *.mindir *.dat kernel_meta
 rm -rf unix_socket_files serving_logs
-rm -rf add serving_client.py serving_client_with_check.py  export_model  serving_server.py
-cp -r ../../../example/add/* .
+rm -rf add serving_client.py serving_client_with_check.py export_model serving_server.py
+cp -r ../../../example/tensor_add/* .
 
 clean_pid()
 {

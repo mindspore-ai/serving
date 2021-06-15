@@ -30,7 +30,7 @@ class Net(nn.Cell):
 
     def __init__(self):
         super(Net, self).__init__()
-        self.add = ops.TensorAdd()
+        self.add = ops.Add()
 
     def construct(self, x_, y_):
         """construct add net"""

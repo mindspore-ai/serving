@@ -73,10 +73,8 @@ MindSpore Serving依赖MindSpore训练推理框架，安装完[MindSpore](https:
     ```shell
     # GPU
     sh build.sh -e gpu
-    # Ascend 310
-    sh build.sh -e ascend -V 310
-    # Ascend 910
-    sh build.sh -e ascend -V 910
+    # Ascend 310 and Ascend 910
+    sh build.sh -e ascend
     ```
 
     其中，`build.sh`为`serving`目录下的编译脚本文件，编译完后，在`serving/third_party/mindspore/build/package/`目录下找到MindSpore的whl安装包进行安装：

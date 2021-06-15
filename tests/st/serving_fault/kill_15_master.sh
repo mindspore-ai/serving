@@ -49,10 +49,6 @@ test_master_fault_model()
 }
 
 echo "-----serving start-----"
-rm -rf serving *.log *.mindir *.dat ${CURRPATH}/add ${CURRPATH}/kernel_meta
-rm -rf ${CURRPATH}/unix_socket_files ${CURRPATH}/serving_logs
-rm -rf add export_model serving_server.py serving_client.py serving_client_with_check.py
-cp -r ../../../example/add/* .
-prepare_model
+init
 test_master_fault_model
 echo "### end to serving test ###"
