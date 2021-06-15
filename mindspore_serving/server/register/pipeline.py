@@ -88,4 +88,11 @@ class PipelineServable:
             ...     y = servable.call(x)
             ...     return y
         """
-        return self.storage.run(self.spec, tuple(args))
+        arg_list = []
+        if len(args) != 1 or not isinstance(args[0], list):
+            arg_list.append(tuple(args))
+            result = self.storage.run(self.spec, arg_list)
+            return tuple(result[0])
+        for arg in args[0]:
+            arg_list.append((arg,))
+        return self.storage.run(self.spec, arg_list)

@@ -46,33 +46,55 @@ void PyPipelineStorage::CheckServable(const RequestSpec &request_spec) {
   }
 }
 
-py::tuple PyPipelineStorage::Run(const RequestSpec &request_spec, const py::tuple &args) {
-  InstanceData input = PyTensor::AsInstanceData(py::cast<py::tuple>(args));
-  std::vector<InstancePtr> out;
+std::vector<py::tuple> PyPipelineStorage::Run(const RequestSpec &request_spec, const std::vector<py::tuple> &args) {
+  std::vector<InstanceData> inputs;
+  std::vector<py::tuple> outputs;
+  for (auto &arg : args) {
+    auto input = PyTensor::AsInstanceData(py::cast<py::tuple>(arg));
+    inputs.push_back(input);
+  }
+  std::vector<InstancePtr> outs;
   {
     py::gil_scoped_release release;
-    auto status = PipelineStorage::Instance().Run(request_spec, {input}, &out);
-    if (status != SUCCESS && out.size() != 1) {
+    auto status = PipelineStorage::Instance().Run(request_spec, inputs, &outs);
+    if (status != SUCCESS || outs.size() == 0) {
       MSI_LOG_EXCEPTION << "Run failed: " << status.StatusMessage();
     }
-    if (out[0]->error_msg != SUCCESS) {
-      MSI_LOG_EXCEPTION << "Run failed: " << out[0]->error_msg.StatusMessage();
-    }
   }
-  return PyTensor::AsNumpyTuple(out[0]->data);
+  for (auto &out : outs) {
+    if (out->error_msg != SUCCESS) {
+      MSI_LOG_EXCEPTION << "Run failed: " << out->error_msg.StatusMessage();
+    }
+    py::tuple output = PyTensor::AsNumpyTuple(out->data);
+    outputs.push_back(output);
+  }
+  return outputs;
 }
 
-py::tuple PyPipelineStorage::RunAsync(const RequestSpec &request_spec, const py::tuple &args) {
-  InstanceData input = PyTensor::AsInstanceData(py::cast<py::tuple>(args));
-  std::vector<InstancePtr> out;
+std::vector<py::tuple> PyPipelineStorage::RunAsync(const RequestSpec &request_spec,
+                                                   const std::vector<py::tuple> &args) {
+  std::vector<InstanceData> inputs;
+  std::vector<py::tuple> outputs;
+  for (auto &arg : args) {
+    auto input = PyTensor::AsInstanceData(py::cast<py::tuple>(arg));
+    inputs.push_back(input);
+  }
+  std::vector<InstancePtr> outs;
   {
     py::gil_scoped_release release;
-    auto status = PipelineStorage::Instance().RunAsync(request_spec, {input}, &out);
+    auto status = PipelineStorage::Instance().RunAsync(request_spec, inputs, &outs);
     if (status != SUCCESS) {
-      MSI_LOG_EXCEPTION << "RunAsync failed: " << status.StatusMessage();
+      MSI_LOG_EXCEPTION << "Run failed: " << status.StatusMessage();
     }
   }
-  return PyTensor::AsNumpyTuple(out[0]->data);
+  for (auto &out : outs) {
+    if (out->error_msg != SUCCESS) {
+      MSI_LOG_EXCEPTION << "Run failed: " << out->error_msg.StatusMessage();
+    }
+    py::tuple output = PyTensor::AsNumpyTuple(out->data);
+    outputs.push_back(output);
+  }
+  return outputs;
 }
 
 PyPipelineStorage::PyPipelineStorage() {}
