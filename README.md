@@ -73,10 +73,8 @@ Perform the following steps to install Serving:
     ```shell
     # GPU
     sh build.sh -e gpu
-    # Ascend 310
-    sh build.sh -e ascend -V 310
-    # Ascend 910
-    sh build.sh -e ascend -V 910
+    # Ascend 310 and Ascend 910
+    sh build.sh -e ascend
     ```
 
     In the preceding information, `build.sh` is the build script file in the `serving` directory. After the build is complete, find the .whl installation package of MindSpore in the `serving/third_party/mindspore/build/package/` directory and install it.
