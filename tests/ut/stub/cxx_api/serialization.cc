@@ -33,7 +33,6 @@ static Buffer ReadFile(const std::string &file) {
 #else
   real_path_ret = realpath(common::SafeCStr(file), real_path_mem);
 #endif
-
   if (real_path_ret == nullptr) {
     MS_LOG(ERROR) << "File: " << file << " is not exist.";
     return buffer;
@@ -51,8 +50,8 @@ static Buffer ReadFile(const std::string &file) {
     return buffer;
   }
 
-  ifs.seekg(0, std::ios::end);
-  size_t size = ifs.tellg();
+  (void)ifs.seekg(0, std::ios::end);
+  size_t size = static_cast<size_t>(ifs.tellg());
   buffer.ResizeData(size);
   if (buffer.DataSize() != size) {
     MS_LOG(ERROR) << "Malloc buf failed, file: " << real_path;
@@ -60,8 +59,8 @@ static Buffer ReadFile(const std::string &file) {
     return buffer;
   }
 
-  ifs.seekg(0, std::ios::beg);
-  ifs.read(reinterpret_cast<char *>(buffer.MutableData()), size);
+  (void)ifs.seekg(0, std::ios::beg);
+  (void)ifs.read(reinterpret_cast<char *>(buffer.MutableData()), static_cast<std::streamsize>(size));
   ifs.close();
 
   return buffer;
@@ -100,7 +99,7 @@ Status Serialization::Load(const std::vector<char> &file, ModelType model_type, 
   if (model_type == kMindIR) {
     auto anf_graph = std::make_shared<FuncGraph>();
     if (anf_graph == nullptr) {
-      MS_LOG(ERROR) << "Load model failed.";
+      MS_LOG(ERROR) << "Load model failed. Please check the valid of dec_key and dec_mode";
       return kMEInvalidInput;
     }
     *graph = Graph(std::make_shared<Graph::GraphData>(anf_graph, kMindIR));
@@ -114,22 +113,62 @@ Status Serialization::Load(const std::vector<char> &file, ModelType model_type, 
   return kMEInvalidInput;
 }
 
-Status Serialization::LoadCheckPoint(const std::string &ckpt_file, std::map<std::string, Buffer> *parameters) {
+Status Serialization::Load(const std::vector<char> &file, ModelType model_type, Graph *graph, const Key &dec_key,
+                           const std::vector<char> &dec_mode) {
+  if (graph == nullptr) {
+      MS_LOG(ERROR) << "Output args graph is nullptr.";
+    return kMEInvalidInput;
+  }
+
+  std::string file_path = CharToString(file);
+  if (model_type == kMindIR) {
+    FuncGraphPtr anf_graph;
+    if (dec_key.len > dec_key.max_key_len) {
+        MS_LOG(ERROR) << "The key length exceeds maximum length: 32.";
+      return kMEInvalidInput;
+    } else {
+      anf_graph = std::make_shared<FuncGraph>();
+      if (anf_graph == nullptr) {
+          MS_LOG(ERROR) << "Load model failed. Please check the valid of dec_key and dec_mode";
+        return kMEInvalidInput;
+      }
+    }
+    if (anf_graph == nullptr) {
+        MS_LOG(ERROR) << "Load model failed. Please check the valid of dec_key and dec_mode";
+      return kMEInvalidInput;
+    }
+    *graph = Graph(std::make_shared<Graph::GraphData>(anf_graph, kMindIR));
+    return kSuccess;
+  } else if (model_type == kOM) {
+    Buffer data = ReadFile(file_path);
+    if (data.Data() == nullptr) {
+        MS_LOG(ERROR) << "Read file " << file_path << " failed.";
+      return kMEInvalidInput;
+    }
+    *graph = Graph(std::make_shared<Graph::GraphData>(data, kOM));
+    return kSuccess;
+  }
+
+  MS_LOG(ERROR) << "Unsupported ModelType " << model_type;
+  return kMEInvalidInput;
+}
+
+Status Serialization::LoadCheckPoint(const std::string &, std::map<std::string, Buffer> *) {
   MS_LOG(ERROR) << "Unsupported feature.";
   return kMEFailed;
 }
 
-Status Serialization::SetParameters(const std::map<std::string, Buffer> &parameters, Model *model) {
+Status Serialization::SetParameters(const std::map<std::string, Buffer> &, Model *) {
   MS_LOG(ERROR) << "Unsupported feature.";
   return kMEFailed;
 }
 
-Status Serialization::ExportModel(const Model &model, ModelType model_type, Buffer *model_data) {
+Status Serialization::ExportModel(const Model &, ModelType, Buffer *) {
   MS_LOG(ERROR) << "Unsupported feature.";
   return kMEFailed;
 }
 
-Status Serialization::ExportModel(const Model &model, ModelType model_type, const std::string &model_file) {
+Status Serialization::ExportModel(const Model &, ModelType, const std::string &) {
   MS_LOG(ERROR) << "Unsupported feature.";
   return kMEFailed;
 }

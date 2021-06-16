@@ -42,8 +42,8 @@ class MS_API LocalModelServable : public ServableBase {
   std::vector<TensorInfo> GetOutputInfos(uint64_t subgraph = 0) const override;
   uint64_t GetBatchSize(uint64_t subgraph = 0) const override;
 
-  Status StartServable(const std::string &servable_directory, const std::string &servable_name,
-                       uint64_t version_number);
+  Status StartServable(const std::string &servable_directory, const std::string &servable_name, uint64_t version_number,
+                       const std::string &dec_key, const std::string &dec_mode);
   Status InitDevice(ModelType model_type, const std::map<std::string, std::string> &other_options);
   std::string GetServableDirectory() const override;
   std::string GetServableName() const override;
@@ -64,7 +64,7 @@ class MS_API LocalModelServable : public ServableBase {
   void GetVersions(const ServableLoadSpec &servable_spec, std::vector<uint64_t> *real_versions);
   Status LoadServableConfig(const ServableLoadSpec &servable_spec, const std::string &version_strategy,
                             std::vector<uint64_t> *real_version_number);
-  Status LoadModel(uint64_t version);
+  Status LoadModel(uint64_t version, const std::string &dec_key, const std::string &dec_mode);
 };
 
 }  // namespace mindspore::serving

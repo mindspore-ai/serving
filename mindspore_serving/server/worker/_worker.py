@@ -115,7 +115,7 @@ def _load_servable_config(servable_directory, servable_name):
 @stop_on_except
 def start_servable(servable_directory, servable_name, version_number,
                    device_type, device_id,
-                   master_address, worker_address):
+                   master_address, worker_address, dec_key, dec_mode):
     r"""
     Start up the servable named 'servable_name' defined in 'servable_directory', and link the worker to the master
     through gRPC (master_ip, master_port).
@@ -142,6 +142,9 @@ def start_servable(servable_directory, servable_name, version_number,
         device_id (int): The id of the device the model loads into and runs in.
         master_address (str): The master socket address the worker linked to.
         worker_address (str): The worker socket address the master linked to.
+        dec_key (str): Byte type key used for decryption. Tha valid length is 16, 24, or 32.
+        dec_mode (str): Specifies the decryption mode, take effect when dec_key is set.
+            Option: 'AES-GCM' or 'AES-CBC'. Default: 'AES-GCM'.
     """
     check_type.check_str('servable_directory', servable_directory)
     check_type.check_str('servable_name', servable_name)
@@ -151,12 +154,18 @@ def start_servable(servable_directory, servable_name, version_number,
 
     check_type.check_str('master_address', master_address)
     check_type.check_str('worker_address', worker_address)
+    if dec_key is not None:
+        check_type.check_bytes('dec_key', dec_key)
+    else:
+        dec_key = ''
+    check_type.check_str('dec_mode', dec_mode)
 
     init_mindspore.init_mindspore_cxx_env()
     _load_servable_config(servable_directory, servable_name)
 
     _set_device_type(device_type)
     _set_device_id(device_id)
-    Worker_.start_servable(servable_directory, servable_name, version_number, master_address, worker_address)
+    Worker_.start_servable(servable_directory, servable_name, version_number, master_address, worker_address,
+                           dec_key, dec_mode)
     _start_py_task(Worker_.get_batch_size())
     _start_wait_and_clear()

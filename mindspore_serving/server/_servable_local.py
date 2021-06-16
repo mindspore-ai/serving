@@ -15,6 +15,8 @@
 """Interface for start up single core servable"""
 import logging
 import os
+import random
+
 import sys
 import subprocess
 
@@ -44,15 +46,31 @@ class ServableStartConfig:
             - "GPU": the platform expected to be Nvidia GPU.
             - None: the platform is determined by the MindSpore environment.
 
+        dec_key (bytes, optional): Byte type key used for decryption.
+            The valid length is 16, 24, or 32.
+        dec_mode (str, optional): Specifies the decryption mode, take effect when dec_key is set.
+            Option: 'AES-GCM' or 'AES-CBC'. Default: 'AES-GCM'.
+
     Raises:
         RuntimeError: The type or value of the parameters are invalid.
     """
 
-    def __init__(self, servable_directory, servable_name, device_ids, version_number=0, device_type=None):
+    def __init__(self, servable_directory, servable_name, device_ids, version_number=0, device_type=None,
+                 dec_key=None, dec_mode='AES-GCM'):
         super(ServableStartConfig, self).__init__()
         check_type.check_str("servable_directory", servable_directory)
         check_type.check_str("servable_name", servable_name)
         check_type.check_int("version_number", version_number, 0)
+        if dec_key is not None:
+            if not isinstance(dec_key, bytes):
+                raise RuntimeError(f"Parameter 'dec_key' should be bytes, but actually {type(dec_key)}")
+            if not dec_key:
+                raise RuntimeError(f"Parameter 'dec_key' should not be empty bytes")
+            if len(dec_key) not in (16, 24, 32):
+                raise RuntimeError(f"Parameter 'dec_key' length {len(dec_key)} expected to be 16, 24 or 32")
+        check_type.check_str("dec_mode", dec_mode)
+        if dec_mode not in ('AES-GCM', 'AES-CBC'):
+            raise RuntimeError(f"Parameter 'dec_mode' expected to be 'AES-GCM' or 'AES-CBC'")
 
         self.servable_directory_ = servable_directory
         self.servable_name_ = servable_name
@@ -64,6 +82,8 @@ class ServableStartConfig:
         else:
             device_type = "None"
         self.device_type_ = device_type
+        self.dec_key_ = dec_key
+        self.dec_mode_ = dec_mode
 
     @property
     def servable_directory(self):
@@ -84,6 +104,14 @@ class ServableStartConfig:
     @property
     def device_ids(self):
         return self.device_ids_
+
+    @property
+    def dec_key(self):
+        return self.dec_key_
+
+    @property
+    def dec_mode(self):
+        return self.dec_mode_
 
 
 def get_newest_version_number(config):
@@ -113,6 +141,8 @@ def _check_and_merge_config(configs):
     servable_dir_list = {}
     servable_device_ids = {}
     servable_device_types = {}
+    servable_dec_keys = {}
+    servable_dec_modes = {}
 
     # Get Device type: AscendCL, AscendMS, Gpu, Cpu, set Ascend in ServableStartConfig instead of AscendCL, AscendMS
     device_type = Worker_.get_device_type()
@@ -132,10 +162,6 @@ def _check_and_merge_config(configs):
                 raise RuntimeError(f"The servable directory of servable name {config.servable_name} is different in"
                                    f" multiple configurations, servable directory: "
                                    f"{config.servable_directory} and {servable_dir_list[config.servable_name]}")
-            if config.device_type != servable_device_types[config.servable_name]:
-                raise RuntimeError(f"The device type of servable name {config.servable_name} is different in "
-                                   f"multiple configurations, device type: "
-                                   f"{config.device_type} and {servable_device_types[config.device_type]}")
         else:
             config_dir = os.path.join(config.servable_directory, config.servable_name)
             if not os.path.isdir(config_dir):
@@ -158,6 +184,8 @@ def _check_and_merge_config(configs):
             newest_version_number_list[config.servable_name] = newest_version
             servable_device_ids[config.servable_name] = {}
             servable_device_types[config.servable_name] = config.device_type
+            servable_dec_keys[config.servable_name] = {}
+            servable_dec_modes[config.servable_name] = {}
 
         if config.version_number == 0:  # newest version
             version_number = newest_version_number_list[config.servable_name]
@@ -172,16 +200,26 @@ def _check_and_merge_config(configs):
                 raise RuntimeError(f"Expect {version_dir} to be a directory, servable directory: "
                                    f"{config.servable_directory}, servable name: {config.servable_name}")
             version_number = config.version_number
+
         if version_number not in servable_device_ids[config.servable_name]:
             servable_device_ids[config.servable_name][version_number] = set()
         for device_id in config.device_ids:
             servable_device_ids[config.servable_name][version_number].add(device_id)
-    return servable_dir_list, servable_device_ids, servable_device_types
+        if version_number not in servable_dec_keys[config.servable_name]:
+            servable_dec_keys[config.servable_name][version_number] = config.dec_key
+            servable_dec_modes[config.servable_name][version_number] = config.dec_mode
+        elif config.dec_key != servable_dec_keys[config.servable_name][version_number] or \
+                config.dec_mode != servable_dec_modes[config.servable_name][version_number]:
+            raise RuntimeError(f"The dec key or dec mode of servable name {config.servable_name} is different in "
+                               f"multiple configurations.")
+
+    return servable_dir_list, servable_device_ids, servable_device_types, servable_dec_keys, servable_dec_modes
 
 
 def merge_config(configs):
     """Merge ServableStartConfig with the same version number"""
-    servable_dir_list, servable_device_ids, servable_device_types = _check_and_merge_config(configs)
+    servable_dir_list, servable_device_ids, servable_device_types, servable_dec_keys, servable_dec_modes \
+        = _check_and_merge_config(configs)
     configs_ret = []
 
     device_type = Worker_.get_device_type()
@@ -194,7 +232,9 @@ def merge_config(configs):
         for version_number, device_ids in servable_device_ids[servable_name].items():
             config = ServableStartConfig(servable_directory=servable_dir, servable_name=servable_name,
                                          device_ids=tuple(device_ids), version_number=version_number,
-                                         device_type=servable_device_types[servable_name])
+                                         device_type=servable_device_types[servable_name],
+                                         dec_key=servable_dec_keys[servable_name][version_number],
+                                         dec_mode=servable_dec_modes[servable_name][version_number])
             configs_ret.append(config)
             if not allow_reuse_device:
                 for device_id in device_ids:
@@ -239,8 +279,16 @@ class ServableContextData(ServableContextDataBase):
             device_type = "None"
         script_dir = os.path.dirname(os.path.abspath(__file__))
         py_script = os.path.join(script_dir, "start_worker.py")
+
+        if self.servable_config.dec_key:
+            pipe_file = f"serving_temp_dec_{servable_config.servable_name}_{random.randrange(1000000, 9999999)}"
+            os.mkfifo(pipe_file)
+        else:
+            pipe_file = 'None'
+
         arg = f"{python_exe} {py_script} {servable_config.servable_directory} {servable_config.servable_name} " \
-              f"{servable_config.version_number} {device_type} {self.device_id} {self.master_address} True"
+              f"{servable_config.version_number} {device_type} {self.device_id} {self.master_address} {pipe_file} " \
+              f"{self.servable_config.dec_mode} True"
         args = arg.split(" ")
 
         serving_logs_dir = "serving_logs"
@@ -255,4 +303,7 @@ class ServableContextData(ServableContextDataBase):
                         f"_version{self.version_number}.log"
         with open(log_file_name, write_mode) as fp:
             sub = subprocess.Popen(args=args, shell=False, stdout=fp, stderr=fp)
+        if self.servable_config.dec_key:
+            with open(pipe_file, "wb") as fp:
+                fp.write(self.servable_config.dec_key)
         return sub

@@ -27,12 +27,13 @@
 namespace mindspore::serving {
 
 void PyWorker::StartServable(const std::string &model_directory, const std::string &model_name, uint32_t version_number,
-                             const std::string &master_address, const std::string &worker_address) {
+                             const std::string &master_address, const std::string &worker_address,
+                             const std::string &dec_key, const std::string &dec_mode) {
   if (Worker::GetInstance().IsRunning()) {
     MSI_LOG_EXCEPTION << "A servable has been started, only one servable can run in a process currently.";
   }
   auto servable = std::make_shared<LocalModelServable>();
-  auto status = servable->StartServable(model_directory, model_name, version_number);
+  auto status = servable->StartServable(model_directory, model_name, version_number, dec_key, dec_mode);
   if (status != SUCCESS) {
     servable->Clear();
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();

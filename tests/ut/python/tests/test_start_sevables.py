@@ -327,3 +327,36 @@ def test_servable_start_config_multi_servable_diff_device_id():
     assert config_ret[1].version_number == 1
     assert len(config_ret[1].device_ids) == 1
     assert config_ret[1].device_ids[0] == 2
+
+
+@serving_test
+def test_servable_start_config_merge_diff_version_diff_dec_key_success():
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    shutil.copytree(os.path.join(base.servable_dir, base.servable_name, "1"),
+                    os.path.join(base.servable_dir, base.servable_name, "2"))
+    config0 = server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=1, version_number=0,
+                                         dec_key=("ABC"*8).encode(), dec_mode='AES-GCM')
+    config1 = server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=2, version_number=1,
+                                         dec_key=("DEF"*8).encode(), dec_mode='AES-CBC')
+    config_ret = merge_config((config0, config1))
+    assert len(config_ret) == 2
+    assert config_ret[0].dec_key == ("ABC"*8).encode()  # newest version
+    assert config_ret[0].dec_mode == "AES-GCM"
+
+    assert config_ret[1].dec_key == ("DEF"*8).encode()  # newest version
+    assert config_ret[1].dec_mode == "AES-CBC"
+
+
+@serving_test
+def test_servable_start_config_merge_same_version_diff_dec_key_failed():
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    config0 = server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=1, version_number=0,
+                                         dec_key=("ABC"*8).encode(), dec_mode='AES-GCM')
+    config1 = server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=2, version_number=1,
+                                         dec_key=("DEF"*8).encode(), dec_mode='AES-CBC')
+    try:
+        server.start_servables((config0, config1))
+    except RuntimeError as e:
+        assert "The dec key or dec mode of servable name" in str(e)

@@ -102,11 +102,12 @@ class TensorDefaultImpl : public MSTensor::Impl {
 
 class TensorReferenceImpl : public MSTensor::Impl {
  public:
-  TensorReferenceImpl() : data_(nullptr), data_size_(0), name_(), type_(DataType::kTypeUnknown), shape_() {}
+  TensorReferenceImpl()
+      : data_(nullptr), data_size_(0), name_(), type_(DataType::kTypeUnknown), shape_(), is_device_(false) {}
   ~TensorReferenceImpl() override = default;
   TensorReferenceImpl(const std::string &name, enum DataType type, const std::vector<int64_t> &shape, const void *data,
-                      size_t data_len)
-      : data_(data), data_size_(data_len), name_(name), type_(type), shape_(shape) {}
+                      size_t data_len, bool is_device)
+      : data_(data), data_size_(data_len), name_(name), type_(type), shape_(shape), is_device_(is_device) {}
 
   const std::string &Name() const override { return name_; }
   enum DataType DataType() const override { return type_; }
@@ -119,10 +120,10 @@ class TensorReferenceImpl : public MSTensor::Impl {
   void *MutableData() override { return const_cast<void *>(data_); }
   size_t DataSize() const override { return data_size_; }
 
-  bool IsDevice() const override { return false; }
+  bool IsDevice() const override { return is_device_; }
 
   std::shared_ptr<Impl> Clone() const override {
-    return std::make_shared<TensorReferenceImpl>(name_, type_, shape_, data_, data_size_);
+    return std::make_shared<TensorReferenceImpl>(name_, type_, shape_, data_, data_size_, is_device_);
   }
 
  protected:
@@ -131,6 +132,7 @@ class TensorReferenceImpl : public MSTensor::Impl {
   std::string name_;
   enum DataType type_;
   std::vector<int64_t> shape_;
+  bool is_device_;
 };
 
 MSTensor *MSTensor::CreateTensor(const std::vector<char> &name, enum DataType type, const std::vector<int64_t> &shape,
@@ -153,7 +155,23 @@ MSTensor *MSTensor::CreateRefTensor(const std::vector<char> &name, enum DataType
                                     const std::vector<int64_t> &shape, const void *data, size_t data_len) noexcept {
   std::string name_str = CharToString(name);
   try {
-    std::shared_ptr<Impl> impl = std::make_shared<TensorReferenceImpl>(name_str, type, shape, data, data_len);
+    std::shared_ptr<Impl> impl = std::make_shared<TensorReferenceImpl>(name_str, type, shape, data, data_len, false);
+    MSTensor *ret = new MSTensor(impl);
+    return ret;
+  } catch (const std::bad_alloc &) {
+    MS_LOG(ERROR) << "Malloc memory failed.";
+    return nullptr;
+  } catch (...) {
+    MS_LOG(ERROR) << "Unknown error occurred.";
+    return nullptr;
+  }
+}
+
+MSTensor *MSTensor::CreateDevTensor(const std::vector<char> &name, enum DataType type,
+                                    const std::vector<int64_t> &shape, const void *data, size_t data_len) noexcept {
+  std::string name_str = CharToString(name);
+  try {
+    std::shared_ptr<Impl> impl = std::make_shared<TensorReferenceImpl>(name_str, type, shape, data, data_len, true);
     MSTensor *ret = new MSTensor(impl);
     return ret;
   } catch (const std::bad_alloc &) {
@@ -227,8 +245,8 @@ std::vector<std::vector<char>> MSTensor::TensorToStringChars(const MSTensor &ten
   }
 
   if (tensor.DataSize() < (str_num + 1) * sizeof(int32_t)) {
-    MS_LOG(ERROR) << "Invalid tensor data size " << tensor.DataSize() << ", need " << (str_num + 1) * sizeof(int32_t)
-                  << " at least for " << str_num << " strings.";
+    MS_LOG(ERROR) << "Invalid tensor data size " << tensor.DataSize() << ", need "
+                  << IntToSize(str_num + 1) * sizeof(int32_t) << " at least for " << str_num << " strings.";
     return {};
   }
   for (size_t i = 0; i < static_cast<size_t>(str_num); ++i) {

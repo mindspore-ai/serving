@@ -35,16 +35,15 @@ class MsModel : public ModelImpl {
   Status Build() override;
   Status Resize(const std::vector<MSTensor> &inputs, const std::vector<std::vector<int64_t>> &dims) override;
 
-  Status Predict(const std::vector<MSTensor> &inputs, std::vector<MSTensor> *outputs) override;
-
   std::vector<MSTensor> GetInputs() override;
   std::vector<MSTensor> GetOutputs() override;
+
+  bool CheckModelSupport(enum ModelType model_type) override;
 
  private:
   std::shared_ptr<GraphCell> GenerateGraphCell(const std::vector<std::vector<int64_t>> &dims);
   uint32_t GetDeviceID() const;
 
-  std::shared_ptr<GraphCell> graph_cell_;
   std::map<std::string, std::shared_ptr<GraphCell>> dynamic_size_graph_map_;
 };
 }  // namespace mindspore

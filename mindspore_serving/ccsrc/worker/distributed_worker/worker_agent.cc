@@ -54,7 +54,7 @@ Status WorkerAgent::StartAgent(const AgentStartUpConfig &config) {
   config_ = config;
   const auto &common_meta = config.common_meta;
   status = session_->LoadModelFromFile(kDeviceTypeAscendMS, config.device_id, config.model_file_names, kMindIR,
-                                       common_meta.with_batch_dim, common_meta.without_batch_dim_inputs, {});
+                                       common_meta.with_batch_dim, common_meta.without_batch_dim_inputs, {}, "", "");
   if (status != SUCCESS) {
     MSI_LOG_ERROR << "LoadModelFromFile failed, servable name: " << common_meta.servable_name
                   << ", rank_id: " << config.rank_id << ", device id: " << config.device_id

@@ -77,7 +77,8 @@ DataType TransTypeId2InferDataType(mindspore::DataType type_id) {
 Status MindSporeModelWrap::LoadModelFromFile(serving::DeviceType device_type, uint32_t device_id,
                                              const std::vector<std::string> &file_names, ModelType model_type,
                                              bool with_batch_dim, const std::vector<int> &without_batch_dim_inputs,
-                                             const std::map<std::string, std::string> &other_options) {
+                                             const std::map<std::string, std::string> &other_options,
+                                             const std::string &dec_key, const std::string &dec_mode) {
   auto ms_model_type = GetMsModelType(model_type);
   if (ms_model_type == mindspore::kUnknownType) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Invalid model type " << model_type;
@@ -85,7 +86,31 @@ Status MindSporeModelWrap::LoadModelFromFile(serving::DeviceType device_type, ui
   std::vector<std::shared_ptr<mindspore::Model>> models;
   try {
     mindspore::Graph graph;
-    auto ms_status = mindspore::Serialization::Load(file_names[0], ms_model_type, &graph);
+    if (dec_key.empty()) {
+      auto ms_status = mindspore::Serialization::Load(file_names[0], ms_model_type, &graph);
+      if (!ms_status.IsOk()) {
+        return INFER_STATUS_LOG_ERROR(FAILED)
+               << "Load model from file failed, model file: " << file_names[0] << ", device_type: '" << device_type
+               << "', device_id: " << device_id << ", model type: " << model_type << ", options: " << other_options
+               << ", load error detail: " << ms_status.ToString();
+      }
+    } else {
+      mindspore::Key key;
+      auto rt = memcpy_s(key.key, sizeof(key.key), dec_key.data(), dec_key.size());
+      if (rt != EOK) {
+        return INFER_STATUS_LOG_ERROR(FAILED) << "Load model from file failed, dec key size " << dec_key.size()
+                                              << " should less than " << key.max_key_len;
+      }
+      key.len = dec_key.size();
+      auto ms_status = mindspore::Serialization::Load(file_names[0], ms_model_type, &graph, key, dec_mode);
+      (void)memset_s(key.key, sizeof(key.key), 0, key.max_key_len);
+      if (!ms_status.IsOk()) {
+        return INFER_STATUS_LOG_ERROR(FAILED)
+               << "Load model from file failed, model file: " << file_names[0] << ", device_type: '" << device_type
+               << "', device_id: " << device_id << ", model type: " << model_type << ", options: " << other_options
+               << ", dec mode: " << dec_mode << ", load error detail: " << ms_status.ToString();
+      }
+    }
     auto context = TransformModelContext(device_type, device_id, other_options);
     for (size_t i = 0; i < file_names.size(); i++) {
       auto model = std::make_shared<mindspore::Model>();

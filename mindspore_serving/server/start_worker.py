@@ -60,7 +60,7 @@ def start_listening_parent_thread(servable_name, device_id):
 
 
 def start_worker(servable_directory, servable_name, version_number,
-                 device_type, device_id, master_address, listening_master=False):
+                 device_type, device_id, master_address, dec_key, dec_mode, listening_master=False):
     """Start worker process with single core servable"""
     signal.signal(signal.SIGCHLD, signal.SIG_DFL)  # for ccec compiler
     check_type.check_str('servable_directory', servable_directory)
@@ -88,7 +88,8 @@ def start_worker(servable_directory, servable_name, version_number,
     try:
         worker.start_servable(servable_directory=servable_directory, servable_name=servable_name,
                               version_number=version_number, device_type=device_type, device_id=device_id,
-                              master_address=master_address, worker_address=worker_address)
+                              master_address=master_address, worker_address=worker_address,
+                              dec_key=dec_key, dec_mode=dec_mode)
     except Exception as ex:
         Worker_.notify_failed(master_address,
                               f"{{servable name:{servable_name}, device id:{device_id}, <{ex}>}}")
@@ -97,20 +98,31 @@ def start_worker(servable_directory, servable_name, version_number,
 
 def parse_args_and_start():
     """Parse args and start distributed worker"""
-    if len(sys.argv) != 8:
+    if len(sys.argv) != 10:
         raise RuntimeError("Expect length of input argv to be 8: str{servable_directory} str{servable_name} "
                            "int{version_number} str{device_type} int{device_id} str{master_address} "
-                           "bool{listening_master}")
+                           "str{dec_key_pipe_file}, str{dec_mode} bool{listening_master}")
     servable_directory = sys.argv[1]
     servable_name = sys.argv[2]
     version_number = int(sys.argv[3])
     device_type = sys.argv[4]
     device_id = int(sys.argv[5])
     master_address = sys.argv[6]
+    dec_key_pipe = sys.argv[7]
+    if dec_key_pipe != "None":
+        with open(dec_key_pipe, "rb") as fp:
+            dec_key = fp.read()
+        print("--------------------------dec key:", dec_key)
+        prefix = "serving_temp_dec_"
+        if dec_key_pipe[:len(prefix)] == prefix:
+            os.remove(dec_key_pipe)
+    else:
+        dec_key = None
+    dec_mode = sys.argv[8]
     # pylint: disable=simplifiable-if-expression
-    listening_master = True if sys.argv[7].lower() == "true" else False
+    listening_master = True if sys.argv[9].lower() == "true" else False
     start_worker(servable_directory, servable_name, version_number, device_type, device_id, master_address,
-                 listening_master)
+                 dec_key, dec_mode, listening_master)
 
 
 if __name__ == '__main__':
