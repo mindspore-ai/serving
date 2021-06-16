@@ -32,7 +32,8 @@ namespace serving {
 
 class MS_API PyAgent {
  public:
-  static void StartAgent(const AgentStartUpConfig &start_config);
+  static void StartAgent(const AgentStartUpConfig &start_config, const std::string &dec_key,
+                         const std::string &dec_mode);
 
   static DistributedServableConfig GetAgentsConfigsFromWorker(const std::string &distributed_address);
   static void WaitAndClear();

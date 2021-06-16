@@ -180,12 +180,12 @@ def _recv_parent(parent_process, index, recv_pipe, handle_stop_signal=True):
     return False
 
 
-def _agent_process(send_pipe, recv_pipe, index, start_config):
+def _agent_process(send_pipe, recv_pipe, index, start_config, dec_key, dec_mode):
     """Agent process"""
     parent_process = psutil.Process(os.getppid())
     try:
         # listening success or failed message from parent process
-        worker_agent.start_worker_agent(start_config=start_config)
+        worker_agent.start_worker_agent(start_config=start_config, dec_key=dec_key, dec_mode=dec_mode)
         send_pipe.send((index, signal_success))
         success_msg = _recv_parent(parent_process, index, recv_pipe)
         if not success_msg:
@@ -335,7 +335,8 @@ def _listening_agents_after_startup(subprocess_list, distributed_address, agent_
 
 def _startup_agents(common_meta, distributed_address,
                     agent_ip, agent_start_port, device_id_list, rank_id_list,
-                    model_files, group_config_files, rank_table_file):
+                    model_files, group_config_files, rank_table_file,
+                    dec_key, dec_mode):
     """Start up all agents in one machine"""
     servable_name = common_meta.servable_name
     send_pipe_list = []
@@ -365,7 +366,7 @@ def _startup_agents(common_meta, distributed_address,
         start_config.common_meta = common_meta
 
         process = Process(target=_agent_process,
-                          args=(c_send_pipe, c_recv_pipe, index, start_config),
+                          args=(c_send_pipe, c_recv_pipe, index, start_config, dec_key, dec_mode),
                           name=f"{servable_name}_worker_agent_rank{rank_id}_device{device_id}")
         process.start()
         subprocess_list.append(process)
@@ -464,7 +465,8 @@ def _get_worker_distributed_config(distributed_address):
 
 
 def startup_agents(distributed_address, model_files, group_config_files=None,
-                   agent_start_port=7000, agent_ip=None, rank_start=None):
+                   agent_start_port=7000, agent_ip=None, rank_start=None,
+                   dec_key=None, dec_mode='AES-GCM'):
     r"""
     Start up all needed agents on current machine.
 
@@ -482,6 +484,9 @@ def startup_agents(distributed_address, model_files, group_config_files=None,
         rank_start (int, optional): The starting rank id of this machine, if it's None, the rank ip will be obtained
             from rank table file. Default None. Parameter agent_ip and parameter rank_start must have values at the same
             time, or both None at the same time.
+        dec_key (bytes, optional): Byte type key used for decryption. The valid length is 16, 24, or 32.
+        dec_mode (str, optional): Specifies the decryption mode, take effect when dec_key is set.
+            Option: 'AES-GCM' or 'AES-CBC'. Default: 'AES-GCM'.
 
     Raises:
         RuntimeError: Failed to start agents.
@@ -499,6 +504,18 @@ def startup_agents(distributed_address, model_files, group_config_files=None,
     model_files = check_type.check_and_as_tuple_with_str_list("model_files", model_files)
     if group_config_files is not None:
         group_config_files = check_type.check_and_as_tuple_with_str_list("group_config_files", group_config_files)
+
+    # check dec_key and dec_mode
+    if dec_key is not None:
+        if not isinstance(dec_key, bytes):
+            raise RuntimeError(f"Parameter 'dec_key' should be bytes, but actually {type(dec_key)}")
+        if not dec_key:
+            raise RuntimeError(f"Parameter 'dec_key' should not be empty bytes")
+        if len(dec_key) not in (16, 24, 32):
+            raise RuntimeError(f"Parameter 'dec_key' length {len(dec_key)} expected to be 16, 24 or 32")
+    check_type.check_str("dec_mode", dec_mode)
+    if dec_mode not in ('AES-GCM', 'AES-CBC'):
+        raise RuntimeError(f"Parameter 'dec_mode' expected to be 'AES-GCM' or 'AES-CBC'")
 
     ExitSignalHandle_.start()
     distributed_config = _get_worker_distributed_config(distributed_address)
@@ -551,4 +568,4 @@ def startup_agents(distributed_address, model_files, group_config_files=None,
     rank_table_file = _make_json_table_file(distributed_config)
     _startup_agents(distributed_config.common_meta, distributed_address, local_ip, agent_start_port,
                     local_device_id_list, local_rank_id_list,
-                    model_files, group_config_files, rank_table_file)
+                    model_files, group_config_files, rank_table_file, dec_key, dec_mode)

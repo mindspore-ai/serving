@@ -23,7 +23,7 @@ from mindspore_serving import log as logger
 from mindspore_serving.server.worker import init_mindspore
 
 
-def start_worker_agent(start_config):
+def start_worker_agent(start_config, dec_key, dec_mode):
     """Start up one worker agent on one device id, invoke by agent_startup.startup_worker_agents
     """
     if not isinstance(start_config, AgentStartUpConfig_):
@@ -50,7 +50,9 @@ def start_worker_agent(start_config):
     for item in ("RANK_ID", "DEVICE_ID", "MS_ENABLE_HCCL", "PARA_GROUP_FILE", "RANK_TABLE_FILE",
                  "LD_LIBRARY_PATH", "PYTHONPATH"):
         logger.info(f"Env {item}: {os.getenv(item, None)}")
-    WorkerAgent_.start_agent(start_config)
+    if dec_key is None:
+        dec_key = ''
+    WorkerAgent_.start_agent(start_config, dec_key, dec_mode)
 
     start_wait_and_clear()
 

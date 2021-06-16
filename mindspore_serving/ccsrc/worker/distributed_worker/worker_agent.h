@@ -18,6 +18,7 @@
 #define MINDSPORE_SERVING_WORKER_AGENT_H
 #include <vector>
 #include <memory>
+#include <string>
 #include "proto/ms_agent.pb.h"
 #include "proto/ms_agent.grpc.pb.h"
 #include "common/grpc_server.h"
@@ -34,7 +35,7 @@ class MS_API WorkerAgent {
 
   Status Run(const proto::DistributedPredictRequest &request, proto::DistributedPredictReply *reply);
 
-  Status StartAgent(const AgentStartUpConfig &config);
+  Status StartAgent(const AgentStartUpConfig &config, const std::string &dec_key, const std::string &dec_mode);
 
   void StopAgent(bool notify_worker = true);
 

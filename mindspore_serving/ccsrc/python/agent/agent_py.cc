@@ -39,8 +39,9 @@ void PyAgent::NotifyFailed(const std::string &distributed_address) {
   WorkerAgentStartUp::Instance().NotifyFailed(distributed_address);
 }
 
-void PyAgent::StartAgent(const AgentStartUpConfig &start_config) {
-  auto status = WorkerAgent::Instance().StartAgent(start_config);
+void PyAgent::StartAgent(const AgentStartUpConfig &start_config, const std::string &dec_key,
+                         const std::string &dec_mode) {
+  auto status = WorkerAgent::Instance().StartAgent(start_config, dec_key, dec_mode);
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
