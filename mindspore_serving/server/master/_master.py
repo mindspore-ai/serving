@@ -95,8 +95,8 @@ class SSLConfig:
             certificate chain should be used.
         private_key (str): File holding the PEM-encoded private key as a byte string, or None if no private key should
             be used.
-        custom_ca (str, optional): File holding the PEM-encoded root certificates as a byte string, or None to retrieve
-            them from a default location.
+        custom_ca (str, optional): File holding the PEM-encoded root certificates as a byte string. When verify_client
+            is True, custom_ca must be provided. When verify_client is False, this parameter will be ignored.
         verify_client (bool, optional): If true, use mutual authentication, default one-way authentication.
 
     Raises:
@@ -111,9 +111,9 @@ class SSLConfig:
         self.custom_ca = custom_ca
         self.certificate = certificate
         self.private_key = private_key
-        if self.custom_ca is not None:
-            check_type.check_str("custom_ca", custom_ca)
         self.verify_client = verify_client
+        if self.verify_client:
+            check_type.check_str("custom_ca", custom_ca)
 
 
 @stop_on_except
@@ -153,7 +153,7 @@ def start_grpc_server(address, max_msg_mb_size=100, ssl_config=None):
             c_bytes = c_fs.read()
         with open(ssl_config.private_key, 'rb') as pk_fs:
             pk_bytes = pk_fs.read()
-        if ssl_config.custom_ca is not None:
+        if ssl_config.verify_client:
             with open(ssl_config.custom_ca, 'rb') as rc_fs:
                 rc_bytes = rc_fs.read()
             config.custom_ca = rc_bytes
@@ -191,7 +191,7 @@ def start_restful_server(address, max_msg_mb_size=100, ssl_config=None):
     if ssl_config is not None:
         if not isinstance(ssl_config, SSLConfig):
             raise RuntimeError("The type of ssl_config should be class of SSLConfig")
-        if ssl_config.custom_ca is not None:
+        if ssl_config.verify_client:
             config.custom_ca = ssl_config.custom_ca
         config.certificate = ssl_config.certificate
         config.private_key = ssl_config.private_key
