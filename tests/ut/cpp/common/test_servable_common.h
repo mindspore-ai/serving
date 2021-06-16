@@ -114,7 +114,7 @@ class TestMasterWorker : public UT::Common {
     ServableContext::Instance()->SetDeviceId(0);
     ServableContext::Instance()->SetDeviceTypeStr("Ascend");
     auto servable = std::make_shared<LocalModelServable>();
-    auto status = servable->StartServable(servable_dir, servable_name, version_number);
+    auto status = servable->StartServable(servable_dir, servable_name, version_number, "", "");
     if (status != SUCCESS) {
       return status;
     }

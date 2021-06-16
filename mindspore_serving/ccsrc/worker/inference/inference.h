@@ -114,7 +114,8 @@ class InferenceBase {
   virtual Status LoadModelFromFile(DeviceType device_type, uint32_t device_id,
                                    const std::vector<std::string> &file_name, ModelType model_type, bool with_batch_dim,
                                    const std::vector<int> &without_batch_dim_inputs,
-                                   const std::map<std::string, std::string> &other_options) = 0;
+                                   const std::map<std::string, std::string> &other_options, const std::string &dec_key,
+                                   const std::string &dec_mode) = 0;
 
   virtual Status UnloadModel() = 0;
 

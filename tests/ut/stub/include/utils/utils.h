@@ -43,6 +43,9 @@ static inline const char *SafeCStr(const std::string &str) {
 }
 
 }  // namespace common
+
+static inline size_t IntToSize(int i) {return static_cast<size_t>(i);}
+
 }  // namespace mindspore
 
 #endif  // MINDSPORE_STUB_SERVING_UTILS_H

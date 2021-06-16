@@ -866,3 +866,17 @@ def add_cast(x1, x2):
         assert False
     except RuntimeError as e:
         assert "'numpy.ndarray' object has no attribute 'as_pair'" in str(e)
+
+
+@serving_test
+def test_register_method_with_dec_success():
+    base = ServingTestBase()
+    servable_content = servable_config_import
+    servable_content += servable_config_declare_servable
+    servable_content += servable_config_preprocess_cast
+    servable_content += servable_config_method_add_common
+    servable_content += servable_config_method_add_cast
+
+    base.init_servable_with_servable_config(1, servable_content)
+    server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0,
+                                                      dec_key="ABCDEFGHABCDEFGH".encode(), dec_mode='AES-GCM'))

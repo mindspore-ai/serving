@@ -29,7 +29,8 @@ namespace mindspore::serving {
 class MS_API PyWorker {
  public:
   static void StartServable(const std::string &model_directory, const std::string &model_name, uint32_t version_number,
-                            const std::string &master_address, const std::string &worker_address);
+                            const std::string &master_address, const std::string &worker_address,
+                            const std::string &dec_key, const std::string &dec_mode);
 
   static void StartDistributedServable(const std::string &servable_directory, const std::string &servable_name,
                                        const std::string &rank_table_json_file, uint32_t version_number,

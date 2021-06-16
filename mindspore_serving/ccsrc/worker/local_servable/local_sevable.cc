@@ -73,7 +73,8 @@ uint64_t LocalModelServable::GetBatchSize(uint64_t subgraph) const {
 }
 
 Status LocalModelServable::StartServable(const std::string &servable_directory, const std::string &servable_name,
-                                         uint64_t version_number) {
+                                         uint64_t version_number, const std::string &dec_key,
+                                         const std::string &dec_mode) {
   if (model_loaded_) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Model has loaded";
   }
@@ -113,7 +114,7 @@ Status LocalModelServable::StartServable(const std::string &servable_directory, 
            << "'. version number is a positive integer(started from 1) and 0 represents the maximum version number.";
   }
   auto real_version_number = real_versions[0];
-  status = LoadModel(real_version_number);
+  status = LoadModel(real_version_number, dec_key, dec_mode);
   if (status != SUCCESS) {
     return status;
   }
@@ -218,7 +219,7 @@ Status LocalModelServable::InitDevice(ModelType model_type, const std::map<std::
   return SUCCESS;
 }
 
-Status LocalModelServable::LoadModel(uint64_t version_number) {
+Status LocalModelServable::LoadModel(uint64_t version_number, const std::string &dec_key, const std::string &dec_mode) {
   ServableSignature signature;
   if (!ServableStorage::Instance().GetServableDef(base_spec_.servable_name, &signature)) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Servable " << base_spec_.servable_name << " has not been registered";
@@ -229,9 +230,9 @@ Status LocalModelServable::LoadModel(uint64_t version_number) {
   std::string model_file_name = base_spec_.servable_directory + "/" + base_spec_.servable_name + "/" +
                                 std::to_string(version_number) + "/" + local_meta.servable_file;
   auto context = ServableContext::Instance();
-  Status status = session_->LoadModelFromFile(context->GetDeviceType(), context->GetDeviceId(), {model_file_name},
-                                              local_meta.model_format, common_meta.with_batch_dim,
-                                              common_meta.without_batch_dim_inputs, local_meta.load_options);
+  Status status = session_->LoadModelFromFile(
+    context->GetDeviceType(), context->GetDeviceId(), {model_file_name}, local_meta.model_format,
+    common_meta.with_batch_dim, common_meta.without_batch_dim_inputs, local_meta.load_options, dec_key, dec_mode);
   if (status != SUCCESS) {
     return INFER_STATUS_LOG_ERROR(FAILED)
            << "Load model failed, servable directory: '" << base_spec_.servable_directory << "', servable name: '"

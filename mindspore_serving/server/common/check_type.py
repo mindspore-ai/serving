@@ -76,12 +76,21 @@ def check_and_as_str_tuple_list(arg_name, strs):
 
     return tuple(strs)
 
+
 def check_str(arg_name, str_val):
     """Check whether the input parameters are reasonable str input"""
     if not isinstance(str_val, str):
         raise RuntimeError(f"Parameter '{arg_name}' should be str, but actually {type(str_val)}")
     if not str_val:
         raise RuntimeError(f"Parameter '{arg_name}' should not be empty str")
+
+
+def check_bytes(arg_name, bytes_val):
+    """Check whether the input parameters are reasonable bytes input"""
+    if not isinstance(bytes_val, bytes):
+        raise RuntimeError(f"Parameter '{arg_name}' should be bytes, but actually {type(bytes_val)}")
+    if not bytes_val:
+        raise RuntimeError(f"Parameter '{arg_name}' should not be empty bytes")
 
 
 def check_bool(arg_name, bool_val):

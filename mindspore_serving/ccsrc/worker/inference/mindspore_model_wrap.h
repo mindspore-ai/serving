@@ -55,7 +55,8 @@ class MindSporeModelWrap : public InferenceBase {
   Status LoadModelFromFile(serving::DeviceType device_type, uint32_t device_id,
                            const std::vector<std::string> &file_names, ModelType model_type, bool with_batch_dim,
                            const std::vector<int> &without_batch_dim_inputs,
-                           const std::map<std::string, std::string> &other_options) override;
+                           const std::map<std::string, std::string> &other_options, const std::string &dec_key,
+                           const std::string &dec_mode) override;
 
   Status UnloadModel() override;
   Status ExecuteModel(const RequestBase &request, ReplyBase *reply, bool return_result, uint64_t subgraph = 0) override;

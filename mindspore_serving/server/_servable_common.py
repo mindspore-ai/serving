@@ -110,6 +110,10 @@ class WorkerContext:
         normal_handled_count = self.context.normal_handled_count
         return normal_handled_count > 0
 
+    def exit_for_enough_time(self):
+        """ whether has exited for 1s, wait 1s for worker exit or error message"""
+        return self.last_not_alive_time_ and (time.time() - self.last_not_alive_time_ > 1)
+
     def is_alive(self):
         """Whether the worker process is alive"""
         alive = (self.sub_process_.poll() is None)
@@ -128,16 +132,6 @@ class WorkerContext:
         if self.is_in_starting():  # start worker
             return False
         return self.context.is_unavailable
-
-    def may_be_able_restart(self):
-        if self.has_exit_notified():  # Exit message of worker notifying master
-            return False
-        if self.has_error_notified():  # Error message of worker notifying master
-            return False
-        # whether has exited for 1s, wait 1s for worker exit or error message
-        if not self.last_not_alive_time_ or (time.time() - self.last_not_alive_time_ < 1):
-            return True
-        return self.can_be_restart()
 
     def update_worker_process(self, new_sub_process):
         """Update worker process pid"""

@@ -203,10 +203,13 @@ def _listening_workers_after_startup(worker_list):
                         worker.restart_worker()
                     continue
                 # not alive
-                if not worker.may_be_able_restart():
-                    # (has exit or error notified, or exit for 1s), and there were no normal handled requests
+                # has exit or error notified,
+                if worker.has_exit_notified() or worker.has_error_notified():
                     continue
-                if worker.can_be_restart():
+                if worker.exit_for_enough_time():
+                    # has exit for 1s and there were no normal handled requests
+                    if not worker.can_be_restart():
+                        continue
                     logger.warning(f"detect worker process has exited, try to restart, servable: {worker.to_string()}")
                     worker.restart_worker()
                 alive_count += 1

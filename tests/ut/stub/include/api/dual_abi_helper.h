@@ -17,6 +17,7 @@
 #define MINDSPORE_INCLUDE_API_DUAL_ABI_HELPER_H_
 
 #include <algorithm>
+#include <iterator>
 #include <map>
 #include <memory>
 #include <optional>
@@ -130,6 +131,15 @@ inline std::vector<std::pair<std::string, std::vector<int32_t>>> ClassIndexCharT
   std::vector<std::pair<std::string, std::vector<int32_t>>> ret;
   std::transform(c.begin(), c.end(), std::back_inserter(ret), [](auto ch) {
     return std::pair<std::string, std::vector<int32_t>>(std::string(ch.first.begin(), ch.first.end()), ch.second);
+  });
+  return ret;
+}
+
+inline std::vector<std::pair<std::vector<char>, int64_t>> PairStringInt64ToPairCharInt64(
+  const std::vector<std::pair<std::string, int64_t>> &s) {
+  std::vector<std::pair<std::vector<char>, int64_t>> ret;
+  std::transform(s.begin(), s.end(), std::back_inserter(ret), [](auto str) {
+    return std::pair<std::vector<char>, int64_t>(std::vector<char>(str.first.begin(), str.first.end()), str.second);
   });
   return ret;
 }

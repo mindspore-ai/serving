@@ -16,6 +16,7 @@
 
 #include "cxx_api/model/ms/ms_model.h"
 #include <memory>
+#include <set>
 #include "include/api/context.h"
 #include "cxx_api/factory.h"
 
@@ -53,6 +54,7 @@ std::shared_ptr<GraphCell> MsModel::GenerateGraphCell(const std::vector<std::vec
   MS_EXCEPTION_IF_NULL(graph);
   auto graph_cell = std::make_shared<GraphCell>(graph);
   MS_EXCEPTION_IF_NULL(graph_cell);
+  graph_cell->SetContext(model_context_);
   auto ret = ModelImpl::Load(graph_cell, GetDeviceID());
   if (ret != kSuccess) {
     MS_LOG(ERROR) << "Load failed.";
@@ -78,6 +80,7 @@ Status MsModel::Build() {
   MS_EXCEPTION_IF_NULL(graph);
   auto graph_cell = std::make_shared<GraphCell>(graph);
   MS_EXCEPTION_IF_NULL(graph_cell);
+  graph_cell->SetContext(model_context_);
   auto ret = ModelImpl::Load(graph_cell, GetDeviceID());
   if (ret != kSuccess) {
     MS_LOG(ERROR) << "Load failed.";
@@ -114,32 +117,6 @@ Status MsModel::Resize(const std::vector<MSTensor> &inputs, const std::vector<st
   return kSuccess;
 }
 
-Status MsModel::Predict(const std::vector<MSTensor> &inputs, std::vector<MSTensor> *outputs) {
-  MS_EXCEPTION_IF_NULL(outputs);
-  if (graph_ == nullptr) {
-    MS_LOG(ERROR) << "Invalid data, graph_ is null.";
-    return kMCFailed;
-  }
-
-  if (graph_cell_ == nullptr) {
-    MS_LOG(INFO) << "Model has not been built, it will be built with default options";
-    Status ret = Build();
-    if (ret != kSuccess) {
-      MS_LOG(ERROR) << "Build model failed.";
-      return ret;
-    }
-  }
-
-  MS_EXCEPTION_IF_NULL(graph_cell_);
-  Status ret = graph_cell_->Run(inputs, outputs);
-  if (ret != kSuccess) {
-    MS_LOG(ERROR) << "Run graph failed.";
-    return ret;
-  }
-
-  return kSuccess;
-}
-
 std::vector<MSTensor> MsModel::GetInputs() {
   MS_EXCEPTION_IF_NULL(graph_cell_);
   return graph_cell_->GetInputs();
@@ -171,5 +148,14 @@ uint32_t MsModel::GetDeviceID() const {
   }
 
   return 0;
+}
+
+bool MsModel::CheckModelSupport(enum ModelType model_type) {
+  static const std::set<ModelType> kSupportedModelMap = {kMindIR};
+  auto iter = kSupportedModelMap.find(model_type);
+  if (iter == kSupportedModelMap.end()) {
+    return false;
+  }
+  return true;
 }
 }  // namespace mindspore
