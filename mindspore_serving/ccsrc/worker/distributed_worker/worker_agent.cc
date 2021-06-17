@@ -45,7 +45,8 @@ Status WorkerAgent::Clear() {
   return SUCCESS;
 }
 
-Status WorkerAgent::StartAgent(const AgentStartUpConfig &config) {
+Status WorkerAgent::StartAgent(const AgentStartUpConfig &config, const std::string &dec_key,
+                               const std::string &dec_mode) {
   session_ = InferenceLoader::Instance().CreateMindSporeInfer();
   if (session_ == nullptr) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Create MindSpore infer failed";
@@ -54,7 +55,8 @@ Status WorkerAgent::StartAgent(const AgentStartUpConfig &config) {
   config_ = config;
   const auto &common_meta = config.common_meta;
   status = session_->LoadModelFromFile(kDeviceTypeAscendMS, config.device_id, config.model_file_names, kMindIR,
-                                       common_meta.with_batch_dim, common_meta.without_batch_dim_inputs, {}, "", "");
+                                       common_meta.with_batch_dim, common_meta.without_batch_dim_inputs, {}, dec_key,
+                                       dec_mode);
   if (status != SUCCESS) {
     MSI_LOG_ERROR << "LoadModelFromFile failed, servable name: " << common_meta.servable_name
                   << ", rank_id: " << config.rank_id << ", device id: " << config.device_id

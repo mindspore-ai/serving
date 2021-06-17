@@ -92,13 +92,14 @@ def start_distributed_worker(base):
     return worker
 
 
-def start_agents(model_file_list, group_config_list, start_port):
+def start_agents(model_file_list, group_config_list, start_port, dec_key=None, dec_mode='AES-GCM'):
     send_pipe, recv_pipe = Pipe()
 
     def agent_process(send_pipe):
         try:
             distributed.startup_agents(distributed_address="127.0.0.1:6200", model_files=model_file_list,
-                                       group_config_files=group_config_list, agent_start_port=start_port)
+                                       group_config_files=group_config_list, agent_start_port=start_port,
+                                       dec_key=dec_key, dec_mode=dec_mode)
             send_pipe.send("Success")
         # pylint: disable=broad-except
         except Exception as e:
@@ -322,3 +323,45 @@ def test_distributed_worker_agent_invalid_model_files_failed():
     # pylint: disable=broad-except
     except Exception as e:
         assert "Cannot access model file" in str(e)
+
+
+@serving_test
+def test_distributed_worker_dec_model_success():
+    base = start_distributed_grpc_server()
+    worker_process = start_distributed_worker(base)
+    base.add_on_exit(lambda: send_exit(worker_process))
+    agent_process = start_agents(base.model_file_list, base.group_config_list, 7000, dec_key=('abcd1234'*3).encode())
+    base.add_on_exit(lambda: send_exit(agent_process))
+
+    client = create_client("localhost:5500", base.servable_name, "predict")
+    instances = [{}, {}, {}]
+    y_data_list = []
+    for index, instance in enumerate(instances):
+        instance["x1"] = np.array([[1.1, 1.2], [2.2, 2.3]], np.float32) * (index + 1)
+        instance["x2"] = np.array([[3.3, 3.4], [4.4, 4.5]], np.float32) * (index + 1)
+        y_data_list.append((instance["x1"] + instance["x2"]).tolist())
+
+    result = client.infer(instances)
+    print(result)
+    assert len(result) == 3
+    assert result[0]["y"].dtype == np.float32
+    assert result[1]["y"].dtype == np.float32
+    assert result[2]["y"].dtype == np.float32
+    assert result[0]["y"].tolist() == y_data_list[0]
+    assert result[1]["y"].tolist() == y_data_list[1]
+    assert result[2]["y"].tolist() == y_data_list[2]
+
+    # send SIGINT to worker, expect worker and all agents exit
+    agents = psutil.Process(agent_process.pid).children()
+
+    def agents_alive():
+        return any([item.is_running() for item in agents])
+
+    os.kill(worker_process.pid, signal.SIGINT)
+    for _ in range(50):  # 50*0.1s
+        if not worker_process.is_alive() and not agent_process.is_alive() and not agents_alive():
+            break
+        time.sleep(0.1)
+    assert not worker_process.is_alive()
+    assert not agent_process.is_alive()
+    assert not agents_alive()
