@@ -126,7 +126,7 @@ class TestMasterWorker : public UT::Common {
     ServableMeta servable_meta;
     servable_meta.common_meta.servable_name = servable_name;
     servable_meta.common_meta.with_batch_dim = with_batch_dim;
-    servable_meta.local_meta.servable_file = servable_file;
+    servable_meta.local_meta.servable_files = {servable_file};
     servable_meta.local_meta.SetModelFormat(model_type);
     // declare_servable
     ServableStorage::Instance().DeclareServable(servable_meta);

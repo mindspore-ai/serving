@@ -32,7 +32,7 @@ std::string ServableMeta::Repr() const {
       break;
     case kServableTypeLocal:
       stream << "local servable, servable name: '" << common_meta.servable_name << "', file: '"
-             << local_meta.servable_file + "'";
+             << local_meta.servable_files[0] + "...'";
       break;
     case kServableTypeDistributed:
       stream << "distributed servable, servable name: '" << common_meta.servable_name
@@ -316,9 +316,15 @@ Status ServableStorage::DeclareServable(ServableMeta servable) {
   auto &common_meta = servable.common_meta;
   MSI_LOG_INFO << "Declare servable " << common_meta.servable_name;
   servable.servable_type = kServableTypeLocal;
-  if (servable.local_meta.servable_file.empty()) {
+  if (servable.local_meta.servable_files.size() == 0) {
     return INFER_STATUS_LOG_ERROR(FAILED)
-           << "Declare servable " << common_meta.servable_name << " failed, servable_file cannot be empty";
+           << "Declare servable " << common_meta.servable_name << " failed, servable_files size cannot be 0";
+  }
+  for (auto &file : servable.local_meta.servable_files) {
+    if (file.empty()) {
+      return INFER_STATUS_LOG_ERROR(FAILED)
+             << "Declare servable " << common_meta.servable_name << " failed, servable_file cannot be empty";
+    }
   }
   if (servable.local_meta.model_format == ModelType::kUnknownType) {
     return INFER_STATUS_LOG_ERROR(FAILED)
@@ -338,7 +344,7 @@ Status ServableStorage::DeclareServable(ServableMeta servable) {
   }
   org_servable_meta = servable;
   return SUCCESS;
-}
+}  // namespace mindspore::serving
 
 Status ServableStorage::DeclareDistributedServable(ServableMeta servable) {
   auto &common_meta = servable.common_meta;

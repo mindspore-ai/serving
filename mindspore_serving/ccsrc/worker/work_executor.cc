@@ -119,15 +119,15 @@ Status WorkExecutor::Init(const ServableSignature &servable_declare, const std::
   servable_ = servable;
   uint64_t graph_num = servable_->GetGraphNum();
   for (uint64_t i = 0; i < graph_num; i++) {
-    input_infos_[i] = servable_->GetInputInfos();
-    auto output_infos = servable_->GetOutputInfos();
+    input_infos_[i] = servable_->GetInputInfos(i);
+    auto output_infos = servable_->GetOutputInfos(i);
     for (auto &item : output_infos) {
       TensorInfoWithBatch info;
       info.tensor_info = item;
       output_infos_[i].push_back(info);
     }
     if (servable_declare_.servable_meta.common_meta.with_batch_dim) {
-      model_batch_size_ = servable_->GetBatchSize();
+      model_batch_size_ = servable_->GetBatchSize(i);
     } else {
       model_batch_size_ = 1;
     }
