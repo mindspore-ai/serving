@@ -175,6 +175,10 @@ class Client:
     The Client encapsulates the serving gRPC API, which can be used to create requests,
     access serving, and parse results.
 
+    Note:
+        The maximum amount of data that the client can send in one request is 512MB, and the maximum amount of data that
+        the server can accept can be configured as 1~512MB, 100MB by default.
+
     Args:
         address (str): Serving address.
         servable_name (str): The name of servable supplied by Serving.
