@@ -55,21 +55,21 @@ std::vector<TensorInfo> LocalModelServable::GetInputInfos(uint64_t subgraph) con
   if (!model_loaded_ || !session_) {
     MSI_LOG_EXCEPTION << "Model has not been loaded";
   }
-  return session_->GetInputInfos();
+  return session_->GetInputInfos(subgraph);
 }
 
 std::vector<TensorInfo> LocalModelServable::GetOutputInfos(uint64_t subgraph) const {
   if (!model_loaded_ || !session_) {
     MSI_LOG_EXCEPTION << "Model has not been loaded";
   }
-  return session_->GetOutputInfos();
+  return session_->GetOutputInfos(subgraph);
 }
 
 uint64_t LocalModelServable::GetBatchSize(uint64_t subgraph) const {
   if (!model_loaded_ || !session_) {
     MSI_LOG_EXCEPTION << "Model has not been loaded";
   }
-  return session_->GetBatchSize();
+  return session_->GetBatchSize(subgraph);
 }
 
 Status LocalModelServable::StartServable(const std::string &servable_directory, const std::string &servable_name,
@@ -121,7 +121,7 @@ Status LocalModelServable::StartServable(const std::string &servable_directory, 
   servable_name_ = base_spec_.servable_name;
   running_version_number_ = real_version_number;
   model_loaded_ = true;
-  graph_num_ = 1;
+  graph_num_ = signature.servable_meta.local_meta.servable_files.size();
   MSI_LOG_INFO << status.StatusMessage();
   std::cout << status.StatusMessage() << std::endl;
   return SUCCESS;
@@ -227,20 +227,24 @@ Status LocalModelServable::LoadModel(uint64_t version_number, const std::string 
   const auto &servable_meta = signature.servable_meta;
   const auto &common_meta = servable_meta.common_meta;
   const auto &local_meta = servable_meta.local_meta;
-  std::string model_file_name = base_spec_.servable_directory + "/" + base_spec_.servable_name + "/" +
-                                std::to_string(version_number) + "/" + local_meta.servable_file;
+  std::vector<std::string> model_file_names;
+  for (auto &file : local_meta.servable_files) {
+    std::string model_file_name = base_spec_.servable_directory + "/" + base_spec_.servable_name + "/" +
+                                  std::to_string(version_number) + "/" + file;
+    model_file_names.push_back(model_file_name);
+  }
   auto context = ServableContext::Instance();
   Status status = session_->LoadModelFromFile(
-    context->GetDeviceType(), context->GetDeviceId(), {model_file_name}, local_meta.model_format,
+    context->GetDeviceType(), context->GetDeviceId(), model_file_names, local_meta.model_format,
     common_meta.with_batch_dim, common_meta.without_batch_dim_inputs, local_meta.load_options, dec_key, dec_mode);
   if (status != SUCCESS) {
     return INFER_STATUS_LOG_ERROR(FAILED)
            << "Load model failed, servable directory: '" << base_spec_.servable_directory << "', servable name: '"
-           << base_spec_.servable_name << "', servable file: '" << local_meta.servable_file << "', version number "
+           << base_spec_.servable_name << "', servable file: '" << local_meta.servable_files << "', version number "
            << version_number << ", options " << local_meta.load_options;
   }
   return SUCCESS;
-}
+}  // namespace mindspore::serving
 
 void LocalModelServable::Clear() {
   if (model_loaded_) {

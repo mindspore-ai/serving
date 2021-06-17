@@ -94,7 +94,7 @@ void PyRegServable(pybind11::module *m_ptr) {
 
   py::class_<LocalServableMeta>(m, "LocalServableMeta_")
     .def(py::init<>())
-    .def_readwrite("servable_file", &LocalServableMeta::servable_file)
+    .def_readwrite("servable_file", &LocalServableMeta::servable_files)
     .def_readwrite("options", &LocalServableMeta::load_options)
     .def("set_model_format", &LocalServableMeta::SetModelFormat);
 

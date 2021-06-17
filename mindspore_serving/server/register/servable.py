@@ -26,7 +26,7 @@ def declare_servable(servable_file, model_format, with_batch_dim=True, options=N
     declare the servable info.
 
     Args:
-        servable_file (str): Model file name.
+        servable_file (str, list[str]): Model files name.
         model_format (str): Model format, "OM" or "MindIR", case ignored.
         with_batch_dim (bool, optional): Whether the first shape dim of the inputs and outputs of model is batch dim,
             default True.
@@ -50,7 +50,7 @@ def declare_servable(servable_file, model_format, with_batch_dim=True, options=N
         meta.common_meta.without_batch_dim_inputs = without_batch_dim_inputs
 
     # init local servable meta info
-    check_type.check_str('servable_file', servable_file)
+    servable_file = check_type.check_and_as_str_tuple_list('servable_file', servable_file)
     check_type.check_str('model_format', model_format)
     model_format = model_format.lower()
     if model_format not in ("om", "mindir"):
