@@ -112,7 +112,6 @@ def parse_args_and_start():
     if dec_key_pipe != "None":
         with open(dec_key_pipe, "rb") as fp:
             dec_key = fp.read()
-        print("--------------------------dec key:", dec_key)
         prefix = "serving_temp_dec_"
         if dec_key_pipe[:len(prefix)] == prefix:
             os.remove(dec_key_pipe)
