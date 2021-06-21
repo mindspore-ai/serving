@@ -22,6 +22,7 @@
 #include <string>
 #include <vector>
 #include <set>
+#include <fstream>
 #include "utils/log_adapter.h"
 
 namespace mindspore {
@@ -44,7 +45,64 @@ static inline const char *SafeCStr(const std::string &str) {
 
 }  // namespace common
 
-static inline size_t IntToSize(int i) {return static_cast<size_t>(i);}
+static inline size_t IntToSize(int i) { return static_cast<size_t>(i); }
+
+typedef unsigned char Byte;
+
+static inline std::unique_ptr<Byte[]> Decrypt(size_t *decrypt_len, const std::string &encrypt_data_path,
+                                              const Byte *key, const size_t key_len, const std::string &dec_mode) {
+  auto bytes = new Byte[10];
+  return std::unique_ptr<Byte[]>(bytes);
+}
+
+static inline std::unique_ptr<Byte[]> Decrypt(size_t *decrypt_len, const Byte *model_data, const size_t data_size,
+                                              const Byte *key, const size_t key_len, const std::string &dec_mode) {
+  auto bytes = new Byte[10];
+  return std::unique_ptr<Byte[]>(bytes);
+}
+
+static inline bool IsCipherFile(const std::string &file_path) { return false; }
+
+static inline bool IsCipherFile(const Byte *model_data) { return false; }
+
+static inline std::shared_ptr<FuncGraph> LoadMindIR(const std::string &file_name, bool is_lite,
+                                                    const unsigned char *dec_key, const size_t key_len,
+                                                    const std::string &dec_mode) {
+  std::ifstream ifs(file_name);
+  if (!ifs.good()) {
+    MS_LOG(ERROR) << "File: " << file_name << " is not exist";
+    return nullptr;
+  }
+  if (!ifs.is_open()) {
+    MS_LOG(ERROR) << "File: " << file_name << "open failed";
+    return nullptr;
+  }
+  return std::make_shared<FuncGraph>();
+}
+
+static inline std::vector<std::shared_ptr<FuncGraph>> LoadMindIRs(
+  const std::vector<std::string> file_names, bool is_lite = false, const unsigned char *dec_key = nullptr,
+  const size_t key_len = 0, const std::string &dec_mode = std::string("AES-GCM")) {
+  std::vector<std::shared_ptr<FuncGraph>> graphs;
+  for (auto &file_name : file_names) {
+    std::ifstream ifs(file_name);
+    if (!ifs.good()) {
+      MS_LOG(ERROR) << "File: " << file_name << " is not exist";
+      return {};
+    }
+    if (!ifs.is_open()) {
+      MS_LOG(ERROR) << "File: " << file_name << "open failed";
+      return {};
+    }
+    graphs.push_back(std::make_shared<FuncGraph>());
+  }
+  return graphs;
+}
+
+static inline std::shared_ptr<FuncGraph> ConvertStreamToFuncGraph(const char *buf, const size_t buf_size,
+                                                                  bool is_lite = false) {
+  return std::make_shared<FuncGraph>();
+}
 
 }  // namespace mindspore
 

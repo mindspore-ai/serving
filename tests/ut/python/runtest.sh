@@ -66,7 +66,7 @@ done
 cd -
 cd ${PROJECT_PATH}/tests/ut/python/tests/
 if [ $# -gt 0 ]; then
-  pytest -v . -k "$1"
+  pytest -s -v . -k "$1"
 else
   pytest -v .
 fi
