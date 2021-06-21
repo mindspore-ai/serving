@@ -391,7 +391,7 @@ Status MindSporeModelWrap::ExecuteModelCommon(size_t request_size, const FuncMak
   mindspore::Status status = model->Predict(inputs, &outputs);
   if (!status.IsOk()) {
     MSI_LOG_ERROR << "Predict failed: " << status.ToString();
-    return FAILED;
+    return Status(FAILED, "Predict Failed");
   }
   if (outputs.size() != output_names.size()) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Outputs size not match, predict outputs size " << outputs.size()
