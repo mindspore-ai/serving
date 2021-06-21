@@ -85,49 +85,47 @@ Status MindSporeModelWrap::LoadModelFromFile(serving::DeviceType device_type, ui
   }
   std::vector<std::shared_ptr<mindspore::Model>> models;
   try {
-    mindspore::Graph graph;
-    if (dec_key.empty()) {
-      auto ms_status = mindspore::Serialization::Load(file_names[0], ms_model_type, &graph);
-      if (!ms_status.IsOk()) {
-        return INFER_STATUS_LOG_ERROR(FAILED)
-               << "Load model from file failed, model file: " << file_names[0] << ", device_type: '" << device_type
-               << "', device_id: " << device_id << ", model type: " << model_type << ", options: " << other_options
-               << ", load error detail: " << ms_status.ToString();
-      }
-    } else {
-      mindspore::Key key;
+    std::vector<mindspore::Graph> graphs;
+    mindspore::Key key;
+    if (!dec_key.empty()) {
       auto rt = memcpy_s(key.key, sizeof(key.key), dec_key.data(), dec_key.size());
       if (rt != EOK) {
         return INFER_STATUS_LOG_ERROR(FAILED) << "Load model from file failed, dec key size " << dec_key.size()
                                               << " should less than " << key.max_key_len;
       }
       key.len = dec_key.size();
-      auto ms_status = mindspore::Serialization::Load(file_names[0], ms_model_type, &graph, key, dec_mode);
-      (void)memset_s(key.key, sizeof(key.key), 0, key.max_key_len);
-      if (!ms_status.IsOk()) {
-        return INFER_STATUS_LOG_ERROR(FAILED)
-               << "Load model from file failed, model file: " << file_names[0] << ", device_type: '" << device_type
-               << "', device_id: " << device_id << ", model type: " << model_type << ", options: " << other_options
-               << ", dec mode: " << dec_mode << ", load error detail: " << ms_status.ToString();
-      }
+    } else {
+      key.len = 0;
+    }
+    auto ms_status = mindspore::Serialization::Load(file_names, ms_model_type, &graphs, key, dec_mode);
+    (void)memset_s(key.key, sizeof(key.key), 0, key.max_key_len);
+    if (!ms_status.IsOk()) {
+      MSI_LOG_ERROR << "Load model from file failed, model file: " << file_names << ", device_type: '" << device_type
+                    << "', device_id: " << device_id << ", model type: " << model_type << ", options: " << other_options
+                    << ", dec mode: " << dec_mode << ", load error detail: " << ms_status.ToString();
+      return Status(FAILED, ms_status.ToString());
+    }
+    if (graphs.size() != file_names.size()) {
+      return INFER_STATUS_LOG_ERROR(FAILED) << "Load model from file failed, generate graphs size " << graphs.size()
+                                            << " should equal to " << file_names.size();
     }
     auto context = TransformModelContext(device_type, device_id, other_options);
     for (size_t i = 0; i < file_names.size(); i++) {
       auto model = std::make_shared<mindspore::Model>();
-      mindspore::Status status = model->Build(mindspore::GraphCell(graph), context);
+      mindspore::Status status = model->Build(mindspore::GraphCell(graphs[i]), context);
       if (!status.IsOk()) {
-        return INFER_STATUS_LOG_ERROR(FAILED)
-               << "Load model from file failed, model file: " << file_names[i] << ", device_type: '" << device_type
-               << "', device_id: " << device_id << ", model type: " << model_type << ", options: " << other_options
-               << ", build error detail: " << status.ToString();
+        MSI_LOG_ERROR << "Load model from file failed, model file: " << file_names[i] << ", device_type: '"
+                      << device_type << "', device_id: " << device_id << ", model type: " << model_type
+                      << ", options: " << other_options << ", build error detail: " << status.ToString();
+        return Status(FAILED, status.ToString());
       }
       models.push_back(model);
     }
   } catch (std::runtime_error &ex) {
-    return INFER_STATUS_LOG_ERROR(FAILED)
-           << "Load model from file failed, model file: " << file_names[0] << ", device_type: '" << device_type
-           << "', device_id: " << device_id << ", model type: " << model_type << ", options: " << other_options
-           << ", build error detail: " << ex.what();
+    MSI_LOG_ERROR << "Load model from file failed, model file: " << file_names << ", device_type: '" << device_type
+                  << "', device_id: " << device_id << ", model type: " << model_type << ", options: " << other_options
+                  << ", build error detail: " << ex.what();
+    return Status(FAILED, ex.what());
   }
   for (size_t i = 0; i < file_names.size(); i++) {
     ApiModelInfo api_model_info;

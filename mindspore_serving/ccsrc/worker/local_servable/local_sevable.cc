@@ -241,7 +241,8 @@ Status LocalModelServable::LoadModel(uint64_t version_number, const std::string 
     return INFER_STATUS_LOG_ERROR(FAILED)
            << "Load model failed, servable directory: '" << base_spec_.servable_directory << "', servable name: '"
            << base_spec_.servable_name << "', servable file: '" << local_meta.servable_files << "', version number "
-           << version_number << ", options " << local_meta.load_options;
+           << version_number << ", options " << local_meta.load_options
+           << ", load error details: " << status.StatusMessage();
   }
   return SUCCESS;
 }  // namespace mindspore::serving
