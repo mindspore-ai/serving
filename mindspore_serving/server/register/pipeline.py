@@ -18,8 +18,10 @@ from mindspore_serving._mindspore_serving import PipelineStorage_, RequestSpec_
 from mindspore_serving import log as logger
 from .utils import get_servable_dir, get_func_name
 
+
 class PipelineStorage:
     """Register and get pipeline info, pipeline info include: func, name, input and output count"""
+
     def __init__(self):
         self.pipeline = {}
         self.is_register = False
@@ -41,7 +43,9 @@ class PipelineStorage:
             raise RuntimeError(f"Pipeline '{pipeline_name}' not found")
         return pipeline
 
+
 pipeline_storage = PipelineStorage()
+
 
 def register_pipeline_args(func, inputs_count, outputs_count):
     """register pipeline"""
@@ -52,8 +56,10 @@ def register_pipeline_args(func, inputs_count, outputs_count):
     logger.info(f"Register pipeline {name} {inputs_count} {outputs_count}")
     pipeline_storage.register(func, name, inputs_count, outputs_count)
 
+
 class PipelineServable:
     """Create Pipeline Servable for Servable calls"""
+
     def __init__(self, servable_name, method, version_number=0):
         self.spec = RequestSpec_()
         self.storage = PipelineStorage_.get_instance()

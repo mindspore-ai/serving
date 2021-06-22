@@ -73,8 +73,6 @@ class MS_API Worker {
   void PushPyPipelineResult(std::vector<ResultInstance> outputs);
   void InitPipeline(const std::string &servable_name, uint64_t version_number);
   Status RunPipeline(const proto::PredictRequest &request, proto::PredictReply *reply, PredictOnFinish on_finish);
-  Status CreatePipelineInstanceFromRequest(const proto::PredictRequest &request, RequestSpec *request_spec,
-                                           std::vector<InstanceData> *results);
 
  private:
   ServableWorkerContext servable_context_;

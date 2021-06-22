@@ -15,6 +15,7 @@
  */
 
 #include "worker/distributed_worker/distributed_process/distributed_process.h"
+#include <vector>
 #include "worker/worker.h"
 #include "common/proto_tensor.h"
 
