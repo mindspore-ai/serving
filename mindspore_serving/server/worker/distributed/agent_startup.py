@@ -88,7 +88,9 @@ def _check_model_num(model_files, group_config_files):
     """Check the number of model files or group config files"""
     num = _check_model_files(-1, model_files, model_files, group_config_files)
     if group_config_files is not None:
-        _check_model_files(num, group_config_files, model_files, group_config_files)
+        num = _check_model_files(-1, group_config_files, model_files, group_config_files)
+        if num != 1:
+            raise RuntimeError(f"please check the number of  group config files, currently only support one at most")
 
 def _update_model_files_path(model_files, group_config_files):
     """Check and return model files or group config files"""
