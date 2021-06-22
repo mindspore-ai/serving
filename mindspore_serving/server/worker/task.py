@@ -49,6 +49,7 @@ task_type_preprocess = "preprocess"
 task_type_postprocess = "postprocess"
 task_type_pipeline = "pipeline"
 
+
 def has_worker_stopped():
     """Whether worker has stopped"""
     return ExitSignalHandle_.has_stopped()
@@ -281,6 +282,7 @@ class PyPostprocess(PyTask):
         """Get postprocess task info, including inputs, outputs count, function of postprocess"""
         return postprocess_storage.get(task_name)
 
+
 class PyPipeline(PyTask):
     """PyPipeline implement"""
 
@@ -302,6 +304,7 @@ class PyPipeline(PyTask):
     def get_task_info(self, task_name):
         """Get pipeline task info, including inputs, outputs count, function of pipeline"""
         return pipeline_storage.get(task_name)
+
 
 class PyTaskThread(threading.Thread):
     """Thread for handling preprocess and postprocess"""
@@ -367,6 +370,7 @@ class PyTaskThread(threading.Thread):
         logger.info("end py task for preprocess and postprocess")
         Worker_.stop_and_clear()
 
+
 class PyPinelineThread(threading.Thread):
     """Thread for handling pipeline"""
 
@@ -400,8 +404,10 @@ class PyPinelineThread(threading.Thread):
                 break
         logger.info("end py task for pipeline")
 
+
 py_task_thread = None
 py_pipeline_thread = None
+
 
 def _start_py_task(switch_batch):
     """Start python thread for pipelining, proprocessing and postprocessing"""
@@ -414,6 +420,7 @@ def _start_py_task(switch_batch):
         if py_pipeline_thread is None:
             py_pipeline_thread = PyPinelineThread(switch_batch)
             py_pipeline_thread.start()
+
 
 def _join_py_task():
     """Join python thread for pipelining, proprocessing and postprocessing"""

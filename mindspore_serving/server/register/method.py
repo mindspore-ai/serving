@@ -421,6 +421,7 @@ def register_method(output_names, subgraph=0):
     """
     output_names = check_type.check_and_as_str_tuple_list('output_names', output_names)
     check_type.check_int('subgraph', subgraph, 0)
+
     def register(func):
         name = get_func_name(func)
         sig = inspect.signature(func)

@@ -53,6 +53,7 @@ def check_and_as_tuple_with_str_list(arg_name, strs):
 
     return tuple(str_list)
 
+
 def check_and_as_str_tuple_list(arg_name, strs):
     """Check whether the input parameters are reasonable multiple str inputs,
     which can be single str, tuple or list of str.

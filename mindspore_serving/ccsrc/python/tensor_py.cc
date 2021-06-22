@@ -38,54 +38,44 @@ static std::vector<ssize_t> GetStrides(const std::vector<ssize_t> &shape, ssize_
 }
 
 DataType NumpyTensor::GetDataType(const py::buffer_info &buf) {
+  std::set<char> fp_format = {'e', 'f', 'd'};
+  std::set<char> int_format = {'b', 'h', 'i', 'l', 'q'};
+  std::set<char> uint_format = {'B', 'H', 'I', 'L', 'Q'};
   if (buf.format.size() == 1) {
-    switch (buf.format.front()) {
-      case 'e':
-      case 'f':
-      case 'd':
-        switch (buf.itemsize) {
-          case 2:
-            return kMSI_Float16;
-          case 4:
-            return kMSI_Float32;
-          case 8:
-            return kMSI_Float64;
-        }
-        break;
-      case 'b':
-      case 'h':
-      case 'i':
-      case 'l':
-      case 'q':
-        switch (buf.itemsize) {
-          case 1:
-            return kMSI_Int8;
-          case 2:
-            return kMSI_Int16;
-          case 4:
-            return kMSI_Int32;
-          case 8:
-            return kMSI_Int64;
-        }
-        break;
-      case 'B':
-      case 'H':
-      case 'I':
-      case 'L':
-      case 'Q':
-        switch (buf.itemsize) {
-          case 1:
-            return kMSI_Uint8;
-          case 2:
-            return kMSI_Uint16;
-          case 4:
-            return kMSI_Uint32;
-          case 8:
-            return kMSI_Uint64;
-        }
-        break;
-      case '?':
-        return kMSI_Bool;
+    char format = buf.format.front();
+    if (fp_format.find(format) != fp_format.end()) {
+      switch (buf.itemsize) {
+        case 2:
+          return kMSI_Float16;
+        case 4:
+          return kMSI_Float32;
+        case 8:
+          return kMSI_Float64;
+      }
+    } else if (int_format.find(format) != int_format.end()) {
+      switch (buf.itemsize) {
+        case 1:
+          return kMSI_Int8;
+        case 2:
+          return kMSI_Int16;
+        case 4:
+          return kMSI_Int32;
+        case 8:
+          return kMSI_Int64;
+      }
+    } else if (uint_format.find(format) != uint_format.end()) {
+      switch (buf.itemsize) {
+        case 1:
+          return kMSI_Uint8;
+        case 2:
+          return kMSI_Uint16;
+        case 4:
+          return kMSI_Uint32;
+        case 8:
+          return kMSI_Uint64;
+      }
+    } else if (format == '?') {
+      return kMSI_Bool;
     }
   }
   MSI_LOG(WARNING) << "Unsupported DataType format " << buf.format << " item size " << buf.itemsize;
@@ -196,7 +186,7 @@ py::object PyTensor::AsPythonData(TensorBasePtr tensor, bool copy) {
     py::buffer_info info(reinterpret_cast<void *>(const_cast<uint8_t *>(data)), sizeof(uint8_t),
                          py::format_descriptor<uint8_t>::format(), 1, shape, strides);
     if (!copy) {
-      py::object self = py::cast(tensor.get());
+      py::object self = py::cast(tensor);
       return py::array(py::dtype(info), info.shape, info.strides, info.ptr, self);
     } else {
       return py::array(py::dtype(info), info.shape, info.strides, info.ptr);
@@ -210,7 +200,7 @@ py::object PyTensor::AsPythonData(TensorBasePtr tensor, bool copy) {
                          static_cast<ssize_t>(tensor_shape.size()), shape, strides);
 
     if (!copy) {
-      py::object self = py::cast(tensor.get());
+      py::object self = py::cast(tensor);
       return py::array(py::dtype(info), info.shape, info.strides, info.ptr, self);
     } else {
       return py::array(py::dtype(info), info.shape, info.strides, info.ptr);

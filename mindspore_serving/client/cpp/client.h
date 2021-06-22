@@ -67,7 +67,7 @@ enum StatusCode { SUCCESS = 0, FAILED, INVALID_INPUTS, SYSTEM_ERROR, UNAVAILABLE
 class MS_API Status {
  public:
   Status() : status_code_(FAILED) {}
-  Status(enum StatusCode status_code, const std::string &status_msg = "")
+  Status(enum StatusCode status_code, const std::string &status_msg = "")  // NOLINT(runtime/explicit)
       : status_code_(status_code), status_msg_(status_msg) {}
   bool IsSuccess() const { return status_code_ == SUCCESS; }
   enum StatusCode StatusCode() const { return status_code_; }
