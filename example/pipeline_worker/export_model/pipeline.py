@@ -25,30 +25,49 @@ import mindspore as ms
 context.set_context(mode=context.GRAPH_MODE, device_target="Ascend")
 
 
-class Net(nn.Cell):
+class NetAdd(nn.Cell):
+    """Define Net of add"""
+
+    def __init__(self):
+        super(NetAdd, self).__init__()
+        self.add = ops.Add()
+
+    def construct(self, x_, y_):
+        """construct add net"""
+        return self.add(x_, y_)
+
+class NetSub(nn.Cell):
     """Define Net of sub"""
 
     def __init__(self):
-        super(Net, self).__init__()
+        super(NetSub, self).__init__()
         self.sub = ops.Sub()
 
     def construct(self, x_, y_):
         """construct sub net"""
         return self.sub(x_, y_)
 
-
 def export_net():
-    """Export sub net of 2x2 + 2x2, and copy output model `tensor_sub.mindir` to directory ../sub/1"""
+    """Export add net of 2x2 + 2x2, and copy output model `tensor_add.mindir` to directory ../add/1"""
     x = np.ones([2, 2]).astype(np.float32)
     y = np.ones([2, 2]).astype(np.float32)
-    sub = Net()
-    output = sub(ms.Tensor(x), ms.Tensor(y))
+    add = NetAdd()
+    output_add = add(ms.Tensor(x), ms.Tensor(y))
+    ms.export(add, ms.Tensor(x), ms.Tensor(y), file_name='tensor_add', file_format='MINDIR')
+
+    sub = NetSub()
+    output_sub = sub(ms.Tensor(x), ms.Tensor(y))
     ms.export(sub, ms.Tensor(x), ms.Tensor(y), file_name='tensor_sub', file_format='MINDIR')
+
     dst_dir = '../pipeline/1'
     try:
         os.mkdir(dst_dir)
     except OSError:
         pass
+
+    dst_file = os.path.join(dst_dir, 'tensor_add.mindir')
+    copyfile('tensor_add.mindir', dst_file)
+    print("copy tensor_add.mindir to " + dst_dir + " success")
 
     dst_file = os.path.join(dst_dir, 'tensor_sub.mindir')
     copyfile('tensor_sub.mindir', dst_file)
@@ -56,8 +75,8 @@ def export_net():
 
     print(x)
     print(y)
-    print(output.asnumpy())
-
+    print(output_add.asnumpy())
+    print(output_sub.asnumpy())
 
 if __name__ == "__main__":
     export_net()

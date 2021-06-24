@@ -23,10 +23,10 @@ from mindspore.nn import Cell
 class Net(Cell):
     """Net"""
 
-    def __init__(self, matmul_size, transpose_a=False, transpose_b=False, strategy=None):
+    def __init__(self, matmul_size, init_val, transpose_a=False, transpose_b=False, strategy=None):
         """init"""
         super().__init__()
-        matmul_np = np.full(matmul_size, 0.5, dtype=np.float32)
+        matmul_np = np.full(matmul_size, init_val, dtype=np.float32)
         self.matmul_weight = Parameter(Tensor(matmul_np))
         self.matmul = ops.MatMul(transpose_a=transpose_a, transpose_b=transpose_b)
         self.neg = ops.Neg()
