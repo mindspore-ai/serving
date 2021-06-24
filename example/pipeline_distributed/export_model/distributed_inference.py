@@ -29,12 +29,17 @@ def test_inference():
                                       device_num=8, group_ckpt_save_file="./group_config.pb")
 
     predict_data = create_predict_data()
-    network = Net(matmul_size=(96, 16))
+    network = Net(matmul_size=(96, 16), init_val=0.5)
     model = Model(network)
     model.infer_predict_layout(Tensor(predict_data))
     # pylint: disable=protected-access
-    export(model._predict_network, Tensor(predict_data), file_name="matmul", file_format="MINDIR")
+    export(model._predict_network, Tensor(predict_data), file_name="matmul_0", file_format="MINDIR")
 
+    network_1 = Net(matmul_size=(96, 16), init_val=1.5)
+    model_1 = Model(network_1)
+    model_1.infer_predict_layout(Tensor(predict_data))
+    # pylint: disable=protected-access
+    export(model_1._predict_network, Tensor(predict_data), file_name="matmul_1", file_format="MINDIR")
 
 def create_predict_data():
     """user-defined predict data"""

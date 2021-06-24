@@ -22,11 +22,11 @@ def start_agents():
     model_files = []
     group_configs = []
     for i in range(8):
-        model_files.append([f"model/device{i}/matmul.mindir", f"model1/device{i}/matmul.mindir"])
-        group_configs.append([f"model/device{i}/group_config.pb", f"model/device{i}/group_config.pb"])
+        model_files.append([f"model/device{i}/matmul_0.mindir", f"model/device{i}/matmul_1.mindir"])
+        group_configs.append([f"model/device{i}/group_config.pb"])
 
     distributed.startup_agents(distributed_address="127.0.0.1:6200", model_files=model_files,
-                               group_config_files=None)
+                               group_config_files=group_configs)
 
 if __name__ == '__main__':
     start_agents()

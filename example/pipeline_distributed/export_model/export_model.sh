@@ -41,5 +41,4 @@ for ((i = 0; i < ${RANK_SIZE}; i++)); do
   cp device${i}/*.pb ${output_dir}/device${i}/
 done
 
-cp -r ../model ../model1
 echo "copy models success"
