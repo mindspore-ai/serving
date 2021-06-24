@@ -204,7 +204,7 @@ def call_preprocess(preprocess_fun, *args):
     return _create_tensor_def_outputs(method_tag_preprocess, outputs_count)
 
 
-def call_servable(*args):
+def call_servable(*args, subgraph=0):
     r"""For method registration, define the inputs data of model inference.
 
     Note:
@@ -212,6 +212,7 @@ def call_servable(*args):
 
     Args:
         args: Model's inputs, the length of 'args' should be equal to the inputs number of model.
+        subgraph (int): The number of subgraph in model. Number starts at 0, The default value is 0.
 
     Raises:
         RuntimeError: The type or value of the parameters are invalid, or other error happened.
@@ -225,6 +226,7 @@ def call_servable(*args):
         ...     y = register.call_servable(x1, x2)
         ...     return y
     """
+    check_type.check_int('subgraph', subgraph, 0)
     global method_def_context_
     if method_def_context_.servable_name:
         raise RuntimeError(f"Check failed in method '{method_def_context_.method_name}', "
@@ -242,6 +244,7 @@ def call_servable(*args):
 
     method_def_context_.servable_name = servable_name
     method_def_context_.servable_inputs = [item.as_pair() for item in args]
+    method_def_context_.subgraph = subgraph
 
     return _create_tensor_def_outputs(method_tag_predict, outputs_count)
 
@@ -387,7 +390,7 @@ def _get_method_def_func_meta(method_def_func):
     return func_meta
 
 
-def register_method(output_names, subgraph=0):
+def register_method(output_names):
     """Register method for servable.
 
     Define the data flow of preprocess, model inference and postprocess in the method. Preprocess and postprocess
@@ -400,7 +403,6 @@ def register_method(output_names, subgraph=0):
     Args:
         output_names (Union[str, tuple[str], list[str]]): The output names of method. The input names is
             the args names of the registered function.
-        subgraph (int): The number of subgraph in model. Number starts at 0, The default value is 0.
 
     Raises:
         RuntimeError: The type or value of the parameters are invalid, or other error happened.
@@ -420,7 +422,6 @@ def register_method(output_names, subgraph=0):
         ...     return y
     """
     output_names = check_type.check_and_as_str_tuple_list('output_names', output_names)
-    check_type.check_int('subgraph', subgraph, 0)
 
     def register(func):
         name = get_func_name(func)
@@ -442,7 +443,6 @@ def register_method(output_names, subgraph=0):
         global method_def_context_
         method_def_context_ = MethodSignature_()
         method_def_context_.method_name = name
-        method_def_context_.subgraph = subgraph
         method_def_context_.inputs = input_names
         method_def_context_.outputs = output_names
 
@@ -472,6 +472,9 @@ def register_pipeline(output_names):
 
     Define the data flow of Pipeline Servable Method. Pipeline servable is optional.
 
+    .. warning::
+        This is a beta interface and may be changed in the future.
+
     Args:
         output_names (str, tuple or list of str): The output names of pipeline. The input names is
             the args names of the registered function.
@@ -482,17 +485,17 @@ def register_pipeline(output_names):
     Examples:
         >>> from mindspore_serving.server import distributed
         >>> from mindspore_serving.server import register
-        >>> from mindspore_serving.server.worker.register import PipelineServable
+        >>> from mindspore_serving.server.register import PipelineServable
         >>>
         >>> distributed.declare_servable(rank_size=8, stage_size=1, with_batch_dim=False)
         >>> @register.register_method(output_names=["y"])
         >>> def fun(x):
         ...     y = register.call_servable(x)
         ...     return y
-        >>> servable = PipelineServable(servable_name="service", method="fun", version_number=0)
+        >>> servable = PipelineServable(servable_name="service", method="fun")
         >>> @register.register_pipeline(output_names=["y"])
         >>> def predict(x):
-        ...     y = servable.call(x)
+        ...     y = servable.run(x)
         ...     return y
     """
     output_names = check_type.check_and_as_str_tuple_list('output_names', output_names)

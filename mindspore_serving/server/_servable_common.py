@@ -46,6 +46,10 @@ class ServableContextDataBase:
         """Start worker process to provide servable"""
         raise NotImplementedError
 
+    def can_restart(self):
+        """Whether the worker can restart"""
+        return True
+
 
 class WorkerContext:
     """Used to monitor and manage workers"""
@@ -107,6 +111,8 @@ class WorkerContext:
 
     def can_be_restart(self):
         """Whether can restart the worker process"""
+        if not self.context_data_.can_restart():
+            return False
         normal_handled_count = self.context.normal_handled_count
         return normal_handled_count > 0
 
