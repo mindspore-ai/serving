@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-"""Resnet50 ImageNet config python file"""
-import os
-import ast
+"""Resnet50 cifar10 config python file"""
 import numpy as np
 import mindspore.dataset as ds
 import mindspore.dataset.transforms.c_transforms as TC
@@ -22,11 +20,8 @@ import mindspore.dataset.vision.c_transforms as VC
 
 from mindspore_serving.server import register
 
-cur_dir = os.path.abspath(os.path.dirname(__file__))
-print("current dir:", cur_dir)
-with open(os.path.join(cur_dir, "imagenet1000_clsidx_to_labels.txt"), "r") as fp:
-    idx_2_label = ast.literal_eval(fp.read())
-idx_2_label[1000] = "empty"
+# cifar 10
+idx_2_label = ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
 
 
 def preprocess_eager(image):
@@ -36,8 +31,8 @@ def preprocess_eager(image):
     Use MindData Eager, this image processing can also use other image processing library, likes numpy, PIL or cv2 etc.
     """
     image_size = 224
-    mean = [0.485 * 255, 0.456 * 255, 0.406 * 255]
-    std = [0.229 * 255, 0.224 * 255, 0.225 * 255]
+    mean = [0.4914 * 255, 0.4822 * 255, 0.4465 * 255]
+    std = [0.2023 * 255, 0.1994 * 255, 0.2010 * 255]
 
     decode = VC.Decode()
     resize = VC.Resize([image_size, image_size])
@@ -65,8 +60,8 @@ def preprocess_pipeline(instances):
 
     resnet_ds = ds.GeneratorDataset(generator_func, ["image"], shuffle=False)
     image_size = 224
-    mean = [0.485 * 255, 0.456 * 255, 0.406 * 255]
-    std = [0.229 * 255, 0.224 * 255, 0.225 * 255]
+    mean = [0.4914 * 255, 0.4822 * 255, 0.4465 * 255]
+    std = [0.2023 * 255, 0.1994 * 255, 0.2010 * 255]
     resnet_ds = resnet_ds.map(operations=VC.Decode(), input_columns="image", num_parallel_workers=8)
 
     trans = [
@@ -102,7 +97,7 @@ def postprocess_top5(score):
     return ";".join(ret_label), ret_score
 
 
-register.declare_servable(servable_file="resnet50_1b_imagenet.mindir", model_format="MindIR")
+register.declare_servable(servable_file="resnet50_1b_cifar10.mindir", model_format="MindIR")
 
 
 @register.register_method(output_names=["label"])

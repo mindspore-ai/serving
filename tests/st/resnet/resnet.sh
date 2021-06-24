@@ -26,9 +26,9 @@ prepare_model()
 {
   echo "### begin to generate mode for serving test ###"
   cd export_model
-  python3 export_resnet.py &> export_resnet.log
+  python3 export_resnet.py False &> export_resnet.log
   echo "### end to generate mode for serving test ###"
-  result=`find . -name resnet50_1b_imagenet.mindir | wc -l`
+  result=`find . -name resnet50_1b_cifar10.mindir | wc -l`
   if [ ${result} -ne 1 ]
   then
     cat export_resnet.log

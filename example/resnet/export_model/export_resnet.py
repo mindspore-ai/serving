@@ -12,19 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-"""export resnet50 for imagenet dataset"""
+"""export resnet50 for cifar10 dataset"""
 
 import os
+import sys
 from shutil import copyfile
 from resnet.export import export_resnet
 
 if __name__ == '__main__':
-    export_resnet('resnet50_imagenet2012', None, 'resnet50_1b_imagenet')
+    if len(sys.argv) > 1 and sys.argv[1] == 'False':  # python export_resnet.py False
+        ckpt_file = None
+    else:
+        ckpt_file = "resnet50_ascend_v111_cifar10_offical_cv_bs32_acc92.ckpt"
+        if not os.path.exists(ckpt_file):
+            print("downloading resnet50 cifar10 checkpoint---------------------------------")
+            os.system("wget https://download.mindspore.cn/model_zoo/r1.1/"
+                      "resnet50_ascend_v111_cifar10_offical_cv_bs32_acc92/" + ckpt_file)
+            print("end downloading resnet50 cifar10 checkpoint---------------------------------")
+    export_resnet('resnet50_cifar10', ckpt_file, 'resnet50_1b_cifar10')
 
     dst_dir = '../resnet50/1'
     try:
         os.mkdir(dst_dir)
     except OSError:
         pass
-    dst_file = os.path.join(dst_dir, 'resnet50_1b_imagenet.mindir')
-    copyfile('resnet50_1b_imagenet.mindir', dst_file)
+    dst_file = os.path.join(dst_dir, 'resnet50_1b_cifar10.mindir')
+    copyfile('resnet50_1b_cifar10.mindir', dst_file)
