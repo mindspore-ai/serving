@@ -145,3 +145,7 @@ class DistributedContextData(ServableContextDataBase):
         with open(log_file_name, write_mode) as fp:
             sub = subprocess.Popen(args=args, shell=False, stdout=fp, stderr=fp)
         return sub
+
+    def can_restart(self):
+        """Whether the worker can restart"""
+        return False

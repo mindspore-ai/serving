@@ -25,21 +25,23 @@ register.declare_servable(servable_file=["tensor_add.mindir", "tensor_sub.mindir
 
 
 # register add_common method in add
-@register.register_method(output_names=["y"], subgraph=0)
+@register.register_method(output_names=["y"])
 def add_common(x1, x2):  # only support float32 inputs
     """method add_common data flow definition, only call model servable"""
-    y = register.call_servable(x1, x2)
+    y = register.call_servable(x1, x2, subgraph=0)
     return y
 
-@register.register_method(output_names=["y"], subgraph=1)
+
+@register.register_method(output_names=["y"])
 def sub_common(x1, x2):  # only support float32 inputs
     """method sub_common data flow definition, only call model servable"""
-    y = register.call_servable(x1, x2)
+    y = register.call_servable(x1, x2, subgraph=1)
     return y
 
 
 servable1 = PipelineServable(servable_name="pipeline", method="add_common", version_number=1)
 servable2 = PipelineServable(servable_name="pipeline", method="sub_common", version_number=1)
+
 
 @register.register_pipeline(output_names=["y1", "y2"])
 def predict(x1, x2):

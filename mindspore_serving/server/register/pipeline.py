@@ -16,6 +16,7 @@
 
 from mindspore_serving._mindspore_serving import PipelineStorage_, RequestSpec_
 from mindspore_serving import log as logger
+from mindspore_serving.server.common import check_type
 from .utils import get_servable_dir, get_func_name
 
 
@@ -58,9 +59,40 @@ def register_pipeline_args(func, inputs_count, outputs_count):
 
 
 class PipelineServable:
-    """Create Pipeline Servable for Servable calls"""
+    """Create Pipeline Servable for Servable calls.
+
+    .. warning::
+        This is a beta interface and may be changed in the future.
+
+    Args:
+        servable_name (str): The name of servable.
+        method (str): The name of method supplied by servable.
+        version_number (str): The number of version supplied by servable.
+
+    Raises:
+        RuntimeError: The type or value of the parameters is invalid, or other errors happened.
+
+    Examples:
+        >>> from mindspore_serving.server import distributed
+        >>> from mindspore_serving.server import register
+        >>>
+        >>> distributed.declare_servable(rank_size=8, stage_size=1, with_batch_dim=False)
+        >>> @register.register_method(output_names=["y"])
+        >>> def fun(x):
+        ...     y = register.call_servable(x)
+        ...     return y
+        >>> servable = register.PipelineServable(servable_name="service", method="fun")
+        >>> @register.register_pipeline(output_names=["y"])
+        >>> def predict(x):
+        ...     y = servable.run(x)
+        ...     return y
+    """
 
     def __init__(self, servable_name, method, version_number=0):
+        check_type.check_str('servable_name', servable_name)
+        check_type.check_str('method', method)
+        check_type.check_int('version_number', version_number, 0)
+
         self.spec = RequestSpec_()
         self.storage = PipelineStorage_.get_instance()
         self.spec.servable_name = servable_name
@@ -72,27 +104,15 @@ class PipelineServable:
         Servable calls function in Pipeline register function.
 
         Args:
-            servable_name (str): The name of servable.
-            method (str): The name of method supplied by servable.
-            version_number (str): The number of version supplied by servable.
+            args (numpy.ndarray): One or more input numpy arrays.
+
+        Returns:
+            numpy.ndarray: A numpy array object is returned if there is only one output; otherwise, a numpy array tuple
+                is returned.
 
         Raises:
             RuntimeError: The type or value of the parameters is invalid, or other errors happened.
 
-        Examples:
-            >>> from mindspore_serving.server import distributed
-            >>> from mindspore_serving.server import register
-            >>>
-            >>> distributed.declare_servable(rank_size=8, stage_size=1, with_batch_dim=False)
-            >>> @register.register_method(output_names=["y"])
-            >>> def fun(x):
-            ...     y = register.call_servable(x)
-            ...     return y
-            >>> servable = register.PipelineServable(servable_name="service", method="fun", version_number=0)
-            >>> @register.register_pipeline(output_names=["y"])
-            >>> def predict(x):
-            ...     y = servable.call(x)
-            ...     return y
         """
         arg_list = []
         if len(args) != 1 or not isinstance(args[0], list):
