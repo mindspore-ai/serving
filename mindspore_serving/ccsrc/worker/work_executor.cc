@@ -274,6 +274,12 @@ Status WorkExecutor::Work(const RequestSpec &request_spec, const std::vector<Ins
 
   std::vector<InstancePtr> instances;
   for (size_t i = 0; i < instances_data.size(); i++) {
+    if (method_def.inputs.size() != instances_data[i].size()) {
+      return INFER_STATUS_LOG_ERROR(FAILED)
+             << "Input count " << instances_data[i].size() << " does not equal to input count "
+             << method_def.inputs.size() << " defined in method " << request_spec.method_name;
+    }
+
     auto instance = std::make_shared<Instance>();
     instances.push_back(instance);
 

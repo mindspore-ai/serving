@@ -129,15 +129,24 @@ class PyTask:
         get_begin_time = time.time()
         self.task_info = self.get_task_info(task.name)
         for item in instance_list:
-            result = self._handle_one_task(item)
-            if result is not None:
-                output = self._handle_result(result)
-                self.result_batch.append(output)
+            if has_worker_stopped():
+                logger.info("Worker has exited, exit py task")
+                raise ServingExitException()
+            try:
+                result = self._handle_one_task(item)
+                if result is not None:
+                    output = self._handle_result(result)
+                    self.result_batch.append(output)
+                    self.push_result_batch()
+            # output count not match or python result is invalid
+            except ServingSystemException as e:
+                logger.warning(f"{self.task_name} invoke catch exception: ")
+                logging.exception(e)
+                self.push_failed(1)
         get_end_time = time.time()
         logger.info(f"{self.task_name} get result, "
                     f"cost time "
                     f"{(get_end_time - get_begin_time) * 1000} ms")
-        self.push_result_batch()
 
     def _run_inner(self, task):
         """Iterator get next result, and push it to c++"""
