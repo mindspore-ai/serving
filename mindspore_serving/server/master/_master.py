@@ -97,7 +97,9 @@ class SSLConfig:
             be used.
         custom_ca (str, optional): File holding the PEM-encoded root certificates as a byte string. When verify_client
             is True, custom_ca must be provided. When verify_client is False, this parameter will be ignored.
-        verify_client (bool, optional): If true, use mutual authentication, default one-way authentication.
+            Default: None.
+        verify_client (bool, optional): If verify_client is true, use mutual authentication. If false, use one-way
+            authentication. Default: False.
 
     Raises:
         RuntimeError: The type or value of the parameters are invalid.
@@ -129,9 +131,10 @@ def start_grpc_server(address, max_msg_mb_size=100, ssl_config=None):
               processes on the same machine. {unix_domain_file_path} can be relative or absolute file path,
               but the directory where the file is located must already exist.
 
-        max_msg_mb_size (int, optional): The maximum acceptable gRPC message size in megabytes(MB), default 100,
-            value range [1, 512].
+        max_msg_mb_size (int, optional): The maximum acceptable gRPC message size in megabytes(MB), value range
+            [1, 512]. Default: 100.
         ssl_config (mindspore_serving.server.SSLConfig, optional): The server's ssl_config, if None, disabled ssl.
+            Default: None.
 
     Raises:
         RuntimeError: Failed to start the gRPC server: parameter verification failed, the gRPC address is wrong or
@@ -171,9 +174,10 @@ def start_restful_server(address, max_msg_mb_size=100, ssl_config=None):
 
     Args:
         address (str): RESTful server address, the address should be Internet domain socket address.
-        max_msg_mb_size (int, optional): The maximum acceptable RESTful message size in megabytes(MB), default 100,
-            value range [1, 512].
+        max_msg_mb_size (int, optional): The maximum acceptable RESTful message size in megabytes(MB), value range
+            [1, 512]. Default: 100.
         ssl_config (mindspore_serving.server.SSLConfig, optional): The server's ssl_config, if None, disabled ssl.
+            Default: None.
 
     Raises:
         RuntimeError: Failed to start the RESTful server: parameter verification failed, the RESTful address is wrong

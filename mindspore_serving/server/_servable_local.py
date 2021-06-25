@@ -40,13 +40,13 @@ class ServableStartConfig:
         device_ids (Union[int, list[int], tuple[int]]): The device list the model loads into and runs in.
         version_number (int, optional): Servable version number to be loaded. The version number should be a positive
             integer, starting from 1, and 0 means to load the latest version. Default: 0.
-        device_type (str, optional): Currently supports "Ascend", "GPU" and None, Default: None.
+        device_type (str, optional): Currently supports "Ascend", "GPU" and None. Default: None.
 
             - "Ascend": the platform expected to be Ascend910 or Ascend310, etc.
             - "GPU": the platform expected to be Nvidia GPU.
             - None: the platform is determined by the MindSpore environment.
 
-        dec_key (bytes, optional): Byte type key used for decryption. The valid length is 16, 24, or 32.
+        dec_key (bytes, optional): Byte type key used for decryption. The valid length is 16, 24, or 32. Default: None.
         dec_mode (str, optional): Specifies the decryption mode, take effect when dec_key is set.
             Option: 'AES-GCM' or 'AES-CBC'. Default: 'AES-GCM'.
 

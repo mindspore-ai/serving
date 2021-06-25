@@ -26,9 +26,10 @@ def declare_servable(rank_size, stage_size, with_batch_dim=True, without_batch_d
     Args:
         rank_size (int): Te rank size of the distributed model.
         stage_size (int): The stage size of the distributed model.
-        with_batch_dim (bool): Whether the first shape dim of the inputs and outputs of model is batch, default True.
-        without_batch_dim_inputs (None, int, tuple or list of int): Index of inputs that without batch dim
-            when with_batch_dim is True.
+        with_batch_dim (bool, optional): Whether the first shape dim of the inputs and outputs of model is batch.
+            Default: True.
+        without_batch_dim_inputs (Union[int, tuple[int], list[int]], optional): Index of inputs that without batch dim
+            when with_batch_dim is True. Default: None.
 
     Raises:
         RuntimeError: The type or value of the parameters are invalid.

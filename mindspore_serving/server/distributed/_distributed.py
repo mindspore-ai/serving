@@ -28,12 +28,13 @@ def start_servable(servable_directory, servable_name, rank_table_json_file, vers
             `How to config Servable <https://www.mindspore.cn/tutorial/inference/zh-CN/master/serving_model.html>`_ .
 
         servable_name (str): The servable name.
-        version_number (int): Servable version number to be loaded. The version number should be a positive integer,
-            starting from 1, and 0 means to load the latest version. Default: 0.
+        version_number (int, optional): Servable version number to be loaded. The version number should be a positive
+            integer, starting from 1, and 0 means to load the latest version. Default: 1.
         rank_table_json_file (str): The ranke table json file name.
-        distributed_address (str): The distributed worker address the worker agents linked to.
+        distributed_address (str, optional): The distributed worker address the worker agents linked to.
+            Default: "0.0.0.0:6200".
         wait_agents_time_in_seconds(int, optional): The maximum time in seconds the worker waiting ready of all agents,
-            0 means unlimited time, default 0
+            0 means unlimited time. Default: 0.
 
     Raises:
         RuntimeError: Failed to start the distributed servable.

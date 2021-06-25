@@ -481,15 +481,15 @@ def startup_agents(distributed_address, model_files, group_config_files=None,
             relative to this startup python script.
         group_config_files (Union[list[str], tuple[str]], optional): All group config files need in current machine,
             absolute path or path relative to this startup python script, default None, which means there are no
-            configuration files.
-        agent_start_port (int, optional): The starting agent port of the agents link to worker. Default 7000.
+            configuration files. Default: None.
+        agent_start_port (int, optional): The starting agent port of the agents link to worker. Default: 7000.
         agent_ip (str, optional): The local agent ip, if it's None, the agent ip will be obtained from rank table file.
             Default None. Parameter agent_ip and parameter rank_start must have values at the same time,
-            or both None at the same time.
+            or both None at the same time. Default: None.
         rank_start (int, optional): The starting rank id of this machine, if it's None, the rank ip will be obtained
             from rank table file. Default None. Parameter agent_ip and parameter rank_start must have values at the same
-            time, or both None at the same time.
-        dec_key (bytes, optional): Byte type key used for decryption. The valid length is 16, 24, or 32.
+            time, or both None at the same time. Default: None.
+        dec_key (bytes, optional): Byte type key used for decryption. The valid length is 16, 24, or 32. Default: None.
         dec_mode (str, optional): Specifies the decryption mode, take effect when dec_key is set.
             Option: 'AES-GCM' or 'AES-CBC'. Default: 'AES-GCM'.
 
