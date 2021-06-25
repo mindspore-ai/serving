@@ -40,5 +40,26 @@ def run_predict():
     result = client.infer(instances)
     print(result)
 
+def run_predict_test():
+    """invoke servable sub method predict"""
+    client = Client("127.0.0.1:5500", "pipeline", "predict_test")
+    instances = []
+
+    # instance 1
+    x1 = np.asarray([[1, 1], [1, 1]]).astype(np.float32)
+    instances.append({"x": x1})
+
+    # instance 2
+    x1 = np.asarray([[2, 2], [2, 2]]).astype(np.float32)
+    instances.append({"x": x1})
+
+    # instance 3
+    x1 = np.asarray([[3, 3], [3, 3]]).astype(np.float32)
+    instances.append({"x": x1})
+
+    result = client.infer(instances)
+    print(result)
+
 if __name__ == '__main__':
     run_predict()
+    run_predict_test()

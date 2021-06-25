@@ -20,7 +20,7 @@ from mindspore_serving.server.register import PipelineServable
 # when with_batch_dim is set to False, only 2x2 add is supported
 # when with_batch_dim is set to True(default), Nx2 add is supported, while N is viewed as batch
 # float32 inputs/outputs
-register.declare_servable(servable_file=["tensor_add.mindir", "tensor_sub.mindir"],
+register.declare_servable(servable_file=["tensor_add.mindir", "tensor_sub.mindir", "tensor_test.mindir"],
                           model_format="MindIR", with_batch_dim=False)
 
 
@@ -38,13 +38,23 @@ def sub_common(x1, x2):  # only support float32 inputs
     y = register.call_servable(x1, x2, subgraph=1)
     return y
 
+@register.register_method(output_names=["y1", "y2"])
+def test_common(x1):  # only support float32 inputs
+    """method sub_common data flow definition, only call model servable"""
+    y1, y2 = register.call_servable(x1, subgraph=2)
+    return y1, y2
 
 servable1 = PipelineServable(servable_name="pipeline", method="add_common", version_number=1)
 servable2 = PipelineServable(servable_name="pipeline", method="sub_common", version_number=1)
-
+servable3 = PipelineServable(servable_name="pipeline", method="test_common", version_number=1)
 
 @register.register_pipeline(output_names=["y1", "y2"])
 def predict(x1, x2):
     y1 = servable1.run(x1, x2)
     y2 = servable2.run(x1, x2)
+    return y1, y2
+
+@register.register_pipeline(output_names=["y1", "y2"])
+def predict_test(x):
+    y1, y2 = servable3.run(x)
     return y1, y2

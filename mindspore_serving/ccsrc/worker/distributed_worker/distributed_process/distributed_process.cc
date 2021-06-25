@@ -98,8 +98,12 @@ grpc::Status MSDistributedImpl::AgentConfigAcquire(grpc::ServerContext *context,
   for (auto &without_batch_dim_input : without_batch_dim_inputs_list) {
     reply_common_meta->add_without_batch_dim_inputs(without_batch_dim_input);
   }
-  reply_common_meta->set_inputs_count(agent_config.common_meta.inputs_count);
-  reply_common_meta->set_outputs_count(agent_config.common_meta.outputs_count);
+  for (auto &inputs_count : agent_config.common_meta.inputs_count) {
+    reply_common_meta->add_inputs_count(inputs_count.second);
+  }
+  for (auto &outputs_count : agent_config.common_meta.outputs_count) {
+    reply_common_meta->add_outputs_count(outputs_count.second);
+  }
 
   // set reply message:AgentConfigAcquireReply, parameter:distributed_meta
   auto reply_distributed_meta = reply->mutable_distributed_meta();

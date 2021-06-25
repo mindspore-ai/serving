@@ -37,8 +37,9 @@ void PyServableStorage::DeclareDistributedServable(const ServableMeta &servable)
   }
 }
 void PyServableStorage::RegisterInputOutputInfo(const std::string &servable_name, size_t inputs_count,
-                                                size_t outputs_count) {
-  auto status = ServableStorage::Instance().RegisterInputOutputInfo(servable_name, inputs_count, outputs_count);
+                                                size_t outputs_count, uint64_t subgraph) {
+  auto status =
+    ServableStorage::Instance().RegisterInputOutputInfo(servable_name, inputs_count, outputs_count, subgraph);
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }

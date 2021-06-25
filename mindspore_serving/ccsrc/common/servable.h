@@ -102,8 +102,8 @@ struct CommonServableMeta {
   std::string servable_name;
   bool with_batch_dim = true;  // whether there is batch dim in model's inputs/outputs
   std::vector<int> without_batch_dim_inputs;
-  size_t inputs_count = 0;
-  size_t outputs_count = 0;
+  std::map<uint64_t, size_t> inputs_count;
+  std::map<uint64_t, size_t> outputs_count;
 };
 
 struct MS_API LocalServableMeta {
@@ -154,8 +154,9 @@ class MS_API ServableStorage {
   Status DeclareServable(ServableMeta servable);
   Status DeclareDistributedServable(ServableMeta servable);
 
-  Status RegisterInputOutputInfo(const std::string &servable_name, size_t inputs_count, size_t outputs_count);
-  std::vector<size_t> GetInputOutputInfo(const std::string &servable_name) const;
+  Status RegisterInputOutputInfo(const std::string &servable_name, size_t inputs_count, size_t outputs_count,
+                                 uint64_t subgraph = 0);
+  std::vector<size_t> GetInputOutputInfo(const std::string &servable_name, uint64_t subgraph = 0) const;
 
   static ServableStorage &Instance();
 
