@@ -67,7 +67,7 @@ class PipelineServable:
     Args:
         servable_name (str): The name of servable.
         method (str): The name of method supplied by servable.
-        version_number (str): The number of version supplied by servable.
+        version_number (int, optional): The number of version supplied by servable. Default: 0.
 
     Raises:
         RuntimeError: The type or value of the parameters is invalid, or other errors happened.
@@ -116,7 +116,7 @@ class PipelineServable:
         """
         arg_list = []
         if len(args) != 1 or not isinstance(args[0], list):
-            arg_list.append(tuple(args))
+            arg_list.append(args)
             result = self.storage.run(self.spec, arg_list)
             if len(result[0]) == 1:
                 return result[0][0]

@@ -28,6 +28,9 @@ class ServingTestBase:
         servable_dir = "serving_python_ut_servables"
         self.servable_dir = os.path.join(os.getcwd(), servable_dir)
         os.system(f"rm -rf {self.servable_dir}")
+        global servable_index
+        self.servable_name = "add_" + str(servable_index)
+        servable_index += 1
 
     def init_servable(self, version_number, config_file, model_file="tensor_add.mindir"):
         cur_dir = os.path.dirname(os.path.abspath(__file__))
@@ -41,10 +44,6 @@ class ServingTestBase:
 
     def init_servable_with_servable_config(self, version_number, servable_config_content,
                                            model_file="tensor_add.mindir"):
-        global servable_index
-        self.servable_name = "add_" + str(servable_index)
-        servable_index += 1
-
         self.version_number = version_number
         self.model_file_name = model_file
         self.servable_name_path = os.path.join(self.servable_dir, self.servable_name)
@@ -71,9 +70,6 @@ class ServingTestBase:
                 fp.write(servable_config_content)
 
     def init_distributed_servable(self, servable_config_content, rank_size, rank_table_content):
-        global servable_index
-        self.servable_name = "add_" + str(servable_index)
-        servable_index += 1
         self.version_number = 1
         self.servable_name_path = os.path.join(self.servable_dir, self.servable_name)
         self.model_dir = os.path.join(self.servable_dir, "model_" + self.servable_name)

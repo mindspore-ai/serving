@@ -103,9 +103,7 @@ class WorkExecutor : public std::enable_shared_from_this<WorkExecutor> {
   Status PrePredict(const std::vector<InstancePtr> &instances);
   Status PostPredict(const std::vector<InstancePtr> &instances, const std::vector<TensorBasePtr> &predict_result);
   Status Predict(const std::vector<InstancePtr> &instances);
-  Status Pipeline(const std::vector<InstancePtr> &instances);
   Status CheckPredictInput(const InstancePtr &instance);
-  Status CheckPipelineInput(const InstancePtr &instance);
   bool IsNoBatchDimInput(int input_index) const;
 
   void CreateInputInstance(const InstancePtr &instance, PredictPhaseTag phase);
