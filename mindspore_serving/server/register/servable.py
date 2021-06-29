@@ -26,14 +26,14 @@ def declare_servable(servable_file, model_format, with_batch_dim=True, options=N
     declare the servable info.
 
     Args:
-        servable_file (str, list[str]): Model files name.
+        servable_file (Union[str, list[str]]): Model files name.
         model_format (str): Model format, "OM" or "MindIR", case ignored.
-        with_batch_dim (bool, optional): Whether the first shape dim of the inputs and outputs of model is batch dim,
-            default True.
-        options (Union[None, AclOptions, GpuOptions], optional): Options of model, supports AclOptions or GpuOptions.
-            Default None.
-        without_batch_dim_inputs (Union[None, int, tuple[int], list[int]], optional): Index of inputs that without batch
-            dim when with_batch_dim is True. Default None.
+        with_batch_dim (bool, optional): Whether the first shape dim of the inputs and outputs of model is batch dim.
+            Default: True.
+        options (Union[AclOptions, GpuOptions], optional): Options of model, supports AclOptions or GpuOptions.
+            Default: None.
+        without_batch_dim_inputs (Union[int, tuple[int], list[int]], optional): Index of inputs that without batch
+            dim when with_batch_dim is True. Default: None.
 
     Raises:
         RuntimeError: The type or value of the parameters are invalid.
@@ -96,13 +96,13 @@ class AclOptions(_Options):
         input_format (str, optional): Manually specify the model input format, the value can be "ND", "NCHW", "NHWC",
             "CHWN", "NC1HWC0", or "NHWC1C0".
         input_shape (str, optional): Manually specify the model input shape, such as
-            "input_op_name1: n1,c2,h3,w4;input_op_name2: n4,c3,h2,w1",
-        output_type (str, optional): Manually specify the model output type, the value can be "FP16", "UINT8"，or "FP32",
-            default "FP32".
+            "input_op_name1: n1,c2,h3,w4;input_op_name2: n4,c3,h2,w1".
+        output_type (str, optional): Manually specify the model output type, the value can be "FP16", "UINT8" or "FP32",
+            Default: "FP32".
         precision_mode (str, optional): Model precision mode, the value can be "force_fp16"，"allow_fp32_to_fp16"，
-            "must_keep_origin_dtype" or "allow_mix_precision", default "force_fp16".
+            "must_keep_origin_dtype" or "allow_mix_precision". Default: "force_fp16".
         op_select_impl_mode (str, optional): The operator selection mode, the value can be "high_performance" or
-            "high_precision", default "high_performance".
+            "high_precision". Default: "high_performance".
 
     Raises:
         RuntimeError: Acl option is invalid, or value is not str.
@@ -248,7 +248,8 @@ class GpuOptions(_Options):
     Helper class to set gpu options.
 
     Args:
-        precision_mode(str): inference operator selection, and the value can be "origin", "fp16", default "origin".
+        precision_mode(str, optional): inference operator selection, and the value can be "origin", "fp16".
+            Default: "origin".
 
     Raises:
         RuntimeError: Gpu option is invalid, or value is not str.

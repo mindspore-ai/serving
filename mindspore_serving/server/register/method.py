@@ -212,7 +212,7 @@ def call_servable(*args, subgraph=0):
 
     Args:
         args: Model's inputs, the length of 'args' should be equal to the inputs number of model.
-        subgraph (int): The number of subgraph in model. Number starts at 0, The default value is 0.
+        subgraph (int, optional): The number of subgraph in model. Number starts at 0. Default: 0.
 
     Raises:
         RuntimeError: The type or value of the parameters are invalid, or other error happened.
