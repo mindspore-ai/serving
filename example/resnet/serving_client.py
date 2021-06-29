@@ -19,14 +19,16 @@ from mindspore_serving.client import Client
 
 def read_images():
     """Read images for directory test_image"""
+    image_files = []
     images_buffer = []
     for path, _, file_list in os.walk("./test_image/"):
         for file_name in file_list:
             image_file = os.path.join(path, file_name)
-            print(image_file)
-            with open(image_file, "rb") as fp:
-                images_buffer.append(fp.read())
-    return images_buffer
+            image_files.append(image_file)
+    for image_file in image_files:
+        with open(image_file, "rb") as fp:
+            images_buffer.append(fp.read())
+    return image_files, images_buffer
 
 
 def run_classify_top1():
@@ -34,68 +36,79 @@ def run_classify_top1():
     print("run_classify_top1-----------")
     client = Client("localhost:5500", "resnet50", "classify_top1")
     instances = []
-    for image in read_images():
+    image_files, images_buffer = read_images()
+    for image in images_buffer:
         instances.append({"image": image})
     result = client.infer(instances)
     print(result)
+    for file, label in zip(image_files, result):
+        print(f"{file}, label: {label['label']}")
 
 
 def run_classify_top1_v1():
     """Client for servable resnet50 and method classify_top1_v1"""
-    print("run_classify_top1_v1-----------")
+    print("\n--------------run_classify_top1_v1-----------")
     client = Client("localhost:5500", "resnet50", "classify_top1_v1")
     instances = []
-    for image in read_images():
+    image_files, images_buffer = read_images()
+    for image in images_buffer:
         instances.append({"image": image})
     result = client.infer(instances)
     print(result)
+    for file, label in zip(image_files, result):
+        print(f"{file}, label: {label['label']}")
 
 
 def run_classify_top5():
     """Client for servable resnet50 and method classify_top5"""
-    print("run_classify_top5-----------")
+    print("\n--------------run_classify_top5-----------")
     client = Client("localhost:5500", "resnet50", "classify_top5")
     instances = []
-    for image in read_images():  # read multi image
+    image_files, images_buffer = read_images()
+    for image in images_buffer:
         instances.append({"image": image})  # input `image`
 
     result = client.infer(instances)
 
     print(result)
-    for result_item in result:  # result for every image
+    for file, result_item in zip(image_files, result):  # result for every image
         label = result_item["label"]  # result `label`
         score = result_item["score"]  # result `score`
+        print("file:", file)
         print("label result:", label)
         print("score result:", score)
 
 
 def run_classify_top5_async():
     """Client for servable resnet50 and method classify_top5"""
-    print("run_classify_top5_async-----------")
+    print("\n--------------run_classify_top5_async-----------")
     client = Client("localhost:5500", "resnet50", "classify_top5")
     instances = []
-    for image in read_images():  # read multi image
+    image_files, images_buffer = read_images()
+    for image in images_buffer:
         instances.append({"image": image})  # input `image`
 
     result_future = client.infer_async(instances)
     result = result_future.result()
 
     print(result)
-    for result_item in result:  # result for every image
+    for file, result_item in zip(image_files, result):  # result for every image
         label = result_item["label"]  # result `label`
         score = result_item["score"]  # result `score`
+        print("file:", file)
         print("label result:", label)
         print("score result:", score)
 
 
 def run_restful_classify_top1():
     """RESTful Client for servable resnet50 and method classify_top1"""
-    print("run_restful_classify_top1-----------")
+    print("\n--------------run_restful_classify_top1-----------")
     import base64
     import requests
     import json
     instances = []
-    for image in read_images():
+    image_files, images_buffer = read_images()
+    for image in images_buffer:
         base64_data = base64.b64encode(image).decode()
         instances.append({"image": {"b64": base64_data}})
     instances_map = {"instances": instances}
@@ -106,6 +119,9 @@ def run_restful_classify_top1():
     method_name = "classify_top1"
     result = requests.post(f"http://{ip}:{restful_port}/model/{servable_name}:{method_name}", data=post_payload)
     print(result.text)
+    result = json.loads(result.text)
+    for file, label in zip(image_files, result['instances']):
+        print(f"{file}, label: {label['label']}")
 
 
 if __name__ == '__main__':
