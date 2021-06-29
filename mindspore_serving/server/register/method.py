@@ -237,7 +237,7 @@ def call_servable(*args, subgraph=0):
 
     servable_name = get_servable_dir()
     inputs_count, outputs_count = method_def_ast_meta_[_call_servable_name]
-    ServableStorage_.register_servable_input_output_info(servable_name, inputs_count, outputs_count)
+    ServableStorage_.register_servable_input_output_info(servable_name, inputs_count, outputs_count, subgraph)
     if inputs_count != len(args):
         raise RuntimeError(f"Check failed in method '{method_def_context_.method_name}', given servable input "
                            f"size {len(args)} not match '{servable_name}' ast parse size {inputs_count}")

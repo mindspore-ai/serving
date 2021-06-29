@@ -38,8 +38,8 @@ TEST_F(TestAgentConfigAcquire, test_agent_config_acquire_success) {
   std::string rank_table_content = "rank table content";
   CommonServableMeta commonServableMeta;
   commonServableMeta.servable_name = "servable_name";
-  commonServableMeta.outputs_count = 1;
-  commonServableMeta.inputs_count = 1;
+  commonServableMeta.outputs_count[0] = 1;
+  commonServableMeta.inputs_count[0] = 1;
   commonServableMeta.with_batch_dim = false;
   commonServableMeta.without_batch_dim_inputs.push_back(8);
   DistributedServableMeta distributedServableMeta;
@@ -65,8 +65,8 @@ TEST_F(TestAgentConfigAcquire, test_agent_config_acquire_success) {
   GrpcNotifyDistributeWorker::ParseAgentConfigAcquireReply(reply, &config);
   ASSERT_EQ(config.rank_table_content, rank_table_content);
   ASSERT_EQ(config.common_meta.servable_name, "servable_name");
-  ASSERT_EQ(config.common_meta.inputs_count, 1);
-  ASSERT_EQ(config.common_meta.outputs_count, 1);
+  ASSERT_EQ(config.common_meta.inputs_count.at(0), 1);
+  ASSERT_EQ(config.common_meta.outputs_count.at(0), 1);
   ASSERT_EQ(config.common_meta.with_batch_dim, false);
   ASSERT_EQ(config.common_meta.without_batch_dim_inputs.size(), 1);
   ASSERT_EQ(config.common_meta.without_batch_dim_inputs.at(0), 8);

@@ -37,8 +37,8 @@ message CommonServableMeta {
   string servable_name = 1;
   bool with_batch_dim = 2;
   repeated int64 without_batch_dim_inputs = 3;
-  int64 inputs_count = 4;
-  int64 outputs_count = 5;
+  repeated int64 inputs_count = 4;
+  repeated int64 outputs_count = 5;
 }
 
 message DistributedServableMeta {

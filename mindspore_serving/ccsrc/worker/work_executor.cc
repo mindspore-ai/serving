@@ -56,13 +56,14 @@ Status WorkExecutor::CheckServableSignature(uint64_t subgraph) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "There is no method registered for servable";
   }
   const auto &common_meta = servable_declare_.servable_meta.common_meta;
-  if (input_infos.size() != common_meta.inputs_count) {
-    return INFER_STATUS_LOG_ERROR(FAILED) << "The inputs count " << common_meta.inputs_count << " registered in method "
-                                          << "not equal to the count " << input_infos.size() << " defined in servable";
-  }
-  if (output_infos_[subgraph].size() != common_meta.outputs_count) {
+  if (input_infos.size() != common_meta.inputs_count.at(subgraph)) {
     return INFER_STATUS_LOG_ERROR(FAILED)
-           << "The outputs count " << common_meta.outputs_count << " registered in method "
+           << "The inputs count " << common_meta.inputs_count.at(subgraph) << " registered in method "
+           << "not equal to the count " << input_infos.size() << " defined in servable";
+  }
+  if (output_infos_[subgraph].size() != common_meta.outputs_count.at(subgraph)) {
+    return INFER_STATUS_LOG_ERROR(FAILED)
+           << "The outputs count " << common_meta.outputs_count.at(subgraph) << " registered in method "
            << "not equal to the count " << output_infos_[subgraph].size() << " defined in servable";
   }
   MSI_LOG_INFO << "Model input infos: count " << input_infos.size();

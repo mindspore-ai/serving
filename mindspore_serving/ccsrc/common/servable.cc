@@ -163,11 +163,12 @@ Status ServableSignature::CheckPostprocessInput(const MethodSignature &method, s
                  << "th output, that is greater than the preprocess outputs size " << preprocess_outputs_count;
         }
       } else if (input.first == kPredictPhaseTag_Predict) {
-        if (input.second >= common_meta.outputs_count) {
+        if (input.second >= common_meta.outputs_count.at(method.subgraph)) {
           return INFER_STATUS_LOG_ERROR(FAILED)
                  << "Model " << model_str << " method " << method.method_name << ", the postprocess " << i
                  << "th input uses servable " << input.second
-                 << "th output, that is greater than the servable outputs size " << common_meta.outputs_count;
+                 << "th output, that is greater than the servable outputs size "
+                 << common_meta.outputs_count.at(method.subgraph);
         }
       } else {
         return INFER_STATUS_LOG_ERROR(FAILED)
@@ -201,11 +202,11 @@ Status ServableSignature::CheckReturn(const MethodSignature &method, size_t prep
                << "th output, that is greater than the preprocess outputs size " << preprocess_outputs_count;
       }
     } else if (input.first == kPredictPhaseTag_Predict) {
-      if (input.second >= common_meta.outputs_count) {
-        return INFER_STATUS_LOG_ERROR(FAILED)
-               << "Model " << model_str << " method " << method.method_name << ", the method " << i
-               << "th output uses servable " << input.second
-               << "th output, that is greater than the servable outputs size " << common_meta.outputs_count;
+      if (input.second >= common_meta.outputs_count.at(method.subgraph)) {
+        return INFER_STATUS_LOG_ERROR(FAILED) << "Model " << model_str << " method " << method.method_name
+                                              << ", the method " << i << "th output uses servable " << input.second
+                                              << "th output, that is greater than the servable outputs size "
+                                              << common_meta.outputs_count.at(method.subgraph);
       }
     } else if (input.first == kPredictPhaseTag_Postprocess) {
       if (input.second >= postprocess_outputs_count) {
@@ -375,36 +376,37 @@ Status ServableStorage::DeclareDistributedServable(ServableMeta servable) {
 }
 
 Status ServableStorage::RegisterInputOutputInfo(const std::string &servable_name, size_t inputs_count,
-                                                size_t outputs_count) {
+                                                size_t outputs_count, uint64_t subgraph) {
   auto it = servable_signatures_map_.find(servable_name);
   if (it == servable_signatures_map_.end()) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "RegisterInputOutputInfo failed, cannot find servable " << servable_name;
   }
   auto &servable_meta = it->second.servable_meta;
   auto &common_meta = servable_meta.common_meta;
-  if (common_meta.inputs_count != 0 && common_meta.inputs_count != inputs_count) {
+
+  if (common_meta.inputs_count.count(subgraph) > 0 && common_meta.inputs_count[subgraph] != inputs_count) {
     return INFER_STATUS_LOG_ERROR(FAILED)
            << "RegisterInputOutputInfo failed, inputs count " << inputs_count << " not match old count "
-           << common_meta.inputs_count << ",servable name " << servable_name;
+           << common_meta.inputs_count[subgraph] << ",servable name " << servable_name;
   }
-  if (common_meta.outputs_count != 0 && common_meta.outputs_count != outputs_count) {
+  if (common_meta.outputs_count.count(subgraph) > 0 && common_meta.outputs_count[subgraph] != outputs_count) {
     return INFER_STATUS_LOG_ERROR(FAILED)
            << "RegisterInputOutputInfo failed, outputs count " << outputs_count << " not match old count "
-           << common_meta.outputs_count << ",servable name " << servable_name;
+           << common_meta.outputs_count[subgraph] << ",servable name " << servable_name;
   }
-  common_meta.inputs_count = inputs_count;
-  common_meta.outputs_count = outputs_count;
+  common_meta.inputs_count[subgraph] = inputs_count;
+  common_meta.outputs_count[subgraph] = outputs_count;
   return SUCCESS;
 }
 
-std::vector<size_t> ServableStorage::GetInputOutputInfo(const std::string &servable_name) const {
+std::vector<size_t> ServableStorage::GetInputOutputInfo(const std::string &servable_name, uint64_t subgraph) const {
   std::vector<size_t> result;
   auto it = servable_signatures_map_.find(servable_name);
   if (it == servable_signatures_map_.end()) {
     return result;
   }
-  result.push_back(it->second.servable_meta.common_meta.inputs_count);
-  result.push_back(it->second.servable_meta.common_meta.outputs_count);
+  result.push_back(it->second.servable_meta.common_meta.inputs_count.at(subgraph));
+  result.push_back(it->second.servable_meta.common_meta.outputs_count.at(subgraph));
   return result;
 }
 

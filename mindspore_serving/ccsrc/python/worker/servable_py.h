@@ -29,7 +29,8 @@ class MS_API PyServableStorage {
   static void DeclareServable(const ServableMeta &servable);
   static void DeclareDistributedServable(const ServableMeta &servable);
 
-  static void RegisterInputOutputInfo(const std::string &servable_name, size_t inputs_count, size_t outputs_count);
+  static void RegisterInputOutputInfo(const std::string &servable_name, size_t inputs_count, size_t outputs_count,
+                                      uint64_t subgraph = 0);
 };
 
 }  // namespace mindspore::serving

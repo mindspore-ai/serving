@@ -153,8 +153,14 @@ Status GrpcNotifyDistributeWorker::ParseAgentConfigAcquireReply(const proto::Age
   for (auto &temp_without_batch_dim_inputs : temp_common_meta.without_batch_dim_inputs()) {
     config->common_meta.without_batch_dim_inputs.push_back(temp_without_batch_dim_inputs);
   }
-  config->common_meta.inputs_count = temp_common_meta.inputs_count();
-  config->common_meta.outputs_count = temp_common_meta.outputs_count();
+  uint64_t index = 0;
+  for (auto &count : temp_common_meta.inputs_count()) {
+    config->common_meta.inputs_count[index++] = count;
+  }
+  index = 0;
+  for (auto &count : temp_common_meta.outputs_count()) {
+    config->common_meta.outputs_count[index++] = count;
+  }
 
   // parser reply message:AgentConfigAcquireReply, parameter:distributed_meta
   auto &temp_distributed_meta = reply.distributed_meta();
