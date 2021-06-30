@@ -59,7 +59,7 @@ class MS_API DistributedServable : public ServableBase {
 
   std::vector<TensorInfo> GetInputInfos(uint64_t subgraph = 0) const override;
   std::vector<TensorInfo> GetOutputInfos(uint64_t subgraph = 0) const override;
-  uint64_t GetBatchSize(uint64_t subgraph = 0) const override;
+  uint64_t GetBatchSize() const override;
   std::string GetServableDirectory() const override;
   std::string GetServableName() const override;
   uint64_t GetServableVersion() const override;
@@ -83,7 +83,8 @@ class MS_API DistributedServable : public ServableBase {
 
   std::map<uint64_t, std::vector<TensorInfo>> input_infos_;
   std::map<uint64_t, std::vector<TensorInfo>> output_infos_;
-  std::map<uint64_t, uint64_t> batch_size_;
+  uint64_t batch_size_;
+  bool all_stage_has_input_ = false;
 
   std::atomic_flag promise_set_flag_ = ATOMIC_FLAG_INIT;
   std::atomic_bool registered_end_flag_ = false;

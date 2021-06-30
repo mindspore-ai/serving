@@ -40,7 +40,7 @@ class MS_API LocalModelServable : public ServableBase {
 
   std::vector<TensorInfo> GetInputInfos(uint64_t subgraph = 0) const override;
   std::vector<TensorInfo> GetOutputInfos(uint64_t subgraph = 0) const override;
-  uint64_t GetBatchSize(uint64_t subgraph = 0) const override;
+  uint64_t GetBatchSize() const override;
 
   Status StartServable(const std::string &servable_directory, const std::string &servable_name, uint64_t version_number,
                        const std::string &dec_key, const std::string &dec_mode);
