@@ -65,11 +65,11 @@ std::vector<TensorInfo> LocalModelServable::GetOutputInfos(uint64_t subgraph) co
   return session_->GetOutputInfos(subgraph);
 }
 
-uint64_t LocalModelServable::GetBatchSize(uint64_t subgraph) const {
+uint64_t LocalModelServable::GetBatchSize() const {
   if (!model_loaded_ || !session_) {
     MSI_LOG_EXCEPTION << "Model has not been loaded";
   }
-  return session_->GetBatchSize(subgraph);
+  return session_->GetBatchSize();
 }
 
 Status LocalModelServable::StartServable(const std::string &servable_directory, const std::string &servable_name,

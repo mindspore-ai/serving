@@ -127,6 +127,7 @@ Status MindSporeModelWrap::LoadModelFromFile(serving::DeviceType device_type, ui
                   << ", build error detail: " << ex.what();
     return Status(FAILED, ex.what());
   }
+  uint64_t last_batch_size = 0;
   for (size_t i = 0; i < file_names.size(); i++) {
     ApiModelInfo api_model_info;
     api_model_info.model = models[i];
@@ -139,6 +140,13 @@ Status MindSporeModelWrap::LoadModelFromFile(serving::DeviceType device_type, ui
       return st;
     }
     GetModelBatchSize(&api_model_info);
+    if (api_model_info.batch_size != 0) {
+      if (last_batch_size != 0 && last_batch_size != api_model_info.batch_size) {
+        return INFER_STATUS_LOG_ERROR(FAILED) << "Expect batch size to be same, last batch size: " << last_batch_size
+                                              << ", subgraph " << i << " batch size: " << api_model_info.batch_size;
+      }
+      last_batch_size = api_model_info.batch_size;
+    }
     models_.push_back(api_model_info);
     MSI_LOG_INFO << "Load model from file success, model file: " << file_names[i] << ", device_type: '" << device_type
                  << "', device_id: " << device_id << ", model type: " << model_type << ", options: " << other_options;

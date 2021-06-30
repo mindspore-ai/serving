@@ -92,7 +92,7 @@ Status DistributedServable::PredictInner(const std::vector<TensorBasePtr> &input
       msg_list->at(i).status = status;
       msg_list->at(i).promise.set_value();
     };
-    if (i < agent_num_per_stage) {
+    if (i < agent_num_per_stage || all_stage_has_input_) {
       if (i == result_agent_id) {
         request.set_return_result(true);
       }
@@ -167,16 +167,11 @@ std::vector<TensorInfo> DistributedServable::GetOutputInfos(uint64_t subgraph) c
   return {};
 }
 
-uint64_t DistributedServable::GetBatchSize(uint64_t subgraph) const {
+uint64_t DistributedServable::GetBatchSize() const {
   if (!model_loaded_) {
     MSI_LOG_EXCEPTION << "Model has not been loaded";
   }
-  auto iter = batch_size_.find(subgraph);
-  if (iter != batch_size_.end()) {
-    return iter->second;
-  }
-  MSI_LOG_EXCEPTION << "subgraph: " << subgraph << " is not existed";
-  return {};
+  return batch_size_;
 }
 
 Status DistributedServable::GetDistributedServableConfig(DistributedServableConfig *config) const {
@@ -199,7 +194,9 @@ Status DistributedServable::RegisterAgent(const std::vector<WorkerAgentSpec> &ag
   if (registered_end_flag_) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Distributed servable has ended up registration";
   }
-
+  if (agent_specs.empty()) {
+    return INFER_STATUS_LOG_ERROR(FAILED) << "The number of graph cannot be 0";
+  }
   if (agent_specs[0].rank_id >= config_.distributed_meta.rank_size) {
     return INFER_STATUS_LOG_ERROR(FAILED)
            << "Invalid rank id " << agent_specs[0].rank_id << ", rank size " << config_.distributed_meta.rank_size;
@@ -574,54 +571,68 @@ Status DistributedServable::CheckAgentsInfosAndInitTensorInfos() {
       return INFER_STATUS_LOG_ERROR(FAILED) << "The number of graph not match in different agent";
     }
   }
+  batch_size_ = agent_spec_map_[0].agent_spec_[0].batch_size;
   for (size_t subgraph = 0; subgraph < agent_spec_map_[0].agent_spec_.size(); subgraph++) {
     input_infos_[subgraph] = agent_spec_map_[0].agent_spec_[subgraph].input_infos;
     output_infos_[subgraph] = agent_spec_map_[rank_size - 1].agent_spec_[subgraph].output_infos;
-    batch_size_[subgraph] = agent_spec_map_[0].agent_spec_[subgraph].batch_size;
     if (input_infos_[subgraph].empty()) {
       return INFER_STATUS_LOG_ERROR(FAILED) << "Rank " << 0 << " input count cannot be 0";
     }
     if (output_infos_[subgraph].empty()) {
       return INFER_STATUS_LOG_ERROR(FAILED) << "Rank " << rank_size - 1 << " output count cannot be 0";
     }
+    const auto &input_infos = input_infos_[subgraph];
     Status status;
     for (size_t i = 0; i < parallel_count; i++) {
-      auto &agent_spec = agent_spec_map_[i];
-      status = CompareTensorInfos(agent_spec.agent_spec_[subgraph].input_infos, input_infos_[subgraph]);
+      auto &agent_spec = agent_spec_map_[i].agent_spec_[subgraph];
+      status = CompareTensorInfos(agent_spec.input_infos, input_infos);
       if (status != SUCCESS) {
         status = INFER_STATUS_LOG_ERROR(FAILED)
-                 << "Rank " << i << " input infos not match rank 0, details: " << status.StatusMessage();
+                 << "Rank " << i << " input infos not match rank 0, subgraph: " << subgraph
+                 << ", details: " << status.StatusMessage();
         return status;
       }
     }
     for (size_t i = parallel_count; i < rank_size; i++) {
-      auto &agent_spec = agent_spec_map_[i];
-      if (!agent_spec.agent_spec_[subgraph].input_infos.empty()) {
-        return INFER_STATUS_LOG_ERROR(FAILED) << "Expect rank " << i << " input count equal to 0";
+      auto &agent_spec = agent_spec_map_[i].agent_spec_[subgraph];
+      if (agent_spec.input_infos.empty()) {
+        if (all_stage_has_input_) {
+          return INFER_STATUS_LOG_ERROR(FAILED)
+                 << "Expect stage 0(other stages have empty inputs) or all stages have same inputs, detect rank "
+                 << i - 1 << " input count is " << agent_spec.input_infos.size() << ", but rank " << i
+                 << " input count is 0, subgraph: " << subgraph;
+        }
+        continue;
       }
+      status = CompareTensorInfos(agent_spec.input_infos, input_infos);
+      if (status != SUCCESS) {
+        return INFER_STATUS_LOG_ERROR(FAILED)
+               << "Expect stage 0(other stages have empty inputs) or all stages have same inputs, detect rank " << i - 1
+               << " and rank " << i << " inputs are different, subgraph: " << subgraph
+               << ", details: " << status.StatusMessage();
+      }
+      all_stage_has_input_ = true;
     }
     for (size_t i = 0; i < rank_size; i += parallel_count) {
-      auto &first_item = agent_spec_map_[i];
+      const auto &first_item = agent_spec_map_[i].agent_spec_[subgraph];
       for (size_t k = 0; k < parallel_count && i + k < rank_size; k++) {
         auto rank_id = i + k;
-        auto &agent_spec = agent_spec_map_[i + k];
-        status = CompareTensorInfos(agent_spec.agent_spec_[subgraph].output_infos,
-                                    first_item.agent_spec_[subgraph].output_infos);
+        const auto &agent_spec = agent_spec_map_[i + k].agent_spec_[subgraph];
+        status = CompareTensorInfos(agent_spec.output_infos, first_item.output_infos);
         if (status != SUCCESS) {
-          status = INFER_STATUS_LOG_ERROR(FAILED) << "Rank " << rank_id << " output infos not match rank " << i
-                                                  << ", details: " << status.StatusMessage();
+          status = INFER_STATUS_LOG_ERROR(FAILED)
+                   << "Rank " << rank_id << " output infos not match rank " << i << ", subgraph: " << subgraph
+                   << ", details: " << status.StatusMessage();
           return status;
         }
-        if (agent_spec.agent_spec_[subgraph].batch_size != 0 &&
-            agent_spec.agent_spec_[subgraph].batch_size != batch_size_[subgraph]) {
-          if (!agent_spec.agent_spec_[subgraph].output_infos.empty()) {
-            MSI_LOG_WARNING << "Rank " << rank_id
-                            << " output 0 shape: " << agent_spec.agent_spec_[subgraph].output_infos[0].shape
-                            << ", batch size " << agent_spec.agent_spec_[subgraph].batch_size;
+        if (agent_spec.batch_size != 0 && agent_spec.batch_size != batch_size_) {
+          if (!agent_spec.output_infos.empty()) {
+            MSI_LOG_WARNING << "Rank " << rank_id << " output 0 shape: " << agent_spec.output_infos[0].shape
+                            << ", batch size " << agent_spec.batch_size << ", subgraph: " << subgraph;
           }
           return INFER_STATUS_LOG_ERROR(FAILED)
-                 << "Expect rank " << rank_id << " batch size  " << agent_spec.agent_spec_[subgraph].batch_size
-                 << " equal to 0 or rank 0's batch size " << batch_size_[subgraph];
+                 << "Expect rank " << rank_id << " batch size  " << agent_spec.batch_size
+                 << " equal to 0 or rank 0's batch size " << batch_size_ << ", subgraph: " << subgraph;
         }
       }
     }

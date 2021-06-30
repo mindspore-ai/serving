@@ -38,7 +38,7 @@ class ServableBase {
                          uint64_t subgraph = 0) = 0;
   virtual std::vector<TensorInfo> GetInputInfos(uint64_t subgraph = 0) const = 0;
   virtual std::vector<TensorInfo> GetOutputInfos(uint64_t subgraph = 0) const = 0;
-  virtual uint64_t GetBatchSize(uint64_t subgraph = 0) const = 0;
+  virtual uint64_t GetBatchSize() const = 0;
   virtual std::string GetServableDirectory() const = 0;
   virtual std::string GetServableName() const = 0;
   virtual uint64_t GetServableVersion() const = 0;
