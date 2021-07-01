@@ -33,13 +33,11 @@ def start_listening_parent_thread(servable_name):
 
     def worker_listening_parent_thread():
         parent_process = psutil.Process(os.getppid())
-        while not ExitSignalHandle_.has_stopped():
-            if not parent_process.is_running():
-                logger.warning(f"Distributed worker {servable_name}, detect parent "
-                               f"pid={parent_process.pid} has exited, worker begin to exit")
-                worker.stop()
-                return
+        while parent_process.is_running() and not ExitSignalHandle_.has_stopped():
             time.sleep(0.1)
+        logger.warning(f"Distributed worker {servable_name}, detect parent "
+                       f"pid={parent_process.pid} has exited or receive Ctrl+C message, worker begin to exit")
+        worker.stop()
 
     thread = threading.Thread(target=worker_listening_parent_thread)
     thread.start()

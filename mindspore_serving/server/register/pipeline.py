@@ -107,8 +107,8 @@ class PipelineServable:
             args (numpy.ndarray): One or more input numpy arrays.
 
         Returns:
-            numpy.ndarray: A numpy array object is returned if there is only one output; otherwise, a numpy array tuple
-                is returned.
+            numpy.ndarray, A numpy array object is returned if there is only one output; otherwise, a numpy array tuple
+            is returned.
 
         Raises:
             RuntimeError: The type or value of the parameters is invalid, or other errors happened.

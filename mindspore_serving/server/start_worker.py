@@ -27,33 +27,32 @@ from mindspore_serving.server.common import check_type
 from mindspore_serving._mindspore_serving import ExitSignalHandle_
 from mindspore_serving._mindspore_serving import Worker_
 
+_main_thread_exited = False
+
 
 def start_listening_parent_thread(servable_name, device_id):
     """listening to parent process status"""
 
     def worker_listening_parent_thread():
         parent_process = psutil.Process(os.getppid())
-        while not ExitSignalHandle_.has_stopped():
-            if not parent_process.is_running():
-                logger.warning(f"Worker {servable_name} device_id {device_id}, detect parent "
-                               f"pid={parent_process.pid} has exited, worker begin to exit")
-                worker.stop()
-                cur_process = psutil.Process(os.getpid())
-                for _ in range(100):  # 100x0.1=10s
-                    try:
-                        children = cur_process.children(recursive=True)
-                        if not children:
-                            logger.info(f"All current children processes have exited")
-                            break
-                        for child in children:
-                            os.kill(child.pid, signal.SIGTERM)
-                        time.sleep(0.1)
-                    # pylint: disable=broad-except
-                    except Exception as e:
-                        logger.warning(f"Kill children catch exception {e}")
-
-                return
+        while parent_process.is_running() and not ExitSignalHandle_.has_stopped():
             time.sleep(0.1)
+        logger.warning(f"Worker {servable_name} device_id {device_id}, detect parent "
+                       f"pid={parent_process.pid} has exited or receive Ctrl+C message, worker begin to exit")
+        worker.stop()
+        cur_process = psutil.Process(os.getpid())
+        for _ in range(100):  # 100x0.1=10s
+            try:
+                children = cur_process.children(recursive=True)
+                if not children and _main_thread_exited:
+                    logger.info(f"All current children processes have exited")
+                    break
+                for child in children:
+                    os.kill(child.pid, signal.SIGTERM)
+                time.sleep(0.1)
+            # pylint: disable=broad-except
+            except Exception as e:
+                logger.warning(f"Kill children catch exception {e}")
 
     thread = threading.Thread(target=worker_listening_parent_thread)
     thread.start()
@@ -120,8 +119,12 @@ def parse_args_and_start():
     dec_mode = sys.argv[8]
     # pylint: disable=simplifiable-if-expression
     listening_master = True if sys.argv[9].lower() == "true" else False
-    start_worker(servable_directory, servable_name, version_number, device_type, device_id, master_address,
-                 dec_key, dec_mode, listening_master)
+    try:
+        start_worker(servable_directory, servable_name, version_number, device_type, device_id, master_address,
+                     dec_key, dec_mode, listening_master)
+    finally:
+        global _main_thread_exited
+        _main_thread_exited = True
 
 
 if __name__ == '__main__':
