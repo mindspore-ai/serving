@@ -48,14 +48,9 @@ class WorkerPredictContext : public WorkerServiceContext<WorkerPredictContext> {
 
   ~WorkerPredictContext() = default;
 
-  void StartEnqueueRequest() override {
-    state_ = STATE::PROCESS;
-    async_service_->RequestPredict(&ctx_, &request_, &responder_, cq_, cq_, this);
-  }
+  void StartEnqueueRequest() override { async_service_->RequestPredict(&ctx_, &request_, &responder_, cq_, cq_, this); }
 
   void HandleRequest() override {
-    EnqueueRequest(service_impl_, async_service_, cq_);
-    state_ = STATE::FINISH;
     MSI_TIME_STAMP_START(WorkerRequestHandle)
     PredictOnFinish on_finish = [this, time_start_WorkerRequestHandle]() {
       responder_.Finish(response_, grpc::Status::OK, this);
@@ -78,16 +73,9 @@ class WorkerExitContext : public WorkerServiceContext<WorkerPredictContext> {
 
   ~WorkerExitContext() = default;
 
-  void StartEnqueueRequest() override {
-    state_ = STATE::PROCESS;
-    async_service_->RequestExit(&ctx_, &request_, &responder_, cq_, cq_, this);
-  }
+  void StartEnqueueRequest() override { async_service_->RequestExit(&ctx_, &request_, &responder_, cq_, cq_, this); }
 
-  void HandleRequest() override {
-    EnqueueRequest(service_impl_, async_service_, cq_);
-    state_ = STATE::FINISH;
-    service_impl_->Exit(&ctx_, &request_, &response_);
-  }
+  void HandleRequest() override { service_impl_->Exit(&ctx_, &request_, &response_); }
 
  private:
   grpc::ServerAsyncResponseWriter<proto::ExitReply> responder_;
@@ -98,10 +86,7 @@ class WorkerExitContext : public WorkerServiceContext<WorkerPredictContext> {
 class WorkerGrpcServer : public GrpcAsyncServer<proto::MSWorker::AsyncService> {
  public:
   WorkerGrpcServer() : GrpcAsyncServer<proto::MSWorker::AsyncService>() {}
-  Status EnqueueRequest() override {
-    WorkerPredictContext::EnqueueRequest(&service_impl_, &svc_, cq_.get());
-    return SUCCESS;
-  }
+  void EnqueueRequests() override { WorkerPredictContext::EnqueueRequest(&service_impl_, &svc_, cq_.get()); }
 
  protected:
   MSWorkerImpl service_impl_;

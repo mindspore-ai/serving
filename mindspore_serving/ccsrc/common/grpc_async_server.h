@@ -35,35 +35,37 @@ class GrpcAsyncServiceContextBase {
   GrpcAsyncServiceContextBase() = default;
   virtual ~GrpcAsyncServiceContextBase() = default;
 
-  virtual void HandleRequest() = 0;
-  virtual bool JudgeFinish() const = 0;
+  virtual void NewAndHandleRequest() = 0;
+
+  bool HasFinish() const { return finished_; }
+  void SetFinish() { finished_ = true; }
+
+ private:
+  bool finished_ = false;
 };
 
 template <class ServiceImpl, class AsyncService, class Derived>
 class GrpcAsyncServiceContext : public GrpcAsyncServiceContextBase {
  public:
-  enum class STATE : int8_t { CREATE = 1, PROCESS = 2, FINISH = 3 };
-
   GrpcAsyncServiceContext(ServiceImpl *service_impl, AsyncService *async_service, grpc::ServerCompletionQueue *cq)
-      : service_impl_(service_impl), async_service_(async_service), cq_(cq) {
-    state_ = STATE::CREATE;
-  }
+      : service_impl_(service_impl), async_service_(async_service), cq_(cq) {}
   ~GrpcAsyncServiceContext() = default;
   GrpcAsyncServiceContext() = delete;
 
   virtual void StartEnqueueRequest() = 0;
+  virtual void HandleRequest() = 0;
 
-  bool JudgeFinish() const override { return state_ == STATE::FINISH; }
-
-  static Status EnqueueRequest(ServiceImpl *service_impl, AsyncService *async_service,
-                               grpc::ServerCompletionQueue *cq) {
+  static void EnqueueRequest(ServiceImpl *service_impl, AsyncService *async_service, grpc::ServerCompletionQueue *cq) {
     auto call = new Derived(service_impl, async_service, cq);
     call->StartEnqueueRequest();
-    return SUCCESS;
+  }
+
+  void NewAndHandleRequest() final {
+    EnqueueRequest(service_impl_, async_service_, cq_);
+    HandleRequest();
   }
 
  protected:
-  STATE state_;
   grpc::ServerContext ctx_;
 
   ServiceImpl *service_impl_;
@@ -77,7 +79,7 @@ class GrpcAsyncServer {
   GrpcAsyncServer() {}
   virtual ~GrpcAsyncServer() { Stop(); }
 
-  virtual Status EnqueueRequest() = 0;
+  virtual void EnqueueRequests() = 0;
 
   bool IsRunning() const { return in_running_; }
 
@@ -162,12 +164,10 @@ class GrpcAsyncServer {
     // will come back with our own tag which is an instance of GrpcAsyncServiceContextBase
     // and we simply call its functor. But first we need to create these instances
     // and inject them into the grpc queue.
-    Status status = EnqueueRequest();
-    if (status != SUCCESS) return status;
+    EnqueueRequests();
     while (cq_->Next(&tag, &success)) {
       if (success) {
-        status = ProcessRequest(tag);
-        if (status != SUCCESS) return status;
+        ProcessRequest(tag);
       } else {
         MSI_LOG(DEBUG) << "cq_->Next failed.";
       }
@@ -194,14 +194,14 @@ class GrpcAsyncServer {
     return SUCCESS;
   }
 
-  Status ProcessRequest(void *tag) {
+  void ProcessRequest(void *tag) {
     auto rq = static_cast<GrpcAsyncServiceContextBase *>(tag);
-    if (rq->JudgeFinish()) {
+    if (rq->HasFinish()) {
       delete rq;
     } else {
-      rq->HandleRequest();
+      rq->NewAndHandleRequest();
+      rq->SetFinish();  // will delete next time
     }
-    return SUCCESS;
   }
 
  protected:
