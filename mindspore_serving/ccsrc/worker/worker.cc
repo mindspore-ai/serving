@@ -199,7 +199,6 @@ Status Worker::StartServable(const std::shared_ptr<ServableBase> &servable, cons
 }
 
 Status Worker::StartServableInner(const std::shared_ptr<ServableBase> &servable) {
-  ExitSignalHandle::Instance().Start();  // handle ctrl+c to exit
   if (servable_started_) {
     return INFER_STATUS_LOG_ERROR(FAILED)
            << "A servable has been started, only one servable can run in a process currently.";
