@@ -55,13 +55,10 @@ class WorkerAgentRegisterContext : public DistributedServiceContext<WorkerAgentR
   ~WorkerAgentRegisterContext() = default;
 
   void StartEnqueueRequest() override {
-    state_ = STATE::PROCESS;
     async_service_->RequestAgentRegister(&ctx_, &request_, &responder_, cq_, cq_, this);
   }
 
   void HandleRequest() override {
-    EnqueueRequest(service_impl_, async_service_, cq_);
-    state_ = STATE::FINISH;
     grpc::Status status = service_impl_->AgentRegister(&ctx_, &request_, &response_);
     responder_.Finish(response_, status, this);
   }
@@ -81,13 +78,10 @@ class WorkerAgentExitContext : public DistributedServiceContext<WorkerAgentExitC
   ~WorkerAgentExitContext() = default;
 
   void StartEnqueueRequest() override {
-    state_ = STATE::PROCESS;
     async_service_->RequestAgentExit(&ctx_, &request_, &responder_, cq_, cq_, this);
   }
 
   void HandleRequest() override {
-    EnqueueRequest(service_impl_, async_service_, cq_);
-    state_ = STATE::FINISH;
     grpc::Status status = service_impl_->AgentExit(&ctx_, &request_, &response_);
     responder_.Finish(response_, status, this);
   }
@@ -107,13 +101,10 @@ class WorkerAgentFailedContext : public DistributedServiceContext<WorkerAgentFai
   ~WorkerAgentFailedContext() = default;
 
   void StartEnqueueRequest() override {
-    state_ = STATE::PROCESS;
     async_service_->RequestAgentFailed(&ctx_, &request_, &responder_, cq_, cq_, this);
   }
 
   void HandleRequest() override {
-    EnqueueRequest(service_impl_, async_service_, cq_);
-    state_ = STATE::FINISH;
     grpc::Status status = service_impl_->AgentFailed(&ctx_, &request_, &response_);
     responder_.Finish(response_, status, this);
   }
@@ -135,13 +126,10 @@ class WorkerAgentConfigAcquireContext : public DistributedServiceContext<WorkerA
   ~WorkerAgentConfigAcquireContext() = default;
 
   void StartEnqueueRequest() override {
-    state_ = STATE::PROCESS;
     async_service_->RequestAgentConfigAcquire(&ctx_, &request_, &responder_, cq_, cq_, this);
   }
 
   void HandleRequest() override {
-    EnqueueRequest(service_impl_, async_service_, cq_);
-    state_ = STATE::FINISH;
     grpc::Status status = service_impl_->AgentConfigAcquire(&ctx_, &request_, &response_);
     responder_.Finish(response_, status, this);
   }
@@ -160,14 +148,9 @@ class WorkerPingContext : public DistributedServiceContext<WorkerPingContext> {
 
   ~WorkerPingContext() = default;
 
-  void StartEnqueueRequest() override {
-    state_ = STATE::PROCESS;
-    async_service_->RequestPing(&ctx_, &request_, &responder_, cq_, cq_, this);
-  }
+  void StartEnqueueRequest() override { async_service_->RequestPing(&ctx_, &request_, &responder_, cq_, cq_, this); }
 
   void HandleRequest() override {
-    EnqueueRequest(service_impl_, async_service_, cq_);
-    state_ = STATE::FINISH;
     grpc::Status status = service_impl_->Ping(&ctx_, &request_, &response_);
     responder_.Finish(response_, status, this);
   }
@@ -186,14 +169,9 @@ class WorkerPongContext : public DistributedServiceContext<WorkerPongContext> {
 
   ~WorkerPongContext() = default;
 
-  void StartEnqueueRequest() override {
-    state_ = STATE::PROCESS;
-    async_service_->RequestPong(&ctx_, &request_, &responder_, cq_, cq_, this);
-  }
+  void StartEnqueueRequest() override { async_service_->RequestPong(&ctx_, &request_, &responder_, cq_, cq_, this); }
 
   void HandleRequest() override {
-    EnqueueRequest(service_impl_, async_service_, cq_);
-    state_ = STATE::FINISH;
     grpc::Status status = service_impl_->Pong(&ctx_, &request_, &response_);
     responder_.Finish(response_, status, this);
   }
@@ -210,14 +188,13 @@ class DistributedWorkerGrpcServer : public GrpcAsyncServer<proto::MSDistributedW
       : GrpcAsyncServer<proto::MSDistributedWorker::AsyncService>(),
         service_impl_(MSDistributedImpl(servable, server_address)) {}
 
-  Status EnqueueRequest() override {
+  void EnqueueRequests() override {
     WorkerAgentRegisterContext::EnqueueRequest(&service_impl_, &svc_, cq_.get());
     WorkerAgentExitContext::EnqueueRequest(&service_impl_, &svc_, cq_.get());
     WorkerAgentFailedContext::EnqueueRequest(&service_impl_, &svc_, cq_.get());
     WorkerAgentConfigAcquireContext::EnqueueRequest(&service_impl_, &svc_, cq_.get());
     WorkerPingContext::EnqueueRequest(&service_impl_, &svc_, cq_.get());
     WorkerPongContext::EnqueueRequest(&service_impl_, &svc_, cq_.get());
-    return SUCCESS;
   }
 
  private:

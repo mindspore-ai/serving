@@ -49,15 +49,9 @@ class MasterPredictContext : public MasterServiceContext<MasterPredictContext> {
 
   ~MasterPredictContext() = default;
 
-  void StartEnqueueRequest() override {
-    state_ = STATE::PROCESS;
-    async_service_->RequestPredict(&ctx_, &request_, &responder_, cq_, cq_, this);
-  }
+  void StartEnqueueRequest() override { async_service_->RequestPredict(&ctx_, &request_, &responder_, cq_, cq_, this); }
 
   void HandleRequest() override {
-    EnqueueRequest(service_impl_, async_service_, cq_);
-    state_ = STATE::FINISH;
-
     MSI_TIME_STAMP_START(RequestHandle)
     PredictOnFinish on_finish = [this, time_start_RequestHandle]() {
       responder_.Finish(response_, grpc::Status::OK, this);
@@ -78,10 +72,7 @@ class MasterGrpcServer : public GrpcAsyncServer<proto::MSService::AsyncService> 
       : GrpcAsyncServer<proto::MSService::AsyncService>(), service_impl_(MSServiceImpl(dispatcher)) {}
   ~MasterGrpcServer() {}
 
-  Status EnqueueRequest() {
-    MasterPredictContext::EnqueueRequest(&service_impl_, &svc_, cq_.get());
-    return SUCCESS;
-  }
+  void EnqueueRequests() override { MasterPredictContext::EnqueueRequest(&service_impl_, &svc_, cq_.get()); }
 
  protected:
   MSServiceImpl service_impl_;
