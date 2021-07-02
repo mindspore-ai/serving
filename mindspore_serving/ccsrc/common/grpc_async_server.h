@@ -81,10 +81,6 @@ class GrpcAsyncServer {
 
   virtual void EnqueueRequests() = 0;
 
-  bool IsRunning() const { return in_running_; }
-
-  /// \brief Brings up gRPC server
-  /// \return none
   Status Start(const std::string &socket_address, const SSLConfig &ssl_config, int max_msg_mb_size,
                const std::string &server_tag) {
     if (in_running_) {
@@ -114,7 +110,7 @@ class GrpcAsyncServer {
       return INFER_STATUS_LOG_ERROR(FAILED) << "Serving Error: " << server_tag
                                             << " server start failed, create server failed, address " << socket_address;
     }
-    auto grpc_server_run = [this]() { HandleRequest(); };
+    auto grpc_server_run = [this]() { HandleRequests(); };
     grpc_thread_ = std::thread(grpc_server_run);
     in_running_ = true;
     MSI_LOG(INFO) << server_tag << " server start success, listening on " << socket_address;
@@ -156,21 +152,13 @@ class GrpcAsyncServer {
 
     return grpc::SslServerCredentials(ssl_ops);
   }
-  /// \brief Entry function to handle async server request
-  Status HandleRequest() {
-    bool success = false;
+
+  Status HandleRequests() {
     void *tag;
-    // We loop through the grpc queue. Each connection if successful
-    // will come back with our own tag which is an instance of GrpcAsyncServiceContextBase
-    // and we simply call its functor. But first we need to create these instances
-    // and inject them into the grpc queue.
+    bool ok = false;
     EnqueueRequests();
-    while (cq_->Next(&tag, &success)) {
-      if (success) {
-        ProcessRequest(tag);
-      } else {
-        MSI_LOG(DEBUG) << "cq_->Next failed.";
-      }
+    while (cq_->Next(&tag, &ok)) {
+      ProcessRequest(tag, ok);
     }
     return SUCCESS;
   }
@@ -194,9 +182,9 @@ class GrpcAsyncServer {
     return SUCCESS;
   }
 
-  void ProcessRequest(void *tag) {
+  void ProcessRequest(void *tag, bool rpc_ok) {
     auto rq = static_cast<GrpcAsyncServiceContextBase *>(tag);
-    if (rq->HasFinish()) {
+    if (rq->HasFinish() || !rpc_ok) {  // !rpc_ok: cancel get request when shutting down.
       delete rq;
     } else {
       rq->NewAndHandleRequest();
