@@ -52,26 +52,27 @@ WorkExecutor::~WorkExecutor() {
 Status WorkExecutor::CheckServableSignature(uint64_t subgraph) {
   Status status;
   const auto &input_infos = input_infos_[subgraph];
+  auto &output_infos = output_infos_[subgraph];
   if (servable_declare_.methods.empty()) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "There is no method registered for servable";
   }
   const auto &common_meta = servable_declare_.servable_meta.common_meta;
-  if (input_infos.size() != common_meta.inputs_count.at(subgraph)) {
+  if (common_meta.inputs_count.count(subgraph) > 0 && input_infos.size() != common_meta.inputs_count.at(subgraph)) {
     return INFER_STATUS_LOG_ERROR(FAILED)
            << "The inputs count " << common_meta.inputs_count.at(subgraph) << " registered in method "
            << "not equal to the count " << input_infos.size() << " defined in servable";
   }
-  if (output_infos_[subgraph].size() != common_meta.outputs_count.at(subgraph)) {
+  if (common_meta.outputs_count.count(subgraph) > 0 && output_infos.size() != common_meta.outputs_count.at(subgraph)) {
     return INFER_STATUS_LOG_ERROR(FAILED)
            << "The outputs count " << common_meta.outputs_count.at(subgraph) << " registered in method "
-           << "not equal to the count " << output_infos_[subgraph].size() << " defined in servable";
+           << "not equal to the count " << output_infos.size() << " defined in servable";
   }
   MSI_LOG_INFO << "Model input infos: count " << input_infos.size();
   for (auto &item : input_infos) {
     MSI_LOG_INFO << item.shape << ", " << item.data_type << ", " << item.size;
   }
-  MSI_LOG_INFO << "Model output infos: count " << output_infos_[subgraph].size();
-  for (auto &item : output_infos_[subgraph]) {
+  MSI_LOG_INFO << "Model output infos: count " << output_infos.size();
+  for (auto &item : output_infos) {
     MSI_LOG_INFO << item.tensor_info.shape << ", " << item.tensor_info.data_type << ", " << item.tensor_info.size;
   }
   if (common_meta.with_batch_dim) {
@@ -88,7 +89,7 @@ Status WorkExecutor::CheckServableSignature(uint64_t subgraph) {
                << "Servable batch size " << model_batch_size_ << " not match model input shape " << item.shape;
       }
     }
-    for (auto &item : output_infos_[subgraph]) {
+    for (auto &item : output_infos) {
       auto &tensor_info = item.tensor_info;
       if (tensor_info.shape.empty() || static_cast<uint32_t>(tensor_info.shape[0]) != model_batch_size_) {
         return INFER_STATUS_LOG_ERROR(FAILED)
@@ -99,7 +100,7 @@ Status WorkExecutor::CheckServableSignature(uint64_t subgraph) {
       item.size_one_batch = tensor_info.size / model_batch_size_;
     }
   } else {
-    for (auto &item : output_infos_[subgraph]) {
+    for (auto &item : output_infos) {
       auto &tensor_info = item.tensor_info;
       item.shape_one_batch = tensor_info.shape;
       item.size_one_batch = tensor_info.size;
