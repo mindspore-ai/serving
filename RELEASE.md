@@ -9,6 +9,7 @@
 - [STABLE] The client and server support Unix Domain Socket-based gRPC communication.
 - [STABLE] gRPC and RESTful interfaces support TLS/SSL security authentication.
 - [STABLE] The MindIR encryption model is supported.
+- [BETA] Incremental inference models consisting of multiple static graphs are supported, including single-card models and distributed models.
 
 ### API Change
 
@@ -458,6 +459,11 @@ def start():
 if __name__ == "__main__":
     start()
 ```
+
+###### [BETA] Support incremental inference models consisting of multiple static graphs
+
+A Incremental inference models can include a full input graph and an incremental input graph, and the Serving orchestrates the two static graphs using a user-defined Python script.
+For more details, please refer to [Serving pangu alpha](https://gitee.com/mindspore/mindspore/blob/master/model_zoo/official/nlp/pangu_alpha/serving_increment).
 
 #### Deprecations
 
