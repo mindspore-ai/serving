@@ -68,7 +68,7 @@ MindSpore Serving依赖MindSpore训练推理框架，安装完[MindSpore](https:
 
     其中，`build.sh`为`serving`目录下的编译脚本文件，`$MINDSPORE_LIB_PATH`为MindSpore软件包的安装路径下的`lib`路径，例如，`softwarepath/mindspore/lib`，该路径包含MindSpore运行依赖的库文件。
 
-    方式二，直接编译Serving，编译时会配套编译MindSpore的包，需要配置MindSpore编译时的[环境变量](https://gitee.com/mindspore/docs/blob/master/install/mindspore_ascend_install_source.md#配置环境变量) ：
+    方式二，直接编译Serving，编译时会配套编译MindSpore的包，需要配置MindSpore编译时的[环境变量](https://gitee.com/mindspore/docs/blob/r1.3/install/mindspore_ascend_install_source.md#配置环境变量) ：
 
     ```shell
     # GPU
@@ -99,7 +99,7 @@ from mindspore_serving import server
 
 MindSpore Serving运行需要配置以下环境变量：
 
-- MindSpore Serving依赖MindSpore正确运行，运行MindSpore需要完成[环境变量配置](https://gitee.com/mindspore/docs/blob/master/install/mindspore_ascend_install_pip.md#%E9%85%8D%E7%BD%AE%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F)。
+- MindSpore Serving依赖MindSpore正确运行，运行MindSpore需要完成[环境变量配置](https://gitee.com/mindspore/docs/blob/r1.3/install/mindspore_ascend_install_pip.md#%E9%85%8D%E7%BD%AE%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F)。
 
 ## 快速入门
 
