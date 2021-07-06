@@ -345,7 +345,7 @@ Status ServableStorage::DeclareServable(ServableMeta servable) {
   }
   org_servable_meta = servable;
   return SUCCESS;
-}  // namespace mindspore::serving
+}
 
 Status ServableStorage::DeclareDistributedServable(ServableMeta servable) {
   auto &common_meta = servable.common_meta;
