@@ -41,7 +41,7 @@ MindSpore Serving provides the following functions:
 
 ## Installation
 
-MindSpore Serving depends on the MindSpore training and inference framework. Therefore, install [MindSpore](https://gitee.com/mindspore/mindspore/blob/master/README.md#installation) and then MindSpore Serving.
+MindSpore Serving depends on the MindSpore training and inference framework. Therefore, install [MindSpore](https://gitee.com/mindspore/mindspore/blob/r1.3/README.md#installation) and then MindSpore Serving.
 
 ### Installing Serving
 
@@ -68,7 +68,7 @@ Perform the following steps to install Serving:
 
     In the preceding information, `build.sh` is the build script file in the `serving` directory, and `$MINDSPORE_LIB_PATH` is the `lib` directory in the installation path of the MindSpore software package, for example, `softwarepath/mindspore/lib`. This path contains the library files on which MindSpore depends.
 
-    Method 2: Directly build Serving. The MindSpore package is built together with Serving. You need to configure the [environment variables](https://gitee.com/mindspore/docs/blob/master/install/mindspore_ascend_install_source_en.md#configuring-environment-variables) for MindSpore building.
+    Method 2: Directly build Serving. The MindSpore package is built together with Serving. You need to configure the [environment variables](https://gitee.com/mindspore/docs/blob/r1.3/install/mindspore_ascend_install_source_en.md#configuring-environment-variables) for MindSpore building.
 
     ```shell
     # GPU
@@ -100,7 +100,7 @@ from mindspore_serving import worker
 
 To run MindSpore Serving, configure the following environment variables:
 
-- MindSpore Serving depends on MindSpore. You need to configure [environment variables](https://gitee.com/mindspore/docs/blob/master/install/mindspore_ascend_install_source_en.md#configuring-environment-variables) to run MindSpore.
+- MindSpore Serving depends on MindSpore. You need to configure [environment variables](https://gitee.com/mindspore/docs/blob/r1.3/install/mindspore_ascend_install_source_en.md#configuring-environment-variables) to run MindSpore.
 
 ## Quick Start
 
