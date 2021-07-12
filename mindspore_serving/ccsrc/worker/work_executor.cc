@@ -743,6 +743,7 @@ uint32_t WorkExecutor::GetWorkerId() const { return worker_id_; }
 
 void WorkExecutor::ClearInstances(Status error_msg) {
   std::unique_lock<std::mutex> lock(infer_session_map_mutex_);
+  MSI_LOG_INFO << "Clear instances, remain request count " << infer_session_map_.size();
   for (auto &item : infer_session_map_) {
     auto &infer_session = item.second;
     for (auto &instance : infer_session.instances) {

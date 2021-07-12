@@ -294,7 +294,7 @@ def add_cast(x1, x2):
     result = client.infer(instances)
 
     print(result)
-    assert "Preprocess Failed" in str(result["error"])
+    assert "Preprocess Failed" in str(result["error"]) or "servable is not available" in str(result["error"])
 
 
 @serving_test
@@ -322,7 +322,7 @@ def add_cast(x1, x2):
     result = client.infer(instances)
 
     print(result)
-    assert "Postprocess Failed" in str(result["error"])
+    assert "Postprocess Failed" in str(result["error"]) or "servable is not available" in str(result["error"])
 
 
 @serving_test
@@ -508,7 +508,7 @@ def add_common(x1, x2):
     client = create_client("localhost:5500", base.servable_name, "add_common")
     result = client.infer(instances)
     print(result)
-    assert "Postprocess Failed" in str(result["error"])
+    assert "Postprocess Failed" in str(result["error"]) or "servable is not available" in str(result["error"])
 
 
 @serving_test
@@ -578,7 +578,7 @@ def add_common(x1, x2):
     server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
     server.start_grpc_server("0.0.0.0:5500")
     # Client
-    instance_count = 3
+    instance_count = 2
 
     instances = []
     y_data_list = []
@@ -591,7 +591,7 @@ def add_common(x1, x2):
     client = create_client("localhost:5500", base.servable_name, "add_common")
     result = client.infer(instances)
     print(result)
-    assert "Preprocess Failed" in str(result["error"])
+    assert "Preprocess Failed" in str(result["error"]) or "servable is not available" in str(result["error"])
 
 
 @serving_test
@@ -659,7 +659,7 @@ def add_common(x1, x2):
     server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
     server.start_grpc_server("0.0.0.0:5500")
     # Client
-    instance_count = 3
+    instance_count = 2
 
     instances = []
     y_data_list = []
@@ -672,7 +672,7 @@ def add_common(x1, x2):
     client = create_client("localhost:5500", base.servable_name, "add_common")
     result = client.infer(instances)
     print(result)
-    assert "Preprocess Failed" in str(result["error"])
+    assert "Preprocess Failed" in str(result["error"]) or "servable is not available" in str(result["error"])
 
 
 @serving_test

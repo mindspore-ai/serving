@@ -326,6 +326,7 @@ void Worker::PushPyPostprocessResult(std::vector<ResultInstance> outputs) {
 void Worker::ClearOnSystemFailed(const Status &error_msg) {
   std::shared_lock<std::shared_mutex> lock(worker_shared_lock_);
   if (servable_context_.worker_service) {
+    MSI_LOG_INFO << "Clear instances on system failed: " << error_msg.StatusMessage();
     servable_context_.worker_service->ClearInstances(error_msg);
   }
 }

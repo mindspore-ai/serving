@@ -21,13 +21,12 @@
 #include "utils/log_adapter.h"
 
 constexpr auto kModelOptionCpuEnableFP16 = "mindspore.option.cpu.enable_fp16";
-constexpr auto kModelOptionCpuThreadAffinity = "mindspore.option.cpu.thread_affinity";
-constexpr auto kModelOptionMaliGpuEnableFP16 = "mindspore.option.mali_gpu.enable_fp16";
+constexpr auto kModelOptionGPUEnableFP16 = "mindspore.option.gpu.enable_fp16";
 constexpr auto kModelOptionKirinNpuFrequency = "mindspore.option.kirin_npu.frequency";
 constexpr auto kModelOptionDeviceID = "mindspore.option.device_id";
-constexpr auto kModelOptionNvidiaGpuDeviceID = kModelOptionDeviceID;
-constexpr auto kModelOptionNvidiaGpuTrtInferMode = "mindspore.option.nvidia_gpu.trt_infer_mode";
-constexpr auto kModelOptionNvidiaGpuPrecisionMode = "mindspore.option.nvidia_gpu.precision_mode";
+constexpr auto kModelOptionGPUDeviceID = kModelOptionDeviceID;
+constexpr auto kModelOptionGPUTrtInferMode = "mindspore.option.gpu.trt_infer_mode";
+constexpr auto kModelOptionGPUPrecisionMode = "mindspore.option.gpu.precision_mode";
 constexpr auto kModelOptionAscend910DeviceID = kModelOptionDeviceID;
 constexpr auto kModelOptionAscend310DeviceID = kModelOptionDeviceID;
 constexpr auto kModelOptionAscend310DumpCfgPath = "mindspore.option.ascend310.dump_config_file_path";
@@ -48,7 +47,9 @@ class Allocator {};
 struct Context::Data {
   std::vector<std::shared_ptr<DeviceInfoContext>> device_info_list;
   int32_t thread_num;
-  std::shared_ptr<Allocator> allocator;
+  bool enable_parallel_ = false;
+  std::vector<int32_t> affinity_core_list_;
+  int affinity_mode_ = 2;
 };
 
 struct DeviceInfoContext::Data {
@@ -84,13 +85,32 @@ int32_t Context::GetThreadNum() const {
   return data_->thread_num;
 }
 
-void Context::SetAllocator(const std::shared_ptr<Allocator> &allocator) {
+void Context::SetEnableParallel(bool is_parallel) {
   MS_EXCEPTION_IF_NULL(data_);
-  data_->allocator = allocator;
+  data_->enable_parallel_ = is_parallel;
 }
-std::shared_ptr<Allocator> Context::GetAllocator() const {
+
+bool Context::GetEnableParallel() const {
   MS_EXCEPTION_IF_NULL(data_);
-  return data_->allocator;
+  return data_->enable_parallel_;
+}
+
+void Context::SetThreadAffinity(int mode) {
+  MS_EXCEPTION_IF_NULL(data_);
+  data_->affinity_mode_ = mode;
+}
+int Context::GetThreadAffinityMode() const {
+  MS_EXCEPTION_IF_NULL(data_);
+  return data_->affinity_mode_;
+}
+
+void Context::SetThreadAffinity(const std::vector<int> &core_list) {
+  MS_EXCEPTION_IF_NULL(data_);
+  data_->affinity_core_list_ = core_list;
+}
+std::vector<int32_t> Context::GetThreadAffinityCoreList() const {
+  MS_EXCEPTION_IF_NULL(data_);
+  return data_->affinity_core_list_;
 }
 
 std::vector<std::shared_ptr<DeviceInfoContext>> &Context::MutableDeviceInfo() {
@@ -109,22 +129,13 @@ bool CPUDeviceInfo::GetEnableFP16() const {
   return GetValue<bool>(data_, kModelOptionCpuEnableFP16);
 }
 
-void CPUDeviceInfo::SetThreadAffinity(int affinity) {
+void GPUDeviceInfo::SetEnableFP16(bool is_fp16) {
   MS_EXCEPTION_IF_NULL(data_);
-  data_->params[kModelOptionCpuThreadAffinity] = affinity;
+  data_->params[kModelOptionGPUEnableFP16] = is_fp16;
 }
-int CPUDeviceInfo::GetThreadAffinity() const {
+bool GPUDeviceInfo::GetEnableFP16() const {
   MS_EXCEPTION_IF_NULL(data_);
-  return GetValue<bool>(data_, kModelOptionCpuThreadAffinity);
-}
-
-void MaliGPUDeviceInfo::SetEnableFP16(bool is_fp16) {
-  MS_EXCEPTION_IF_NULL(data_);
-  data_->params[kModelOptionMaliGpuEnableFP16] = is_fp16;
-}
-bool MaliGPUDeviceInfo::GetEnableFP16() const {
-  MS_EXCEPTION_IF_NULL(data_);
-  return GetValue<bool>(data_, kModelOptionMaliGpuEnableFP16);
+  return GetValue<bool>(data_, kModelOptionGPUEnableFP16);
 }
 
 void KirinNPUDeviceInfo::SetFrequency(int frequency) {
@@ -136,31 +147,31 @@ int KirinNPUDeviceInfo::GetFrequency() const {
   return GetValue<int>(data_, kModelOptionKirinNpuFrequency);
 }
 
-void NvidiaGPUDeviceInfo::SetDeviceID(uint32_t device_id) {
+void GPUDeviceInfo::SetDeviceID(uint32_t device_id) {
   MS_EXCEPTION_IF_NULL(data_);
-  data_->params[kModelOptionNvidiaGpuDeviceID] = device_id;
+  data_->params[kModelOptionGPUDeviceID] = device_id;
 }
-uint32_t NvidiaGPUDeviceInfo::GetDeviceID() const {
+uint32_t GPUDeviceInfo::GetDeviceID() const {
   MS_EXCEPTION_IF_NULL(data_);
-  return GetValue<uint32_t>(data_, kModelOptionNvidiaGpuDeviceID);
-}
-
-void NvidiaGPUDeviceInfo::SetGpuTrtInferMode(bool gpu_trt_infer_mode) {
-  MS_EXCEPTION_IF_NULL(data_);
-  data_->params[kModelOptionNvidiaGpuTrtInferMode] = gpu_trt_infer_mode;
-}
-bool NvidiaGPUDeviceInfo::GetGpuTrtInferMode() const {
-  MS_EXCEPTION_IF_NULL(data_);
-  return GetValue<bool>(data_, kModelOptionNvidiaGpuTrtInferMode);
+  return GetValue<uint32_t>(data_, kModelOptionGPUDeviceID);
 }
 
-void NvidiaGPUDeviceInfo::SetPrecisionMode(const std::vector<char> &precision_mode) {
+void GPUDeviceInfo::SetGpuTrtInferMode(bool gpu_trt_infer_mode) {
   MS_EXCEPTION_IF_NULL(data_);
-  data_->params[kModelOptionNvidiaGpuPrecisionMode] = CharToString(precision_mode);
+  data_->params[kModelOptionGPUTrtInferMode] = gpu_trt_infer_mode;
 }
-std::vector<char> NvidiaGPUDeviceInfo::GetPrecisionModeChar() const {
+bool GPUDeviceInfo::GetGpuTrtInferMode() const {
   MS_EXCEPTION_IF_NULL(data_);
-  const std::string &ref = GetValue<std::string>(data_, kModelOptionNvidiaGpuPrecisionMode);
+  return GetValue<bool>(data_, kModelOptionGPUTrtInferMode);
+}
+
+void GPUDeviceInfo::SetPrecisionMode(const std::vector<char> &precision_mode) {
+  MS_EXCEPTION_IF_NULL(data_);
+  data_->params[kModelOptionGPUPrecisionMode] = CharToString(precision_mode);
+}
+std::vector<char> GPUDeviceInfo::GetPrecisionModeChar() const {
+  MS_EXCEPTION_IF_NULL(data_);
+  const std::string &ref = GetValue<std::string>(data_, kModelOptionGPUPrecisionMode);
   return StringToChar(ref);
 }
 

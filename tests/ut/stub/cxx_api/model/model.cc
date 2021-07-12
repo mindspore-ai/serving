@@ -23,8 +23,7 @@ namespace mindspore {
 namespace {
 std::string GetDeviceTypeString(enum DeviceType type) {
   static const std::map<enum DeviceType, std::string> kDeviceTypeStrs = {
-    {kCPU, "CPU"},           {kMaliGPU, "MaliGPU"},     {kNvidiaGPU, "GPU"},
-    {kKirinNPU, "KirinGPU"}, {kAscend910, "Ascend910"}, {kAscend310, "Ascend310"},
+    {kCPU, "CPU"}, {kGPU, "GPU"}, {kKirinNPU, "KirinGPU"}, {kAscend910, "Ascend910"}, {kAscend310, "Ascend310"},
   };
   auto iter = kDeviceTypeStrs.find(type);
   if (iter != kDeviceTypeStrs.end()) {
@@ -34,7 +33,8 @@ std::string GetDeviceTypeString(enum DeviceType type) {
   return "InvalidDeviceType" + std::to_string(static_cast<int>(type));
 }
 }  // namespace
-Status Model::Build(GraphCell graph_cell, const std::shared_ptr<Context> &model_context) {
+Status Model::Build(GraphCell graph_cell, const std::shared_ptr<Context> &model_context,
+                    const std::shared_ptr<TrainCfg> &) {
   if (graph_cell.GetGraph() == nullptr) {
     MS_LOG(ERROR) << "Invalid graph input.";
     return kMCInvalidInput;
@@ -61,9 +61,15 @@ Status Model::Build(GraphCell graph_cell, const std::shared_ptr<Context> &model_
 
   impl_->SetGraph(std::make_shared<Graph>(*graph_cell.GetGraph()));
   impl_->SetContext(model_context);
+
   return impl_->Build();
 }
 
+Status Model::Build(const void *model_data, size_t data_size, ModelType model_type,
+                    const std::shared_ptr<Context> &model_context, const Key &dec_key, const std::string &dec_mode) {
+  MS_LOG(ERROR) << "Unsupported Feature.";
+  return kMCFailed;
+}
 Status Model::Resize(const std::vector<MSTensor> &inputs, const std::vector<std::vector<int64_t>> &dims) {
   if (impl_ == nullptr) {
     MS_LOG(ERROR) << "Failed because this model has not been built.";
@@ -72,7 +78,8 @@ Status Model::Resize(const std::vector<MSTensor> &inputs, const std::vector<std:
   return impl_->Resize(inputs, dims);
 }
 
-Status Model::Predict(const std::vector<MSTensor> &inputs, std::vector<MSTensor> *outputs) {
+Status Model::Predict(const std::vector<MSTensor> &inputs, std::vector<MSTensor> *outputs,
+                      const MSKernelCallBack &before, const MSKernelCallBack &after) {
   if (impl_ == nullptr) {
     MS_LOG(ERROR) << "Failed because this model has not been built.";
     return kMCFailed;
@@ -126,6 +133,10 @@ MSTensor Model::GetOutputByTensorName(const std::vector<char> &tensor_name) {
   }
 
   return MSTensor(nullptr);
+}
+
+std::vector<MSTensor> Model::GetOutputsByNodeName(const std::vector<char> &node_name) {
+  return std::vector<MSTensor>{GetOutputByTensorName(node_name)};
 }
 
 Model::Model() : impl_(nullptr) {}
