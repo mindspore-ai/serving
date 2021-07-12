@@ -36,6 +36,7 @@ enum DeviceType {
 };
 
 class Allocator;
+class Delegate;
 class DeviceInfoContext;
 
 class MS_API Context {
@@ -46,8 +47,19 @@ class MS_API Context {
   void SetThreadNum(int32_t thread_num);
   int32_t GetThreadNum() const;
 
-  void SetAllocator(const std::shared_ptr<Allocator> &allocator);
-  std::shared_ptr<Allocator> GetAllocator() const;
+  /// \brief Set the thread affinity to CPU cores.
+  ///
+  /// \param mode: 0: no affinities, 1: big cores first, 2: little cores first
+  void SetThreadAffinity(int mode);
+  int GetThreadAffinityMode() const;
+
+  void SetThreadAffinity(const std::vector<int> &core_list);
+  std::vector<int32_t> GetThreadAffinityCoreList() const;
+  void SetEnableParallel(bool is_parallel);
+  bool GetEnableParallel() const;
+
+  void SetDelegate(const std::shared_ptr<Delegate> &delegate);
+  std::shared_ptr<Delegate> GetDelegate() const;
 
   std::vector<std::shared_ptr<DeviceInfoContext>> &MutableDeviceInfo();
 
@@ -74,6 +86,15 @@ class MS_API DeviceInfoContext : public std::enable_shared_from_this<DeviceInfoC
     return std::static_pointer_cast<T>(shared_from_this());
   }
 
+  std::string GetProvider() const;
+  void SetProvider(const std::string &provider);
+
+  std::string GetProviderDevice() const;
+  void SetProviderDevice(const std::string &device);
+
+  void SetAllocator(const std::shared_ptr<Allocator> &allocator);
+  std::shared_ptr<Allocator> GetAllocator() const;
+
  protected:
   std::shared_ptr<Data> data_;
 };
@@ -82,11 +103,6 @@ class MS_API CPUDeviceInfo : public DeviceInfoContext {
  public:
   enum DeviceType GetDeviceType() const override { return DeviceType::kCPU; };
 
-  /// \brief Set the thread affinity to CPU cores.
-  ///
-  /// \param mode: 0: no affinities, 1: big cores first, 2: little cores first
-  void SetThreadAffinity(int mode);
-  int GetThreadAffinity() const;
   void SetEnableFP16(bool is_fp16);
   bool GetEnableFP16() const;
 };
