@@ -104,6 +104,25 @@ static inline std::shared_ptr<FuncGraph> ConvertStreamToFuncGraph(const char *bu
   return std::make_shared<FuncGraph>();
 }
 
+class MSTensor::Impl {
+ public:
+  Impl() = default;
+  virtual ~Impl() = default;
+
+  virtual const std::string &Name() const = 0;
+  virtual enum DataType DataType() const = 0;
+  virtual const std::vector<int64_t> &Shape() const = 0;
+
+  virtual std::shared_ptr<const void> Data() const = 0;
+  virtual void *MutableData() = 0;
+  virtual size_t DataSize() const = 0;
+
+  virtual bool IsDevice() const = 0;
+
+  virtual std::shared_ptr<Impl> Clone() const = 0;
+};
+
+
 }  // namespace mindspore
 
 #endif  // MINDSPORE_STUB_SERVING_UTILS_H

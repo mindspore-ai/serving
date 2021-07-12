@@ -20,8 +20,10 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <functional>
 #include "include/api/data_type.h"
 #include "include/api/dual_abi_helper.h"
+#include "include/api/format.h"
 
 #ifdef _WIN32
 #define MS_API __declspec(dllexport)
@@ -35,10 +37,27 @@ enum ModelType : uint32_t {
   kAIR = 1,
   kOM = 2,
   kONNX = 3,
+  kFlatBuffer = 4,
   // insert new data type here
   kUnknownType = 0xFFFFFFFF
 };
 
+enum QuantizationType : uint32_t {
+  kNoQuant = 0,
+  kWeightQuant = 1,
+  kFullQuant = 2,
+  kUnknownQuantType = 0xFFFFFFFF
+};
+
+enum OptimizationLevel : uint32_t {
+  kO0 = 0,  // Do not change
+  kO2 = 2,  // Cast network to float16, keep batchnorm and loss in float32,
+  kO3 = 3,  // Cast network to float16, including bacthnorm
+  kAuto = 4,  // Choose optimization based on device
+  kOptimizationType = 0xFFFFFFFF
+};
+
+class Allocator;
 class MS_API MSTensor {
  public:
   class Impl;
@@ -74,6 +93,17 @@ class MS_API MSTensor {
   MSTensor *Clone() const;
   bool operator==(std::nullptr_t) const;
   bool operator!=(std::nullptr_t) const;
+  bool operator==(const MSTensor &tensor) const;
+
+  void SetShape(const std::vector<int64_t> &shape);
+  void SetDataType(enum DataType data_type);
+  void SetTensorName(const std::string &name);
+  void SetAllocator(std::shared_ptr<Allocator> allocator);
+  std::shared_ptr<Allocator> allocator() const;
+  void SetFormat(mindspore::Format format);
+  mindspore::Format format() const;
+  void SetData(void *data);
+  const std::shared_ptr<Impl> impl() const { return impl_; }
 
  private:
   // api without std::string
@@ -92,24 +122,6 @@ class MS_API MSTensor {
 
   friend class ModelImpl;
   std::shared_ptr<Impl> impl_;
-};
-
-class MSTensor::Impl {
- public:
-  Impl() = default;
-  virtual ~Impl() = default;
-
-  virtual const std::string &Name() const = 0;
-  virtual enum DataType DataType() const = 0;
-  virtual const std::vector<int64_t> &Shape() const = 0;
-
-  virtual std::shared_ptr<const void> Data() const = 0;
-  virtual void *MutableData() = 0;
-  virtual size_t DataSize() const = 0;
-
-  virtual bool IsDevice() const = 0;
-
-  virtual std::shared_ptr<Impl> Clone() const = 0;
 };
 
 class MS_API Buffer {
@@ -160,5 +172,29 @@ MSTensor::MSTensor(const std::string &name, enum DataType type, const std::vecto
     : MSTensor(StringToChar(name), type, shape, data, data_len) {}
 
 std::string MSTensor::Name() const { return CharToString(CharName()); }
+
+
+struct MS_API Key {
+  const size_t max_key_len = 32;
+  size_t len;
+  unsigned char key[32];
+  Key() : len(0) {}
+  explicit Key(const char *dec_key, size_t key_len);
+};
+constexpr char kDecModeAesGcm[] = "AES-GCM";
+
+/// \brief CallBackParam defined input arguments for callBack function.
+struct MSCallBackParam {
+  std::string node_name_; /**< node name argument */
+  std::string node_type_; /**< node type argument */
+};
+
+/// \brief KernelCallBack defined the function pointer for callBack.
+using MSKernelCallBack = std::function<bool(const std::vector<MSTensor> &inputs, const std::vector<MSTensor> &outputs,
+                                            const MSCallBackParam &opInfo)>;
+
+std::vector<char> CharVersion();
+inline std::string Version() { return CharToString(CharVersion()); }
+
 }  // namespace mindspore
 #endif  // MINDSPORE_INCLUDE_API_TYPES_H
