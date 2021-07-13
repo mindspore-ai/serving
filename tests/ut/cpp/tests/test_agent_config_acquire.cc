@@ -34,15 +34,16 @@ class TestAgentConfigAcquire : public UT::Common {
 };
 
 TEST_F(TestAgentConfigAcquire, test_agent_config_acquire_success) {
-  std::shared_ptr<DistributedServable> servable = std::make_shared<DistributedServable>();
+  std::shared_ptr<DistributedModelLoader> servable = std::make_shared<DistributedModelLoader>();
   std::string rank_table_content = "rank table content";
-  CommonServableMeta commonServableMeta;
+  CommonModelMeta commonServableMeta;
   commonServableMeta.servable_name = "servable_name";
+  commonServableMeta.model_key = "model_key";
   commonServableMeta.outputs_count[0] = 1;
   commonServableMeta.inputs_count[0] = 1;
   commonServableMeta.with_batch_dim = false;
   commonServableMeta.without_batch_dim_inputs.push_back(8);
-  DistributedServableMeta distributedServableMeta;
+  DistributedModelMeta distributedServableMeta;
   distributedServableMeta.stage_size = 8;
   distributedServableMeta.rank_size = 8;
   OneRankConfig oneRankConfig;
@@ -65,6 +66,7 @@ TEST_F(TestAgentConfigAcquire, test_agent_config_acquire_success) {
   GrpcNotifyDistributeWorker::ParseAgentConfigAcquireReply(reply, &config);
   ASSERT_EQ(config.rank_table_content, rank_table_content);
   ASSERT_EQ(config.common_meta.servable_name, "servable_name");
+  ASSERT_EQ(config.common_meta.model_key, "model_key");
   ASSERT_EQ(config.common_meta.inputs_count.at(0), 1);
   ASSERT_EQ(config.common_meta.outputs_count.at(0), 1);
   ASSERT_EQ(config.common_meta.with_batch_dim, false);
@@ -79,7 +81,7 @@ TEST_F(TestAgentConfigAcquire, test_agent_config_acquire_success) {
 }
 
 TEST_F(TestAgentConfigAcquire, test_agent_config_acquire_not_load_config_failed) {
-  std::shared_ptr<DistributedServable> servable = std::make_shared<DistributedServable>();
+  std::shared_ptr<DistributedModelLoader> servable = std::make_shared<DistributedModelLoader>();
   servable->config_loaded_ = false;
   const std::string server_address = "any_addr";
   MSDistributedImpl mSDistributedImpl(servable, server_address);

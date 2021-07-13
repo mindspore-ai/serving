@@ -24,23 +24,27 @@ class TestPreprocessPostprocess : public TestMasterWorkerClient {
   virtual void SetUp() {}
   virtual void TearDown() { TestMasterWorkerClient::TearDown(); }
   MethodSignature InitDefaultMethod() {
+    MethodSignature method_signature = InitMethodSig();
+    // preprocess
+    method_signature.AddStageFunction("stub_preprocess_cast_int32_to_fp32_cpp", {{0, 0}, {0, 1}});
+
+    // method input 0 and input 1 as servable input
+    method_signature.AddStageModel(model_file_, {{1, 0}, {1, 1}});
+    // postprocess
+    method_signature.AddStageFunction("stub_postprocess_cast_fp32_to_int32_cpp", {{2, 0}});
+    // servable output as method output
+    method_signature.SetReturn({{3, 0}});
+    return method_signature;
+  }
+  MethodSignature InitMethodSig() {
     MethodSignature method_signature;
     method_signature.servable_name = "test_servable";
     method_signature.method_name = "add_cast";
     method_signature.inputs = {"x1", "x2"};
     method_signature.outputs = {"y"};
-    // preprocess
-    method_signature.preprocess_name = "stub_preprocess_cast_int32_to_fp32_cpp";
-    method_signature.preprocess_inputs = {{kPredictPhaseTag_Input, 0}, {kPredictPhaseTag_Input, 1}};
-    // method input 0 and input 1 as servable input
-    method_signature.servable_inputs = {{kPredictPhaseTag_Preproces, 0}, {kPredictPhaseTag_Preproces, 1}};
-    // postprocess
-    method_signature.postprocess_name = "stub_postprocess_cast_fp32_to_int32_cpp";
-    method_signature.postprocess_inputs = {{kPredictPhaseTag_Predict, 0}};
-    // servable output as method output
-    method_signature.returns = {{kPredictPhaseTag_Postprocess, 0}};
     return method_signature;
   }
+  const std::string model_file_ = "test_add.mindir";
 };
 
 TEST_F(TestPreprocessPostprocess, test_master_worker_with_preproces_and_postprocess_success) {
@@ -48,13 +52,13 @@ TEST_F(TestPreprocessPostprocess, test_master_worker_with_preproces_and_postproc
   // declare_servable
   DeclareServable("test_servable", "test_add.mindir", "mindir", false);
   // register method
-  ServableStorage::Instance().RegisterInputOutputInfo("test_servable", 2, 1);
+  ServableRegister::Instance().RegisterInputOutputInfo("test_add.mindir", 2, 1);
 
   MethodSignature method_signature = InitDefaultMethod();
-  ServableStorage::Instance().RegisterMethod(method_signature);
+  ServableRegister::Instance().RegisterMethod(method_signature);
 
   // start_servable
-  Status status = StartServable("test_servable_dir", "test_servable", 0);
+  Status status = StartServable("test_servable_dir", "test_servable", 1);
   EXPECT_TRUE(status.IsSuccess());
   // run servable
   proto::PredictRequest request;
@@ -76,13 +80,13 @@ TEST_F(TestPreprocessPostprocess, test_master_worker_with_preproces_and_postproc
   // with_batch_dim = true
   DeclareServable("test_servable", "test_add.mindir", "mindir", true);
   // register method
-  ServableStorage::Instance().RegisterInputOutputInfo("test_servable", 2, 1);
+  ServableRegister::Instance().RegisterInputOutputInfo("test_add.mindir", 2, 1);
 
   MethodSignature method_signature = InitDefaultMethod();
-  ServableStorage::Instance().RegisterMethod(method_signature);
+  ServableRegister::Instance().RegisterMethod(method_signature);
 
   // start_servable
-  Status status = StartServable("test_servable_dir", "test_servable", 0);
+  Status status = StartServable("test_servable_dir", "test_servable", 1);
   EXPECT_TRUE(status.IsSuccess());
 
   // run servable
@@ -104,15 +108,20 @@ TEST_F(TestPreprocessPostprocess, test_master_worker_with_only_preproces_success
   // declare_servable
   DeclareServable("test_servable", "test_add.mindir", "mindir", false);
   // register method
-  ServableStorage::Instance().RegisterInputOutputInfo("test_servable", 2, 1);
-  MethodSignature method_signature = InitDefaultMethod();
-  method_signature.postprocess_name.clear();
-  method_signature.postprocess_inputs.clear();
-  method_signature.returns = {{kPredictPhaseTag_Predict, 0}};
-  ServableStorage::Instance().RegisterMethod(method_signature);
+  ServableRegister::Instance().RegisterInputOutputInfo("test_add.mindir", 2, 1);
+  MethodSignature method_signature = InitMethodSig();
+  // preprocess
+  method_signature.AddStageFunction("stub_preprocess_cast_int32_to_fp32_cpp", {{0, 0}, {0, 1}});
+
+  // method input 0 and input 1 as servable input
+  method_signature.AddStageModel(model_file_, {{1, 0}, {1, 1}});
+  // servable output as method output
+  method_signature.SetReturn({{2, 0}});
+
+  ServableRegister::Instance().RegisterMethod(method_signature);
 
   // start_servable
-  Status status = StartServable("test_servable_dir", "test_servable", 0);
+  Status status = StartServable("test_servable_dir", "test_servable", 1);
   EXPECT_TRUE(status.IsSuccess());
 
   // run servable
@@ -135,15 +144,18 @@ TEST_F(TestPreprocessPostprocess, test_master_worker_with_only_preproces_batchin
   // with_batch_dim=true
   DeclareServable("test_servable", "test_add.mindir", "mindir", true);
   // register method
-  ServableStorage::Instance().RegisterInputOutputInfo("test_servable", 2, 1);
-  MethodSignature method_signature = InitDefaultMethod();
-  method_signature.postprocess_name.clear();
-  method_signature.postprocess_inputs.clear();
-  method_signature.returns = {{kPredictPhaseTag_Predict, 0}};
-  ServableStorage::Instance().RegisterMethod(method_signature);
+  ServableRegister::Instance().RegisterInputOutputInfo("test_add.mindir", 2, 1);
+  MethodSignature method_signature = InitMethodSig();
+  // preprocess
+  method_signature.AddStageFunction("stub_preprocess_cast_int32_to_fp32_cpp", {{0, 0}, {0, 1}});
+
+  // method input 0 and input 1 as servable input
+  method_signature.AddStageModel(model_file_, {{1, 0}, {1, 1}});
+  method_signature.SetReturn({{2, 0}});
+  ServableRegister::Instance().RegisterMethod(method_signature);
 
   // start_servable
-  Status status = StartServable("test_servable_dir", "test_servable", 0);
+  Status status = StartServable("test_servable_dir", "test_servable", 1);
   EXPECT_TRUE(status.IsSuccess());
 
   // run servable
@@ -155,7 +167,7 @@ TEST_F(TestPreprocessPostprocess, test_master_worker_with_only_preproces_batchin
 
   proto::PredictReply reply;
   auto grpc_status = Dispatch(request, &reply);
-  EXPECT_TRUE(grpc_status.ok());
+  ASSERT_TRUE(grpc_status.ok());
   // checkout output
   CheckMultiInstanceResult(reply, y_data_list, instances_count);
 }
@@ -165,15 +177,19 @@ TEST_F(TestPreprocessPostprocess, test_master_worker_with_only_postprocess_succe
   // declare_servable
   DeclareServable("test_servable", "test_add.mindir", "mindir", false);
   // register method
-  ServableStorage::Instance().RegisterInputOutputInfo("test_servable", 2, 1);
-  MethodSignature method_signature = InitDefaultMethod();
-  method_signature.preprocess_name.clear();
-  method_signature.preprocess_inputs.clear();
-  method_signature.servable_inputs = {{kPredictPhaseTag_Input, 0}, {kPredictPhaseTag_Input, 1}};
-  ServableStorage::Instance().RegisterMethod(method_signature);
+  ServableRegister::Instance().RegisterInputOutputInfo("test_add.mindir", 2, 1);
+  MethodSignature method_signature = InitMethodSig();
+
+  // method input 0 and input 1 as servable input
+  method_signature.AddStageModel(model_file_, {{0, 0}, {0, 1}});
+  // postprocess
+  method_signature.AddStageFunction("stub_postprocess_cast_fp32_to_int32_cpp", {{1, 0}});
+  // servable output as method output
+  method_signature.SetReturn({{2, 0}});
+  ServableRegister::Instance().RegisterMethod(method_signature);
 
   // start_servable
-  Status status = StartServable("test_servable_dir", "test_servable", 0);
+  Status status = StartServable("test_servable_dir", "test_servable", 1);
   EXPECT_TRUE(status.IsSuccess());
 
   // run servable
@@ -196,15 +212,19 @@ TEST_F(TestPreprocessPostprocess, test_master_worker_with_only_postprocess_batch
   // with_batch_dim=true
   DeclareServable("test_servable", "test_add.mindir", "mindir", true);
   // register method
-  ServableStorage::Instance().RegisterInputOutputInfo("test_servable", 2, 1);
-  MethodSignature method_signature = InitDefaultMethod();
-  method_signature.preprocess_name.clear();
-  method_signature.preprocess_inputs.clear();
-  method_signature.servable_inputs = {{kPredictPhaseTag_Input, 0}, {kPredictPhaseTag_Input, 1}};
-  ServableStorage::Instance().RegisterMethod(method_signature);
+  ServableRegister::Instance().RegisterInputOutputInfo("test_add.mindir", 2, 1);
+  MethodSignature method_signature = InitMethodSig();
+
+  // method input 0 and input 1 as servable input
+  method_signature.AddStageModel(model_file_, {{0, 0}, {0, 1}});
+  // postprocess
+  method_signature.AddStageFunction("stub_postprocess_cast_fp32_to_int32_cpp", {{1, 0}});
+  // servable output as method output
+  method_signature.SetReturn({{2, 0}});
+  ServableRegister::Instance().RegisterMethod(method_signature);
 
   // start_servable
-  Status status = StartServable("test_servable_dir", "test_servable", 0);
+  Status status = StartServable("test_servable_dir", "test_servable", 1);
   EXPECT_TRUE(status.IsSuccess());
 
   // run servable
@@ -225,42 +245,56 @@ TEST_F(TestPreprocessPostprocess, test_master_worker_with_only_postprocess_batch
 TEST_F(TestPreprocessPostprocess, test_worker_start_preprocess_not_found) {
   Init("test_servable_dir", "test_servable", 1, "test_add.mindir");
   DeclareServable("test_servable", "test_add.mindir", "mindir", false);
-  ServableStorage::Instance().RegisterInputOutputInfo("test_servable", 2, 1);
+  ServableRegister::Instance().RegisterInputOutputInfo("test_add.mindir", 2, 1);
 
-  MethodSignature method_signature = InitDefaultMethod();
-  method_signature.preprocess_name = "preprocess_fake_fun";
-  ServableStorage::Instance().RegisterMethod(method_signature);
+  try {
+    MethodSignature method_signature = InitMethodSig();
+    // preprocess
+    method_signature.AddStageFunction("preprocess_fake_fun", {{0, 0}, {0, 1}});
 
-  // start_servable
-  Status status = StartServable("test_servable_dir", "test_servable", 0);
-  EXPECT_FALSE(status.IsSuccess());
-  ExpectContainMsg(status.StatusMessage(), " preprocess preprocess_fake_fun not defined")
+    // method input 0 and input 1 as servable input
+    method_signature.AddStageModel(model_file_, {{1, 0}, {1, 1}});
+    // postprocess
+    method_signature.AddStageFunction("stub_postprocess_cast_fp32_to_int32_cpp", {{2, 0}});
+    // servable output as method output
+    method_signature.SetReturn({{3, 0}});
+    FAIL();
+  } catch (std::runtime_error &ex) {
+    ExpectContainMsg(ex.what(), "Function 'preprocess_fake_fun' is not defined")
+  }
 }
 
 TEST_F(TestPreprocessPostprocess, test_worker_start_postprocess_not_found) {
   Init("test_servable_dir", "test_servable", 1, "test_add.mindir");
   DeclareServable("test_servable", "test_add.mindir", "mindir", false);
-  ServableStorage::Instance().RegisterInputOutputInfo("test_servable", 2, 1);
+  ServableRegister::Instance().RegisterInputOutputInfo("test_add.mindir", 2, 1);
 
-  MethodSignature method_signature = InitDefaultMethod();
-  method_signature.postprocess_name = "postprocess_fake_fun";
-  ServableStorage::Instance().RegisterMethod(method_signature);
+  try {
+    MethodSignature method_signature = InitMethodSig();
+    // preprocess
+    method_signature.AddStageFunction("stub_preprocess_cast_int32_to_fp32_cpp", {{0, 0}, {0, 1}});
 
-  // start_servable
-  Status status = StartServable("test_servable_dir", "test_servable", 0);
-  EXPECT_FALSE(status.IsSuccess());
-  ExpectContainMsg(status.StatusMessage(), " postprocess postprocess_fake_fun not defined")
+    // method input 0 and input 1 as servable input
+    method_signature.AddStageModel(model_file_, {{1, 0}, {1, 1}});
+    // postprocess
+    method_signature.AddStageFunction("postprocess_fake_fun", {{2, 0}});
+    // servable output as method output
+    method_signature.SetReturn({{3, 0}});
+    FAIL();
+  } catch (std::runtime_error &ex) {
+    ExpectContainMsg(ex.what(), "Function 'postprocess_fake_fun' is not defined")
+  }
 }
 
 TEST_F(TestPreprocessPostprocess, test_preproces_process_failed) {
   Init("test_servable_dir", "test_servable", 1, "test_add.mindir");
   DeclareServable("test_servable", "test_add.mindir", "mindir", false);
-  ServableStorage::Instance().RegisterInputOutputInfo("test_servable", 2, 1);
+  ServableRegister::Instance().RegisterInputOutputInfo("test_add.mindir", 2, 1);
 
   MethodSignature method_signature = InitDefaultMethod();
-  ServableStorage::Instance().RegisterMethod(method_signature);
+  ServableRegister::Instance().RegisterMethod(method_signature);
   // start_servable
-  Status status = StartServable("test_servable_dir", "test_servable", 0);
+  Status status = StartServable("test_servable_dir", "test_servable", 1);
   EXPECT_TRUE(status.IsSuccess());
 
   // run servable
@@ -274,33 +308,29 @@ TEST_F(TestPreprocessPostprocess, test_preproces_process_failed) {
   EXPECT_TRUE(grpc_status.ok());
   // checkout output
   ASSERT_EQ(reply.error_msg_size(), instances_count);
-  ExpectContainMsg(reply.error_msg(0).error_msg(), "Preprocess failed: Input data type invalid");
+  ExpectContainMsg(reply.error_msg(0).error_msg(), "Call failed: Input data type invalid");
 }
 
 TEST_F(TestPreprocessPostprocess, test_postproces_process_failed) {
   Init("test_servable_dir", "test_servable", 1, "test_add.mindir");
   DeclareServable("test_servable", "test_add.mindir", "mindir", false);
-  ServableStorage::Instance().RegisterInputOutputInfo("test_servable", 2, 1);
+  ServableRegister::Instance().RegisterInputOutputInfo("test_add.mindir", 2, 1);
 
-  MethodSignature method_signature;
-  method_signature.servable_name = "test_servable";
-  method_signature.method_name = "add_cast";
-  method_signature.inputs = {"x1", "x2"};
-  method_signature.outputs = {"y"};
+  MethodSignature method_signature = InitMethodSig();
   // preprocess
-  method_signature.preprocess_name = "stub_preprocess_cast_int32_to_fp32_cpp";
-  method_signature.preprocess_inputs = {{kPredictPhaseTag_Input, 0}, {kPredictPhaseTag_Input, 1}};
-  // method input 0 and input 1 as servable input
-  method_signature.servable_inputs = {{kPredictPhaseTag_Preproces, 0}, {kPredictPhaseTag_Preproces, 1}};
-  // postprocess
-  method_signature.postprocess_name = "stub_postprocess_cast_fp32_to_int32_cpp";
-  method_signature.postprocess_inputs = {{kPredictPhaseTag_Input, 0}};  // use method input as postprocess input
-  // servable output as method output
-  method_signature.returns = {{kPredictPhaseTag_Predict, 0}};
+  method_signature.AddStageFunction("stub_preprocess_cast_int32_to_fp32_cpp", {{0, 0}, {0, 1}});
 
-  ServableStorage::Instance().RegisterMethod(method_signature);
+  // method input 0 and input 1 as servable input
+  method_signature.AddStageModel(model_file_, {{1, 0}, {1, 1}});
+  // postprocess
+  method_signature.AddStageFunction("stub_postprocess_cast_fp32_to_int32_cpp",
+                                    {{0, 0}});  // use method input as postprocess input
+  // servable output as method output
+  method_signature.SetReturn({{2, 0}});
+
+  ServableRegister::Instance().RegisterMethod(method_signature);
   // start_servable
-  Status status = StartServable("test_servable_dir", "test_servable", 0);
+  Status status = StartServable("test_servable_dir", "test_servable", 1);
   EXPECT_TRUE(status.IsSuccess());
 
   // run servable
@@ -321,264 +351,369 @@ TEST_F(TestPreprocessPostprocess, test_postproces_process_failed) {
 TEST_F(TestPreprocessPostprocess, test_preproces_input_invalid1_failed) {
   Init("test_servable_dir", "test_servable", 1, "test_add.mindir");
   DeclareServable("test_servable", "test_add.mindir", "mindir", false);
-  ServableStorage::Instance().RegisterInputOutputInfo("test_servable", 2, 1);
+  ServableRegister::Instance().RegisterInputOutputInfo("test_add.mindir", 2, 1);
 
-  MethodSignature method_signature = InitDefaultMethod();
-  method_signature.preprocess_inputs = {{kPredictPhaseTag_Preproces, 0}, {kPredictPhaseTag_Input, 1}};
-  ServableStorage::Instance().RegisterMethod(method_signature);
+  MethodSignature method_signature = InitMethodSig();
+  // preprocess
+  method_signature.AddStageFunction("stub_preprocess_cast_int32_to_fp32_cpp", {{1, 0}, {0, 1}});
+
+  // method input 0 and input 1 as servable input
+  method_signature.AddStageModel(model_file_, {{1, 0}, {1, 1}});
+  // postprocess
+  method_signature.AddStageFunction("stub_postprocess_cast_fp32_to_int32_cpp", {{2, 0}});
+  // servable output as method output
+  method_signature.SetReturn({{3, 0}});
+  ServableRegister::Instance().RegisterMethod(method_signature);
   // start_servable
-  Status status = StartServable("test_servable_dir", "test_servable", 0);
+  Status status = StartServable("test_servable_dir", "test_servable", 1);
   EXPECT_FALSE(status.IsSuccess());
 
-  Status expect_status = INFER_STATUS(FAILED) << "method add_cast"
-                                              << ", the data of preprocess " << 0 << "th input cannot not come from '"
-                                              << kPredictPhaseTag_Preproces << "'";
-  ExpectContainMsg(status.StatusMessage(), expect_status.StatusMessage());
+  ExpectContainMsg(status.StatusMessage(), "The 0th input data of stage 1 cannot not come from stage 1");
 }
 
 TEST_F(TestPreprocessPostprocess, test_preproces_input_invalid2_failed) {
   Init("test_servable_dir", "test_servable", 1, "test_add.mindir");
   DeclareServable("test_servable", "test_add.mindir", "mindir", false);
-  ServableStorage::Instance().RegisterInputOutputInfo("test_servable", 2, 1);
+  ServableRegister::Instance().RegisterInputOutputInfo("test_add.mindir", 2, 1);
 
-  MethodSignature method_signature = InitDefaultMethod();
-  method_signature.preprocess_inputs = {{kPredictPhaseTag_Input, 0}, {kPredictPhaseTag_Predict, 1}};
-  ServableStorage::Instance().RegisterMethod(method_signature);
+  MethodSignature method_signature = InitMethodSig();
+  // preprocess
+  method_signature.AddStageFunction("stub_preprocess_cast_int32_to_fp32_cpp", {{0, 0}, {2, 1}});
+
+  // method input 0 and input 1 as servable input
+  method_signature.AddStageModel(model_file_, {{1, 0}, {1, 1}});
+  // postprocess
+  method_signature.AddStageFunction("stub_postprocess_cast_fp32_to_int32_cpp", {{2, 0}});
+  // servable output as method output
+  method_signature.SetReturn({{3, 0}});
+  ServableRegister::Instance().RegisterMethod(method_signature);
   // start_servable
-  Status status = StartServable("test_servable_dir", "test_servable", 0);
+  Status status = StartServable("test_servable_dir", "test_servable", 1);
   EXPECT_FALSE(status.IsSuccess());
-  Status expect_status = INFER_STATUS(FAILED) << "method add_cast"
-                                              << ", the data of preprocess " << 1 << "th input cannot not come from '"
-                                              << kPredictPhaseTag_Predict << "'";
-  ExpectContainMsg(status.StatusMessage(), expect_status.StatusMessage());
+  ExpectContainMsg(status.StatusMessage(), "The 1th input data of stage 1 cannot not come from stage 2");
 }
 
 TEST_F(TestPreprocessPostprocess, test_preproces_input_invalid3_failed) {
   Init("test_servable_dir", "test_servable", 1, "test_add.mindir");
   DeclareServable("test_servable", "test_add.mindir", "mindir", false);
-  ServableStorage::Instance().RegisterInputOutputInfo("test_servable", 2, 1);
+  ServableRegister::Instance().RegisterInputOutputInfo("test_add.mindir", 2, 1);
 
-  MethodSignature method_signature = InitDefaultMethod();
-  method_signature.preprocess_inputs = {{kPredictPhaseTag_Input, 0}, {kPredictPhaseTag_Postprocess, 1}};
-  ServableStorage::Instance().RegisterMethod(method_signature);
+  MethodSignature method_signature = InitMethodSig();
+  // preprocess
+  method_signature.AddStageFunction("stub_preprocess_cast_int32_to_fp32_cpp", {{0, 0}, {3, 1}});
+
+  // method input 0 and input 1 as servable input
+  method_signature.AddStageModel(model_file_, {{1, 0}, {1, 1}});
+  // postprocess
+  method_signature.AddStageFunction("stub_postprocess_cast_fp32_to_int32_cpp", {{2, 0}});
+  // servable output as method output
+  method_signature.SetReturn({{3, 0}});
+  ServableRegister::Instance().RegisterMethod(method_signature);
   // start_servable
-  Status status = StartServable("test_servable_dir", "test_servable", 0);
+  Status status = StartServable("test_servable_dir", "test_servable", 1);
   EXPECT_FALSE(status.IsSuccess());
-  Status expect_status = INFER_STATUS(FAILED) << "method add_cast"
-                                              << ", the data of preprocess " << 1 << "th input cannot not come from '"
-                                              << kPredictPhaseTag_Postprocess << "'";
-  ExpectContainMsg(status.StatusMessage(), expect_status.StatusMessage());
+  ExpectContainMsg(status.StatusMessage(), "The 1th input data of stage 1 cannot not come from stage 3");
 }
 
 TEST_F(TestPreprocessPostprocess, test_preproces_input_invalid4_failed) {
   Init("test_servable_dir", "test_servable", 1, "test_add.mindir");
   DeclareServable("test_servable", "test_add.mindir", "mindir", false);
-  ServableStorage::Instance().RegisterInputOutputInfo("test_servable", 2, 1);
+  ServableRegister::Instance().RegisterInputOutputInfo("test_add.mindir", 2, 1);
 
-  MethodSignature method_signature = InitDefaultMethod();
-  method_signature.preprocess_inputs = {{kPredictPhaseTag_Input, 0}, {kPredictPhaseTag_Input, 2}};
-  ServableStorage::Instance().RegisterMethod(method_signature);
+  MethodSignature method_signature = InitMethodSig();
+  // preprocess
+  method_signature.AddStageFunction("stub_preprocess_cast_int32_to_fp32_cpp", {{0, 0}, {0, 2}});
+
+  // method input 0 and input 1 as servable input
+  method_signature.AddStageModel(model_file_, {{1, 0}, {1, 1}});
+  // postprocess
+  method_signature.AddStageFunction("stub_postprocess_cast_fp32_to_int32_cpp", {{2, 0}});
+  // servable output as method output
+  method_signature.SetReturn({{3, 0}});
+  ServableRegister::Instance().RegisterMethod(method_signature);
   // start_servable
-  Status status = StartServable("test_servable_dir", "test_servable", 0);
+  Status status = StartServable("test_servable_dir", "test_servable", 1);
   EXPECT_FALSE(status.IsSuccess());
   ExpectContainMsg(status.StatusMessage(),
-                   "the preprocess 1th input uses method 2th input,"
-                   " that is greater than the method inputs size");
+                   "The stage 1 1th input uses method 2th input, that is greater than the method inputs size 2");
 }
 
 TEST_F(TestPreprocessPostprocess, test_predict_input_invalid1_failed) {
   Init("test_servable_dir", "test_servable", 1, "test_add.mindir");
   DeclareServable("test_servable", "test_add.mindir", "mindir", false);
-  ServableStorage::Instance().RegisterInputOutputInfo("test_servable", 2, 1);
+  ServableRegister::Instance().RegisterInputOutputInfo("test_add.mindir", 2, 1);
 
-  MethodSignature method_signature = InitDefaultMethod();
-  method_signature.servable_inputs = {{kPredictPhaseTag_Predict, 0}, {kPredictPhaseTag_Preproces, 1}};
-  ServableStorage::Instance().RegisterMethod(method_signature);
+  MethodSignature method_signature = InitMethodSig();
+  // preprocess
+  method_signature.AddStageFunction("stub_preprocess_cast_int32_to_fp32_cpp", {{0, 0}, {0, 1}});
+
+  // method input 0 and input 1 as servable input
+  method_signature.AddStageModel(model_file_, {{2, 0}, {1, 1}});
+  // postprocess
+  method_signature.AddStageFunction("stub_postprocess_cast_fp32_to_int32_cpp", {{2, 0}});
+  // servable output as method output
+  method_signature.SetReturn({{3, 0}});
+  ServableRegister::Instance().RegisterMethod(method_signature);
   // start_servable
-  Status status = StartServable("test_servable_dir", "test_servable", 0);
+  Status status = StartServable("test_servable_dir", "test_servable", 1);
   EXPECT_FALSE(status.IsSuccess());
-  Status expect_status = INFER_STATUS(FAILED) << "method add_cast"
-                                              << ", the data of servable " << 0 << "th input cannot not come from '"
-                                              << kPredictPhaseTag_Predict << "'";
-  ExpectContainMsg(status.StatusMessage(), expect_status.StatusMessage());
+  ExpectContainMsg(status.StatusMessage(), "The 0th input data of stage 2 cannot not come from stage 2");
 }
 
 TEST_F(TestPreprocessPostprocess, test_predict_input_invalid2_failed) {
   Init("test_servable_dir", "test_servable", 1, "test_add.mindir");
   DeclareServable("test_servable", "test_add.mindir", "mindir", false);
-  ServableStorage::Instance().RegisterInputOutputInfo("test_servable", 2, 1);
+  ServableRegister::Instance().RegisterInputOutputInfo("test_add.mindir", 2, 1);
 
-  MethodSignature method_signature = InitDefaultMethod();
-  method_signature.servable_inputs = {{kPredictPhaseTag_Preproces, 0}, {kPredictPhaseTag_Postprocess, 1}};
-  ServableStorage::Instance().RegisterMethod(method_signature);
+  MethodSignature method_signature = InitMethodSig();
+  // preprocess
+  method_signature.AddStageFunction("stub_preprocess_cast_int32_to_fp32_cpp", {{0, 0}, {0, 1}});
+
+  // method input 0 and input 1 as servable input
+  method_signature.AddStageModel(model_file_, {{1, 0}, {3, 1}});
+  // postprocess
+  method_signature.AddStageFunction("stub_postprocess_cast_fp32_to_int32_cpp", {{2, 0}});
+  // servable output as method output
+  method_signature.SetReturn({{3, 0}});
+  ServableRegister::Instance().RegisterMethod(method_signature);
   // start_servable
-  Status status = StartServable("test_servable_dir", "test_servable", 0);
+  Status status = StartServable("test_servable_dir", "test_servable", 1);
   EXPECT_FALSE(status.IsSuccess());
-  Status expect_status = INFER_STATUS(FAILED) << "method add_cast"
-                                              << ", the data of servable " << 1 << "th input cannot not come from '"
-                                              << kPredictPhaseTag_Postprocess << "'";
-  ExpectContainMsg(status.StatusMessage(), expect_status.StatusMessage());
+  ExpectContainMsg(status.StatusMessage(), "The 1th input data of stage 2 cannot not come from stage 3");
 }
 
 TEST_F(TestPreprocessPostprocess, test_predict_input_invalid3_failed) {
   Init("test_servable_dir", "test_servable", 1, "test_add.mindir");
   DeclareServable("test_servable", "test_add.mindir", "mindir", false);
-  ServableStorage::Instance().RegisterInputOutputInfo("test_servable", 2, 1);
+  ServableRegister::Instance().RegisterInputOutputInfo("test_add.mindir", 2, 1);
 
-  MethodSignature method_signature = InitDefaultMethod();
-  method_signature.servable_inputs = {{kPredictPhaseTag_Preproces, 0}, {kPredictPhaseTag_Preproces, 2}};
-  ServableStorage::Instance().RegisterMethod(method_signature);
+  MethodSignature method_signature = InitMethodSig();
+  // preprocess
+  method_signature.AddStageFunction("stub_preprocess_cast_int32_to_fp32_cpp", {{0, 0}, {0, 1}});
+
+  // method input 0 and input 1 as servable input
+  method_signature.AddStageModel(model_file_, {{1, 0}, {1, 2}});
+  // postprocess
+  method_signature.AddStageFunction("stub_postprocess_cast_fp32_to_int32_cpp", {{2, 0}});
+  // servable output as method output
+  method_signature.SetReturn({{3, 0}});
+  ServableRegister::Instance().RegisterMethod(method_signature);
   // start_servable
-  Status status = StartServable("test_servable_dir", "test_servable", 0);
+  Status status = StartServable("test_servable_dir", "test_servable", 1);
   EXPECT_FALSE(status.IsSuccess());
   ExpectContainMsg(status.StatusMessage(),
-                   "the servable 1th input uses preprocess 2th output, "
-                   "that is greater than the preprocess outputs size ");
+                   "The stage(begin with 1) 2 1th input uses c++ function stub_preprocess_cast_int32_to_fp32_cpp "
+                   "2th output, that is greater than the function output size 2");
 }
 
 TEST_F(TestPreprocessPostprocess, test_predict_input_invalid4_failed) {
   Init("test_servable_dir", "test_servable", 1, "test_add.mindir");
   DeclareServable("test_servable", "test_add.mindir", "mindir", false);
-  ServableStorage::Instance().RegisterInputOutputInfo("test_servable", 2, 1);
+  ServableRegister::Instance().RegisterInputOutputInfo("test_add.mindir", 2, 1);
 
-  MethodSignature method_signature = InitDefaultMethod();
-  method_signature.servable_inputs = {{kPredictPhaseTag_Input, 2}, {kPredictPhaseTag_Preproces, 1}};
-  ServableStorage::Instance().RegisterMethod(method_signature);
+  MethodSignature method_signature = InitMethodSig();
+  // preprocess
+  method_signature.AddStageFunction("stub_preprocess_cast_int32_to_fp32_cpp", {{0, 0}, {0, 1}});
+
+  // method input 0 and input 1 as servable input
+  method_signature.AddStageModel(model_file_, {{0, 2}, {1, 1}});
+  // postprocess
+  method_signature.AddStageFunction("stub_postprocess_cast_fp32_to_int32_cpp", {{2, 0}});
+  // servable output as method output
+  method_signature.SetReturn({{3, 0}});
+  ServableRegister::Instance().RegisterMethod(method_signature);
   // start_servable
-  Status status = StartServable("test_servable_dir", "test_servable", 0);
+  Status status = StartServable("test_servable_dir", "test_servable", 1);
   EXPECT_FALSE(status.IsSuccess());
   ExpectContainMsg(status.StatusMessage(),
-                   "the servable 0th input uses method 2th input, "
-                   "that is greater than the method inputs size ");
+                   "The stage 2 0th input uses method 2th input, that is greater than the method inputs size 2");
 }
 
 TEST_F(TestPreprocessPostprocess, test_postprocess_input_invalid1_failed) {
   Init("test_servable_dir", "test_servable", 1, "test_add.mindir");
   DeclareServable("test_servable", "test_add.mindir", "mindir", false);
-  ServableStorage::Instance().RegisterInputOutputInfo("test_servable", 2, 1);
+  ServableRegister::Instance().RegisterInputOutputInfo("test_add.mindir", 2, 1);
 
-  MethodSignature method_signature = InitDefaultMethod();
-  method_signature.postprocess_inputs = {{kPredictPhaseTag_Postprocess, 0}};
-  ServableStorage::Instance().RegisterMethod(method_signature);
+  MethodSignature method_signature = InitMethodSig();
+  // preprocess
+  method_signature.AddStageFunction("stub_preprocess_cast_int32_to_fp32_cpp", {{0, 0}, {0, 1}});
+
+  // method input 0 and input 1 as servable input
+  method_signature.AddStageModel(model_file_, {{1, 0}, {1, 1}});
+  // postprocess
+  method_signature.AddStageFunction("stub_postprocess_cast_fp32_to_int32_cpp", {{3, 0}});
+  // servable output as method output
+  method_signature.SetReturn({{3, 0}});
+  ServableRegister::Instance().RegisterMethod(method_signature);
   // start_servable
-  Status status = StartServable("test_servable_dir", "test_servable", 0);
+  Status status = StartServable("test_servable_dir", "test_servable", 1);
   EXPECT_FALSE(status.IsSuccess());
-  Status expect_status = INFER_STATUS(FAILED) << "method add_cast"
-                                              << ", the data of postprocess " << 0 << "th input cannot not come from '"
-                                              << kPredictPhaseTag_Postprocess << "'";
-  ExpectContainMsg(status.StatusMessage(), expect_status.StatusMessage());
+  ExpectContainMsg(status.StatusMessage(), "The 0th input data of stage 3 cannot not come from stage 3");
 }
 
 TEST_F(TestPreprocessPostprocess, test_postprocess_input_invalid2_failed) {
   Init("test_servable_dir", "test_servable", 1, "test_add.mindir");
   DeclareServable("test_servable", "test_add.mindir", "mindir", false);
-  ServableStorage::Instance().RegisterInputOutputInfo("test_servable", 2, 1);
+  ServableRegister::Instance().RegisterInputOutputInfo("test_add.mindir", 2, 1);
 
-  MethodSignature method_signature = InitDefaultMethod();
-  method_signature.postprocess_inputs = {{kPredictPhaseTag_Input, 2}};
-  ServableStorage::Instance().RegisterMethod(method_signature);
+  MethodSignature method_signature = InitMethodSig();
+  // preprocess
+  method_signature.AddStageFunction("stub_preprocess_cast_int32_to_fp32_cpp", {{0, 0}, {0, 1}});
+
+  // method input 0 and input 1 as servable input
+  method_signature.AddStageModel(model_file_, {{1, 0}, {1, 1}});
+  // postprocess
+  method_signature.AddStageFunction("stub_postprocess_cast_fp32_to_int32_cpp", {{0, 2}});
+  // servable output as method output
+  method_signature.SetReturn({{3, 0}});
+  ServableRegister::Instance().RegisterMethod(method_signature);
   // start_servable
-  Status status = StartServable("test_servable_dir", "test_servable", 0);
+  Status status = StartServable("test_servable_dir", "test_servable", 1);
   EXPECT_FALSE(status.IsSuccess());
   ExpectContainMsg(status.StatusMessage(),
-                   "the postprocess 0th input uses method 2th input, "
-                   "that is greater than the method inputs size");
+                   "The stage 3 0th input uses method 2th input, that is greater than the method inputs size 2");
 }
 
 TEST_F(TestPreprocessPostprocess, test_postprocess_input_invalid3_failed) {
   Init("test_servable_dir", "test_servable", 1, "test_add.mindir");
   DeclareServable("test_servable", "test_add.mindir", "mindir", false);
-  ServableStorage::Instance().RegisterInputOutputInfo("test_servable", 2, 1);
+  ServableRegister::Instance().RegisterInputOutputInfo("test_add.mindir", 2, 1);
 
-  MethodSignature method_signature = InitDefaultMethod();
-  method_signature.postprocess_inputs = {{kPredictPhaseTag_Preproces, 2}};
-  ServableStorage::Instance().RegisterMethod(method_signature);
+  MethodSignature method_signature = InitMethodSig();
+  // preprocess
+  method_signature.AddStageFunction("stub_preprocess_cast_int32_to_fp32_cpp", {{0, 0}, {0, 1}});
+
+  // method input 0 and input 1 as servable input
+  method_signature.AddStageModel(model_file_, {{1, 0}, {1, 1}});
+  // postprocess
+  method_signature.AddStageFunction("stub_postprocess_cast_fp32_to_int32_cpp", {{1, 2}});
+  // servable output as method output
+  method_signature.SetReturn({{3, 0}});
+  ServableRegister::Instance().RegisterMethod(method_signature);
   // start_servable
-  Status status = StartServable("test_servable_dir", "test_servable", 0);
+  Status status = StartServable("test_servable_dir", "test_servable", 1);
   EXPECT_FALSE(status.IsSuccess());
   ExpectContainMsg(status.StatusMessage(),
-                   "the postprocess 0th input uses preprocess 2th output, "
-                   "that is greater than the preprocess outputs size ");
+                   "The stage(begin with 1) 3 0th input uses c++ function stub_preprocess_cast_int32_to_fp32_cpp"
+                   " 2th output, that is greater than the function output size 2");
 }
 
 TEST_F(TestPreprocessPostprocess, test_postprocess_input_invalid4_failed) {
   Init("test_servable_dir", "test_servable", 1, "test_add.mindir");
   DeclareServable("test_servable", "test_add.mindir", "mindir", false);
-  ServableStorage::Instance().RegisterInputOutputInfo("test_servable", 2, 1);
+  ServableRegister::Instance().RegisterInputOutputInfo("test_add.mindir", 2, 1);
 
-  MethodSignature method_signature = InitDefaultMethod();
-  method_signature.postprocess_inputs = {{kPredictPhaseTag_Predict, 1}};
-  ServableStorage::Instance().RegisterMethod(method_signature);
+  MethodSignature method_signature = InitMethodSig();
+  // preprocess
+  method_signature.AddStageFunction("stub_preprocess_cast_int32_to_fp32_cpp", {{0, 0}, {0, 1}});
+
+  // method input 0 and input 1 as servable input
+  method_signature.AddStageModel(model_file_, {{1, 0}, {1, 1}});
+  // postprocess
+  method_signature.AddStageFunction("stub_postprocess_cast_fp32_to_int32_cpp", {{2, 1}});
+  // servable output as method output
+  method_signature.SetReturn({{3, 0}});
+  ServableRegister::Instance().RegisterMethod(method_signature);
   // start_servable
-  Status status = StartServable("test_servable_dir", "test_servable", 0);
+  Status status = StartServable("test_servable_dir", "test_servable", 1);
   EXPECT_FALSE(status.IsSuccess());
-  ExpectContainMsg(status.StatusMessage(),
-                   "the postprocess 0th input uses servable 1th output, "
-                   "that is greater than the servable outputs size");
+  ExpectContainMsg(status.StatusMessage(), "The stage(begin with 1) 3 0th input uses model "
+                   "test_add.mindir subgraph 0 1th output, that is greater than the model output size 1");
 }
 
 TEST_F(TestPreprocessPostprocess, test_return_invalid1_failed) {
   Init("test_servable_dir", "test_servable", 1, "test_add.mindir");
   DeclareServable("test_servable", "test_add.mindir", "mindir", false);
-  ServableStorage::Instance().RegisterInputOutputInfo("test_servable", 2, 1);
+  ServableRegister::Instance().RegisterInputOutputInfo("test_add.mindir", 2, 1);
 
-  MethodSignature method_signature = InitDefaultMethod();
-  method_signature.returns = {{kPredictPhaseTag_Input, 2}};
-  ServableStorage::Instance().RegisterMethod(method_signature);
+  MethodSignature method_signature = InitMethodSig();
+  // preprocess
+  method_signature.AddStageFunction("stub_preprocess_cast_int32_to_fp32_cpp", {{0, 0}, {0, 1}});
+
+  // method input 0 and input 1 as servable input
+  method_signature.AddStageModel(model_file_, {{1, 0}, {1, 1}});
+  // postprocess
+  method_signature.AddStageFunction("stub_postprocess_cast_fp32_to_int32_cpp", {{2, 0}});
+  // servable output as method output
+  method_signature.SetReturn({{0, 2}});
+  ServableRegister::Instance().RegisterMethod(method_signature);
   // start_servable
-  Status status = StartServable("test_servable_dir", "test_servable", 0);
+  Status status = StartServable("test_servable_dir", "test_servable", 1);
   EXPECT_FALSE(status.IsSuccess());
   ExpectContainMsg(status.StatusMessage(),
-                   "the method 0th output uses method "
-                   "2th input, that is greater than the method inputs size");
+                   "The stage 4 0th input uses method 2th input, "
+                   "that is greater than the method inputs size 2");
 }
 
 TEST_F(TestPreprocessPostprocess, test_return_invalid2_failed) {
   Init("test_servable_dir", "test_servable", 1, "test_add.mindir");
   DeclareServable("test_servable", "test_add.mindir", "mindir", false);
-  ServableStorage::Instance().RegisterInputOutputInfo("test_servable", 2, 1);
+  ServableRegister::Instance().RegisterInputOutputInfo("test_add.mindir", 2, 1);
 
-  MethodSignature method_signature = InitDefaultMethod();
-  method_signature.returns = {{kPredictPhaseTag_Preproces, 2}};
-  ServableStorage::Instance().RegisterMethod(method_signature);
+  MethodSignature method_signature = InitMethodSig();
+  // preprocess
+  method_signature.AddStageFunction("stub_preprocess_cast_int32_to_fp32_cpp", {{0, 0}, {0, 1}});
+
+  // method input 0 and input 1 as servable input
+  method_signature.AddStageModel(model_file_, {{1, 0}, {1, 1}});
+  // postprocess
+  method_signature.AddStageFunction("stub_postprocess_cast_fp32_to_int32_cpp", {{2, 0}});
+  // servable output as method output
+  method_signature.SetReturn({{1, 2}});
+  ServableRegister::Instance().RegisterMethod(method_signature);
   // start_servable
-  Status status = StartServable("test_servable_dir", "test_servable", 0);
+  Status status = StartServable("test_servable_dir", "test_servable", 1);
   EXPECT_FALSE(status.IsSuccess());
   ExpectContainMsg(status.StatusMessage(),
-                   "the method 0th output uses preprocess "
-                   "2th output, that is greater than the preprocess outputs size");
+                   "The stage(begin with 1) 4 0th input uses c++ function stub_preprocess_cast_int32_to_fp32_cpp"
+                   " 2th output, that is greater than the function output size 2");
 }
 
 TEST_F(TestPreprocessPostprocess, test_return_invalid3_failed) {
   Init("test_servable_dir", "test_servable", 1, "test_add.mindir");
   DeclareServable("test_servable", "test_add.mindir", "mindir", false);
-  ServableStorage::Instance().RegisterInputOutputInfo("test_servable", 2, 1);
+  ServableRegister::Instance().RegisterInputOutputInfo("test_add.mindir", 2, 1);
 
-  MethodSignature method_signature = InitDefaultMethod();
-  method_signature.returns = {{kPredictPhaseTag_Predict, 1}};
-  ServableStorage::Instance().RegisterMethod(method_signature);
+  MethodSignature method_signature = InitMethodSig();
+  // preprocess
+  method_signature.AddStageFunction("stub_preprocess_cast_int32_to_fp32_cpp", {{0, 0}, {0, 1}});
+
+  // method input 0 and input 1 as servable input
+  method_signature.AddStageModel(model_file_, {{1, 0}, {1, 1}});
+  // postprocess
+  method_signature.AddStageFunction("stub_postprocess_cast_fp32_to_int32_cpp", {{2, 0}});
+  // servable output as method output
+  method_signature.SetReturn({{2, 1}});
+  ServableRegister::Instance().RegisterMethod(method_signature);
   // start_servable
-  Status status = StartServable("test_servable_dir", "test_servable", 0);
+  Status status = StartServable("test_servable_dir", "test_servable", 1);
   EXPECT_FALSE(status.IsSuccess());
-  ExpectContainMsg(status.StatusMessage(),
-                   "the method 0th output uses servable "
-                   "1th output, that is greater than the servable outputs size");
+  ExpectContainMsg(status.StatusMessage(), "The stage(begin with 1) 4 0th input uses model "
+                   "test_add.mindir subgraph 0 1th output, that is greater than the model output size 1");
 }
 
 TEST_F(TestPreprocessPostprocess, test_return_invalid4_failed) {
   Init("test_servable_dir", "test_servable", 1, "test_add.mindir");
   DeclareServable("test_servable", "test_add.mindir", "mindir", false);
-  ServableStorage::Instance().RegisterInputOutputInfo("test_servable", 2, 1);
+  ServableRegister::Instance().RegisterInputOutputInfo("test_add.mindir", 2, 1);
 
-  MethodSignature method_signature = InitDefaultMethod();
-  method_signature.returns = {{kPredictPhaseTag_Postprocess, 1}};
-  ServableStorage::Instance().RegisterMethod(method_signature);
+  MethodSignature method_signature = InitMethodSig();
+  // preprocess
+  method_signature.AddStageFunction("stub_preprocess_cast_int32_to_fp32_cpp", {{0, 0}, {0, 1}});
+
+  // method input 0 and input 1 as servable input
+  method_signature.AddStageModel("test_add.mindir", {{1, 0}, {1, 1}});
+  // postprocess
+  method_signature.AddStageFunction("stub_postprocess_cast_fp32_to_int32_cpp", {{2, 0}});
+  // servable output as method output
+  method_signature.SetReturn({{3, 1}});
+  ServableRegister::Instance().RegisterMethod(method_signature);
   // start_servable
-  Status status = StartServable("test_servable_dir", "test_servable", 0);
+  Status status = StartServable("test_servable_dir", "test_servable", 1);
   EXPECT_FALSE(status.IsSuccess());
   ExpectContainMsg(status.StatusMessage(),
-                   "the method 0th output uses postprocess "
-                   "1th output, that is greater than the postprocess outputs size");
+                   "The stage(begin with 1) 4 0th input uses c++ function stub_postprocess_cast_fp32_to_int32_cpp"
+                                " 1th output, that is greater than the function output size 1");
 }
 
 }  // namespace serving

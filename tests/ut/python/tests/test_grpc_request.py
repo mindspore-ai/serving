@@ -21,12 +21,6 @@ from common import serving_test, create_client
 from mindspore_serving import server
 
 
-def check_result(result, y_data_list):
-    assert len(result) == len(y_data_list)
-    for result_item, y_data in zip(result, y_data_list):
-        assert (result_item["y"] == y_data).all()
-
-
 def start_str_grpc_server():
     base = init_str_servable()
     server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))

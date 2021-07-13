@@ -20,7 +20,6 @@ import requests
 import numpy as np
 
 from common import ServingTestBase, serving_test, generate_cert
-from common import servable_config_import, servable_config_declare_servable
 from common_restful import create_multi_instances_fp32, create_multi_instances_with_batch_fp32
 from common_restful import check_number_result, post_restful
 from mindspore_serving import server
@@ -118,6 +117,7 @@ def test_https_unmatched_cert_failed():
     server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
     try:
         server.start_restful_server("127.0.0.1:5500", ssl_config=ssl_config)
+        assert False
     except RuntimeError as e:
         assert "Serving Error: load private_key from client.key failed" in str(e)
 
@@ -293,166 +293,20 @@ def test_restful_request_servable_version_reverse_success():
 
 
 @serving_test
-def test_restful_request_preprocess_outputs_count_not_match_failed():
-    base = ServingTestBase()
-    servable_content = servable_config_import
-    servable_content += servable_config_declare_servable
-    servable_content += r"""
-def add_trans_datatype(x1, x2):
-    return x1.astype(np.float32)
-
-@register.register_method(output_names=["y"])
-def add_cast(x1, x2):
-    x1, x2 = register.call_preprocess(add_trans_datatype, x1, x2)  # cast input to float32
-    y = register.call_servable(x1, x2)    
-    return y
-"""
-    base.init_servable_with_servable_config(1, servable_content)
-    server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
-    server.start_restful_server("0.0.0.0:5500")
-    # Client
-    instance_count = 3
-    instances, _ = create_multi_instances_fp32(instance_count)
-    result = post_restful("localhost:5500", base.servable_name, "add_cast", instances)
-
-    print(result)
-    if "error_msg" in result:
-        assert "Preprocess Failed" in str(result["error_msg"]) or \
-               "servable is not available" in str(result["error_msg"])
-    else:
-        assert len(result["instances"]) == 3
-        assert "Preprocess Failed" in str(result["instances"][0]["error_msg"])
-
-
-@serving_test
-def test_restful_request_preprocess_outputs_count_not_match_with_batch_failed():
-    base = ServingTestBase()
-    servable_content = servable_config_import
-    servable_content += r"""
-register.declare_servable(servable_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=True)
-
-def add_trans_datatype(x1, x2):
-    return x1.astype(np.float32)
-
-@register.register_method(output_names=["y"])
-def add_cast(x1, x2):
-    x1, x2 = register.call_preprocess(add_trans_datatype, x1, x2)  # cast input to float32
-    y = register.call_servable(x1, x2)    
-    return y
-"""
-    base.init_servable_with_servable_config(1, servable_content)
-    server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
-    server.start_restful_server("0.0.0.0:5500")
-    # Client
-    instance_count = 12
-    instances, _ = create_multi_instances_with_batch_fp32(instance_count)
-    result = post_restful("localhost:5500", base.servable_name, "add_cast", instances)
-
-    print(result)
-    assert "Preprocess Failed" in str(result["error_msg"])
-
-
-@serving_test
-def test_restful_request_preprocess_invalid_pipeline_with_batch_handle_task_failed():
-    base = ServingTestBase()
-    servable_content = servable_config_import
-    servable_content += r"""
-register.declare_servable(servable_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=True)
-
-def add_trans_datatype(x1, x2):
-    return x1.astype(np.float32), x2.astype(np.float32)
-
-@register.register_method(output_names=["y"])
-def add_cast(x1, x2):
-    x1, x2 = register.call_preprocess_pipeline(add_trans_datatype, x1, x2)  # cast input to float32
-    y = register.call_servable(x1, x2)    
-    return y
-"""
-    base.init_servable_with_servable_config(1, servable_content)
-    server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
-    server.start_restful_server("0.0.0.0:5500")
-    # Client
-    instance_count = 12
-    instances, _ = create_multi_instances_with_batch_fp32(instance_count)
-    result = post_restful("localhost:5500", base.servable_name, "add_cast", instances)
-
-    print(result)
-    assert "Preprocess Failed" in str(result["error_msg"])
-
-
-@serving_test
-def test_restful_request_preprocess_pipeline_yield_count_invalid_with_batch_failed():
-    base = ServingTestBase()
-    servable_content = servable_config_import
-    servable_content += r"""
-register.declare_servable(servable_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=True)
-
-def add_trans_datatype(instances):
-    for i in range(len(instances)-1):
-        instance = instances[i]
-        x1, x2 = instance[0], instance[1]
-        yield x1.astype(np.float32), x2.astype(np.float32)
-
-@register.register_method(output_names=["y"])
-def add_cast(x1, x2):
-    x1, x2 = register.call_preprocess_pipeline(add_trans_datatype, x1, x2)  # cast input to float32
-    y = register.call_servable(x1, x2)    
-    return y
-"""
-    base.init_servable_with_servable_config(1, servable_content)
-    server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
-    server.start_restful_server("0.0.0.0:5500")
-    # Client
-    instance_count = 2
-    instances, _ = create_multi_instances_with_batch_fp32(instance_count)
-    result = post_restful("localhost:5500", base.servable_name, "add_cast", instances)
-
-    print(result)
-    assert "Preprocess Failed" in str(result["error_msg"])
-
-
-@serving_test
-def test_restful_request_preprocess_return_data_type_invalid_with_batch_failed():
-    base = ServingTestBase()
-    servable_content = servable_config_import
-    servable_content += r"""
-register.declare_servable(servable_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=True)
-
-def add_trans_datatype(x1, x2):
-    return x1.dtype, x2.astype(np.float32)
-
-@register.register_method(output_names=["y"])
-def add_cast(x1, x2):
-    x1, x2 = register.call_preprocess(add_trans_datatype, x1, x2)  # cast input to float32
-    y = register.call_servable(x1, x2)    
-    return y
-"""
-    base.init_servable_with_servable_config(1, servable_content)
-    server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
-    server.start_restful_server("0.0.0.0:5500")
-    # Client
-    instance_count = 12
-    instances, _ = create_multi_instances_with_batch_fp32(instance_count)
-    result = post_restful("localhost:5500", base.servable_name, "add_cast", instances)
-
-    print(result)
-    assert "Preprocess Failed" in str(result["error_msg"])
-
-
-@serving_test
 def test_restful_request_preprocess_raise_exception_with_batch_failed():
     base = ServingTestBase()
-    servable_content = servable_config_import
-    servable_content += r"""
-register.declare_servable(servable_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=True)
+    servable_content = r"""
+import numpy as np
+from mindspore_serving.server import register
+model = register.declare_model(model_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=True)
 
 def add_trans_datatype(x1, x2):
     raise RuntimeError("invalid preprocess")
 
 @register.register_method(output_names=["y"])
 def add_cast(x1, x2):
-    x1, x2 = register.call_preprocess(add_trans_datatype, x1, x2)  # cast input to float32
-    y = register.call_servable(x1, x2)    
+    x1, x2 = register.add_stage(add_trans_datatype, x1, x2, outputs_count=2, tag="Preprocess")  # cast input to float32
+    y = register.add_stage(model, x1, x2, outputs_count=1)    
     return y
 """
     base.init_servable_with_servable_config(1, servable_content)
@@ -465,36 +319,6 @@ def add_cast(x1, x2):
 
     print(result)
     assert "Preprocess Failed" in str(result["error_msg"])
-
-
-@serving_test
-def test_restful_request_postprocess_outputs_count_not_match_failed():
-    base = ServingTestBase()
-    servable_content = servable_config_import
-    servable_content += servable_config_declare_servable
-    servable_content += r"""
-def add_trans_datatype(x1, x2):
-    return x1.astype(np.float32)
-
-@register.register_method(output_names=["y"])
-def add_cast(x1, x2):
-    y = register.call_servable(x1, x2)    
-    y, y2 = register.call_postprocess(add_trans_datatype, y, x2)
-    return y
-"""
-    base.init_servable_with_servable_config(1, servable_content)
-    server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
-    server.start_restful_server("0.0.0.0:5500")
-    # Client
-    instance_count = 3
-    instances, _ = create_multi_instances_fp32(instance_count)
-    result = post_restful("localhost:5500", base.servable_name, "add_cast", instances)
-    if "error_msg" in result:
-        assert "Postprocess Failed" in str(result["error_msg"]) or \
-               "servable is not available" in str(result["error_msg"])
-    else:
-        assert len(result["instances"]) == 3
-        assert "Postprocess Failed" in str(result["instances"][0]["error_msg"])
 
 
 @serving_test

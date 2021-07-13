@@ -28,35 +28,46 @@
 
 namespace mindspore::serving {
 
-enum PredictPhaseTag {
-  kPredictPhaseTag_Input,
-  kPredictPhaseTag_Pipeline,
-  kPredictPhaseTag_Preproces,
-  kPredictPhaseTag_Predict,
-  kPredictPhaseTag_Postprocess,
-  kPredictPhaseTag_Output,
+enum MethodStageType {
+  kMethodStageTypeNone = 0,
+  kMethodStageTypePyFunction,
+  kMethodStageTypeCppFunction,
+  kMethodStageTypeModel,
+  kMethodStageTypeReturn,
 };
 
-struct MethodSignature {
+struct MethodStage {
   std::string method_name;
-  uint64_t subgraph = 0;
+  uint64_t stage_index = 0;
+  std::string stage_key;  // function name, model name
+  std::string tag;
+  MethodStageType stage_type;
+  uint64_t subgraph = 0;                                  // when model
+  std::vector<std::pair<size_t, uint64_t>> stage_inputs;  // first: input- 0, stage- 1~n, second: output index
+  // will be updated when model loaded
+  uint64_t batch_size = 0;
+};
+
+static const uint64_t kStageStartIndex = 1;
+struct MS_API MethodSignature {
+  std::string servable_name;
+  std::string method_name;
   std::vector<std::string> inputs;
   std::vector<std::string> outputs;
 
-  std::string pipeline_name;
-  std::vector<std::pair<PredictPhaseTag, uint64_t>> pipeline_inputs;
+  std::map<size_t, MethodStage> stage_map;  // stage_index, MethodStage
 
-  std::string preprocess_name;
-  // the output index of the 'predict phase'
-  std::vector<std::pair<PredictPhaseTag, uint64_t>> preprocess_inputs;
+  void AddStageFunction(const std::string &func_name, const std::vector<std::pair<size_t, uint64_t>> &stage_inputs,
+                        uint64_t batch_size = 0, const std::string &tag = "");
+  void AddStageModel(const std::string &model_key, const std::vector<std::pair<size_t, uint64_t>> &stage_inputs,
+                     uint64_t subgraph = 0, const std::string &tag = "");
+  void SetReturn(const std::vector<std::pair<size_t, uint64_t>> &return_inputs);
+  // the max stage is return, when reach max stage, all stage works done
+  size_t GetStageMax() const;
 
-  std::string postprocess_name;
-  std::vector<std::pair<PredictPhaseTag, uint64_t>> postprocess_inputs;
-
-  std::string servable_name;
-  std::vector<std::pair<PredictPhaseTag, uint64_t>> servable_inputs;
-
-  std::vector<std::pair<PredictPhaseTag, uint64_t>> returns;
+ private:
+  // stage index begin with 1, 0 reserve for input, include function, model, return stage
+  size_t stage_index = kStageStartIndex;
 };
 
 struct ServableLoadSpec {
@@ -69,13 +80,26 @@ struct ServableLoadSpec {
 struct ServableMethodInfo {
   std::string name;
   std::vector<std::string> input_names;
+  bool only_model_stage = false;
+};
+
+struct ModelSubgraphInfo {
+  std::vector<TensorInfo> input_infos;
+  std::vector<TensorInfo> output_infos;
+};
+
+struct ModelInfo {
+  std::vector<ModelSubgraphInfo> sub_graph_infos;
+  uint64_t batch_size = 0;
 };
 
 struct ServableRegSpec {
   std::string servable_name;
   uint64_t version_number = 0;
   uint64_t batch_size = 0;
+  bool own_device = true;
   std::vector<ServableMethodInfo> methods;
+  std::map<std::string, ModelInfo> models;
 };
 
 struct WorkerRegSpec {
@@ -98,95 +122,42 @@ enum ServableType {
   kServableTypeDistributed = 2,
 };
 
-struct CommonServableMeta {
+struct CommonModelMeta {
   std::string servable_name;
+  // used to identify model, for local model: ";".join(model_files), for distributed model: servable name
+  std::string model_key;
   bool with_batch_dim = true;  // whether there is batch dim in model's inputs/outputs
   std::vector<int> without_batch_dim_inputs;
   std::map<uint64_t, size_t> inputs_count;
   std::map<uint64_t, size_t> outputs_count;
 };
 
-struct MS_API LocalServableMeta {
-  std::vector<std::string> servable_files;           // file names
+struct MS_API LocalModelMeta {
+  std::vector<std::string> model_files;              // file names
   ModelType model_format = ModelType::kUnknownType;  // OM, MindIR
   std::map<std::string, std::string> load_options;   // Acl options
   void SetModelFormat(const std::string &format);
 };
 
-struct DistributedServableMeta {
+struct DistributedModelMeta {
   size_t rank_size = 0;
   size_t stage_size = 0;
 };
 
-struct MS_API ServableMeta {
+struct MS_API ModelMeta {
+  CommonModelMeta common_meta;
+  LocalModelMeta local_meta;
+  DistributedModelMeta distributed_meta;
+};
+
+struct MS_API ServableSignature {
   ServableType servable_type = kServableTypeUnknown;
-  CommonServableMeta common_meta;
-  LocalServableMeta local_meta;
-  DistributedServableMeta distributed_meta;
-
-  std::string Repr() const;
-};
-
-struct PipelineSignature {
-  std::string pipeline_name;
-  std::vector<std::string> inputs;
-  std::vector<std::string> outputs;
-};
-
-struct ServableSignature {
-  ServableMeta servable_meta;
+  std::string servable_name;
+  std::vector<ModelMeta> model_metas;
   std::vector<MethodSignature> methods;
-  Status Check(uint64_t graph_num) const;
-  bool GetMethodDeclare(const std::string &method_name, MethodSignature *method);
-
- private:
-  Status CheckPreprocessInput(const MethodSignature &method, size_t *pre) const;
-  Status CheckPredictInput(const MethodSignature &method, size_t pre) const;
-  Status CheckPostprocessInput(const MethodSignature &method, size_t pre, size_t *post) const;
-  Status CheckReturn(const MethodSignature &method, size_t pre, size_t post) const;
+  const MethodSignature *GetMethodDeclare(const std::string &method_name) const;
+  const ModelMeta *GetModelDeclare(const std::string &model_key) const;
 };
-
-class MS_API ServableStorage {
- public:
-  void Register(const ServableSignature &def);
-  Status RegisterMethod(const MethodSignature &method);
-  bool GetServableDef(const std::string &model_name, ServableSignature *def) const;
-  Status DeclareServable(ServableMeta servable);
-  Status DeclareDistributedServable(ServableMeta servable);
-
-  Status RegisterInputOutputInfo(const std::string &servable_name, size_t inputs_count, size_t outputs_count,
-                                 uint64_t subgraph = 0);
-  std::vector<size_t> GetInputOutputInfo(const std::string &servable_name, uint64_t subgraph = 0) const;
-
-  static ServableStorage &Instance();
-
- private:
-  std::unordered_map<std::string, ServableSignature> servable_signatures_map_;
-};
-
-static inline LogStream &operator<<(LogStream &stream, PredictPhaseTag data_type) {
-  switch (data_type) {
-    case kPredictPhaseTag_Input:
-      stream << "Input";
-      break;
-    case kPredictPhaseTag_Pipeline:
-      stream << "Pipeline";
-      break;
-    case kPredictPhaseTag_Preproces:
-      stream << "Preprocess";
-      break;
-    case kPredictPhaseTag_Predict:
-      stream << "Predict";
-      break;
-    case kPredictPhaseTag_Postprocess:
-      stream << "Postprocess";
-      break;
-    case kPredictPhaseTag_Output:
-      stream << "Output";
-      break;
-  }
-  return stream;
-}
 
 struct WorkerAgentSpec {
   std::string agent_address;

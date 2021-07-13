@@ -135,6 +135,8 @@ void WorkerContext::Clear() {
   status_ = kWorkerStatusNotAlive;
 }
 
+bool WorkerContext::OwnDevice() const { return worker_spec_.servable_spec.own_device; }
+
 void WorkerContext::PrintStatus() const {
   auto repr = servable_repr_.repr;
   switch (status_) {

@@ -30,10 +30,10 @@ namespace mindspore {
 namespace serving {
 
 template <class Derived>
-class MasterServiceContext : public GrpcAsyncServiceContext<MSServiceImpl, proto::MSService::AsyncService, Derived> {
+class ServiceGrpcContext : public GrpcAsyncServiceContext<MSServiceImpl, proto::MSService::AsyncService, Derived> {
  public:
-  MasterServiceContext(MSServiceImpl *service_impl, proto::MSService::AsyncService *async_service,
-                       grpc::ServerCompletionQueue *cq)
+  ServiceGrpcContext(MSServiceImpl *service_impl, proto::MSService::AsyncService *async_service,
+                     grpc::ServerCompletionQueue *cq)
       : GrpcAsyncServiceContext<MSServiceImpl, proto::MSService::AsyncService, Derived>(service_impl, async_service,
                                                                                         cq) {}
 
@@ -41,21 +41,22 @@ class MasterServiceContext : public GrpcAsyncServiceContext<MSServiceImpl, proto
   virtual void HandleRequest() = 0;
 };
 
-class MasterPredictContext : public MasterServiceContext<MasterPredictContext> {
+class ServicePredictContext : public ServiceGrpcContext<ServicePredictContext> {
  public:
-  MasterPredictContext(MSServiceImpl *service_impl, proto::MSService::AsyncService *async_service,
-                       grpc::ServerCompletionQueue *cq)
-      : MasterServiceContext<MasterPredictContext>(service_impl, async_service, cq), responder_(&ctx_) {}
+  ServicePredictContext(MSServiceImpl *service_impl, proto::MSService::AsyncService *async_service,
+                        grpc::ServerCompletionQueue *cq)
+      : ServiceGrpcContext<ServicePredictContext>(service_impl, async_service, cq), responder_(&ctx_) {}
 
-  ~MasterPredictContext() = default;
+  ~ServicePredictContext() = default;
 
   void StartEnqueueRequest() override { async_service_->RequestPredict(&ctx_, &request_, &responder_, cq_, cq_, this); }
 
   void HandleRequest() override {
     MSI_TIME_STAMP_START(RequestHandle)
-    PredictOnFinish on_finish = [this, time_start_RequestHandle]() {
+    auto instance_size = request_.instances_size();
+    PredictOnFinish on_finish = [this, time_start_RequestHandle, instance_size]() {
       responder_.Finish(response_, grpc::Status::OK, this);
-      MSI_TIME_STAMP_END(RequestHandle)
+      MSI_TIME_STAMP_END_EXTRA(RequestHandle, "Request count " + std::to_string(instance_size))
     };
     service_impl_->PredictAsync(&request_, &response_, on_finish);
   }
@@ -66,13 +67,13 @@ class MasterPredictContext : public MasterServiceContext<MasterPredictContext> {
   proto::PredictReply response_;
 };
 
-class MasterGrpcServer : public GrpcAsyncServer<proto::MSService::AsyncService> {
+class ServiceGrpcServer : public GrpcAsyncServer<proto::MSService::AsyncService> {
  public:
-  explicit MasterGrpcServer(std::shared_ptr<Dispatcher> dispatcher)
+  explicit ServiceGrpcServer(std::shared_ptr<Dispatcher> dispatcher)
       : GrpcAsyncServer<proto::MSService::AsyncService>(), service_impl_(MSServiceImpl(dispatcher)) {}
-  ~MasterGrpcServer() {}
+  ~ServiceGrpcServer() {}
 
-  void EnqueueRequests() override { MasterPredictContext::EnqueueRequest(&service_impl_, &svc_, cq_.get()); }
+  void EnqueueRequests() override { ServicePredictContext::EnqueueRequest(&service_impl_, &svc_, cq_.get()); }
 
  protected:
   MSServiceImpl service_impl_;

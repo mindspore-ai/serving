@@ -18,6 +18,7 @@ import os
 from functools import wraps
 
 from mindspore_serving import server
+from mindspore_serving import log as logger
 from mindspore_serving.client import Client
 
 servable_index = 0
@@ -44,11 +45,13 @@ class ServingTestBase:
 
     def init_servable_with_servable_config(self, version_number, servable_config_content,
                                            model_file="tensor_add.mindir"):
+        if not isinstance(model_file, (tuple, list)):
+            model_file = (model_file,)
         self.version_number = version_number
-        self.model_file_name = model_file
+        self.model_files = model_file
         self.servable_name_path = os.path.join(self.servable_dir, self.servable_name)
         self.version_number_path = os.path.join(self.servable_name_path, str(version_number))
-        self.model_file_name_path = os.path.join(self.version_number_path, model_file)
+        self.model_files_path = [os.path.join(self.version_number_path, file) for file in model_file]
 
         try:
             os.mkdir(self.servable_dir)
@@ -58,12 +61,14 @@ class ServingTestBase:
             os.mkdir(self.servable_name_path)
         except FileExistsError:
             pass
-        try:
-            os.mkdir(self.version_number_path)
-        except FileExistsError:
-            pass
-        with open(self.model_file_name_path, "w") as fp:
-            print("model content", file=fp)
+        if self.model_files_path:
+            try:
+                os.mkdir(self.version_number_path)
+            except FileExistsError:
+                pass
+        for file in self.model_files_path:
+            with open(file, "w") as fp:
+                print("model content", file=fp)
         if servable_config_content is not None:
             config_file = os.path.join(self.servable_name_path, "servable_config.py")
             with open(config_file, "w") as fp:
@@ -124,18 +129,14 @@ def serving_test(func):
         try:
             func(*args, **kwargs)
         except Exception:
+            logger.error("Serving test catch exception")
             serving_logs_dir = os.path.join(os.getcwd(), "serving_logs")
             os.system(f"ls -l {serving_logs_dir}/*.log && cat {serving_logs_dir}/*.log")
             raise
         finally:
+            logger.info("Serving test begin to clear")
             server.master.context.set_max_enqueued_requests(10000)
             server.stop()
-            servable_dir = os.path.join(os.getcwd(), "serving_python_ut_servables")
-            os.system(f"rm -rf {servable_dir}")
-            temp_rank_dir = os.path.join(os.getcwd(), "temp_rank_table")
-            os.system(f"rm -rf {temp_rank_dir}")
-            serving_logs_dir = os.path.join(os.getcwd(), "serving_logs")
-            os.system(f"rm -rf {serving_logs_dir}")
             global client_create_list
             for client in client_create_list:
                 del client.stub
@@ -145,6 +146,17 @@ def serving_test(func):
             for fun in exit_fun_list:
                 fun()
             exit_fun_list = []
+            servable_dir = os.path.join(os.getcwd(), "serving_python_ut_servables")
+            os.system(f"rm -rf {servable_dir}")
+            temp_rank_dir = os.path.join(os.getcwd(), "temp_rank_table")
+            os.system(f"rm -rf {temp_rank_dir}")
+            serving_logs_dir = os.path.join(os.getcwd(), "serving_logs")
+            os.system(f"rm -rf {serving_logs_dir}")
+            unix_socket_files_dir = os.path.join(os.getcwd(), "unix_socket_files")
+            os.system(f"rm -rf {unix_socket_files_dir}")
+            unix_socket_files_dir = os.path.join(os.getcwd(), "device_")
+            os.system(f"rm -rf {unix_socket_files_dir}*")
+            logger.info("Serving test end clear")
 
     return wrap_test
 
@@ -227,9 +239,7 @@ def str_concat_postprocess(text1, text2):
 
 @register.register_method(output_names=["text"])
 def str_concat(text1, text2):
-    x1, x2 = register.call_preprocess(preprocess, text1)
-    y = register.call_servable(x1, x2)    
-    text = register.call_postprocess(str_concat_postprocess, text1, text2)
+    text = register.add_stage(str_concat_postprocess, text1, text2, outputs_count=1)
     return text
     
 def str_empty_postprocess(text1, text2):
@@ -241,9 +251,7 @@ def str_empty_postprocess(text1, text2):
 
 @register.register_method(output_names=["text"])
 def str_empty(text1, text2):
-    x1, x2 = register.call_preprocess(preprocess, text1)
-    y = register.call_servable(x1, x2)    
-    text = register.call_postprocess(str_empty_postprocess, text1, text2)
+    text = register.add_stage(str_empty_postprocess, text1, text2, outputs_count=1)
     return text
 """
     base.init_servable_with_servable_config(1, servable_content)
@@ -258,19 +266,17 @@ def init_bytes_servable():
 def preprocess(other):
     return np.ones([2,2], np.float32), np.ones([2,2], np.float32)
 
-def bytes_concat_postprocess(text1, text2):
+def bytes_concat_process(text1, text2):
     text1 = bytes.decode(text1.tobytes()) # bytes decode to str
     text2 = bytes.decode(text2.tobytes()) # bytes decode to str
     return str.encode(text1 + text2) # str encode to bytes
 
 @register.register_method(output_names=["text"])
-def bytes_concat(text1, text2):
-    x1, x2 = register.call_preprocess(preprocess, text1)
-    y = register.call_servable(x1, x2)    
-    text = register.call_postprocess(bytes_concat_postprocess, text1, text2)
+def bytes_concat(text1, text2):  
+    text = register.add_stage(bytes_concat_process, text1, text2, outputs_count=1)
     return text
 
-def bytes_empty_postprocess(text1, text2):   
+def bytes_empty_process(text1, text2):   
     text1 = bytes.decode(text1.tobytes()) # bytes decode to str
     text2 = bytes.decode(text2.tobytes()) # bytes decode to str
     if len(text1) == 0:
@@ -281,9 +287,7 @@ def bytes_empty_postprocess(text1, text2):
 
 @register.register_method(output_names=["text"])
 def bytes_empty(text1, text2):
-    x1, x2 = register.call_preprocess(preprocess, text1)
-    y = register.call_servable(x1, x2)    
-    text = register.call_postprocess(bytes_empty_postprocess, text1, text2)
+    text = register.add_stage(bytes_empty_process, text1, text2, outputs_count=1)
     return text
 """
     base.init_servable_with_servable_config(1, servable_content)
@@ -295,39 +299,41 @@ def init_bool_int_float_servable():
     servable_content = servable_config_import
     servable_content += servable_config_declare_servable
     servable_content += r"""
-def preprocess(other):
-    return np.ones([2,2], np.float32), np.ones([2,2], np.float32)
-
-def bool_postprocess(bool_val):
+def bool_process(bool_val):
     return  ~bool_val
 
 @register.register_method(output_names=["value"])
 def bool_not(bool_val):
-    x1, x2 = register.call_preprocess(preprocess, bool_val)
-    y = register.call_servable(x1, x2)    
-    value = register.call_postprocess(bool_postprocess, bool_val)
+    value = register.add_stage(bool_process, bool_val, outputs_count=1)
     return value
 
-def int_postprocess(int_val):
+def int_process(int_val):
     return int_val + 1
 
 @register.register_method(output_names=["value"])
-def int_plus_1(int_val):
-    x1, x2 = register.call_preprocess(preprocess, int_val)
-    y = register.call_servable(x1, x2)    
-    value = register.call_postprocess(int_postprocess, int_val)
+def int_plus_1(int_val): 
+    value = register.add_stage(int_process, int_val, outputs_count=1)
     return value
     
-def float_postprocess(float_val):
+def float_process(float_val):
     value = (float_val + 1).astype(float_val.dtype) # also support float16 input and output
     return value   
     
 @register.register_method(output_names=["value"])
 def float_plus_1(float_val):
-    x1, x2 = register.call_preprocess(preprocess, float_val)
-    y = register.call_servable(x1, x2)    
-    value = register.call_postprocess(float_postprocess, float_val)
+    value = register.add_stage(float_process, float_val, outputs_count=1)
     return value
 """
     base.init_servable_with_servable_config(1, servable_content)
+    return base
+
+
+def start_serving_server(servable_content, model_file="tensor_add.mindir", version_number=1, start_version_number=None):
+    base = ServingTestBase()
+    base.init_servable_with_servable_config(version_number, servable_content, model_file=model_file)
+    if start_version_number is None:
+        start_version_number = version_number
+    server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0,
+                                                      version_number=start_version_number))
+    server.start_grpc_server("0.0.0.0:5500")
     return base

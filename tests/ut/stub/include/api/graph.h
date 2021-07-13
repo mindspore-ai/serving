@@ -40,6 +40,7 @@ class MS_API Graph {
  private:
   friend class GraphCell;
   friend class ModelImpl;
+  friend class GraphImplStubAdd;
   std::shared_ptr<GraphData> graph_data_;
 };
 }  // namespace mindspore

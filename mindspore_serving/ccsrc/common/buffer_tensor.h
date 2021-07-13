@@ -37,7 +37,7 @@ class BufferTensor : public TensorBase {
   // All the following interfaces are not for kMSI_String and kMSI_Bytes
   const uint8_t *data() const override;
   size_t data_size() const override;
-  bool resize_data(size_t data_len) override { MSI_LOG_EXCEPTION << "Buffer tensor cannot resize data"; }
+  bool resize_data(size_t data_len) override;
   uint8_t *mutable_data() override;
 
   // For kMSI_String and kMSI_Bytes

@@ -149,6 +149,7 @@ Status GrpcNotifyDistributeWorker::ParseAgentConfigAcquireReply(const proto::Age
   // parser reply message:AgentConfigAcquireReply, parameter:common_meta
   auto &temp_common_meta = reply.common_meta();
   config->common_meta.servable_name = temp_common_meta.servable_name();
+  config->common_meta.model_key = temp_common_meta.model_key();
   config->common_meta.with_batch_dim = temp_common_meta.with_batch_dim();
   for (auto &temp_without_batch_dim_inputs : temp_common_meta.without_batch_dim_inputs()) {
     config->common_meta.without_batch_dim_inputs.push_back(temp_without_batch_dim_inputs);

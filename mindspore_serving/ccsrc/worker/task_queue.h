@@ -25,118 +25,108 @@
 #include <mutex>
 #include <condition_variable>
 #include <atomic>
+#include <set>
+#include <thread>
+#include <map>
 #include "common/instance.h"
 
 namespace mindspore::serving {
 
-// key
-struct TaskContext {
-  uint64_t user_id = 0;
-  uint32_t instance_index = 0;
-  uint64_t worker_id = 0;
-  bool operator==(const TaskContext &other) const {
-    return user_id == other.user_id && instance_index == other.instance_index && worker_id == other.worker_id;
-  }
-  bool operator!=(const TaskContext &other) const { return !operator==(other); }
+struct TaskInfo {
+  std::string group_name;  // method name
+  std::string task_name;   // function name, model name
+  uint64_t priority = 0;
+  uint64_t batch_size = 0;
+  uint64_t subgraph = 0;  // for model
+  std::string tag;
 };
 
 struct TaskItem {
-  std::string task_type;  // preprocess, postprocess, pipeline, stop
-  std::string name;       // preprocess name, postprocess name
-  std::vector<TaskContext> context_list;
+  bool has_stopped = false;  // whether system is stopped
+  TaskInfo task_info;
   std::vector<InstancePtr> instance_list;
 };
 
 using TaskCallBack =
   std::function<void(const std::vector<InstancePtr> &inputs, const std::vector<ResultInstance> &output)>;
-// task queue for preprocess and postprocess
-class MS_API TaskQueue {
+
+struct TaskQueuePriority {
+  std::map<uint64_t, TaskItem> priority_que_map;  // priority: stage index, task list
+  uint64_t priority_que_instances_count = 0;
+};
+
+struct TaskQueueGroups {
+  std::map<std::string, TaskQueuePriority> group_que_map;  // group name: method name, task que
+  size_t next_exe_que = 0;                                 // next method index
+  uint64_t groups_que_instances_count = 0;
+};
+
+class TaskQueue {
  public:
   TaskQueue();
-  TaskQueue(std::shared_ptr<std::mutex> lock, std::shared_ptr<std::condition_variable> cond_var);
-  ~TaskQueue();
-
-  Status SetWorkerCallback(uint64_t worker_id, TaskCallBack on_task_done);
-
-  void PushTask(const std::string &task_name, uint64_t worker_id, const std::vector<InstancePtr> &inputs);
+  void Start(const std::string &que_name, const std::vector<TaskInfo> &task_infos, TaskCallBack callback);
+  void Stop();
+  void PushTask(const std::string &group_name, size_t priority, const std::vector<InstancePtr> &instances);
   void PopTask(TaskItem *task_item);
-  void TryPopTask(TaskItem *task_item);
-  void PushTaskResult(uint64_t worker_id, const InstancePtr &input, const ResultInstance &output);
-  void PushTaskResult(uint64_t worker_id, const std::vector<InstancePtr> &inputs,
-                      const std::vector<ResultInstance> &outputs);
-  void TryPopPyTask(TaskItem *task_item);
-  Status PushTaskPyResult(const std::vector<ResultInstance> &outputs);
 
-  void Start();
-  void Stop();
-  bool Empty() const;
+  void PushTaskResult(const InstancePtr &input, const ResultInstance &output);
+  void PushTaskResult(const std::vector<InstancePtr> &inputs, const std::vector<ResultInstance> &outputs);
+  void PushTaskResult(const std::vector<InstancePtr> &inputs, const Status &failed_result);
 
-  static bool IsValidTask(const TaskItem &task_item);
+  bool IsRunning() const { return is_running; }
 
  private:
-  std::unordered_map<std::string, TaskItem> task_map_;
-  std::queue<std::string> task_priority_list_;
-  TaskItem task_item_processing_;
-  std::unordered_map<uint64_t, TaskCallBack> callback_map_;
-  std::shared_ptr<std::mutex> lock_ = std::make_shared<std::mutex>();
-  std::shared_ptr<std::condition_variable> cond_var_ = std::make_shared<std::condition_variable>();
-  std::atomic<bool> is_running = false;
+  std::string que_name_;
+  TaskQueueGroups methods_queue_;
+
+  TaskCallBack task_callback_ = nullptr;
+  std::mutex que_lock_;  // Lock only when the queue changes to avoid deadlock caused by lock in complex scenarios.
+  std::condition_variable cond_var_;
+  bool is_running = false;
+
+  std::chrono::steady_clock::time_point time_last_ = std::chrono::steady_clock::now();
+
+  bool FindProcessTaskQueue(std::string *method_name);
 };
 
-class MS_API PyTaskQueueGroup {
+class MS_API PyTaskQueue {
  public:
-  PyTaskQueueGroup();
-  ~PyTaskQueueGroup();
+  PyTaskQueue() = default;
+  ~PyTaskQueue() = default;
 
-  std::shared_ptr<TaskQueue> GetPreprocessTaskQueue();
-  std::shared_ptr<TaskQueue> GetPostprocessTaskQueue();
-  std::shared_ptr<TaskQueue> GetPipelineTaskQueue();
-  void PopPyTask(TaskItem *task_item);
-  void PopPipelineTask(TaskItem *task_item);
-  void TryPopPreprocessTask(TaskItem *task_item);
-  void TryPopPostprocessTask(TaskItem *task_item);
-  void TryPopPipelineTask(TaskItem *task_item);
-  void Start();
+  void Start(const std::string &que_name, const std::vector<MethodStage> &stage_infos, TaskCallBack callback);
   void Stop();
+  void PushTask(const std::string &method_name, size_t stage_index, const std::vector<InstancePtr> &instances);
+  // for python task
+  void PyPopTask(TaskItem *task_item);
+  void PyPushTaskResult(const std::vector<ResultInstance> &outputs);
+  TaskInfo GetHandledTaskInfo() const { return py_task_item_processing_.task_info; }
+
+  bool IsRunning() const { return task_queue_.IsRunning(); }
 
  private:
-  std::shared_ptr<std::mutex> lock_ = std::make_shared<std::mutex>();
-  std::shared_ptr<std::condition_variable> cond_var_ = std::make_shared<std::condition_variable>();
-  std::shared_ptr<std::mutex> pipeline_lock_ = std::make_shared<std::mutex>();
-  std::shared_ptr<std::condition_variable> cond_pipeline_ = std::make_shared<std::condition_variable>();
-  std::atomic<bool> is_running = false;
-  std::shared_ptr<TaskQueue> preprocess_task_que_ = std::make_shared<TaskQueue>(lock_, cond_var_);
-  std::shared_ptr<TaskQueue> postprocess_task_que_ = std::make_shared<TaskQueue>(lock_, cond_var_);
-  std::shared_ptr<TaskQueue> pipeline_task_que_ = std::make_shared<TaskQueue>(pipeline_lock_, cond_pipeline_);
+  TaskQueue task_queue_;
+  TaskItem py_task_item_processing_;
 };
 
-class TaskQueueThreadPool {
+class CppTaskQueueThreadPool {
  public:
-  TaskQueueThreadPool();
-  virtual ~TaskQueueThreadPool();
+  CppTaskQueueThreadPool();
+  virtual ~CppTaskQueueThreadPool();
 
-  void Start(uint32_t size = 4);
+  void Start(const std::string &que_name, const std::vector<MethodStage> &stage_infos, TaskCallBack callback,
+             uint32_t size = 4);
   void Stop();
 
-  std::shared_ptr<TaskQueue> GetTaskQueue() { return task_queue_; }
+  void PushTask(const std::string &method_name, size_t stage_index, const std::vector<InstancePtr> &instances);
 
  protected:
+  TaskQueue task_queue_;
   std::atomic<bool> is_running_ = false;
   std::vector<std::thread> pool_;
-  std::shared_ptr<TaskQueue> task_queue_ = std::make_shared<TaskQueue>();
 
-  virtual Status HandleTask(const TaskItem &task_item) = 0;
-  static void ThreadFunc(TaskQueueThreadPool *thread_pool);
-};
-
-class PreprocessThreadPool : public TaskQueueThreadPool {
- protected:
-  Status HandleTask(const TaskItem &task_item) override;
-};
-
-class PostprocessThreadPool : public TaskQueueThreadPool {
- protected:
-  Status HandleTask(const TaskItem &task_item) override;
+  Status HandleTask(const TaskItem &task_item);
+  static void ThreadFunc(CppTaskQueueThreadPool *thread_pool);
 };
 
 }  // namespace mindspore::serving

@@ -20,9 +20,10 @@ import signal
 
 import mindspore_serving.log as logger
 from mindspore_serving.server.worker import init_mindspore
-from mindspore_serving.server.master import start_master_server, stop_on_except, stop, at_stop_list
+from mindspore_serving.server.master import start_master_server, stop_on_except, stop, at_stop_list, only_model_stage
 from mindspore_serving.server._servable_common import WorkerContext
 from mindspore_serving.server._servable_local import ServableStartConfig, ServableContextData, merge_config
+from mindspore_serving.server._servable_local import ServableExtraContextData
 from mindspore_serving.server.distributed._servable_distributed import DistributedStartConfig, DistributedContextData
 from mindspore_serving._mindspore_serving import ExitSignalHandle_
 
@@ -79,9 +80,10 @@ def start_servables(servable_configs):
     logger.info("Servable configs:")
     for config in servable_configs:
         if isinstance(config, ServableStartConfig):
-            logger.info(f"servable directory: {config.servable_directory}, servable name: {config.servable_name}, "
-                        f"running version number: {config.version_number}, device ids:{config.device_ids}, "
-                        f"device type: {config.device_type}")
+            logger.info(
+                f"servable directory: {config.servable_directory}, servable name: {config.servable_name}, "
+                f"running version number: {config.version_number}, device ids:{config.device_ids}, "
+                f"device type: {config.device_type}")
         if isinstance(config, DistributedStartConfig):
             logger.info(f"distributed servable, servable directory: {config.servable_directory}, "
                         f"servable name: {config.servable_name}, rank table json file: {config.rank_table_json_file}, "
@@ -99,6 +101,16 @@ def start_servables(servable_configs):
     start_master_server(address=master_address)
 
     signal.signal(signal.SIGCHLD, signal.SIG_IGN)
+
+    worker_list = _start_workers_with_devices(master_address, servable_configs)
+    _listening_workers_when_startup(worker_list)
+    extra_worker_list = _start_extra_workers(master_address, servable_configs)
+    worker_list.extend(extra_worker_list)
+    _listening_workers_after_startup(worker_list)
+
+
+def _start_workers_with_devices(master_address, servable_configs):
+    """Start workers that occupy devices"""
     worker_list = []
     for config in servable_configs:
         if isinstance(config, ServableStartConfig):
@@ -120,9 +132,33 @@ def start_servables(servable_configs):
                 _send_exit_signal_to_children(worker_list)
                 raise RuntimeError(f"Start worker failed: {e}")
             worker_list.append(worker_context)
+    return worker_list
 
+
+def _start_extra_workers(master_address, servable_configs):
+    """Start workers that do not occupy devices"""
+    worker_list = []
+    for config in servable_configs:
+        if not isinstance(config, ServableStartConfig):
+            continue
+        if len(config.device_ids) >= config.num_parallel_workers:
+            continue
+        if only_model_stage(config.servable_name):
+            logger.warning(f"There is no need to startup additional worker processes, all stages are models, servable:"
+                           f" {config.servable_name}")
+            continue
+        extra_worker_count = config.num_parallel_workers - len(config.device_ids)
+        for index in range(extra_worker_count):
+            try:
+                context_data = ServableExtraContextData(config, master_address, index)
+                sub_process = context_data.new_worker_process()
+                worker_context = WorkerContext(context_data, master_address, sub_process)
+            except RuntimeError as e:
+                _send_exit_signal_to_children(worker_list)
+                raise RuntimeError(f"Start worker failed: {e}")
+            worker_list.append(worker_context)
     _listening_workers_when_startup(worker_list)
-    _listening_workers_after_startup(worker_list)
+    return worker_list
 
 
 def _send_exit_signal_to_children(worker_list):
@@ -153,6 +189,8 @@ def _send_exit_signal_to_children(worker_list):
 
 def _listening_workers_when_startup(worker_list):
     """Listening child process"""
+    if not worker_list:
+        return
     time_last = time.time()
     while True:
         time.sleep(0.1)
@@ -194,11 +232,12 @@ def _listening_workers_after_startup(worker_list):
                 break
             alive_count = 0
             for worker in worker_list:
+                occupy_device_worker = 1 if worker.own_device() else 0
                 if worker.is_in_process_switching:
-                    alive_count += 1
+                    alive_count += occupy_device_worker
                     continue
                 if worker.is_alive():
-                    alive_count += 1
+                    alive_count += occupy_device_worker
                     if worker.is_unavailable():
                         worker.restart_worker()
                     continue
@@ -210,12 +249,13 @@ def _listening_workers_after_startup(worker_list):
                     # has exit for 1s and there were no normal handled requests
                     if not worker.can_be_restart():
                         continue
-                    logger.warning(f"detect worker process has exited, try to restart, servable: {worker.to_string()}")
+                    logger.warning(
+                        f"detect worker process has exited, try to restart, servable: {worker.to_string()}")
                     worker.restart_worker()
-                alive_count += 1
+                alive_count += occupy_device_worker
 
             if not alive_count:
-                logger.warning("Serving server begin to exit: all worker processes have exited")
+                logger.warning("Serving server begin to exit: all worker processes that occupy devices have exited")
                 break
 
         _send_exit_signal_to_children(worker_list)

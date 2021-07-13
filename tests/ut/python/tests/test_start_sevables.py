@@ -100,8 +100,7 @@ def test_start_servable_version_number_invalid_failed():
             server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0, version_number=2))
         assert False
     except RuntimeError as e:
-        assert "There is no servable of the specified version number, " \
-               "specified version number: " in str(e)
+        assert "There is no specified version directory of models, specified version number: 2" in str(e)
 
 
 @serving_test
@@ -113,7 +112,7 @@ def test_start_servable_version_number_invalid2_failed():
             server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0, version_number=0))
         assert False
     except RuntimeError as e:
-        assert "There is no valid version of servable, " in str(e)
+        assert "There is no valid version directory of models" in str(e)
 
 
 @serving_test
@@ -271,6 +270,7 @@ def test_servable_start_config_merge_diff_version_same_device_ids_failed():
     config1 = server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=2, version_number=1)
     try:
         server.start_servables((config0, config1))
+        assert False
     except RuntimeError as e:
         assert "Ascend 910 device id 2 is used repeatedly in servable" in str(e)
 
@@ -283,6 +283,7 @@ def test_servable_start_config_same_servable_name_diff_directory_failed():
     config1 = server.ServableStartConfig(base.servable_dir + "2", base.servable_name, device_ids=2, version_number=1)
     try:
         server.start_servables((config0, config1))
+        assert False
     except RuntimeError as e:
         assert f"The servable directory of servable name {base.servable_name} is different in multiple configurations" \
                in str(e)
@@ -300,6 +301,7 @@ def test_servable_start_config_multi_servable_same_device_id():
     config1 = server.ServableStartConfig(base.servable_dir, base.servable_name + "2", device_ids=2, version_number=1)
     try:
         server.start_servables((config0, config1))
+        assert False
     except RuntimeError as e:
         assert "Ascend 910 device id 2 is used repeatedly in servable" in str(e)
 
@@ -336,15 +338,15 @@ def test_servable_start_config_merge_diff_version_diff_dec_key_success():
     shutil.copytree(os.path.join(base.servable_dir, base.servable_name, "1"),
                     os.path.join(base.servable_dir, base.servable_name, "2"))
     config0 = server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=1, version_number=0,
-                                         dec_key=("ABC"*8).encode(), dec_mode='AES-GCM')
+                                         dec_key=("ABC" * 8).encode(), dec_mode='AES-GCM')
     config1 = server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=2, version_number=1,
-                                         dec_key=("DEF"*8).encode(), dec_mode='AES-CBC')
+                                         dec_key=("DEF" * 8).encode(), dec_mode='AES-CBC')
     config_ret = merge_config((config0, config1))
     assert len(config_ret) == 2
-    assert config_ret[0].dec_key == ("ABC"*8).encode()  # newest version
+    assert config_ret[0].dec_key == ("ABC" * 8).encode()  # newest version
     assert config_ret[0].dec_mode == "AES-GCM"
 
-    assert config_ret[1].dec_key == ("DEF"*8).encode()  # newest version
+    assert config_ret[1].dec_key == ("DEF" * 8).encode()  # newest version
     assert config_ret[1].dec_mode == "AES-CBC"
 
 
@@ -353,10 +355,29 @@ def test_servable_start_config_merge_same_version_diff_dec_key_failed():
     base = ServingTestBase()
     base.init_servable(1, "add_servable_config.py")
     config0 = server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=1, version_number=0,
-                                         dec_key=("ABC"*8).encode(), dec_mode='AES-GCM')
+                                         dec_key=("ABC" * 8).encode(), dec_mode='AES-GCM')
     config1 = server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=2, version_number=1,
-                                         dec_key=("DEF"*8).encode(), dec_mode='AES-CBC')
+                                         dec_key=("DEF" * 8).encode(), dec_mode='AES-CBC')
     try:
         server.start_servables((config0, config1))
+        assert False
     except RuntimeError as e:
         assert "The dec key or dec mode of servable name" in str(e)
+
+
+@serving_test
+def test_servable_start_config_with_dec_success():
+    servable_content = r"""
+import numpy as np
+from mindspore_serving.server import register
+tensor_add = register.declare_model(model_file="tensor_add.mindir", model_format="MindIR")
+
+@register.register_method(output_names=["y"])
+def add_cast(x1, x2):
+    y = register.add_stage(tensor_add, x1, x2, outputs_count=1)
+    return y
+"""
+    base = ServingTestBase()
+    base.init_servable_with_servable_config(1, servable_content)
+    server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0,
+                                                      dec_key="ABCDEFGHABCDEFGH".encode(), dec_mode='AES-GCM'))

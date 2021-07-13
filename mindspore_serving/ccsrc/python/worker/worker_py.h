@@ -19,6 +19,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <vector>
 #include "common/serving_common.h"
 #include "worker/worker.h"
 #include "worker/task_queue.h"
@@ -37,31 +38,23 @@ class MS_API PyWorker {
                                        const std::string &distributed_address, const std::string &master_address,
                                        const std::string &worker_address, uint32_t wait_agents_time_in_seconds);
 
-  static int GetBatchSize();
+  static void StartExtraServable(const std::string &model_directory, const std::string &model_name,
+                                 uint32_t version_number, const std::string &master_address,
+                                 const std::string &worker_address);
+
+  static std::vector<std::string> GetDeclaredModelNames();
+
   static void WaitAndClear();
   static void StopAndClear();
+  static bool EnablePyTaskQueue();
   static TaskItem GetPyTask();
-  static TaskItem GetPipelineTask();
-  static TaskItem TryGetPreprocessPyTask();
-  static TaskItem TryGetPostprocessPyTask();
-  static TaskItem TryGetPipelinePyTask();
-  static void PushPipelinePyResult(const py::tuple &output_batch);
-  static void PushPipelinePyFailed(int count);
-  static void PushPreprocessPyResult(const py::tuple &output_batch);
-  static void PushPreprocessPyFailed(int count);
 
-  static void PushPostprocessPyResult(const py::tuple &output_batch);
-  static void PushPostprocessPyFailed(int count);
-  static void PushPreprocessPySystemFailed();
-  static void PushPostprocessPySystemFailed();
-  static void PushPipelinePySystemFailed();
+  static void PushPyTaskResult(const py::tuple &instance_outputs);
+  static void PushPyTaskFailed(int count, const std::string &error_msg);
+  static void PushPyTaskSystemFailed(const std::string &error_msg);
   static std::string GetDeviceType();
   // for grpc notify failed of worker
   static void NotifyFailed(const std::string &master_address, const std::string &error_msg);
-
- private:
-  static void OnEndStartServable(const std::string &servable_directory, const std::string &servable_name,
-                                 uint32_t spec_version_number, uint32_t started_version_number);
 };
 
 }  // namespace mindspore::serving

@@ -18,23 +18,21 @@ import inspect
 import ast
 from functools import wraps
 
-from mindspore_serving._mindspore_serving import ServableStorage_, PipelineStorage_
-from mindspore_serving._mindspore_serving import PipelineSignature_, MethodSignature_, PredictPhaseTag_
+from mindspore_serving._mindspore_serving import ServableRegister_
+from mindspore_serving._mindspore_serving import MethodSignature_
 from mindspore_serving import log as logger
-from mindspore_serving.server.common import check_type
+from mindspore_serving.server.common import check_type, deprecated
 from .utils import get_func_name, get_servable_dir
-from .preprocess import register_preprocess, check_preprocess
-from .postprocess import register_postprocess, check_postprocess
-from .pipeline import register_pipeline_args
+from .stage_function import register_stage_function, check_stage_function
+from .model import g_declared_models, Model
 
 method_def_context_ = MethodSignature_()
-method_def_ast_meta_ = {}
-pipeline_def_context_ = PipelineSignature_()
+cur_stage_index_ = 0
+has_called_preprocess_ = False
+has_called_servable_ = False
+has_called_postprocess_ = False
 
-method_tag_input = PredictPhaseTag_.kPredictPhaseTag_Input
-method_tag_preprocess = PredictPhaseTag_.kPredictPhaseTag_Preproces
-method_tag_predict = PredictPhaseTag_.kPredictPhaseTag_Predict
-method_tag_postprocess = PredictPhaseTag_.kPredictPhaseTag_Postprocess
+method_def_ast_meta_ = []
 
 
 class _TensorDef:
@@ -45,7 +43,7 @@ class _TensorDef:
         self.tensor_index = tensor_index
 
     def as_pair(self):
-        return (self.tag, self.tensor_index)
+        return self.tag, self.tensor_index
 
 
 def _create_tensor_def_outputs(tag, outputs_cnt):
@@ -56,12 +54,12 @@ def _create_tensor_def_outputs(tag, outputs_cnt):
     return tuple(result)
 
 
-def _wrap_fun_to_pipeline(fun, input_count):
+def _wrap_fun_to_batch(fun, input_count):
     """wrap preprocess and postprocess to pipeline"""
     argspec_len = len(inspect.signature(fun).parameters)
     if argspec_len != input_count:
-        raise RuntimeError(f"function {fun.__name__} input args count {argspec_len} not match "
-                           f"registered in method count {input_count}")
+        raise RuntimeError(f"function {fun.__name__} input args count {argspec_len} not match the count {input_count} "
+                           f"registered in method")
 
     @wraps(fun)
     def call_func(instances):
@@ -74,13 +72,78 @@ def _wrap_fun_to_pipeline(fun, input_count):
     return call_func
 
 
+def _get_stage_outputs_count(call_name):
+    global method_def_ast_meta_
+    method_name = method_def_context_.method_name
+    if call_name not in method_def_ast_meta_:
+        raise RuntimeError(
+            f"Failed to parse method '{method_name}', complex statements such as conditions and loops are not supported"
+            f" in register_method when the interface '{call_name}' is used, use 'add_stage' to replace '{call_name}'")
+    _, outputs_count = method_def_ast_meta_[call_name]
+    return outputs_count
+
+
+@deprecated("1.5.0", "mindspore_serving.server.register.add_stage")
+def call_preprocess(preprocess_fun, *args):
+    r"""For method registration, define the preprocessing function and its' parameters.
+
+    .. warning::
+        'call_preprocess' is deprecated from version 1.5.0 and will be removed in a future version, use
+        'mindspore_serving.server.register.add_stage' instead.
+
+    Note:
+        The length of 'args' should be equal to the inputs number of preprocess_fun.
+
+    Args:
+        preprocess_fun (function): Python function for preprocess.
+        args: Preprocess inputs. The length of 'args' should equal to the input parameters number
+            of implemented python function.
+
+    Raises:
+        RuntimeError: The type or value of the parameters are invalid, or other error happened.
+
+    Examples:
+        >>> from mindspore_serving.server import register
+        >>> import numpy as np
+        >>> def add_trans_datatype(x1, x2):
+        ...     return x1.astype(np.float32), x2.astype(np.float32)
+        >>>
+        >>> register.declare_servable(servable_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=False)
+        >>>
+        >>> @register.register_method(output_names=["y"]) # register add_cast method in add
+        >>> def add_cast(x1, x2):
+        ...     x1, x2 = register.call_preprocess(add_trans_datatype, x1, x2)  # cast input to float32
+        ...     y = register.call_servable(x1, x2)
+        ...     return y
+    """
+    global method_def_context_
+    global has_called_preprocess_, has_called_servable_, has_called_postprocess_
+    if has_called_preprocess_:
+        raise RuntimeError(f"Check failed in method '{method_def_context_.method_name}', "
+                           f"call_preprocess or call_preprocess_pipeline should not be invoked more than once")
+    if has_called_servable_:
+        raise RuntimeError(f"Check failed in method '{method_def_context_.method_name}', "
+                           f"call_servable should be invoked after call_preprocess")
+    if has_called_postprocess_:
+        raise RuntimeError(f"Check failed in method '{method_def_context_.method_name}', "
+                           f"call_postprocess or call_postprocess_pipeline should be invoked after call_preprocess")
+    has_called_preprocess_ = True
+    outputs_count = _get_stage_outputs_count('call_preprocess')
+    return add_stage(preprocess_fun, *args, outputs_count=outputs_count, tag="Preprocess")
+
+
+@deprecated("1.5.0", "mindspore_serving.server.register.add_stage")
 def call_preprocess_pipeline(preprocess_fun, *args):
     r"""For method registration, define the preprocessing pipeline function and its' parameters.
+
+    .. warning::
+        'call_preprocess_pipeline' is deprecated from version 1.5.0 and will be removed in a future version, use
+        'mindspore_serving.server.register.add_stage' instead.
 
     A single request can include multiple instances, so multiple queued requests will also have multiple instances.
     If you need to process multiple instances through multi thread or other parallel processing capability
     in `preprocess` or `postprocess`, such as using MindData concurrency ability to process multiple input
-    images in `preprocess`, MindSpore Serving provides 'call_preprocess_pipeline' and 'call_pstprocess_pipeline'
+    images in `preprocess`, MindSpore Serving provides 'call_preprocess_pipeline' and 'call_postprocess_pipeline'
     to register such preprocessing and postprocessing. For more detail,
     please refer to `Resnet50 model configuration example
     <https://gitee.com/mindspore/serving/blob/master/example/resnet/resnet50/servable_config.py>`_.
@@ -111,190 +174,28 @@ def call_preprocess_pipeline(preprocess_fun, *args):
         ...     return y
     """
     global method_def_context_
-    if method_def_context_.preprocess_name:
+    global has_called_preprocess_, has_called_servable_, has_called_postprocess_
+    if has_called_preprocess_:
         raise RuntimeError(f"Check failed in method '{method_def_context_.method_name}', "
                            f"call_preprocess or call_preprocess_pipeline should not be invoked more than once")
-    if method_def_context_.servable_name:
+    if has_called_servable_:
         raise RuntimeError(f"Check failed in method '{method_def_context_.method_name}', "
                            f"call_servable should be invoked after call_preprocess_pipeline")
-    if method_def_context_.postprocess_name:
+    if has_called_postprocess_:
         raise RuntimeError(f"Check failed in method '{method_def_context_.method_name}', call_postprocess "
                            f"or call_postprocess_pipeline should be invoked after call_preprocess_pipeline")
-
-    if _call_preprocess_pipeline_name not in method_def_ast_meta_:
-        raise RuntimeError(f"Invalid call of '{_call_preprocess_pipeline_name}'")
-    inputs_count, outputs_count = method_def_ast_meta_[_call_preprocess_pipeline_name]
-
-    preprocess_name = preprocess_fun
-    if inspect.isfunction(preprocess_fun):
-        register_preprocess(preprocess_fun, inputs_count=inputs_count, outputs_count=outputs_count)
-        preprocess_name = get_servable_dir() + "." + get_func_name(preprocess_fun)
-    else:
-        if not isinstance(preprocess_name, str):
-            raise RuntimeError(
-                f"Check failed in method '{method_def_context_.method_name}', "
-                f"call_preprocess first must be function or str, now is {type(preprocess_name)}")
-        check_preprocess(preprocess_name, inputs_count=inputs_count, outputs_count=outputs_count)
-
-    method_def_context_.preprocess_name = preprocess_name
-    method_def_context_.preprocess_inputs = [item.as_pair() for item in args]
-
-    return _create_tensor_def_outputs(method_tag_preprocess, outputs_count)
+    has_called_preprocess_ = True
+    outputs_count = _get_stage_outputs_count('call_preprocess_pipeline')
+    return add_stage(preprocess_fun, *args, outputs_count=outputs_count, batch_size=1, tag="Preprocess")
 
 
-def call_preprocess(preprocess_fun, *args):
-    r"""For method registration, define the preprocessing function and its' parameters.
-
-    Note:
-        The length of 'args' should be equal to the inputs number of preprocess_fun.
-
-    Args:
-        preprocess_fun (function): Python function for preprocess.
-        args: Preprocess inputs. The length of 'args' should equal to the input parameters number
-            of implemented python function.
-
-    Raises:
-        RuntimeError: The type or value of the parameters are invalid, or other error happened.
-
-    Examples:
-        >>> from mindspore_serving.server import register
-        >>> import numpy as np
-        >>> def add_trans_datatype(x1, x2):
-        ...     return x1.astype(np.float32), x2.astype(np.float32)
-        >>>
-        >>> register.declare_servable(servable_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=False)
-        >>>
-        >>> @register.register_method(output_names=["y"]) # register add_cast method in add
-        >>> def add_cast(x1, x2):
-        ...     x1, x2 = register.call_preprocess(add_trans_datatype, x1, x2)  # cast input to float32
-        ...     y = register.call_servable(x1, x2)
-        ...     return y
-    """
-    global method_def_context_
-    if method_def_context_.preprocess_name:
-        raise RuntimeError(f"Check failed in method '{method_def_context_.method_name}', "
-                           f"call_preprocess or call_preprocess_pipeline should not be invoked more than once")
-    if method_def_context_.servable_name:
-        raise RuntimeError(f"Check failed in method '{method_def_context_.method_name}', "
-                           f"call_servable should be invoked after call_preprocess")
-    if method_def_context_.postprocess_name:
-        raise RuntimeError(f"Check failed in method '{method_def_context_.method_name}', "
-                           f"call_postprocess or call_postprocess_pipeline should be invoked after call_preprocess")
-
-    if _call_preprocess_name not in method_def_ast_meta_:
-        raise RuntimeError(f"Invalid call of '{_call_preprocess_name}'")
-    inputs_count, outputs_count = method_def_ast_meta_[_call_preprocess_name]
-
-    preprocess_name = preprocess_fun
-    if inspect.isfunction(preprocess_fun):
-        register_preprocess(_wrap_fun_to_pipeline(preprocess_fun, inputs_count),
-                            inputs_count=inputs_count, outputs_count=outputs_count)
-        preprocess_name = get_servable_dir() + "." + get_func_name(preprocess_fun)
-    else:
-        if not isinstance(preprocess_name, str):
-            raise RuntimeError(
-                f"Check failed in method '{method_def_context_.method_name}', "
-                f"call_preprocess first must be function or str, now is {type(preprocess_name)}")
-        check_preprocess(preprocess_name, inputs_count=inputs_count, outputs_count=outputs_count)
-
-    method_def_context_.preprocess_name = preprocess_name
-    method_def_context_.preprocess_inputs = [item.as_pair() for item in args]
-
-    return _create_tensor_def_outputs(method_tag_preprocess, outputs_count)
-
-
-def call_servable(*args, subgraph=0):
-    r"""For method registration, define the inputs data of model inference.
-
-    Note:
-        The length of 'args' should be equal to the inputs number of model.
-
-    Args:
-        args: Model's inputs, the length of 'args' should be equal to the inputs number of model.
-        subgraph (int, optional): The number of subgraph in model. Number starts at 0. Default: 0.
-
-    Raises:
-        RuntimeError: The type or value of the parameters are invalid, or other error happened.
-
-    Examples:
-        >>> from mindspore_serving.server import register
-        >>> register.declare_servable(servable_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=False)
-        >>>
-        >>> @register.register_method(output_names=["y"]) # register add_common method in add
-        >>> def add_common(x1, x2):
-        ...     y = register.call_servable(x1, x2)
-        ...     return y
-    """
-    check_type.check_int('subgraph', subgraph, 0)
-    global method_def_context_
-    if method_def_context_.servable_name:
-        raise RuntimeError(f"Check failed in method '{method_def_context_.method_name}', "
-                           f"call_servable should not be invoked more than once")
-    if method_def_context_.postprocess_name:
-        raise RuntimeError(f"Check failed in method '{method_def_context_.method_name}', "
-                           f"call_postprocess or call_postprocess_pipeline should be invoked after call_servable")
-
-    servable_name = get_servable_dir()
-    inputs_count, outputs_count = method_def_ast_meta_[_call_servable_name]
-    ServableStorage_.register_servable_input_output_info(servable_name, inputs_count, outputs_count, subgraph)
-    if inputs_count != len(args):
-        raise RuntimeError(f"Check failed in method '{method_def_context_.method_name}', given servable input "
-                           f"size {len(args)} not match '{servable_name}' ast parse size {inputs_count}")
-
-    method_def_context_.servable_name = servable_name
-    method_def_context_.servable_inputs = [item.as_pair() for item in args]
-    method_def_context_.subgraph = subgraph
-
-    return _create_tensor_def_outputs(method_tag_predict, outputs_count)
-
-
-def call_postprocess_pipeline(postprocess_fun, *args):
-    r"""For method registration, define the postprocessing pipeline function and its' parameters.
-
-    A single request can include multiple instances, so multiple queued requests will also have multiple instances.
-    If you need to process multiple instances through multi thread or other parallel processing capability
-    in `preprocess` or `postprocess`, such as using MindData concurrency ability to process multiple input
-    images in `preprocess`, MindSpore Serving provides 'call_preprocess_pipeline' and 'call_pstprocess_pipeline'
-    to register such preprocessing and postprocessing. For more detail,
-    please refer to `Resnet50 model configuration example
-    <https://gitee.com/mindspore/serving/blob/master/example/resnet/resnet50/servable_config.py>`_.
-
-    Args:
-        postprocess_fun (function): Python pipeline function for postprocess.
-        args: Preprocess inputs. The length of 'args' should equal to the input parameters number
-            of implemented python function.
-
-    Raises:
-        RuntimeError: The type or value of the parameters are invalid, or other error happened.
-    """
-    global method_def_context_
-    if method_def_context_.postprocess_name:
-        raise RuntimeError(f"Check failed in method '{method_def_context_.method_name}', "
-                           f"call_postprocess or call_postprocess_pipeline should not be invoked more than once")
-
-    if _call_postprocess_pipeline_name not in method_def_ast_meta_:
-        raise RuntimeError(f"Invalid call of '{_call_postprocess_pipeline_name}'")
-    inputs_count, outputs_count = method_def_ast_meta_[_call_postprocess_pipeline_name]
-
-    postprocess_name = postprocess_fun
-    if inspect.isfunction(postprocess_fun):
-        register_postprocess(postprocess_fun, inputs_count=inputs_count, outputs_count=outputs_count)
-        postprocess_name = get_servable_dir() + "." + get_func_name(postprocess_fun)
-    else:
-        if not isinstance(postprocess_name, str):
-            raise RuntimeError(
-                f"Check failed in method '{method_def_context_.method_name}', "
-                f"call_postprocess first must be function or str, now is {type(postprocess_name)}")
-        check_postprocess(postprocess_name, inputs_count=inputs_count, outputs_count=outputs_count)
-
-    method_def_context_.postprocess_name = postprocess_name
-    method_def_context_.postprocess_inputs = [item.as_pair() for item in args]
-
-    return _create_tensor_def_outputs(method_tag_postprocess, outputs_count)
-
-
+@deprecated("1.5.0", "mindspore_serving.server.register.add_stage")
 def call_postprocess(postprocess_fun, *args):
     r"""For method registration, define the postprocessing function and its' parameters.
+
+    .. warning::
+        'call_postprocess' is deprecated from version 1.5.0 and will be removed in a future version, use
+        'mindspore_serving.server.register.add_stage' instead.
 
     Note:
         The length of 'args' should be equal to the inputs number of postprocess_fun.
@@ -308,47 +209,231 @@ def call_postprocess(postprocess_fun, *args):
         RuntimeError: The type or value of the parameters are invalid, or other error happened.
     """
     global method_def_context_
-    if method_def_context_.postprocess_name:
+    global has_called_postprocess_
+    if has_called_postprocess_:
         raise RuntimeError(f"Check failed in method '{method_def_context_.method_name}', "
                            f"call_postprocess or call_postprocess_pipeline should not be invoked more than once")
+    has_called_postprocess_ = True
+    outputs_count = _get_stage_outputs_count('call_postprocess')
+    return add_stage(postprocess_fun, *args, outputs_count=outputs_count, tag="Postprocess")
 
-    if _call_postprocess_name not in method_def_ast_meta_:
-        raise RuntimeError(f"Invalid call of '{_call_postprocess_name}'")
-    inputs_count, outputs_count = method_def_ast_meta_[_call_postprocess_name]
 
-    postprocess_name = postprocess_fun
-    if inspect.isfunction(postprocess_fun):
-        register_postprocess(_wrap_fun_to_pipeline(postprocess_fun, inputs_count),
-                             inputs_count=inputs_count, outputs_count=outputs_count)
-        postprocess_name = get_servable_dir() + "." + get_func_name(postprocess_fun)
+@deprecated("1.5.0", "mindspore_serving.server.register.add_stage")
+def call_postprocess_pipeline(postprocess_fun, *args):
+    r"""For method registration, define the postprocessing pipeline function and its' parameters.
+
+    .. warning::
+        'call_postprocess_pipeline' is deprecated from version 1.5.0 and will be removed in a future version, use
+        'mindspore_serving.server.register.add_stage' instead.
+
+    A single request can include multiple instances, so multiple queued requests will also have multiple instances.
+    If you need to process multiple instances through multi thread or other parallel processing capability
+    in `preprocess` or `postprocess`, such as using MindData concurrency ability to process multiple input
+    images in `preprocess`, MindSpore Serving provides 'call_preprocess_pipeline' and 'call_postprocess_pipeline'
+    to register such preprocessing and postprocessing. For more detail,
+    please refer to `Resnet50 model configuration example
+    <https://gitee.com/mindspore/serving/blob/master/example/resnet/resnet50/servable_config.py>`_.
+
+    Args:
+        postprocess_fun (function): Python pipeline function for postprocess.
+        args: Preprocess inputs. The length of 'args' should equal to the input parameters number
+            of implemented python function.
+
+    Raises:
+        RuntimeError: The type or value of the parameters are invalid, or other error happened.
+    """
+    global method_def_context_
+    global has_called_postprocess_
+    if has_called_postprocess_:
+        raise RuntimeError(f"Check failed in method '{method_def_context_.method_name}', "
+                           f"call_postprocess or call_postprocess_pipeline should not be invoked more than once")
+    has_called_postprocess_ = True
+    outputs_count = _get_stage_outputs_count('call_postprocess_pipeline')
+    return add_stage(postprocess_fun, *args, outputs_count=outputs_count, batch_size=1, tag="Postprocess")
+
+
+@deprecated("1.5.0", "mindspore_serving.server.register.add_stage")
+def call_servable(*args):
+    r"""For method registration, define the inputs data of model inference.
+
+    .. warning::
+        'call_servable' is deprecated from version 1.5.0 and will be removed in a future version, use
+        'mindspore_serving.server.register.add_stage' instead.
+
+    Note:
+        The length of 'args' should be equal to the inputs number of model.
+
+    Args:
+        args: Model's inputs, the length of 'args' should be equal to the inputs number of model.
+
+    Raises:
+        RuntimeError: The type or value of the parameters are invalid, or other error happened.
+
+    Examples:
+        >>> from mindspore_serving.server import register
+        >>> register.declare_servable(servable_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=False)
+        >>>
+        >>> @register.register_method(output_names=["y"]) # register add_common method in add
+        >>> def add_common(x1, x2):
+        ...     y = register.call_servable(x1, x2)
+        ...     return y
+    """
+    global method_def_context_
+    global has_called_servable_, has_called_postprocess_
+    method_name = method_def_context_.method_name
+    if has_called_servable_:
+        raise RuntimeError(f"Check failed in method '{method_name}', "
+                           f"call_servable should not be invoked more than once")
+    if has_called_postprocess_:
+        raise RuntimeError(f"Check failed in method '{method_name}', "
+                           f"call_postprocess or call_postprocess_pipeline should be invoked after call_servable")
+    has_called_servable_ = True
+
+    if not g_declared_models:
+        raise RuntimeError(f"There is no model declared, you can use declare_model to declare models.")
+    outputs_count = _get_stage_outputs_count("call_servable")
+    if len(g_declared_models) == 1:
+        model = g_declared_models[0]
     else:
-        if not isinstance(postprocess_name, str):
+        raise RuntimeError(
+            f"There are more than one servable declared when the interface 'call_servable' is used, use 'add_stage'"
+            f" to replace 'call_servable'")
+    return add_stage(model, *args, outputs_count=outputs_count)
+
+
+def add_stage(stage, *args, outputs_count, batch_size=None, tag=None):
+    r"""Used in the functions wrapped by register_method, define a stage that call a function/model and indicates the
+    input data used by the function/model.
+
+    Note:
+        The length of 'args' should be equal to the inputs number of function or model.
+
+    Args:
+        stage (Union(function, Model)): User-defined python function or Model object return by declare_model.
+        outputs_count (int): outputs count of stage
+        batch_size (int, optional): This parameter is valid only when stage is a function and the function
+            can process multi instances at a time. default None.
+
+                - None, The input of the function will be the inputs of one instance.
+                - int value >= 1, The input of the function will be tuple object of instances, and the maximum number
+                    of the instances is the value specified by 'batch_size'.
+
+        args: Stage inputs placeholders, which come from the inputs of the function wrapped by register_method or the
+            outputs of add_stage. The length of 'args' should equal to the input number of the function or model.
+        tag (str, optional): Customized flag of the stage, such as "Preprocess", default None.
+
+    Raises:
+        RuntimeError: The type or value of the parameters are invalid, or other error happened.
+
+    Examples:
+        >>> import numpy as np
+        >>> from mindspore_serving.server import register
+        >>> add_model = register.declare_model(model_file="tensor_add.mindir", model_format="MindIR")
+        >>>
+        >>> def preprocess(x1, x2):
+        ...     return x1.astype(np.float32), x2.astype(np.float32)
+        >>>
+        >>> @register.register_method(output_names=["y"]) # register add_common method in add
+        >>> def add_common(x1, x2):
+        ...     x1, x2 = register.add_stage(preprocess, x1, x2, outputs_count=2) # call preprocess in stage 1
+        ...     y = register.add_stage(add_model, x1, x2, outputs_count=1) # call add model in stage 2
+        ...     return y
+    """
+    global method_def_context_
+    global cur_stage_index_
+    method_name = method_def_context_.method_name
+    if tag is not None:
+        check_type.check_str("tag", tag)
+    else:
+        tag = ""
+    for item in args:
+        if not isinstance(item, _TensorDef):
+            raise RuntimeError(f"Each value of parameter *args is a placeholder for data and must come from the method"
+                               f" inputs or the outputs of add_stage")
+    func_inputs = [item.as_pair() for item in args]
+
+    inputs_count = len(args)
+    if isinstance(stage, Model):
+        if stage not in g_declared_models:
             raise RuntimeError(
-                f"Check failed in method '{method_def_context_.method_name}', "
-                f"call_postprocess first must be function or str, now is {type(postprocess_name)}")
-        check_postprocess(postprocess_name, inputs_count=inputs_count, outputs_count=outputs_count)
+                f"Check failed in method '{method_name}', the parameter 'stage' of add_stage must be function "
+                f"or Model returned by declare_model")
+        model = stage
+        model_key = model.model_key
+        ServableRegister_.register_model_input_output_info(model_key, inputs_count, outputs_count, 0)
+        method_def_context_.add_stage_model(model_key, func_inputs, 0, tag)
+    elif inspect.isfunction(stage):
+        if batch_size is None:
+            register_stage_function(method_name, _wrap_fun_to_batch(stage, inputs_count),
+                                    inputs_count=inputs_count, outputs_count=outputs_count)
+            batch_size = 0
+        else:
+            check_type.check_int("batch_size", batch_size, 1)
+            register_stage_function(method_name, stage, inputs_count=inputs_count, outputs_count=outputs_count)
+        func_name = get_servable_dir() + "." + get_func_name(stage)
+        method_def_context_.add_stage_function(func_name, func_inputs, batch_size, tag)
+    else:
+        if not isinstance(stage, str):
+            raise RuntimeError(
+                f"Check failed in method '{method_name}', the parameter 'stage' of add_stage must be function "
+                f"or Model returned by declare_model, now is {type(stage)}")
+        func_name = stage
+        check_stage_function(method_name, func_name, inputs_count=inputs_count, outputs_count=outputs_count)
+        method_def_context_.add_stage_function(func_name, func_inputs, 0, tag)
 
-    method_def_context_.postprocess_name = postprocess_name
-    method_def_context_.postprocess_inputs = [item.as_pair() for item in args]
-
-    return _create_tensor_def_outputs(method_tag_postprocess, outputs_count)
+    cur_stage_index_ += 1  # call_xxx stage index start begin 1
+    return _create_tensor_def_outputs(cur_stage_index_, outputs_count)
 
 
-_call_preprocess_name = call_preprocess.__name__
 _call_servable_name = call_servable.__name__
-_call_postprocess_name = call_postprocess.__name__
-_call_preprocess_pipeline_name = call_preprocess_pipeline.__name__
-_call_postprocess_pipeline_name = call_postprocess_pipeline.__name__
+_call_stage_names = [call_preprocess.__name__, call_postprocess.__name__]
+_call_stage_batch_names = [call_preprocess_pipeline.__name__, call_postprocess_pipeline.__name__]
 
 
-def _get_method_def_func_meta(method_def_func):
+def _ast_node_info(method_def_func, ast_node):
+    """Ast node code info"""
+    func_name = method_def_func.__name__
+    func_codes = inspect.getsource(method_def_func)
+    func_codes_lines = func_codes.split("\n")
+    _, start_lineno = inspect.findsource(method_def_func)
+
+    codes = ""
+    if hasattr(ast_node, "end_lineno"):
+        end_lineno = ast_node.end_lineno
+    else:
+        end_lineno = ast_node.lineno
+    for line in range(ast_node.lineno, end_lineno + 1):
+        codes += func_codes_lines[line - 1] + "\n"
+    lineno = ast_node.lineno + start_lineno
+    end_lineno = end_lineno + start_lineno
+    if lineno != end_lineno:
+        line_info = f"{lineno}~{end_lineno}"
+    else:
+        line_info = f"{lineno}"
+    return f"line {line_info} in {func_name}, code: \n" + codes
+
+
+def _get_method_def_stage_meta(method_def_func):
     """Parse register_method func, and get the input and output count of preprocess, servable and postprocess"""
     source = inspect.getsource(method_def_func)
+    method_name = method_def_func.__name__
     call_list = ast.parse(source).body[0].body
     func_meta = {}
+    code_infos = []
+    code_other = None
+
+    def update_other_code(code):
+        nonlocal code_other
+        if not code_other:
+            code_other = code
 
     for call_item in call_list:
+        if isinstance(call_item, ast.Return):
+            continue
+        if isinstance(call_item, ast.Expr):
+            continue
         if not isinstance(call_item, ast.Assign):
+            update_other_code(call_item)
             continue
         target = call_item.targets[0]
         if isinstance(target, ast.Name):
@@ -367,37 +452,51 @@ def _get_method_def_func_meta(method_def_func):
         elif isinstance(func, ast.Name):
             func_name = func.id
         else:
+            update_other_code(call_item)
             continue
 
         inputs_count = len(call.args)
-        if func_name in (_call_preprocess_name, _call_preprocess_pipeline_name,
-                         _call_postprocess_name, _call_postprocess_pipeline_name):
+        if func_name in _call_stage_names or func_name in _call_stage_batch_names:
             inputs_count -= 1
         elif func_name == _call_servable_name:
             pass
         else:
+            update_other_code(call_item)
             continue
-
         if inputs_count <= 0:
             raise RuntimeError(f"Invalid '{func_name}' invoke args")
 
-        logger.info(f"call type '{func_name}', inputs count {inputs_count}, outputs count {outputs_count}")
+        logger.info(f"stage {len(func_meta) + 1} call type '{func_name}', inputs count {inputs_count}, "
+                    f"outputs count {outputs_count}")
         func_meta[func_name] = [inputs_count, outputs_count]
+        code_infos.append([call_item, func_name])
+    if code_infos and code_other:
+        call_names = [item[1] for item in code_infos]
+        call_names = ";".join(call_names)
+        raise RuntimeError(
+            f"Failed to parse method '{method_name}', complex statements such as conditions and loops are not supported"
+            f" in register_method when the interface '{call_names}' is used, use 'add_stage' to replace '{call_names}',"
+            f" code {type(code_other)}: {_ast_node_info(method_def_func, code_other)}")
 
-    if _call_servable_name not in func_meta:
+    if code_infos and _call_servable_name not in func_meta:
         raise RuntimeError(f"Not find the invoke of '{_call_servable_name}'")
     return func_meta
 
 
 def register_method(output_names):
-    """Register method for servable.
+    """Define a method of the servable, MindSpore Serving supports a service consisting of multiple python functions and
+    multiple models.
 
-    Define the data flow of preprocess, model inference and postprocess in the method. Preprocess and postprocess
-    are optional.
+    A method is an interface for clients to access the servable, and the servable can include one or more methods.
+    This interface will defines the signatures and pipeline of the method.
 
-    Note:
-        The method definition is only used to define data flow of preprocess, model inference and postprocess,
-        and cannot contain branch structures such as if, for, and while.
+    The signatures includes the method name, input and outputs names of the method. When accessing a service, the client
+    needs to specify the servable name, the method name, and provide one or more inference instances. Each instance
+    specifies the input data by the input names and obtains the output data by the outputs names.
+
+    The pipeline consists of one or more stages, each stage can be a python function or a model. This is, a pipline can
+    include one or more python functions and one or more models. In addition, the interface also defines the data flow
+    of these stages.
 
     Args:
         output_names (Union[str, tuple[str], list[str]]): The output names of method. The input names is
@@ -408,16 +507,13 @@ def register_method(output_names):
 
     Examples:
         >>> from mindspore_serving.server import register
-        >>> import numpy as np
-        >>> def add_trans_datatype(x1, x2):
-        ...      return x1.astype(np.float32), x2.astype(np.float32)
+        >>> add_model = register.declare_model(model_file="tensor_add.mindir", model_format="MindIR")
+        >>> sub_model = register.declare_model(model_file="tensor_sub.mindir", model_format="MindIR")
         >>>
-        >>> register.declare_servable(servable_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=False)
-        >>>
-        >>> @register.register_method(output_names=["y"]) # register add_cast method in add
-        >>> def add_cast(x1, x2):
-        ...     x1, x2 = register.call_preprocess(add_trans_datatype, x1, x2)  # cast input to float32
-        ...     y = register.call_servable(x1, x2)
+        >>> @register.register_method(output_names=["y"]) # register predict method in servable
+        >>> def predict(x1, x2, x3): # x1+x2-x3
+        ...     y = register.add_stage(add_model, x1, x2, outputs_count=1)
+        ...     y = register.add_stage(sub_model, y, x3, outputs_count=1)
         ...     return y
     """
     output_names = check_type.check_and_as_str_tuple_list('output_names', output_names)
@@ -437,94 +533,50 @@ def register_method(output_names):
 
         input_tensors = []
         for i in range(len(input_names)):
-            input_tensors.append(_TensorDef(method_tag_input, i))
+            input_tensors.append(_TensorDef(0, i))
 
+        servable_name = get_servable_dir()
         global method_def_context_
         method_def_context_ = MethodSignature_()
+        method_def_context_.servable_name = servable_name
         method_def_context_.method_name = name
         method_def_context_.inputs = input_names
         method_def_context_.outputs = output_names
 
         global method_def_ast_meta_
-        method_def_ast_meta_ = _get_method_def_func_meta(func)
+        method_def_ast_meta_ = _get_method_def_stage_meta(func)
+        global cur_stage_index_
+        cur_stage_index_ = 0
+
+        global has_called_preprocess_, has_called_servable_, has_called_postprocess_
+        has_called_preprocess_ = False
+        has_called_servable_ = False
+        has_called_postprocess_ = False
 
         output_tensors = func(*tuple(input_tensors))
+        if method_def_ast_meta_ and cur_stage_index_ != len(method_def_ast_meta_):
+            raise RuntimeError(f"Failed to parse method {name}, the number of stages obtained through the AST "
+                               f"{len(method_def_ast_meta_)} is inconsistent with the running result {cur_stage_index_}"
+                               f". Condition and loop statements are not supported in methods currently.")
+
         if isinstance(output_tensors, _TensorDef):
             output_tensors = (output_tensors,)
+
+        for item in output_tensors:
+            if not isinstance(item, _TensorDef):
+                raise RuntimeError(f"Each value returned is a placeholder for data and must come from the method"
+                                   f" inputs or the outputs of add_stage")
+
         if len(output_tensors) != len(output_names):
             raise RuntimeError(
                 f"Method return output size {len(output_tensors)} not match registered {len(output_names)}")
 
-        method_def_context_.returns = [item.as_pair() for item in output_tensors]
-        logger.info(f"Register method: method_name {method_def_context_.method_name} "
-                    f", servable_name {method_def_context_.servable_name}, inputs: {input_names}, outputs: "
-                    f"{output_names}")
+        return_inputs = [item.as_pair() for item in output_tensors]
+        method_def_context_.set_return(return_inputs)
+        logger.info(f"Register method: method_name {method_def_context_.method_name}, "
+                    f"inputs: {input_names}, outputs: {output_names}")
 
-        ServableStorage_.register_method(method_def_context_)
-        return func
-
-    return register
-
-
-def register_pipeline(output_names):
-    """register method for Pipeline Servable.
-
-    Define the data flow of Pipeline Servable Method. Pipeline servable is optional.
-
-    .. warning::
-        This is a beta interface and may be changed in the future.
-
-    Args:
-        output_names (str, tuple or list of str): The output names of pipeline. The input names is
-            the args names of the registered function.
-
-    Raises:
-        RuntimeError: The type or value of the parameters is invalid, or other error happened.
-
-    Examples:
-        >>> from mindspore_serving.server import distributed
-        >>> from mindspore_serving.server import register
-        >>> from mindspore_serving.server.register import PipelineServable
-        >>>
-        >>> distributed.declare_servable(rank_size=8, stage_size=1, with_batch_dim=False)
-        >>> @register.register_method(output_names=["y"])
-        >>> def fun(x):
-        ...     y = register.call_servable(x)
-        ...     return y
-        >>> servable = PipelineServable(servable_name="service", method="fun")
-        >>> @register.register_pipeline(output_names=["y"])
-        >>> def predict(x):
-        ...     y = servable.run(x)
-        ...     return y
-    """
-    output_names = check_type.check_and_as_str_tuple_list('output_names', output_names)
-
-    def register(func):
-        name = get_func_name(func)
-        sig = inspect.signature(func)
-        input_names = []
-        for k, v in sig.parameters.items():
-            if v.kind == inspect.Parameter.VAR_POSITIONAL:
-                raise RuntimeError(f"'{name}' input {k} cannot be VAR_POSITIONAL !")
-            if v.kind == inspect.Parameter.VAR_KEYWORD:
-                raise RuntimeError(f"'{name}' input {k} cannot be VAR_KEYWORD !")
-            if v.kind == inspect.Parameter.KEYWORD_ONLY:
-                raise RuntimeError(f"'{name}' input {k} cannot be KEYWORD_ONLY !")
-            input_names.append(k)
-
-        input_tensors = []
-        for i in range(len(input_names)):
-            input_tensors.append(_TensorDef(method_tag_input, i))
-
-        global pipeline_def_context_
-        pipeline_def_context_ = PipelineSignature_()
-        pipeline_def_context_.pipeline_name = name
-        pipeline_def_context_.inputs = input_names
-        pipeline_def_context_.outputs = output_names
-        PipelineStorage_.get_instance().register(pipeline_def_context_)
-        inputs_count = len(input_names)
-        outputs_count = len(output_names)
-        register_pipeline_args(func, inputs_count, outputs_count)
+        ServableRegister_.register_method(method_def_context_)
         return func
 
     return register

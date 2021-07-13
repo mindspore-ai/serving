@@ -20,8 +20,10 @@
 #include <string>
 #include <memory>
 #include "worker/notfiy_master/base_notify.h"
+#include "common/instance_data.h"
 #include "proto/ms_master.pb.h"
 #include "proto/ms_master.grpc.pb.h"
+#include "worker/extra_worker/remote_call_model.h"
 
 namespace mindspore {
 namespace serving {
@@ -34,11 +36,21 @@ class MS_API GrpcNotifyMaster : public BaseNotifyMaster {
   Status Unregister() override;
   static Status NotifyFailed(const std::string &master_address, const std::string &error_msg);
 
+  Status CallModel(const RemoteCallModelContext &context, const std::vector<InstanceData> &request,
+                   std::vector<ResultInstance> *reply);
+  static Status GetModelInfos(const std::string &master_address, const std::string &servable_name,
+                              uint32_t version_number, proto::GetModelInfoReply *reply);
+
  private:
   std::string master_address_;
   std::string worker_address_;
 
   std::atomic<bool> is_running_ = false;
+  std::unique_ptr<proto::MSMaster::Stub> stub_;
+  Status CreateRequestShmInstance(const RemoteCallModelContext &model_context, const InstanceData &instance,
+                                  proto::Instance *proto_instance);
+  Status CreateResultShmInstance(const RemoteCallModelContext &model_context, ResultInstance *result_instance,
+                                 proto::Instance *proto_instance);
 };
 
 }  // namespace serving

@@ -16,20 +16,11 @@
 
 #include "master/server.h"
 
-#include <atomic>
-#include <future>
 #include <memory>
 #include <string>
-#include <utility>
-#include <vector>
 
-#include "common/proto_tensor.h"
 #include "common/serving_common.h"
-#include "common/exit_handle.h"
-#include "master/dispacther.h"
 #include "master/grpc/grpc_process.h"
-#include "master/restful/http_process.h"
-#include "worker/context.h"
 #include "master/grpc/grpc_server.h"
 
 namespace mindspore {
@@ -44,13 +35,18 @@ Status Server::StartGrpcServer(const std::string &socket_address, const SSLConfi
                     << "MB to 512MB";
     max_msg_mb_size = gRpcMaxMBMsgSize;
   }
-  grpc_async_server_ = std::make_shared<MasterGrpcServer>(dispatcher_);
+  grpc_async_server_ = std::make_shared<ServiceGrpcServer>(dispatcher_);
   return grpc_async_server_->Start(socket_address, ssl_config, max_msg_mb_size, "Serving gRPC");
 }
 
 Status Server::StartGrpcMasterServer(const std::string &master_address) {
-  return grpc_manager_server_.Start(std::make_shared<MSMasterImpl>(dispatcher_, master_address), master_address,
-                                    gRpcMaxMBMsgSize, "Master");
+  if (master_async_server_) {
+    return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Serving Error: Master gRPC server is already running";
+  }
+  SSLConfig ssl_config;
+  ssl_config.use_ssl = false;
+  master_async_server_ = std::make_shared<MasterGrpcServer>(dispatcher_);
+  return master_async_server_->Start(master_address, ssl_config, gRpcMaxMBMsgSize, "Master");
 }
 
 Status Server::StartRestfulServer(const std::string &socket_address, const SSLConfig &ssl_config, int max_msg_mb_size,
@@ -62,7 +58,10 @@ void Server::Clear() {
   MSI_LOG_INFO << "Server start to clean";
   dispatcher_->Clear();
   restful_server_.Stop();
-  grpc_manager_server_.Stop();
+  if (master_async_server_) {
+    master_async_server_->Stop();
+    master_async_server_ = nullptr;
+  }
   if (grpc_async_server_) {
     grpc_async_server_->Stop();
     grpc_async_server_ = nullptr;

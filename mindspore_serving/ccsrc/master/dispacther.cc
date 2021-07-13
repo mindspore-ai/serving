@@ -84,8 +84,6 @@ void Dispatcher::DispatchAsync(const proto::PredictRequest &request, proto::Pred
   } catch (...) {
     MSI_LOG(ERROR) << "Serving Error: exception occurred";
   }
-  MSI_LOG(INFO) << "Finish call service Eval";
-
   if (status != SUCCESS) {
     GrpcTensorHelper::CreateReplyFromErrorMsg(status, reply);
     on_finish();
@@ -146,7 +144,7 @@ Status Dispatcher::UnregisterServableCommon(const std::string &worker_address) {
 
 Status Dispatcher::RegisterServable(const proto::RegisterRequest &request, proto::RegisterReply *) {
   WorkerRegSpec worker_spec;
-  GrpcTensorHelper::GetWorkerSpec(request, &worker_spec);
+  GrpcTensorHelper::ConvertProtoWorkerSpec(request, &worker_spec);
   auto create_notify_worker = [](const WorkerRegSpec &worker_spec) {
     std::shared_ptr<BaseNotifyWorker> notify_worker = std::make_shared<GrpcNotifyWorker>(worker_spec.worker_address);
     return notify_worker;
@@ -198,6 +196,43 @@ Status Dispatcher::NotifyWorkerNotAvailable(WorkerContext *worker_context) {
   return SUCCESS;
 }
 
+void Dispatcher::GetModelInfo(const proto::GetModelInfoRequest *request, proto::GetModelInfoReply *reply) {
+  auto &servable_name = request->servable_name();
+  auto version_number = request->version_number();
+  for (auto &worker : worker_list_) {
+    auto worker_spec = worker->GetWorkerSpec();
+    if (worker_spec.servable_spec.servable_name == servable_name &&
+        worker_spec.servable_spec.version_number == version_number && worker_spec.servable_spec.own_device) {
+      reply->set_servable_name(servable_name);
+      reply->set_version_number(version_number);
+      GrpcTensorHelper::ConvertModelInfos(worker_spec.servable_spec.models, reply->mutable_model_infos());
+      return;
+    }
+  }
+  auto status = INFER_STATUS_LOG_ERROR(FAILED)
+                << "Cannot find model " << servable_name << " version " << version_number << " registered";
+  auto error_msg = reply->mutable_error_msg();
+  error_msg->set_error_code(FAILED);
+  error_msg->set_error_msg(status.StatusMessage());
+}
+
+bool Dispatcher::OnlyModelStage(const std::string &servable_name) {
+  for (auto &worker : worker_list_) {
+    auto worker_spec = worker->GetWorkerSpec();
+    if (worker_spec.servable_spec.servable_name != servable_name) {
+      continue;
+    }
+    for (auto &method : worker_spec.servable_spec.methods) {
+      // cppcheck-suppress useStlAlgorithm
+      if (!method.only_model_stage) {
+        return false;
+      }
+    }
+    return true;
+  }
+  return false;
+}
+
 void Dispatcher::Clear() {
   std::unique_lock<std::shared_mutex> lock(servable_shared_lock_);
 
@@ -214,7 +249,6 @@ void Dispatcher::Clear() {
 Status Dispatcher::RegisterServableCommon(const WorkerRegSpec &worker_spec, CreateNotifyWorkerFunc func) {
   MSI_EXCEPTION_IF_NULL(func);
   std::unique_lock<std::shared_mutex> lock(servable_shared_lock_);
-
   std::shared_ptr<WorkerContext> worker_context = nullptr;
   for (auto &item : worker_list_) {
     if (item->GetWorkerPid() == worker_spec.worker_pid) {

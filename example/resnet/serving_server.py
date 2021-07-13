@@ -21,7 +21,10 @@ from mindspore_serving import server
 
 def start():
     servable_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
-    config = server.ServableStartConfig(servable_directory=servable_dir, servable_name="resnet50", device_ids=0)
+    # Total 4 worker, one worker occupy device 0, the model inference tasks of other workers are forwarded to the worker
+    # that occupies the device.
+    config = server.ServableStartConfig(servable_directory=servable_dir, servable_name="resnet50", device_ids=0,
+                                        num_parallel_workers=4)
     server.start_servables(config)
 
     server.start_grpc_server("127.0.0.1:5500")

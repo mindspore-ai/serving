@@ -23,6 +23,7 @@
 #include "master/restful/restful_server.h"
 #include "master/dispacther.h"
 #include "master/grpc/grpc_server.h"
+#include "master/grpc/master_server.h"
 #include "common/ssl_config.h"
 
 namespace mindspore {
@@ -45,8 +46,8 @@ class MS_API Server {
 
  private:
   std::shared_ptr<Dispatcher> dispatcher_ = std::make_shared<Dispatcher>();
-  std::shared_ptr<MasterGrpcServer> grpc_async_server_ = nullptr;
-  GrpcServer grpc_manager_server_;
+  std::shared_ptr<ServiceGrpcServer> grpc_async_server_ = nullptr;
+  std::shared_ptr<MasterGrpcServer> master_async_server_ = nullptr;
   RestfulServer restful_server_;
 };
 }  // namespace serving

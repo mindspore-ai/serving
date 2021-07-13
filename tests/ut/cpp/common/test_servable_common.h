@@ -23,6 +23,8 @@
 #include <set>
 #include <string>
 #include <vector>
+#include <map>
+#include <utility>
 #include "common/common_test.h"
 #include "master/server.h"
 
@@ -31,16 +33,17 @@
 #undef private
 #include "worker/notfiy_master/base_notify.h"
 #include "worker/context.h"
-#include "worker/local_servable/local_sevable.h"
+#include "worker/local_servable/local_model_loader.h"
 #include "master/grpc/grpc_process.h"
 #include "mindspore_serving/proto/ms_service.pb.h"
+#include "mindspore_serving/ccsrc/worker/servable_register.h"
 
 namespace mindspore {
 namespace serving {
 
 #define ExpectContainMsg(error_msg, expected_msg)                                                     \
   {                                                                                                   \
-    auto error_msg_str = error_msg;                                                                   \
+    std::string error_msg_str = error_msg;                                                                   \
     EXPECT_TRUE(error_msg_str.find(expected_msg) != std::string::npos);                               \
     if (error_msg_str.find(expected_msg) == std::string::npos) {                                      \
       std::cout << "error_msg: " << error_msg_str << ", expected_msg: " << expected_msg << std::endl; \
@@ -99,7 +102,7 @@ class TestMasterWorker : public UT::Common {
   }
 
   void StartAddServable() {
-    auto status = StartServable(servable_dir_, servable_name_, 0);
+    auto status = StartServable(servable_dir_, servable_name_, 1);
     ASSERT_TRUE(status.IsSuccess());
   }
 
@@ -107,7 +110,7 @@ class TestMasterWorker : public UT::Common {
     DeclareServable(servable_name_, model_file_, "mindir", with_batch_dim);
 
     // register_method
-    RegisterMethod(servable_name_, "add_common", {"x1", "x2"}, {"y"}, 2, 1);
+    RegisterMethod(servable_name_, model_file_, "add_common", {"x1", "x2"}, {"y"}, 2, 1);
   }
 
   static Status StartServable(const std::string &servable_dir, const std::string &servable_name, int version_number) {
@@ -116,30 +119,50 @@ class TestMasterWorker : public UT::Common {
     auto notify_master = std::make_shared<FakeNotifyMaster>();
     ServableContext::Instance()->SetDeviceId(0);
     ServableContext::Instance()->SetDeviceTypeStr("Ascend");
-    auto servable = std::make_shared<LocalModelServable>();
-    auto status = servable->StartServable(current_path + "/" + servable_dir, servable_name, version_number, "", "");
-    if (status != SUCCESS) {
-      return status;
+
+    auto servable_dir_full = current_path + "/" + servable_dir;
+
+    const auto &signature = ServableRegister::Instance().GetServableSignature();
+    Status status;
+    std::map<std::string, std::shared_ptr<ModelLoaderBase>> models_loader;
+    for (auto &model_meta : signature.model_metas) {
+      auto &model_key = model_meta.common_meta.model_key;
+      auto local_models_loader = std::make_shared<LocalModelLoader>();
+      status =
+        local_models_loader->LoadModel(servable_dir_full, servable_name, version_number, model_meta, "", "");
+      if (status != SUCCESS) {
+        local_models_loader->Clear();
+        return status;
+      }
+      status = local_models_loader->AfterLoadModel();
+      if (status != SUCCESS) {
+        local_models_loader->Clear();
+        return status;
+      }
+      models_loader[model_key] = local_models_loader;
     }
-    status = Worker::GetInstance().StartServableInner(servable);
+    status = Worker::GetInstance().StartServableInner(servable_name, version_number, models_loader, true);
     return status;
   }
-  static void DeclareServable(const std::string &servable_name, const std::string &servable_file,
+  static void DeclareServable(const std::string &servable_name, const std::string &model_file,
                               const std::string &model_type, bool with_batch_dim = false) {
-    ServableMeta servable_meta;
+    ModelMeta servable_meta;
     servable_meta.common_meta.servable_name = servable_name;
+    servable_meta.common_meta.model_key = model_file;
     servable_meta.common_meta.with_batch_dim = with_batch_dim;
-    servable_meta.local_meta.servable_files = {servable_file};
+    servable_meta.local_meta.model_files = {model_file};
     servable_meta.local_meta.SetModelFormat(model_type);
     // declare_servable
-    ServableStorage::Instance().DeclareServable(servable_meta);
+    ServableRegister::Instance().DeclareModel(servable_meta);
   }
-  static Status RegisterMethod(const std::string &servable_name, const std::string &method_name,
+  static Status RegisterMethod(const std::string &servable_name, const std::string &method_file,
+                               const std::string &method_name,
                                const std::vector<std::string> &input_names,
                                const std::vector<std::string> &output_names, size_t servable_input_count,
                                size_t servable_output_count) {
+    auto model_key = method_file;
     auto status =
-      ServableStorage::Instance().RegisterInputOutputInfo(servable_name, servable_input_count, servable_output_count);
+      ServableRegister::Instance().RegisterInputOutputInfo(model_key, servable_input_count, servable_output_count);
     if (status != SUCCESS) {
       return status;
     }
@@ -150,10 +173,12 @@ class TestMasterWorker : public UT::Common {
     method_signature.inputs = input_names;
     method_signature.outputs = output_names;
     // method input 0 and input 1 as servable input
-    method_signature.servable_inputs = {{kPredictPhaseTag_Input, 0}, {kPredictPhaseTag_Input, 1}};
+    std::vector<std::pair<size_t, uint64_t>> model_input = {{0, 0}, {0, 1}};
+    method_signature.AddStageModel(model_key, model_input, 0, "");
     // servable output as method output
-    method_signature.returns = {{kPredictPhaseTag_Predict, 0}};
-    ServableStorage::Instance().RegisterMethod(method_signature);
+    std::vector<std::pair<size_t, uint64_t>> return_output = {{1, 0}};
+    method_signature.SetReturn(return_output);
+    ServableRegister::Instance().RegisterMethod(method_signature);
     return SUCCESS;
   }
   std::string servable_dir_;

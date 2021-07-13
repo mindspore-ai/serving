@@ -166,18 +166,31 @@ Status MindSporeModelWrap::LoadModelFromFileInner(serving::DeviceType device_typ
     if (st != SUCCESS) {
       return st;
     }
-    GetModelBatchSize(&api_model_info);
-    if (api_model_info.batch_size != 0) {
-      if (last_batch_size != 0 && last_batch_size != api_model_info.batch_size) {
-        return INFER_STATUS_LOG_ERROR(FAILED) << "Expect batch size to be same, last batch size: " << last_batch_size
-                                              << ", subgraph " << i << " batch size: " << api_model_info.batch_size;
-      }
-      last_batch_size = api_model_info.batch_size;
+
+    MSI_LOG_INFO << "Print model info, model file: '" << file_names[i] << "', subgraph " << i;
+    MSI_LOG_INFO << "Model input infos: count " << api_model_info.input_tensor_infos.size();
+    for (auto &item : api_model_info.input_tensor_infos) {
+      MSI_LOG_INFO << item.shape << ", " << item.data_type << ", " << item.size;
     }
+    MSI_LOG_INFO << "Model output infos: count " << api_model_info.output_tensor_infos.size();
+    for (auto &item : api_model_info.output_tensor_infos) {
+      MSI_LOG_INFO << item.shape << ", " << item.data_type << ", " << item.size;
+    }
+
+    auto status = CalculateBatchSize(&api_model_info);
+    if (status != SUCCESS) {
+      MSI_LOG_ERROR << "Calculate batch size failed, model file: " << file_names[i] << ", subgraph: " << i;
+      return status;
+    }
+    if (last_batch_size != 0 && last_batch_size != api_model_info.batch_size) {
+      return INFER_STATUS_LOG_ERROR(FAILED) << "Expect batch size to be same, last batch size: " << last_batch_size
+                                            << ", subgraph " << i << " batch size: " << api_model_info.batch_size;
+    }
+    last_batch_size = api_model_info.batch_size;
     models_.push_back(api_model_info);
-    MSI_LOG_INFO << "Load model from file success, model file: " << file_names[i] << ", device_type: '" << device_type
-                 << "', device_id: " << device_id << ", model type: " << model_type << ", options: " << other_options;
   }
+  MSI_LOG_INFO << "Load model from file success, model file: " << file_names << ", device_type: '" << device_type
+               << "', device_id: " << device_id << ", model type: " << model_type << ", options: " << other_options;
   return SUCCESS;
 }
 
@@ -301,44 +314,59 @@ Status MindSporeModelWrap::GetModelInfos(ApiModelInfo *api_model_info) {
   return SUCCESS;
 }
 
-void MindSporeModelWrap::GetModelBatchSize(ApiModelInfo *api_model_info) {
-  MSI_EXCEPTION_IF_NULL(api_model_info);
-  bool first_dim_same = true;
-  auto find_batch_size = [&first_dim_same, api_model_info](const std::vector<int64_t> &shape) {
-    if (!api_model_info->with_batch_dim) {
-      first_dim_same = false;
-      return;
+Status MindSporeModelWrap::CalculateBatchSize(ApiModelInfo *api_model_info) {
+  auto &input_infos = api_model_info->input_tensor_infos;
+  auto &output_infos = api_model_info->output_tensor_infos;
+  if (!api_model_info->with_batch_dim) {
+    api_model_info->batch_size = 1;
+    for (auto &input : input_infos) {
+      input.is_no_batch_dim = true;
     }
-    if (!first_dim_same) {
-      return;
+    for (auto &output : output_infos) {
+      output.is_no_batch_dim = true;
     }
-    if (shape.empty()) {
-      first_dim_same = false;
-      return;
+    return SUCCESS;
+  }
+  const auto &list = api_model_info->without_batch_dim_inputs;
+  uint32_t cur_batch_size = 0;
+  for (size_t i = 0; i < input_infos.size(); i++) {
+    auto &input = input_infos[i];
+    if (std::find(list.begin(), list.end(), i) != list.end()) {
+      input.is_no_batch_dim = true;
+      continue;
     }
-    if (api_model_info->batch_size != 0) {
-      if (api_model_info->batch_size != shape[0]) {
-        first_dim_same = false;
-      }
-    } else {
-      api_model_info->batch_size = shape[0];
+    if (input.shape.empty()) {
+      return INFER_STATUS_LOG_ERROR(FAILED) << "The shape of model input " << i << " cannot be empty, "
+                                            << "when with_batch_dim is true and without_batch_dim_inputs is " << list;
     }
-  };
-
-  auto list = api_model_info->without_batch_dim_inputs;
-  auto size = api_model_info->input_tensor_infos.size();
-  for (size_t i = 0; i < size; i++) {
-    if (std::find(list.begin(), list.end(), i) == list.end()) {
-      auto &info = api_model_info->input_tensor_infos[i];
-      find_batch_size(info.shape);
+    if (cur_batch_size == 0) {
+      cur_batch_size = input.shape[0];
+      continue;
+    }
+    if (input.shape[0] != cur_batch_size) {
+      return INFER_STATUS_LOG_ERROR(FAILED) << "The shape " << input.shape << " of model input " << i
+                                            << " does not match current batch size " << cur_batch_size;
     }
   }
-  for (auto &info : api_model_info->output_tensor_infos) {
-    find_batch_size(info.shape);
+  for (size_t i = 0; i < output_infos.size(); i++) {
+    auto &output = output_infos[i];
+    if (output.shape.empty()) {
+      return INFER_STATUS_LOG_ERROR(FAILED) << "The shape of model output " << i << " cannot be empty";
+    }
+    if (cur_batch_size == 0) {
+      cur_batch_size = output.shape[0];
+      continue;
+    }
+    if (output.shape[0] != cur_batch_size) {
+      return INFER_STATUS_LOG_ERROR(FAILED) << "The shape " << output.shape << " of model output " << i
+                                            << " does not match current batch size " << cur_batch_size;
+    }
   }
-  if (!first_dim_same) {
-    api_model_info->batch_size = 0;
+  if (cur_batch_size == 0) {
+    cur_batch_size = 1;
   }
+  api_model_info->batch_size = cur_batch_size;
+  return SUCCESS;
 }
 
 Status MindSporeModelWrap::UnloadModel() {

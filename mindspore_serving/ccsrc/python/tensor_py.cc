@@ -177,9 +177,7 @@ py::object PyTensor::AsPythonData(TensorBasePtr tensor, bool copy) {
     size_t bytes_len = 0;
     tensor->get_bytes_data(0, &data, &bytes_len);
     if (tensor->data_type() == kMSI_String) {
-      std::string str_val;
-      str_val.assign(reinterpret_cast<const char *>(data), bytes_len);
-      return py::str(str_val);
+      return py::str(reinterpret_cast<const char *>(data), bytes_len);
     }
     std::vector<ssize_t> shape{static_cast<ssize_t>(bytes_len)};
     std::vector<ssize_t> strides = GetStrides(shape, sizeof(uint8_t));

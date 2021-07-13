@@ -36,8 +36,8 @@ struct DistributedServableConfig {
   std::string rank_table_content;
   std::vector<OneRankConfig> rank_list;
 
-  CommonServableMeta common_meta;
-  DistributedServableMeta distributed_meta;
+  CommonModelMeta common_meta;
+  DistributedModelMeta distributed_meta;
 };
 
 struct AgentStartUpConfig {
@@ -51,7 +51,7 @@ struct AgentStartUpConfig {
   std::string distributed_address;
   uint32_t worker_port;
 
-  CommonServableMeta common_meta;
+  CommonModelMeta common_meta;
 };
 
 }  // namespace serving

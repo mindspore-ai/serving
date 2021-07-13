@@ -17,8 +17,7 @@
 #include "master/model_thread.h"
 #include "common/proto_tensor.h"
 
-namespace mindspore {
-namespace serving {
+namespace mindspore::serving {
 
 ModelThread::ModelThread(const std::string &servable_name, const std::string &method_name, uint64_t version_number,
                          uint64_t batch_size, ServableMethodInfo method_info) {
@@ -92,7 +91,11 @@ Status ModelThread::AddWorker(uint64_t pid, const std::shared_ptr<WorkerContext>
       return FAILED;
     }
     pid_process_.insert(std::make_pair(pid, notify));
-    worker_wait_map_[pid] = static_cast<int64_t>(round_);
+    if (single_batch_dispatch_) {
+      worker_wait_map_[pid] = static_cast<int64_t>(round_ * batch_size_);
+    } else {
+      worker_wait_map_[pid] = static_cast<int64_t>(round_);
+    }
   }
   SendTasks();
   return SUCCESS;
@@ -164,7 +167,8 @@ Status ModelThread::PushTasks(const proto::PredictRequest &request, proto::Predi
   if (pid_process_.empty()) {
     RequestSpec request_spec;
     GrpcTensorHelper::GetRequestSpec(request, &request_spec);
-    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Request " << request_spec.Repr() << ", servable is not available";
+    return INFER_STATUS_LOG_ERROR(SERVABLE_UNAVAILABLE)
+           << "Request " << request_spec.Repr() << ", servable is not available";
   }
   std::vector<const proto::Instance *> instances_data;
   for (auto &item : request.instances()) {
@@ -177,7 +181,6 @@ Status ModelThread::PushTasks(const proto::PredictRequest &request, proto::Predi
     return FAILED;
   }
   Job job;
-  job.job_id = job_id_;
   job.wait_task_num = instances_data.size();
   job.callback = callback;
   job.request = &request;
@@ -234,12 +237,17 @@ void ModelThread::SendTasks() {
       }
       context = std::make_shared<PredictContext>();
       std::vector<std::pair<uint64_t, uint64_t>> &inputs = context->inputs;
-      for (uint64_t i = 0; i < batch_size_; i++) {
-        if (task_wait_queue_.empty()) {
-          break;
-        }
+      if (single_batch_dispatch_) {
         inputs.push_back(task_wait_queue_.front());
         task_wait_queue_.pop();
+      } else {
+        for (uint64_t i = 0; i < batch_size_; i++) {
+          if (task_wait_queue_.empty()) {
+            break;
+          }
+          inputs.push_back(task_wait_queue_.front());
+          task_wait_queue_.pop();
+        }
       }
       context->pid = pid;
       Combine(inputs, pid, &context->request);  // inputs string->InstanceData,task pid status
@@ -342,5 +350,4 @@ void ModelThread::Commit(const std::shared_ptr<PredictContext> &context) {
   SendTasks();
 }
 
-}  // namespace serving
-}  // namespace mindspore
+}  // namespace mindspore::serving

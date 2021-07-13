@@ -20,17 +20,27 @@
 #include <string>
 #include "common/servable.h"
 
+#include "pybind11/pybind11.h"
+#include "pybind11/numpy.h"
+#include "pybind11/stl.h"
+#include "python/tensor_py.h"
+
+namespace py = pybind11;
+
 namespace mindspore::serving {
 
-class MS_API PyServableStorage {
+class MS_API PyServableRegister {
  public:
   static void RegisterMethod(const MethodSignature &method);
 
-  static void DeclareServable(const ServableMeta &servable);
-  static void DeclareDistributedServable(const ServableMeta &servable);
+  static void DeclareModel(const ModelMeta &servable);
+  static void DeclareDistributedModel(const ModelMeta &servable);
 
-  static void RegisterInputOutputInfo(const std::string &servable_name, size_t inputs_count, size_t outputs_count,
+  static void RegisterInputOutputInfo(const std::string &model_key, size_t inputs_count, size_t outputs_count,
                                       uint64_t subgraph = 0);
+
+  // input args: list<list>, output: tuple<tuple>
+  static py::tuple Run(const std::string &model_key, const py::tuple &args, uint64_t subgraph);
 };
 
 }  // namespace mindspore::serving

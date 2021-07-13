@@ -53,6 +53,11 @@ class LogStream {
     return *this;
   }
 
+  LogStream &operator<<(const bool &val) noexcept {
+    (*sstream_) << (val ? "true" : "false");
+    return *this;
+  }
+
   template <typename T>
   LogStream &operator<<(const std::vector<T> &val) noexcept {
     (*sstream_) << "[";

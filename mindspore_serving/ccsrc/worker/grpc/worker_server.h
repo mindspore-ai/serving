@@ -24,7 +24,7 @@
 #include "proto/ms_worker.grpc.pb.h"
 #include "common/grpc_async_server.h"
 #include "worker/grpc/worker_process.h"
-#include "worker/distributed_worker/distributed_servable.h"
+#include "worker/distributed_worker/distributed_model_loader.h"
 
 namespace mindspore {
 namespace serving {
@@ -52,9 +52,10 @@ class WorkerPredictContext : public WorkerServiceContext<WorkerPredictContext> {
 
   void HandleRequest() override {
     MSI_TIME_STAMP_START(WorkerRequestHandle)
-    PredictOnFinish on_finish = [this, time_start_WorkerRequestHandle]() {
+    auto method_name = request_.servable_spec().method_name();
+    PredictOnFinish on_finish = [this, method_name, time_start_WorkerRequestHandle]() {
       responder_.Finish(response_, grpc::Status::OK, this);
-      MSI_TIME_STAMP_END(WorkerRequestHandle)
+      MSI_TIME_STAMP_END_EXTRA(WorkerRequestHandle, "Method " + method_name)
     };
     service_impl_->PredictAsync(&ctx_, &request_, &response_, on_finish);
   }
@@ -75,7 +76,10 @@ class WorkerExitContext : public WorkerServiceContext<WorkerPredictContext> {
 
   void StartEnqueueRequest() override { async_service_->RequestExit(&ctx_, &request_, &responder_, cq_, cq_, this); }
 
-  void HandleRequest() override { service_impl_->Exit(&ctx_, &request_, &response_); }
+  void HandleRequest() override {
+    service_impl_->Exit(&ctx_, &request_, &response_);
+    responder_.Finish(response_, grpc::Status::OK, this);
+  }
 
  private:
   grpc::ServerAsyncResponseWriter<proto::ExitReply> responder_;

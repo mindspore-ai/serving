@@ -31,24 +31,10 @@ def read_images():
     return image_files, images_buffer
 
 
-def run_classify_top1():
-    """Client for servable resnet50 and method classify_top1"""
-    print("run_classify_top1-----------")
-    client = Client("localhost:5500", "resnet50", "classify_top1")
-    instances = []
-    image_files, images_buffer = read_images()
-    for image in images_buffer:
-        instances.append({"image": image})
-    result = client.infer(instances)
-    print(result)
-    for file, label in zip(image_files, result):
-        print(f"{file}, label: {label['label']}")
-
-
-def run_classify_top1_v1():
-    """Client for servable resnet50 and method classify_top1_v1"""
-    print("\n--------------run_classify_top1_v1-----------")
-    client = Client("localhost:5500", "resnet50", "classify_top1_v1")
+def run_classify_top1(method_name):
+    """Client for servable resnet50 and method classify_top1[v1,v2,v3]"""
+    print(f"\n--------------run_{method_name}----------")
+    client = Client("localhost:5500", "resnet50", method_name)
     instances = []
     image_files, images_buffer = read_images()
     for image in images_buffer:
@@ -101,8 +87,8 @@ def run_classify_top5_async():
 
 
 def run_restful_classify_top1():
-    """RESTful Client for servable resnet50 and method classify_top1"""
-    print("\n--------------run_restful_classify_top1-----------")
+    """RESTful Client for servable resnet50 and method classify_top1_v1"""
+    print("\n--------------run_restful_classify_top1_v1-----------")
     import base64
     import requests
     import json
@@ -116,7 +102,7 @@ def run_restful_classify_top1():
     ip = "localhost"
     restful_port = 1500
     servable_name = "resnet50"
-    method_name = "classify_top1"
+    method_name = "classify_top1_v1"
     result = requests.post(f"http://{ip}:{restful_port}/model/{servable_name}:{method_name}", data=post_payload)
     print(result.text)
     result = json.loads(result.text)
@@ -125,8 +111,11 @@ def run_restful_classify_top1():
 
 
 if __name__ == '__main__':
-    run_classify_top1()
-    run_classify_top1_v1()
+    run_classify_top1("classify_top1_batch")
+    run_classify_top1("classify_top1_v1")  # preprocess eager, pipeline
+    run_classify_top1("classify_top1_v2")  # preprocess eager, without pipeline
+    run_classify_top1("classify_top1_v3")  # preprocess eager, without pipeline
+
     run_classify_top5()
     run_restful_classify_top1()
     run_classify_top5_async()

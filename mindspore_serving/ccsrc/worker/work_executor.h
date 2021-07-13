@@ -18,23 +18,18 @@
 #define MINDSPORE_SERVING_WORKER_WORK_EXECUTOR_H
 
 #include <vector>
-#include <unordered_map>
 #include <memory>
 #include <string>
-#include <future>
-#include <set>
 #include <mutex>
 #include <map>
-#include "common/thread_pool.h"
 #include "common/serving_common.h"
 #include "common/instance.h"
 #include "common/servable.h"
-#include "worker/sevable_base.h"
+#include "worker/model_loader_base.h"
 #include "worker/predict_thread.h"
 #include "worker/task_queue.h"
 
-namespace mindspore {
-namespace serving {
+namespace mindspore::serving {
 
 using WorkCallBack = std::function<void(const std::vector<InstancePtr> &instances)>;
 
@@ -46,77 +41,48 @@ struct InferSession {
 
 class WorkExecutor : public std::enable_shared_from_this<WorkExecutor> {
  public:
-  WorkExecutor(std::shared_ptr<TaskQueue> py_preprocess, std::shared_ptr<TaskQueue> py_postprocess,
-               std::shared_ptr<TaskQueue> cpp_preprocess, std::shared_ptr<TaskQueue> cpp_postprocess,
-               std::shared_ptr<TaskQueue> py_pipeline);
+  WorkExecutor();
   ~WorkExecutor();
 
-  Status Init(const ServableSignature &servable_declare, const std::shared_ptr<ServableBase> &servable);
+  Status Init(const std::map<std::string, std::shared_ptr<ModelLoaderBase>> &model_loaders);
   Status Work(const RequestSpec &request_spec, const std::vector<InstanceData> &inputs, WorkCallBack on_process_done);
-  Status Pipe(const RequestSpec &request_spec, const std::vector<InstanceData> &inputs,
-              const PipelineSignature &method_signature, WorkCallBack on_process_done);
+  void Stop();
 
   static uint64_t GetNextUserId();
-  uint32_t GetWorkerId() const;
 
-  void ClearInstances(Status error_msg);
+  void ClearInstances(const Status &error_msg);
+  uint64_t GetMaxBatchSize() const;
+
+  PyTaskQueue &GetPyTaskQueue() { return py_task_queue_; }
 
  private:
-  std::set<std::string> python_preprocess_names_;
-  std::set<std::string> python_postprocess_names_;
-  std::set<std::string> python_pipeline_names_;
-  PredictThread predict_thread_;
+  std::map<std::string, std::shared_ptr<ModelLoaderBase>> model_loaders_;
 
-  ServableSignature servable_declare_;
-  std::shared_ptr<ServableBase> servable_;
-
-  std::map<uint64_t, std::vector<TensorInfo>> input_infos_;
-  std::map<uint64_t, std::vector<TensorInfoWithBatch>> output_infos_;
-  uint32_t model_batch_size_ = 0;
-
-  uint64_t worker_id_ = 0;
   bool init_flag_ = false;
 
-  std::shared_ptr<TaskQueue> py_preprocess_task_queue_;
-  std::shared_ptr<TaskQueue> py_postprocess_task_queue_;
-  std::shared_ptr<TaskQueue> cpp_preprocess_task_queue_;
-  std::shared_ptr<TaskQueue> cpp_postprocess_task_queue_;
-  std::shared_ptr<TaskQueue> py_pipeline_task_queue_;
-  std::map<uint64_t, std::vector<TensorBasePtr>> inference_inputs_;
+  std::map<std::string, PredictThread> predict_thread_map_;
+  PyTaskQueue py_task_queue_;
+  CppTaskQueueThreadPool cpp_task_queue_pool_;
 
   std::map<uint64_t, InferSession> infer_session_map_;
   std::mutex infer_session_map_mutex_;
 
-  Status CheckServableSignature(uint64_t subgraph);
-
-  bool ReplyError(const std::vector<InstancePtr> &context, const Status &error_msg);
   bool ReplyError(const InstancePtr &context, const Status &error_msg);
   bool ReplyRequest(const std::vector<InstancePtr> &outputs);
   bool ReplyRequest(const InstancePtr &outputs);
 
-  void OnReceivePreprocessInputs(const std::vector<InstancePtr> &instances);   //  callback
-  void OnReceivePredictInputs(const std::vector<InstancePtr> &instances);      //  callback
-  void OnReceivePostprocessInputs(const std::vector<InstancePtr> &instances);  //  callback
-  void OnReceivePipelineInputs(const std::vector<InstancePtr> &instances);     //  callback
+  void OnReceiveStageInputs(const MethodSignature &method_def, uint64_t stage_index,
+                            const std::vector<InstancePtr> &instances);
 
-  void PredictHandle(const std::vector<InstancePtr> &instances);
-  Status PrePredict(const std::vector<InstancePtr> &instances);
-  Status PostPredict(const std::vector<InstancePtr> &instances, const std::vector<TensorBasePtr> &predict_result);
-  Status Predict(const std::vector<InstancePtr> &instances);
-  Status CheckPredictInput(const InstancePtr &instance);
-  bool IsNoBatchDimInput(int input_index) const;
+  static void CreateInputInstance(const MethodStage &stage, const InstancePtr &instance);
+  static void CreateInputInstance(const MethodStage &stage, const std::vector<InstancePtr> &instances);
+  static void CreateResultInstance(const InstancePtr &instance, const ResultInstance &result);
 
-  void CreateInputInstance(const InstancePtr &instance, PredictPhaseTag phase);
-  void CreateInputInstance(const std::vector<InstancePtr> &instances, PredictPhaseTag phase);
-  void CreateResultInstance(const InstancePtr &instance, const ResultInstance &result, PredictPhaseTag phase);
-  void CreateResultInstance(std::vector<InstancePtr> instances, const std::vector<ResultInstance> &results,
-                            PredictPhaseTag phase);
-  void InitPrePostprocess();
-  void InitPipeline();
-  void InitInputTensors(uint64_t subgraph);
+  void StageCallback(const std::vector<InstancePtr> &instances, const std::vector<ResultInstance> &outputs);
+  void InitStageFunctionQueue();
+  void InitPredictTaskQueue();
 };
 
-}  // namespace serving
-}  // namespace mindspore
+}  // namespace mindspore::serving
 
 #endif  // MINDSPORE_SERVING_WORKER_WORK_EXECUTOR_H

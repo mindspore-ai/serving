@@ -17,10 +17,6 @@
 
 namespace mindspore {
 
-GraphImplStubAdd::GraphImplStubAdd() { Init({2, 2}); }
-GraphImplStubAdd::GraphImplStubAdd(const std::vector<int64_t> &add_shape) { Init(add_shape); }
-GraphImplStubAdd::~GraphImplStubAdd() {}
-
 void GraphImplStubAdd::Init(const std::vector<int64_t> &add_shape) {
   auto element_cnt = [add_shape]() -> size_t {
     size_t element_num = 1;
@@ -33,17 +29,25 @@ void GraphImplStubAdd::Init(const std::vector<int64_t> &add_shape) {
     return element_num;
   };
   auto ele_size = element_cnt() * sizeof(float);
-  MSTensor tensor_x1 = MSTensor("x1", mindspore::DataType::kNumberTypeFloat32, add_shape, nullptr, ele_size);
-  MSTensor tensor_x2 = MSTensor("x2", mindspore::DataType::kNumberTypeFloat32, add_shape, nullptr, ele_size);
-
-  MSTensor tensor_y = MSTensor("y", mindspore::DataType::kNumberTypeFloat32, add_shape, nullptr, ele_size);
-
-  inputs_.push_back(tensor_x1);
-  inputs_.push_back(tensor_x2);
-  outputs_.push_back(tensor_y);
+  inputs_.clear();
+  for (size_t i = 0; i < input_count; i++) {
+    MSTensor tensor_x =
+      MSTensor("x" + std::to_string(1), mindspore::DataType::kNumberTypeFloat32, add_shape, nullptr, ele_size);
+    inputs_.push_back(tensor_x);
+  }
+  outputs_.clear();
+  for (size_t i = 0; i < output_count; i++) {
+    MSTensor tensor_y =
+      MSTensor("x" + std::to_string(1), mindspore::DataType::kNumberTypeFloat32, add_shape, nullptr, ele_size);
+    outputs_.push_back(tensor_y);
+  }
 }
 
+// y=x1+x2+x3+x4, y=x1-x2-x3-x4
+// y2=y1+1
 Status GraphImplStubAdd::Run(const std::vector<MSTensor> &inputs, std::vector<MSTensor> *outputs) {
+  auto file_name = graph_->graph_data_->GetFuncGraph()->file_name_;
+  MS_LOG_INFO << "exec model file ------------------- " << file_name;
   if (inputs.size() != inputs_.size()) {
     return mindspore::kCoreFailed;
   }
@@ -55,24 +59,81 @@ Status GraphImplStubAdd::Run(const std::vector<MSTensor> &inputs, std::vector<MS
       return mindspore::kCoreFailed;
     }
   }
-  auto x1 = reinterpret_cast<const float *>(inputs[0].Data().get());
-  auto x2 = reinterpret_cast<const float *>(inputs[1].Data().get());
-  MSTensor *output_ptr = outputs_[0].Clone();
-  if (output_ptr == nullptr) {
-    return mindspore::kCoreFailed;
-  }
-  MSTensor output = *output_ptr;
-  mindspore::MSTensor::DestroyTensorPtr(output_ptr);
+  auto item_count = outputs_[0].DataSize() / sizeof(float);
 
+  auto get_output_tensor = [this](size_t index) -> MSTensor {
+    MSTensor *output_ptr = outputs_[index].Clone();
+    MSTensor output = *output_ptr;
+    mindspore::MSTensor::DestroyTensorPtr(output_ptr);
+    return output;
+  };
+  auto output = get_output_tensor(0);
   auto y = reinterpret_cast<float *>(output.MutableData());
-  for (size_t i = 0; i < outputs_[0].DataSize() / sizeof(float); i++) {
-    y[i] = x1[i] + x2[i];
+  auto x0 = reinterpret_cast<const float *>(inputs[0].Data().get());
+  for (size_t i = 0; i < item_count; i++) {
+    y[i] = x0[i];
+  }
+  for (size_t k = 1; k < input_count; k++) {
+    auto xk = reinterpret_cast<const float *>(inputs[k].Data().get());
+    for (size_t i = 0; i < item_count; i++) {
+      if (sub_) {
+        y[i] = y[i] - xk[i];
+      } else {
+        y[i] = y[i] + xk[i];
+      }
+    }
   }
   outputs->push_back(output);
+  for (size_t k = 1; k < output_count; k++) {
+    auto output_k = get_output_tensor(k);
+    auto yk = reinterpret_cast<float *>(output_k.MutableData());
+    for (size_t i = 0; i < item_count; i++) {
+      yk[i] = y[i] + k;
+    }
+    outputs->push_back(output_k);
+  }
   return mindspore::kSuccess;
 }
 
-Status GraphImplStubAdd::Load(uint32_t device_id) { return kSuccess; }
+Status GraphImplStubAdd::Load(uint32_t device_id) {
+  LoadInner();
+  if (input_count == 0 || output_count == 0) {
+    MS_LOG_ERROR << "Invalid input count or output count, input count: " << input_count
+                 << ", output count: " << output_count;
+    return kCoreFailed;
+  }
+  MS_LOG_INFO << "input count: " << input_count << ", output count: " << output_count;
+  Init({2, 2});
+  return kSuccess;
+}
+
+void GraphImplStubAdd::LoadInner() {
+  auto file_name = graph_->graph_data_->GetFuncGraph()->file_name_;
+  MS_LOG_INFO << "model file ------------------- " << file_name;
+  auto beg = file_name.find("tensor_add");  // tensor_add_2_2.mindir or tensor_sub_2_2.mindir
+  if (beg == std::string::npos) {
+    beg = file_name.find("tensor_sub");
+    if (beg == std::string::npos) {
+      return;
+    }
+    sub_ = true;
+  }
+  beg += std::string("tensor_add").size();
+  auto input_beg = file_name.find("_", beg);
+  if (input_beg == std::string::npos) {
+    return;
+  }
+  auto output_beg = file_name.find("_", input_beg + 1);
+  if (output_beg == std::string::npos) {
+    return;
+  }
+  auto dot_beg = file_name.find(".mindir", output_beg + 1);
+  if (dot_beg == std::string::npos) {
+    return;
+  }
+  input_count = std::stoi(file_name.substr(input_beg + 1, output_beg));
+  output_count = std::stoi(file_name.substr(output_beg + 1, dot_beg));
+}
 
 std::vector<MSTensor> GraphImplStubAdd::GetInputs() { return inputs_; }
 

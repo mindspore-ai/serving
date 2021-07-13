@@ -55,4 +55,8 @@ void PyMaster::StopAndClear() {
   Server::Instance().Clear();
 }
 
+bool PyMaster::OnlyModelStage(const std::string &servable_name) {
+  return Server::Instance().GetDispatcher()->OnlyModelStage(servable_name);
+}
+
 }  // namespace mindspore::serving

@@ -16,8 +16,9 @@
 #include "common/common_test.h"
 
 #define private public
-#include "common/servable.h"
+#include "mindspore_serving/ccsrc/common/servable.h"
 #undef private
+#include "mindspore_serving/ccsrc/worker/servable_register.h"
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -34,7 +35,7 @@ void Common::TearDownTestCase() {}
 void Common::SetUp() {}
 
 void Common::TearDown() {
-  mindspore::serving::ServableStorage::Instance().servable_signatures_map_.clear();
+  mindspore::serving::ServableRegister::Instance() = mindspore::serving::ServableRegister();
 }
 
 }  // namespace UT

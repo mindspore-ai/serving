@@ -27,7 +27,11 @@
 
 namespace mindspore {
 
-class FuncGraph {};
+class FuncGraph {
+ public:
+  explicit FuncGraph(const std::string &file_name) : file_name_(file_name) {}
+  const std::string file_name_;
+};
 using FuncGraphPtr = std::shared_ptr<FuncGraph>;
 
 namespace common {
@@ -77,7 +81,7 @@ static inline std::shared_ptr<FuncGraph> LoadMindIR(const std::string &file_name
     MS_LOG(ERROR) << "File: " << file_name << "open failed";
     return nullptr;
   }
-  return std::make_shared<FuncGraph>();
+  return std::make_shared<FuncGraph>(file_name);
 }
 
 static inline std::vector<std::shared_ptr<FuncGraph>> LoadMindIRs(
@@ -94,14 +98,14 @@ static inline std::vector<std::shared_ptr<FuncGraph>> LoadMindIRs(
       MS_LOG(ERROR) << "File: " << file_name << "open failed";
       return {};
     }
-    graphs.push_back(std::make_shared<FuncGraph>());
+    graphs.push_back(std::make_shared<FuncGraph>(file_name));
   }
   return graphs;
 }
 
 static inline std::shared_ptr<FuncGraph> ConvertStreamToFuncGraph(const char *buf, const size_t buf_size,
                                                                   bool is_lite = false) {
-  return std::make_shared<FuncGraph>();
+  return std::make_shared<FuncGraph>("");
 }
 
 class MSTensor::Impl {
@@ -121,7 +125,6 @@ class MSTensor::Impl {
 
   virtual std::shared_ptr<Impl> Clone() const = 0;
 };
-
 
 }  // namespace mindspore
 

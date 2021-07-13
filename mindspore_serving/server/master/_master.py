@@ -14,33 +14,15 @@
 # ============================================================================
 """method of server supplied for master"""
 
-import threading
 from functools import wraps
 
 from mindspore_serving._mindspore_serving import ExitSignalHandle_
 from mindspore_serving._mindspore_serving import Master_
 from mindspore_serving._mindspore_serving import SSLConfig_
 
-from mindspore_serving import log as logger
 from mindspore_serving.server.common import check_type
 
 _wait_and_clear_thread = None
-
-
-# waiting for Ctrl+C, and clear
-def _start_wait_and_clear():
-    """Start thread waiting for catch ctrl+c, and clear env"""
-
-    def thread_func():
-        logger.info("Serving master: wait for Ctrl+C to exit ------------------------------------")
-        print("Serving master: wait for Ctrl+C to exit ------------------------------------")
-        Master_.wait_and_clear()
-
-    global _wait_and_clear_thread
-    if not _wait_and_clear_thread:
-        _wait_and_clear_thread = threading.Thread(target=thread_func)
-        _wait_and_clear_thread.start()
-
 
 at_stop_list = []
 
@@ -209,3 +191,8 @@ def start_master_server(address):
     check_type.check_str('address', address)
 
     Master_.start_grpc_master_server(address)
+
+
+def only_model_stage(servable_name):
+    """Whether only the model stages exist"""
+    return Master_.only_model_stage(servable_name)

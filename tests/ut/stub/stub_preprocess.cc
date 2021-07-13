@@ -14,20 +14,20 @@
  * limitations under the License.
  */
 
-#include "worker/preprocess.h"
+#include "worker/stage_function.h"
 #include "mindspore_serving/ccsrc/common/tensor.h"
 
 namespace mindspore::serving {
 
-class StubCastInt32toFp32Preprocess : public PreprocessBase {
+class StubCastInt32toFp32Preprocess : public CppStageFunctionBase {
  public:
-  Status Preprocess(const std::string &postprocess_name, const InstanceData &input, InstanceData *output) override {
+  Status Call(const std::string &postprocess_name, const InstanceData &input, InstanceData *output) override {
     MSI_EXCEPTION_IF_NULL(output);
     auto x1 = input[0];
     auto x2 = input[1];
     if (x1->data_type() != kMSI_Int32 || x2->data_type() != kMSI_Int32) {
       return INFER_STATUS_LOG_ERROR(FAILED)
-             << "Preprocess failed: Input data type invalid " << x1->data_type() << ", " << x2->data_type();
+             << "Call failed: Input data type invalid " << x1->data_type() << ", " << x2->data_type();
     }
 
     auto y1 = std::make_shared<Tensor>();
@@ -61,6 +61,6 @@ class StubCastInt32toFp32Preprocess : public PreprocessBase {
   size_t GetOutputsCount(const std::string &postprocess_name) const override { return 2; }
 };
 
-REGISTER_PREPROCESS(StubCastInt32toFp32Preprocess, "stub_preprocess_cast_int32_to_fp32_cpp")
+REGISTER_STAGE_FUNCTION(StubCastInt32toFp32Preprocess, "stub_preprocess_cast_int32_to_fp32_cpp")
 
 }  // namespace mindspore::serving

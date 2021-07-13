@@ -21,12 +21,14 @@
 #include <utility>
 #include <vector>
 #include <memory>
+#include <map>
 #include "common/serving_common.h"
 #include "proto/ms_service.pb.h"
 #include "proto/ms_master.pb.h"
 #include "proto/ms_distributed.pb.h"
 #include "common/instance.h"
 #include "common/servable.h"
+#include "common/shared_memory.h"
 
 namespace mindspore::serving {
 
@@ -53,20 +55,30 @@ class MS_API ProtoTensor : public TensorBase {
   static proto::DataType TransDataType2Proto(DataType data_type);
   static DataType TransDataType2Inference(proto::DataType data_type);
 
+  void SetSharedMemory(const proto::ShmTensorData &shm_data_proto);
+  Status AttachSharedMemory() const;
+
  private:
   // if tensor_ is reference from other ms_serving::Tensor, the other's lifetime must
   // longer than this object
   proto::Tensor *tensor_;
+  mutable bool has_attached_shm_ = false;
+  mutable SharedMemoryAttachItem shm_attach_;
 };
 
 class MS_API GrpcTensorHelper {
  public:
   static void GetRequestSpec(const proto::PredictRequest &request, RequestSpec *request_spec);
-  static void GetWorkerSpec(const proto::RegisterRequest &request, WorkerRegSpec *worker_specs);
-  static Status CreateInstanceFromRequest(const proto::PredictRequest &request, RequestSpec *request_spec,
+  static void ConvertProtoWorkerSpec(const proto::RegisterRequest &proto_request, WorkerRegSpec *worker_spec);
+  static void ConvertWorkerSpec(const WorkerRegSpec &worker_spec, proto::RegisterRequest *proto_request);
+  static void ConvertProtoModelInfos(const proto::ModelInfos &proto_model_infos,
+                                     std::map<std::string, ModelInfo> *model_infos);
+  static void ConvertModelInfos(const std::map<std::string, ModelInfo> &model_infos,
+                                proto::ModelInfos *proto_model_infos);
+  static Status CreateInstanceFromRequest(const MethodSignature &method, const proto::PredictRequest &request,
                                           std::vector<InstanceData> *results);
-  static void CreateReplyFromInstances(const proto::PredictRequest &request, const std::vector<InstancePtr> &instances,
-                                       proto::PredictReply *reply);
+  static void CreateReplyFromInstances(const proto::PredictRequest &request, const MethodSignature &method,
+                                       const std::vector<InstancePtr> &instances, proto::PredictReply *reply);
   static void CreateReplyFromErrorMsg(const Status &error_msg, proto::PredictReply *reply);
   static void CopyFromAgentSpec(const proto::AgentSpec &request, WorkerAgentSpec *worker_specs);
   static void CopyFromWorkerAgentSpec(const std::vector<WorkerAgentSpec> &worker_specs,
@@ -85,17 +97,11 @@ class MS_API GrpcTensorHelper {
   static Status CheckRequestInstances(const proto::PredictRequest &request,
                                       const std::vector<std::string> &input_names);
 
-  static Status CreatePipelineInstanceFromRequest(const proto::PredictRequest &request, RequestSpec *request_spec,
-                                                  std::vector<InstanceData> *results);
-
  private:
-  static Status CreateInstanceFromRequestInstances(const proto::PredictRequest &request,
-                                                   const std::vector<std::string> &input_names,
+  static Status CreateInstanceFromRequestInstances(const proto::PredictRequest &request, const MethodSignature &method,
                                                    std::vector<InstanceData> *results);
   static Status CheckRequestTensor(const proto::Tensor &tensor);
-  static void SetReplySpec(const RequestSpec &request_spec, proto::PredictReply *reply);
-  static void SetRequestSpec(const RequestSpec &request_spec, proto::PredictRequest *request);
-  static Status CreateReplyFromInstancesInner(const proto::PredictRequest &request,
+  static Status CreateReplyFromInstancesInner(const proto::PredictRequest &request, const MethodSignature &method,
                                               const std::vector<InstancePtr> &instances, proto::PredictReply *reply);
 };
 

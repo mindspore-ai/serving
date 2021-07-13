@@ -24,7 +24,7 @@
 #include "worker/distributed_worker/notify_agent/base_notify_agent.h"
 #define private public
 #include "common/exit_handle.h"
-#include "worker/distributed_worker/distributed_servable.h"
+#include "worker/distributed_worker/distributed_model_loader.h"
 #undef private
 
 namespace mindspore {
@@ -76,7 +76,7 @@ class TestDistributedInference : public UT::Common {
   TestDistributedInference() = default;
   ~TestDistributedInference() = default;
 
-  void InitDistributedServable(std::shared_ptr<DistributedServable> servable, size_t rank_size, size_t stage_size,
+  void InitDistributedServable(std::shared_ptr<DistributedModelLoader> servable, size_t rank_size, size_t stage_size,
                                bool is_running, bool is_loaded) {
     ExitSignalHandle::Instance().is_running_ = is_running;
     servable->model_loaded_ = is_loaded;
@@ -84,7 +84,7 @@ class TestDistributedInference : public UT::Common {
     servable->config_.distributed_meta.stage_size = stage_size;
   }
 
-  void InitAgentSpecMap(std::shared_ptr<DistributedServable> servable,
+  void InitAgentSpecMap(std::shared_ptr<DistributedModelLoader> servable,
                         const std::vector<AgentInferResult> &result_list) {
     for (size_t rank_id = 0; rank_id < result_list.size(); ++rank_id) {
       const auto &result = result_list[rank_id];
@@ -97,7 +97,8 @@ class TestDistributedInference : public UT::Common {
 };
 
 TEST_F(TestDistributedInference, test_agent_8_stage_1) {
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
+  servable->model_key_ = "test_distributed_model_key";
   InitDistributedServable(servable, 8, 1, true, true);
 
   std::vector<AgentInferResult> result_list(8);
@@ -110,7 +111,8 @@ TEST_F(TestDistributedInference, test_agent_8_stage_1) {
 }
 
 TEST_F(TestDistributedInference, test_agent_4) {
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
+  servable->model_key_ = "test_distributed_model_key";
   InitDistributedServable(servable, 4, 1, true, true);
 
   std::vector<AgentInferResult> result_list(4);
@@ -123,7 +125,8 @@ TEST_F(TestDistributedInference, test_agent_4) {
 }
 
 TEST_F(TestDistributedInference, test_agent_32_stage_1) {
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
+  servable->model_key_ = "test_distributed_model_key";
   InitDistributedServable(servable, 32, 1, true, true);
 
   std::vector<AgentInferResult> result_list(32);
@@ -136,7 +139,8 @@ TEST_F(TestDistributedInference, test_agent_32_stage_1) {
 }
 
 TEST_F(TestDistributedInference, test_agent_32_stage_2) {
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
+  servable->model_key_ = "test_distributed_model_key";
   InitDistributedServable(servable, 32, 2, true, true);
 
   std::vector<AgentInferResult> result_list(32);
@@ -149,7 +153,8 @@ TEST_F(TestDistributedInference, test_agent_32_stage_2) {
 }
 
 TEST_F(TestDistributedInference, test_agent_32_stage_4) {
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
+  servable->model_key_ = "test_distributed_model_key";
   InitDistributedServable(servable, 32, 4, true, true);
 
   std::vector<AgentInferResult> result_list(32);
@@ -162,7 +167,8 @@ TEST_F(TestDistributedInference, test_agent_32_stage_4) {
 }
 
 TEST_F(TestDistributedInference, test_agent_64_stage_8) {
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
+  servable->model_key_ = "test_distributed_model_key";
   InitDistributedServable(servable, 64, 8, true, true);
 
   std::vector<AgentInferResult> result_list(64);
@@ -175,7 +181,8 @@ TEST_F(TestDistributedInference, test_agent_64_stage_8) {
 }
 
 TEST_F(TestDistributedInference, test_output_nullptr) {
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
+  servable->model_key_ = "test_distributed_model_key";
   InitDistributedServable(servable, 32, 4, true, true);
 
   std::vector<AgentInferResult> result_list(32);
@@ -188,7 +195,8 @@ TEST_F(TestDistributedInference, test_output_nullptr) {
 }
 
 TEST_F(TestDistributedInference, test_agent_infer_more_than_10s) {
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
+  servable->model_key_ = "test_distributed_model_key";
   InitDistributedServable(servable, 32, 4, true, true);
 
   std::vector<AgentInferResult> result_list(32);
@@ -202,7 +210,8 @@ TEST_F(TestDistributedInference, test_agent_infer_more_than_10s) {
 }
 
 TEST_F(TestDistributedInference, test_agent_exit) {
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
+  servable->model_key_ = "test_distributed_model_key";
   InitDistributedServable(servable, 32, 4, false, true);
 
   std::vector<AgentInferResult> result_list(32);
@@ -215,7 +224,8 @@ TEST_F(TestDistributedInference, test_agent_exit) {
 }
 
 TEST_F(TestDistributedInference, test_rank_size_not_equal_agent_num) {
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
+  servable->model_key_ = "test_distributed_model_key";
   InitDistributedServable(servable, 32, 4, true, true);
 
   std::vector<AgentInferResult> result_list(12);
@@ -228,7 +238,8 @@ TEST_F(TestDistributedInference, test_rank_size_not_equal_agent_num) {
 }
 
 TEST_F(TestDistributedInference, test_agent_reply_with_error_msg) {
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
+  servable->model_key_ = "test_distributed_model_key";
   InitDistributedServable(servable, 32, 4, true, true);
 
   std::vector<AgentInferResult> result_list(32);
@@ -242,7 +253,8 @@ TEST_F(TestDistributedInference, test_agent_reply_with_error_msg) {
 }
 
 TEST_F(TestDistributedInference, test_model_not_loaded) {
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
+  servable->model_key_ = "test_distributed_model_key";
   InitDistributedServable(servable, 32, 4, true, false);
 
   std::vector<AgentInferResult> result_list(32);

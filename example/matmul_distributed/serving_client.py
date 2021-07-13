@@ -23,6 +23,8 @@ def run_matmul():
     instance = {"x": np.ones((128, 96), np.float32)}
     result = client.infer(instance)
     print("result:\n", result)
+    assert len(result) == 1
+    assert "y" in result[0]
 
 
 if __name__ == '__main__':

@@ -31,6 +31,7 @@ enum StatusCode {
   INVALID_INPUTS,
   SYSTEM_ERROR,
   WORKER_UNAVAILABLE,
+  SERVABLE_UNAVAILABLE,
 };
 
 class Status {
@@ -66,6 +67,13 @@ class Status {
     auto time_end_##name = std::chrono::steady_clock::now();                                                 \
     auto time_cost = std::chrono::duration<double, std::milli>(time_end_##name - time_start_##name).count(); \
     MSI_LOG_INFO << #name " Time Cost # " << time_cost << " ms ---------------------";                       \
+  }
+
+#define MSI_TIME_STAMP_END_EXTRA(name, extra)                                                                \
+  {                                                                                                          \
+    auto time_end_##name = std::chrono::steady_clock::now();                                                 \
+    auto time_cost = std::chrono::duration<double, std::milli>(time_end_##name - time_start_##name).count(); \
+    MSI_LOG_INFO << extra << " " << #name " Time Cost # " << time_cost << " ms ---------------------";       \
   }
 
 #define INFER_STATUS(code) mindspore::serving::Status(code) < mindspore::serving::LogStream()

@@ -22,32 +22,20 @@
 namespace mindspore {
 API_FACTORY_REG(GraphCell::GraphImpl, Ascend910, AscendGraphImpl);
 
-std::shared_ptr<GraphCell::GraphImpl> AscendGraphImpl::graph_imp_stub_ = std::make_shared<GraphImplStubAdd>();
-
-AscendGraphImpl::AscendGraphImpl() {}
+AscendGraphImpl::AscendGraphImpl() { graph_imp_stub_ = std::make_shared<GraphImplStubAdd>(); }
 
 AscendGraphImpl::~AscendGraphImpl() {}
 
-std::vector<MSTensor> AscendGraphImpl::GetInputs() {
-  if (!graph_imp_stub_) {
-    return {};
-  }
-  return graph_imp_stub_->GetInputs();
-}
+std::vector<MSTensor> AscendGraphImpl::GetInputs() { return graph_imp_stub_->GetInputs(); }
 
-std::vector<MSTensor> AscendGraphImpl::GetOutputs() {
-  if (!graph_imp_stub_) {
-    return {};
-  }
-  return graph_imp_stub_->GetOutputs();
-}
+std::vector<MSTensor> AscendGraphImpl::GetOutputs() { return graph_imp_stub_->GetOutputs(); }
 
-Status AscendGraphImpl::Load(uint32_t device_id) { return kSuccess; }
+Status AscendGraphImpl::Load(uint32_t device_id) {
+  graph_imp_stub_->SetGraph(graph_);
+  return graph_imp_stub_->Load(device_id);
+}
 
 Status AscendGraphImpl::Run(const std::vector<MSTensor> &inputs, std::vector<MSTensor> *outputs) {
-  if (!graph_imp_stub_) {
-    return kMCFailed;
-  }
   return graph_imp_stub_->Run(inputs, outputs);
 }
 

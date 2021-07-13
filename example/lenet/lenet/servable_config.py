@@ -41,14 +41,14 @@ def postprocess_top1(score):
     return max_idx
 
 
-register.declare_servable(servable_file="lenet.mindir", model_format="MindIR")
+lenet_model = register.declare_model(model_file="lenet.mindir", model_format="MindIR")
 
 
 @register.register_method(output_names=["label"])
 def classify_top1(image):
     """Define method `classify_top1` for servable `resnet50`.
      The input is `image` and the output is `lable`."""
-    x = register.call_preprocess(preprocess_eager, image)
-    x = register.call_servable(x)
-    x = register.call_postprocess(postprocess_top1, x)
+    x = register.add_stage(preprocess_eager, image, outputs_count=1)
+    x = register.add_stage(lenet_model, x, outputs_count=1)
+    x = register.add_stage(postprocess_top1, x, outputs_count=1)
     return x

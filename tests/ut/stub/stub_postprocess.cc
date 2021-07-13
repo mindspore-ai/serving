@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-#include "worker/postprocess.h"
+#include "worker/stage_function.h"
 #include "mindspore_serving/ccsrc/common/tensor.h"
 
 namespace mindspore::serving {
 
-class StubCastFp32toInt32Postprocess : public PostprocessBase {
+class StubCastFp32toInt32Postprocess : public CppStageFunctionBase {
  public:
-  Status Postprocess(const std::string &postprocess_name, const InstanceData &input, InstanceData *output) override {
+  Status Call(const std::string &postprocess_name, const InstanceData &input, InstanceData *output) override {
     MSI_EXCEPTION_IF_NULL(output);
     auto x1 = input[0];
     if (x1->data_type() != kMSI_Float32) {
@@ -46,6 +46,6 @@ class StubCastFp32toInt32Postprocess : public PostprocessBase {
   size_t GetOutputsCount(const std::string &postprocess_name) const override { return 1; }
 };
 
-REGISTER_POSTPROCESS(StubCastFp32toInt32Postprocess, "stub_postprocess_cast_fp32_to_int32_cpp")
+REGISTER_STAGE_FUNCTION(StubCastFp32toInt32Postprocess, "stub_postprocess_cast_fp32_to_int32_cpp")
 
 }  // namespace mindspore::serving

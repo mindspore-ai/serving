@@ -51,9 +51,10 @@ struct TensorInfo {
   size_t size = 0;  // -1: unspecified
   DataType data_type = kMSI_Unknown;
   std::vector<int64_t> shape;
+  bool is_no_batch_dim = false;
 };
 
-struct TensorInfoWithBatch {
+struct TensorInfoOutput {
   TensorInfo tensor_info;
   size_t size_one_batch = 0;
   std::vector<int64_t> shape_one_batch;

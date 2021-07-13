@@ -286,6 +286,7 @@ class ResidualBlockBase(nn.Cell):
     Examples:
         >>> ResidualBlockBase(3, 256, stride=2)
     """
+
     # pylint: disable=unused-argument
     def __init__(self,
                  in_channel,
@@ -510,6 +511,7 @@ def resnet18(class_num=10):
                   class_num,
                   res_base=True)
 
+
 def resnet34(class_num=10):
     """
     Get ResNet34 neural network.
@@ -530,6 +532,7 @@ def resnet34(class_num=10):
                   [1, 2, 2, 2],
                   class_num,
                   res_base=True)
+
 
 def resnet50(class_num=10):
     """

@@ -17,313 +17,242 @@
 #include "worker/task_queue.h"
 #include <utility>
 #include <unordered_map>
-#include "worker/preprocess.h"
-#include "worker/postprocess.h"
-#include "worker/pipeline.h"
-
-static const char *kTaskTypeStop = "stop";
-static const char *kTaskTypeEmpty = "empty";
-static const char *kTaskTypePreprocess = "preprocess";
-static const char *kTaskTypePostprocess = "postprocess";
-static const char *kTaskTypePipeline = "pipeline";
+#include "worker/stage_function.h"
 
 namespace mindspore::serving {
 
 TaskQueue::TaskQueue() {}
 
-TaskQueue::TaskQueue(std::shared_ptr<std::mutex> lock, std::shared_ptr<std::condition_variable> cond_var)
-    : lock_(lock), cond_var_(cond_var) {}
-
-TaskQueue::~TaskQueue() = default;
-
-Status TaskQueue::SetWorkerCallback(uint64_t worker_id, TaskCallBack on_task_done) {
-  std::unique_lock<std::mutex> lock{*lock_};
-  if (!is_running) {
-    return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Task queue has not been started";
+void TaskQueue::Start(const std::string &que_name, const std::vector<TaskInfo> &task_infos, TaskCallBack callback) {
+  std::unique_lock<std::mutex> lock{que_lock_};
+  if (is_running) {
+    return;
   }
-  callback_map_[worker_id] = on_task_done;
-  return SUCCESS;
-}
-
-void TaskQueue::PushTask(const std::string &task_name, uint64_t worker_id, const std::vector<InstancePtr> &inputs) {
-  if (inputs.empty()) {
-    MSI_LOG_EXCEPTION << "Inputs cannot be empty";
-  }
-  {
-    std::unique_lock<std::mutex> lock{*lock_};
-    auto &task_list = task_map_[task_name];
-    task_list.name = task_name;
-    for (auto &input : inputs) {
-      TaskContext context;
-      context.user_id = input->context.user_id;
-      context.instance_index = input->context.instance_index;
-      context.worker_id = worker_id;
-
-      task_list.context_list.push_back(context);
-      task_list.instance_list.push_back(input);
+  que_name_ = que_name;
+  task_callback_ = std::move(callback);
+  methods_queue_.group_que_map.clear();
+  methods_queue_.groups_que_instances_count = 0;
+  for (auto &info : task_infos) {
+    if (info.batch_size == 0) {
+      MSI_LOG_EXCEPTION << "Invalid batch size 0, queue name: " << que_name;
     }
-    task_priority_list_.push(task_name);
+    auto &method_queue = methods_queue_.group_que_map[info.group_name];
+    auto &stage_queue = method_queue.priority_que_map[info.priority];
+    stage_queue.task_info = info;
   }
-  cond_var_->notify_one();
+  is_running = true;
 }
 
-void TaskQueue::PushTaskResult(uint64_t worker_id, const InstancePtr &input, const ResultInstance &output) {
-  std::unique_lock<std::mutex> lock{*lock_};
+void TaskQueue::Stop() {
+  std::unique_lock<std::mutex> lock{que_lock_};
   if (!is_running) {
-    MSI_LOG_INFO << "Task queue has exited";
     return;
   }
-  auto it = callback_map_.find(worker_id);
-  if (it == callback_map_.end()) {
-    MSI_LOG_ERROR << "Worker service " << worker_id << " has not specified callback";
-    return;
-  }
-  if (it->second == nullptr) {
-    MSI_LOG_ERROR << "Worker service " << worker_id << " has not specify callback preprocess";
-    return;
-  }
-  it->second({input}, {output});
+  methods_queue_.group_que_map.clear();
+  task_callback_ = nullptr;
+
+  is_running = false;
+  cond_var_.notify_all();
 }
 
-void TaskQueue::PushTaskResult(uint64_t worker_id, const std::vector<InstancePtr> &inputs,
-                               const std::vector<ResultInstance> &outputs) {
-  std::unique_lock<std::mutex> lock{*lock_};
-  if (!is_running) {
-    MSI_LOG_INFO << "Task queue has exited";
+void TaskQueue::PushTask(const std::string &group_name, size_t priority, const std::vector<InstancePtr> &instances) {
+  if (instances.empty()) {
+    MSI_LOG_WARNING << "Instances cannot be empty";
     return;
   }
-  auto it = callback_map_.find(worker_id);
-  if (it == callback_map_.end()) {
-    MSI_LOG_ERROR << "Worker service " << worker_id << " has not specified callback";
-    return;
+  MSI_LOG_DEBUG << que_name_ << " Push instances count " << instances.size()
+                << ", inputs size: " << instances[0]->data.size();
+  {
+    std::unique_lock<std::mutex> lock{que_lock_};
+    auto method_it = methods_queue_.group_que_map.find(group_name);
+    if (method_it == methods_queue_.group_que_map.end()) {
+      MSI_LOG_EXCEPTION << "Cannot find method " << group_name << " in task queue, queue name: " << que_name_;
+    }
+    auto &stage_queue = method_it->second;
+    auto stage_it = stage_queue.priority_que_map.find(priority);
+    if (stage_it == stage_queue.priority_que_map.end()) {
+      MSI_LOG_EXCEPTION << "Cannot find stage index " << priority << " in task queue, method name: " << group_name
+                        << ", queue name: " << que_name_;
+    }
+    auto &que = stage_it->second;
+    for (auto &instance : instances) {
+      que.instance_list.push_back(instance);
+    }
+    stage_queue.priority_que_instances_count += instances.size();
+    methods_queue_.groups_que_instances_count += instances.size();
   }
-  if (it->second == nullptr) {
-    MSI_LOG_ERROR << "Worker service " << worker_id << " has not specify callback preprocess";
-    return;
-  }
-  it->second(inputs, outputs);
+  cond_var_.notify_all();
 }
 
-Status TaskQueue::PushTaskPyResult(const std::vector<ResultInstance> &outputs) {
-  auto &context_list = task_item_processing_.context_list;
-  auto &instance_list = task_item_processing_.instance_list;
-  if (outputs.empty() || context_list.size() < outputs.size()) {
-    return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "processing task not match result, processing size "
-                                                << context_list.size() << ", result size " << outputs.size();
+bool TaskQueue::FindProcessTaskQueue(std::string *method_name) {
+  auto next_que = methods_queue_.next_exe_que;
+  auto &que_map = methods_queue_.group_que_map;
+  size_t index = 0;
+  std::string name;
+  for (auto &item : que_map) {
+    if (item.second.priority_que_instances_count > 0 && (name.empty() || index >= next_que)) {
+      name = item.first;
+      if (index >= next_que) {
+        break;
+      }
+    }
+    index++;
   }
-  std::unordered_map<uint64_t, std::pair<std::vector<InstancePtr>, std::vector<ResultInstance>>> worker_result_map;
-  for (size_t i = 0; i < outputs.size(); i++) {
-    auto &result_item = worker_result_map[context_list[i].worker_id];
-    result_item.first.push_back(instance_list[i]);
-    result_item.second.push_back(outputs[i]);
+  if (name.empty()) {
+    return false;
   }
-  for (auto &item : worker_result_map) {
-    PushTaskResult(item.first, item.second.first, item.second.second);
+  if (index + 1 >= que_map.size()) {
+    methods_queue_.next_exe_que = 0;
+  } else {
+    methods_queue_.next_exe_que = index + 1;
   }
-  context_list.erase(context_list.begin(), context_list.begin() + outputs.size());
-  instance_list.erase(instance_list.begin(), instance_list.begin() + outputs.size());
-  return SUCCESS;
+  *method_name = name;
+  return true;
 }
 
 void TaskQueue::PopTask(TaskItem *task_item) {
   MSI_EXCEPTION_IF_NULL(task_item);
-  std::unique_lock<std::mutex> lock{*lock_};
+  std::unique_lock<std::mutex> lock{que_lock_};
   if (!is_running) {  // before start, or after stop
-    task_item->task_type = kTaskTypeStop;
+    MSI_LOG_INFO << "Detect task queue is not running, maybe the Serving server is stopped.";
+    task_item->has_stopped = true;
     return;
   }
   while (true) {
-    if (task_priority_list_.empty()) {
-      cond_var_->wait(lock, [this] { return !is_running || !task_priority_list_.empty(); });
+    if (methods_queue_.groups_que_instances_count == 0) {
+      cond_var_.wait(lock, [this] { return !is_running || methods_queue_.groups_que_instances_count > 0; });
       if (!is_running) {
-        task_item->task_type = kTaskTypeStop;
+        MSI_LOG_INFO << "Detect task queue '" << que_name_ << "' is not running, maybe the Serving server is stopped.";
+        task_item->has_stopped = true;
         return;
       }
     }
-    if (task_priority_list_.empty()) {
-      MSI_LOG_EXCEPTION << "task_priority_list_.empty(), is_running " << is_running << ", task_priority_list_ size "
-                        << task_priority_list_.size();
+    std::string method_name;
+    if (!FindProcessTaskQueue(&method_name)) {
+      MSI_LOG_EXCEPTION << "Cannot find task when the number " << methods_queue_.groups_que_instances_count
+                        << " of instances in task queue is not 0";
     }
-    auto task_item_info = task_priority_list_.front();
-    task_priority_list_.pop();
-    auto &cur_task = task_map_[task_item_info];
-    if (cur_task.instance_list.empty()) {
-      continue;
+    auto &method_que = methods_queue_.group_que_map[method_name];
+    auto &stage_que_map = method_que.priority_que_map;
+    auto stage_it = stage_que_map.rbegin();
+    for (; stage_it != stage_que_map.rend(); ++stage_it) {
+      if (!stage_it->second.instance_list.empty()) {
+        break;
+      }
     }
-    *task_item = cur_task;
-    cur_task.context_list.clear();
-    cur_task.instance_list.clear();
+    if (stage_it == stage_que_map.rend()) {
+      MSI_LOG_EXCEPTION << "Cannot find task when the number " << method_que.priority_que_instances_count
+                        << " of instances in method task queue is not 0";
+    }
+    auto &task_handle = stage_it->second;
+    auto batch_size = task_handle.task_info.batch_size;
+    // Pop a maximum of batch_size instances
+    if (task_handle.instance_list.size() <= batch_size) {
+      *task_item = task_handle;
+      task_handle.instance_list.clear();
+    } else {
+      *task_item = task_handle;
+      auto &instances_ret = task_item->instance_list;
+      instances_ret.erase(instances_ret.begin() + batch_size, instances_ret.end());
+      auto &instances_reserved = task_handle.instance_list;
+      instances_reserved.erase(instances_reserved.begin(), instances_reserved.begin() + batch_size);
+    }
+    MSI_LOG_DEBUG << que_name_ << " Pop instances count " << task_item->instance_list.size()
+                  << ", batch size: " << batch_size;
+
+    method_que.priority_que_instances_count -= task_item->instance_list.size();
+    methods_queue_.groups_que_instances_count -= task_item->instance_list.size();
     break;
   }
 }
 
-void TaskQueue::TryPopTask(TaskItem *task_item) {
-  MSI_EXCEPTION_IF_NULL(task_item);
-  std::unique_lock<std::mutex> lock{*lock_};
-  if (!is_running) {  // before start, or after stop
-    task_item->task_type = kTaskTypeStop;
-    return;
-  }
-  while (true) {
-    if (task_priority_list_.empty()) {
-      task_item->task_type = kTaskTypeEmpty;
-      return;
-    }
-    auto task_item_info = task_priority_list_.front();
-    task_priority_list_.pop();
-    auto &cur_task = task_map_[task_item_info];
-    if (cur_task.instance_list.empty()) {
-      continue;
-    }
-    *task_item = cur_task;
-    cur_task.context_list.clear();
-    cur_task.instance_list.clear();
-    break;
-  }
-}
-
-void TaskQueue::TryPopPyTask(TaskItem *task_item) {
-  MSI_EXCEPTION_IF_NULL(task_item);
-  TryPopTask(task_item);
-  if (IsValidTask(*task_item)) {
-    task_item_processing_ = *task_item;
-  }
-}
-
-void TaskQueue::Start() {
-  std::unique_lock<std::mutex> lock{*lock_};
-  if (is_running) {
-    return;
-  }
-  is_running = true;
-  task_map_.clear();
-  task_priority_list_ = std::queue<std::string>();
-  task_item_processing_ = TaskItem();
-  callback_map_.clear();
-}
-
-void TaskQueue::Stop() {
-  std::unique_lock<std::mutex> lock{*lock_};
+void TaskQueue::PushTaskResult(const InstancePtr &input, const ResultInstance &output) {
   if (!is_running) {
+    MSI_LOG_INFO << "Task queue has exited";
     return;
   }
-  task_map_.clear();
-  task_priority_list_ = std::queue<std::string>();
-  task_item_processing_ = TaskItem();
-  callback_map_.clear();
-
-  is_running = false;
-  cond_var_->notify_all();
+  task_callback_({input}, {output});
 }
 
-bool TaskQueue::IsValidTask(const TaskItem &task_item) {
-  return task_item.task_type != kTaskTypeStop && task_item.task_type != kTaskTypeEmpty;
-}
-
-bool TaskQueue::Empty() const { return task_priority_list_.empty(); }
-
-PyTaskQueueGroup::PyTaskQueueGroup() = default;
-
-PyTaskQueueGroup::~PyTaskQueueGroup() = default;
-
-std::shared_ptr<TaskQueue> PyTaskQueueGroup::GetPreprocessTaskQueue() { return preprocess_task_que_; }
-std::shared_ptr<TaskQueue> PyTaskQueueGroup::GetPostprocessTaskQueue() { return postprocess_task_que_; }
-std::shared_ptr<TaskQueue> PyTaskQueueGroup::GetPipelineTaskQueue() { return pipeline_task_que_; }
-void PyTaskQueueGroup::PopPyTask(TaskItem *task_item) {
-  MSI_EXCEPTION_IF_NULL(task_item);
-  while (true) {
-    {
-      std::unique_lock<std::mutex> lock{*lock_};
-      if (preprocess_task_que_->Empty() && postprocess_task_que_->Empty()) {
-        cond_var_->wait(
-          lock, [this] { return !is_running || !(preprocess_task_que_->Empty() && postprocess_task_que_->Empty()); });
-        if (!is_running) {
-          task_item->task_type = kTaskTypeStop;
-          return;
-        }
-      }
-    }
-    preprocess_task_que_->TryPopPyTask(task_item);
-    if (TaskQueue::IsValidTask(*task_item)) {
-      task_item->task_type = kTaskTypePreprocess;
-      break;
-    }
-    postprocess_task_que_->TryPopPyTask(task_item);
-    if (TaskQueue::IsValidTask(*task_item)) {
-      task_item->task_type = kTaskTypePostprocess;
-      break;
-    }
-  }
-}
-void PyTaskQueueGroup::PopPipelineTask(TaskItem *task_item) {
-  MSI_EXCEPTION_IF_NULL(task_item);
-  while (true) {
-    {
-      std::unique_lock<std::mutex> lock{*pipeline_lock_};
-      if (pipeline_task_que_->Empty()) {
-        cond_pipeline_->wait(lock, [this] { return !is_running || !(pipeline_task_que_->Empty()); });
-        if (!is_running) {
-          task_item->task_type = kTaskTypeStop;
-          return;
-        }
-      }
-    }
-    pipeline_task_que_->TryPopPyTask(task_item);
-    if (TaskQueue::IsValidTask(*task_item)) {
-      task_item->task_type = kTaskTypePipeline;
-      break;
-    }
-  }
-}
-void PyTaskQueueGroup::TryPopPreprocessTask(TaskItem *task_item) {
-  MSI_EXCEPTION_IF_NULL(task_item);
-  preprocess_task_que_->TryPopPyTask(task_item);
-  if (TaskQueue::IsValidTask(*task_item)) {
-    task_item->task_type = kTaskTypePreprocess;
-  }
-}
-
-void PyTaskQueueGroup::TryPopPostprocessTask(TaskItem *task_item) {
-  MSI_EXCEPTION_IF_NULL(task_item);
-  postprocess_task_que_->TryPopPyTask(task_item);
-  if (TaskQueue::IsValidTask(*task_item)) {
-    task_item->task_type = kTaskTypePostprocess;
-  }
-}
-void PyTaskQueueGroup::TryPopPipelineTask(TaskItem *task_item) {
-  MSI_EXCEPTION_IF_NULL(task_item);
-  pipeline_task_que_->TryPopPyTask(task_item);
-  if (TaskQueue::IsValidTask(*task_item)) {
-    task_item->task_type = kTaskTypePipeline;
-  }
-}
-
-void PyTaskQueueGroup::Start() {
-  if (is_running) {
+void TaskQueue::PushTaskResult(const std::vector<InstancePtr> &inputs, const std::vector<ResultInstance> &outputs) {
+  if (!is_running) {
+    MSI_LOG_INFO << "Task queue has exited";
     return;
   }
-  is_running = true;
-  preprocess_task_que_->Start();
-  postprocess_task_que_->Start();
-  pipeline_task_que_->Start();
+  task_callback_(inputs, outputs);
 }
 
-void PyTaskQueueGroup::Stop() {
-  is_running = false;
-  preprocess_task_que_->Stop();
-  postprocess_task_que_->Stop();
-  pipeline_task_que_->Stop();
+void TaskQueue::PushTaskResult(const std::vector<InstancePtr> &inputs, const Status &failed_result) {
+  std::vector<ResultInstance> result;
+  for (auto &item : inputs) {
+    (void)item;
+    ResultInstance output;
+    output.error_msg = failed_result;
+    result.push_back(output);
+  }
+  PushTaskResult(inputs, result);
 }
 
-TaskQueueThreadPool::TaskQueueThreadPool() = default;
+void PyTaskQueue::Start(const std::string &que_name, const std::vector<MethodStage> &stage_infos,
+                        TaskCallBack callback) {
+  std::vector<TaskInfo> task_infos;
+  for (auto &item : stage_infos) {
+    TaskInfo info;
+    info.batch_size = item.batch_size;
+    info.priority = item.stage_index;
+    info.group_name = item.method_name;
+    info.task_name = item.stage_key;
+    info.tag = item.tag;
+    task_infos.push_back(info);
+  }
+  task_queue_.Start(que_name, task_infos, std::move(callback));
+  py_task_item_processing_ = TaskItem();
+}
 
-TaskQueueThreadPool::~TaskQueueThreadPool() = default;
+void PyTaskQueue::Stop() { task_queue_.Stop(); }
 
-void TaskQueueThreadPool::ThreadFunc(TaskQueueThreadPool *thread_pool) {
+void PyTaskQueue::PushTask(const std::string &method_name, size_t stage_index,
+                           const std::vector<InstancePtr> &instances) {
+  task_queue_.PushTask(method_name, stage_index, instances);
+}
+
+void PyTaskQueue::PyPopTask(TaskItem *task_item) {
+  MSI_EXCEPTION_IF_NULL(task_item);
+  task_queue_.PopTask(task_item);
+  if (!task_item->has_stopped) {
+    py_task_item_processing_ = *task_item;
+  }
+}
+
+void PyTaskQueue::PyPushTaskResult(const std::vector<ResultInstance> &outputs) {
+  if (!task_queue_.IsRunning()) {
+    MSI_LOG_INFO << "Task queue has exited";
+    return;
+  }
+  auto &instance_list = py_task_item_processing_.instance_list;
+  if (outputs.empty() || instance_list.size() < outputs.size()) {
+    MSI_LOG_EXCEPTION << "processing task not match result, processing size " << instance_list.size()
+                      << ", result size " << outputs.size();
+  }
+  std::vector<InstancePtr> instances;
+  std::vector<ResultInstance> results;
+  for (size_t i = 0; i < outputs.size(); i++) {
+    instances.push_back(instance_list[i]);
+    results.push_back(outputs[i]);
+  }
+  task_queue_.PushTaskResult(instances, results);
+  instance_list.erase(instance_list.begin(), instance_list.begin() + outputs.size());
+}
+
+CppTaskQueueThreadPool::CppTaskQueueThreadPool() = default;
+
+CppTaskQueueThreadPool::~CppTaskQueueThreadPool() = default;
+
+void CppTaskQueueThreadPool::ThreadFunc(CppTaskQueueThreadPool *thread_pool) {
   while (true) {
     TaskItem task_item;
-    thread_pool->task_queue_->PopTask(&task_item);
-    if (task_item.task_type == kTaskTypeStop) {
+    thread_pool->task_queue_.PopTask(&task_item);
+    if (task_item.has_stopped) {
       return;
     }
     auto status = thread_pool->HandleTask(task_item);
@@ -334,19 +263,30 @@ void TaskQueueThreadPool::ThreadFunc(TaskQueueThreadPool *thread_pool) {
   }
 }
 
-void TaskQueueThreadPool::Start(uint32_t size) {
+void CppTaskQueueThreadPool::Start(const std::string &que_name, const std::vector<MethodStage> &stage_infos,
+                                   TaskCallBack callback, uint32_t size) {
   if (is_running_) {
     return;
   }
-  is_running_ = true;    // start before ThreadFunc thread pool start
-  task_queue_->Start();  // start before ThreadFunc thread pool start
+  is_running_ = true;  // start before ThreadFunc thread pool start
+  std::vector<TaskInfo> task_infos;
+  for (auto &item : stage_infos) {
+    TaskInfo info;
+    info.batch_size = item.batch_size;
+    info.priority = item.stage_index;
+    info.group_name = item.method_name;
+    info.task_name = item.stage_key;
+    info.tag = item.tag;
+    task_infos.push_back(info);
+  }
+  task_queue_.Start(que_name, task_infos, callback);  // start before ThreadFunc thread pool start
   for (uint32_t i = 0; i < size; ++i) {
     pool_.emplace_back(ThreadFunc, this);
   }
 }
 
-void TaskQueueThreadPool::Stop() {
-  task_queue_->Stop();
+void CppTaskQueueThreadPool::Stop() {
+  task_queue_.Stop();
   for (std::thread &thd : pool_) {
     if (thd.joinable()) {
       try {
@@ -360,49 +300,23 @@ void TaskQueueThreadPool::Stop() {
   is_running_ = false;
 }
 
-Status PreprocessThreadPool::HandleTask(const TaskItem &task_item) {
-  Status status;
-  auto preprocess = PreprocessStorage::Instance().GetPreprocess(task_item.name);
-  if (!preprocess) {
-    status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "System error, get preprocess " << task_item.name << " failed";
-    return status;
-  }
-  for (size_t i = 0; i < task_item.instance_list.size(); i++) {
-    auto &instance = task_item.instance_list[i];
-    auto &context = task_item.context_list[i];
-    ResultInstance result;
-    try {
-      status = preprocess->Preprocess(task_item.name, instance->data, &result.data);
-    } catch (const std::bad_alloc &ex) {
-      status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Serving Error: malloc memory failed";
-    } catch (const std::runtime_error &ex) {
-      status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Serving Error: runtime error occurred: " << ex.what();
-    } catch (const std::exception &ex) {
-      status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Serving Error: exception occurred: " << ex.what();
-    } catch (...) {
-      status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Serving Error: exception occurred";
-    }
-    if (status != SUCCESS) {
-      result.error_msg = status;
-    }
-    task_queue_->PushTaskResult(context.worker_id, instance, result);
-  }
-  return SUCCESS;
+void CppTaskQueueThreadPool::PushTask(const std::string &method_name, size_t stage_index,
+                                      const std::vector<InstancePtr> &instances) {
+  task_queue_.PushTask(method_name, stage_index, instances);
 }
 
-Status PostprocessThreadPool::HandleTask(const TaskItem &task_item) {
+Status CppTaskQueueThreadPool::HandleTask(const TaskItem &task_item) {
   Status status;
-  auto postprocess = PostprocessStorage::Instance().GetPostprocess(task_item.name);
-  if (!postprocess) {
-    status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "System error, get postprocess " << task_item.name << " failed";
+  auto &task_name = task_item.task_info.task_name;
+  auto preprocess = CppStageFunctionStorage::Instance().GetFunction(task_name);
+  if (!preprocess) {
+    status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "System error, get preprocess " << task_name << " failed";
     return status;
   }
-  for (size_t i = 0; i < task_item.instance_list.size(); i++) {
-    auto &instance = task_item.instance_list[i];
-    auto &context = task_item.context_list[i];
+  for (const auto &instance : task_item.instance_list) {
     ResultInstance result;
     try {
-      status = postprocess->Postprocess(task_item.name, instance->data, &result.data);
+      status = preprocess->Call(task_name, instance->data, &result.data);
     } catch (const std::bad_alloc &ex) {
       status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Serving Error: malloc memory failed";
     } catch (const std::runtime_error &ex) {
@@ -415,7 +329,7 @@ Status PostprocessThreadPool::HandleTask(const TaskItem &task_item) {
     if (status != SUCCESS) {
       result.error_msg = status;
     }
-    task_queue_->PushTaskResult(context.worker_id, instance, result);
+    task_queue_.PushTaskResult(instance, result);
   }
   return SUCCESS;
 }

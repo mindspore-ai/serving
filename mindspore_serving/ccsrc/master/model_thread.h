@@ -31,8 +31,7 @@
 #include "proto/ms_service.grpc.pb.h"
 #include "master/worker_context.h"
 
-namespace mindspore {
-namespace serving {
+namespace mindspore::serving {
 
 struct Task {
   const proto::Instance *input = nullptr;
@@ -50,7 +49,6 @@ struct PredictContext {
 
 struct Job {
   std::vector<Task> task;
-  uint64_t job_id = 0;
   uint64_t wait_task_num = 0;
   PredictOnFinish callback;
   const proto::PredictRequest *request = nullptr;
@@ -66,16 +64,8 @@ class MS_API ModelThread {
   Status DelWorker(uint64_t pid);
   Status AddWorker(uint64_t pid, const std::shared_ptr<WorkerContext> &notify);
   Status DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply, PredictOnFinish callback);
-  void Commit(const std::shared_ptr<PredictContext> &context);
 
  private:
-  void Clear();
-  void InnerClear();
-  Status FindProcessQueue(uint64_t *pid);
-  Status PushTasks(const proto::PredictRequest &request, proto::PredictReply *reply, PredictOnFinish callback);
-  Status Combine(const std::vector<std::pair<uint64_t, uint64_t>> &ids, uint64_t pid, proto::PredictRequest *msg);
-  void OnTasksFinished(const std::shared_ptr<PredictContext> &context);
-  void SendTasks();
   std::map<uint64_t, std::shared_ptr<WorkerContext>> pid_process_;
   uint64_t last_worker_pid_ = 0;
   std::map<uint64_t, int64_t> worker_wait_map_;
@@ -87,9 +77,18 @@ class MS_API ModelThread {
   RequestSpec spec_;
   ServableMethodInfo method_info_;
   uint64_t batch_size_;
+  bool single_batch_dispatch_ = false;
+
+  void Clear();
+  void InnerClear();
+  Status FindProcessQueue(uint64_t *pid);
+  Status PushTasks(const proto::PredictRequest &request, proto::PredictReply *reply, PredictOnFinish callback);
+  Status Combine(const std::vector<std::pair<uint64_t, uint64_t>> &ids, uint64_t pid, proto::PredictRequest *msg);
+  void OnTasksFinished(const std::shared_ptr<PredictContext> &context);
+  void SendTasks();
+  void Commit(const std::shared_ptr<PredictContext> &context);
 };
 
-}  // namespace serving
-}  // namespace mindspore
+}  // namespace mindspore::serving
 
 #endif  // MINDSPORE_SERVING_MASTER_MODEL_THREAD_H
