@@ -504,7 +504,7 @@ Contributions of any kind are welcome!
 
 ##### Python API
 
-Support deployment of distributed model, refer to [distributed inference tutorial](https://www.mindspore.cn/tutorial/inference/en/r1.2/serving_distributed_example.html) for related API.
+Support deployment of distributed model, refer to [distributed inference tutorial](https://www.mindspore.cn/serving/docs/en/master/serving_distributed_example.html) for related API.
 
 #### Deprecations
 
