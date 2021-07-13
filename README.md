@@ -104,16 +104,16 @@ To run MindSpore Serving, configure the following environment variables:
 
 ## Quick Start
 
-[MindSpore-based Inference Service Deployment](https://www.mindspore.cn/tutorial/inference/en/master/serving_example.html) is used to demonstrate how to use MindSpore Serving.
+[MindSpore-based Inference Service Deployment](https://www.mindspore.cn/serving/docs/en/r1.3/serving_example.html) is used to demonstrate how to use MindSpore Serving.
 
 ## Documents
 
 ### Developer Guide
 
-- [gRPC-based MindSpore Serving Access](https://www.mindspore.cn/tutorial/inference/en/master/serving_grpc.html)
-- [RESTful-based MindSpore Serving Access](https://www.mindspore.cn/tutorial/inference/en/master/serving_restful.html)
-- [Servable Provided Through Model Configuration](https://www.mindspore.cn/tutorial/inference/en/master/serving_model.html)
-- [MindSpore Serving-based Distributed Inference Service Deployment](https://www.mindspore.cn/tutorial/inference/en/master/serving_distributed_example.html)
+- [gRPC-based MindSpore Serving Access](https://www.mindspore.cn/serving/docs/en/r1.3/serving_grpc.html)
+- [RESTful-based MindSpore Serving Access](https://www.mindspore.cn/serving/docs/en/r1.3/serving_restful.html)
+- [Servable Provided Through Model Configuration](https://www.mindspore.cn/serving/docs/en/r1.3/serving_model.html)
+- [MindSpore Serving-based Distributed Inference Service Deployment](https://www.mindspore.cn/serving/docs/en/r1.3/serving_distributed_example.html)
 
 For more details about the installation guide, tutorials, and APIs, see [MindSpore Python API](https://www.mindspore.cn/doc/api_python/en/master/index.html).
 
