@@ -20,13 +20,8 @@
 #include "utils/log_adapter.h"
 
 namespace mindspore {
-static Buffer ReadFile(const std::string &file) {
-  Buffer buffer;
-  if (file.empty()) {
-    MS_LOG(ERROR) << "Pointer file is nullptr";
-    return buffer;
-  }
-
+static Status RealPath(const std::string &file, std::string *realpath_str) {
+  MS_EXCEPTION_IF_NULL(realpath_str);
   char real_path_mem[PATH_MAX] = {0};
   char *real_path_ret = nullptr;
 #if defined(_WIN32) || defined(_WIN64)
@@ -35,19 +30,34 @@ static Buffer ReadFile(const std::string &file) {
   real_path_ret = realpath(common::SafeCStr(file), real_path_mem);
 #endif
   if (real_path_ret == nullptr) {
-    MS_LOG(ERROR) << "File: " << file << " is not exist.";
+    return Status(kMEInvalidInput, "File: " + file + " does not exist.");
+  }
+  *realpath_str = real_path_mem;
+  return kSuccess;
+}
+
+static Buffer ReadFile(const std::string &file) {
+  Buffer buffer;
+  if (file.empty()) {
+    MS_LOG(ERROR) << "Pointer file is nullptr";
     return buffer;
   }
 
-  std::string real_path(real_path_mem);
+  std::string real_path;
+  auto status = RealPath(file, &real_path);
+  if (status != kSuccess) {
+    MS_LOG(ERROR) << status.GetErrDescription();
+    return buffer;
+  }
+
   std::ifstream ifs(real_path);
   if (!ifs.good()) {
-    MS_LOG(ERROR) << "File: " << real_path << " is not exist";
+    MS_LOG(ERROR) << "File: " << real_path << " does not exist";
     return buffer;
   }
 
   if (!ifs.is_open()) {
-    MS_LOG(ERROR) << "File: " << real_path << "open failed";
+    MS_LOG(ERROR) << "File: " << real_path << " open failed";
     return buffer;
   }
 
@@ -67,8 +77,20 @@ static Buffer ReadFile(const std::string &file) {
   return buffer;
 }
 
-Status Serialization::Load(const void *model_data, size_t data_size, ModelType model_type, Graph *graph) {
-  return Load(model_data, data_size, model_type, graph, Key{}, StringToChar("AES-GCM"));
+Key::Key(const char *dec_key, size_t key_len) {
+  len = 0;
+  if (key_len >= max_key_len) {
+    MS_LOG(ERROR) << "Invalid key len " << key_len << " is more than max key len " << max_key_len;
+    return;
+  }
+
+  auto sec_ret = memcpy_s(key, max_key_len, dec_key, key_len);
+  if (sec_ret != EOK) {
+    MS_LOG(ERROR) << "memcpy_s failed, src_len = " << key_len << ", dst_len = " << max_key_len << ", ret = " << sec_ret;
+    return;
+  }
+
+  len = key_len;
 }
 
 Status Serialization::Load(const void *model_data, size_t data_size, ModelType model_type, Graph *graph,
@@ -125,7 +147,7 @@ Status Serialization::Load(const void *model_data, size_t data_size, ModelType m
 }
 
 Status Serialization::Load(const std::vector<char> &file, ModelType model_type, Graph *graph) {
-  return Load(file, model_type, graph, Key{}, StringToChar("AES-GCM"));
+  return Load(file, model_type, graph, Key{}, StringToChar(kDecModeAesGcm));
 }
 
 Status Serialization::Load(const std::vector<char> &file, ModelType model_type, Graph *graph, const Key &dec_key,
@@ -137,7 +159,13 @@ Status Serialization::Load(const std::vector<char> &file, ModelType model_type, 
     return Status(kMEInvalidInput, err_msg.str());
   }
 
-  std::string file_path = CharToString(file);
+  std::string file_path;
+  auto status = RealPath(CharToString(file), &file_path);
+  if (status != kSuccess) {
+    MS_LOG(ERROR) << status.GetErrDescription();
+    return status;
+  }
+
   if (model_type == kMindIR) {
     FuncGraphPtr anf_graph;
     if (dec_key.len > dec_key.max_key_len) {
@@ -149,7 +177,8 @@ Status Serialization::Load(const std::vector<char> &file, ModelType model_type, 
       MS_LOG(ERROR) << err_msg.str();
       return Status(kMEInvalidInput, err_msg.str());
     } else {
-      anf_graph = LoadMindIR(file_path, false, nullptr, dec_key.len, CharToString(dec_mode));
+      anf_graph =
+        LoadMindIR(file_path, false, dec_key.len == 0 ? nullptr : dec_key.key, dec_key.len, CharToString(dec_mode));
     }
     if (anf_graph == nullptr) {
       err_msg << "Load model failed. Please check the valid of dec_key and dec_mode";
@@ -190,7 +219,17 @@ Status Serialization::Load(const std::vector<std::vector<char>> &files, ModelTyp
     return ret;
   }
 
-  std::vector<std::string> files_path = VectorCharToString(files);
+  std::vector<std::string> files_path;
+  for (const auto &file : files) {
+    std::string file_path;
+    auto status = RealPath(CharToString(file), &file_path);
+    if (status != kSuccess) {
+      MS_LOG(ERROR) << status.GetErrDescription();
+      return status;
+    }
+    files_path.emplace_back(std::move(file_path));
+  }
+
   if (model_type == kMindIR) {
     if (dec_key.len > dec_key.max_key_len) {
       err_msg << "The key length exceeds maximum length: " << dec_key.max_key_len;
@@ -227,11 +266,6 @@ Status Serialization::Load(const std::vector<std::vector<char>> &files, ModelTyp
   return Status(kMEInvalidInput, err_msg.str());
 }
 
-Status Serialization::LoadCheckPoint(const std::string &, std::map<std::string, Buffer> *) {
-  MS_LOG(ERROR) << "Unsupported feature.";
-  return kMEFailed;
-}
-
 Status Serialization::SetParameters(const std::map<std::string, Buffer> &, Model *) {
   MS_LOG(ERROR) << "Unsupported feature.";
   return kMEFailed;
@@ -242,7 +276,7 @@ Status Serialization::ExportModel(const Model &, ModelType, Buffer *) {
   return kMEFailed;
 }
 
-Status Serialization::ExportModel(const Model &, ModelType, const std::string &) {
+Status Serialization::ExportModel(const Model &, ModelType, const std::string &, QuantizationType, bool) {
   MS_LOG(ERROR) << "Unsupported feature.";
   return kMEFailed;
 }

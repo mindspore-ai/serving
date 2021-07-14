@@ -1,4 +1,4 @@
-# MindSpore Serving 1.3.0-rc1
+# MindSpore Serving 1.3.0
 
 ## MindSpore 1.3.0 Release Notes
 
