@@ -200,7 +200,7 @@ std::shared_ptr<DeviceInfoContext> MindSporeModelWrap::TransformAscend910ModelCo
 }
 std::shared_ptr<DeviceInfoContext> MindSporeModelWrap::TransformNvidiaGPUModelContext(
   uint32_t device_id, const std::map<std::string, std::string> &options) {
-  auto context_info = std::make_shared<NvidiaGPUDeviceInfo>();
+  auto context_info = std::make_shared<GPUDeviceInfo>();
   context_info->SetDeviceID(device_id);
 
   for (auto &item : options) {
@@ -476,7 +476,7 @@ mindspore::DeviceType MindSporeModelWrap::GetMsDeviceType(serving::DeviceType de
       ms_device_type = mindspore::DeviceType::kAscend310;
       break;
     case kDeviceTypeGpu:
-      ms_device_type = mindspore::DeviceType::kNvidiaGPU;
+      ms_device_type = mindspore::DeviceType::kGPU;
       break;
     case kDeviceTypeCpu:
       ms_device_type = mindspore::DeviceType::kCPU;

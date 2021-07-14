@@ -23,8 +23,7 @@ namespace mindspore {
 namespace {
 std::string GetDeviceTypeString(enum DeviceType type) {
   static const std::map<enum DeviceType, std::string> kDeviceTypeStrs = {
-    {kCPU, "CPU"},           {kMaliGPU, "MaliGPU"},     {kNvidiaGPU, "GPU"},
-    {kKirinNPU, "KirinGPU"}, {kAscend910, "Ascend910"}, {kAscend310, "Ascend310"},
+    {kCPU, "CPU"}, {kGPU, "GPU"}, {kKirinNPU, "KirinGPU"}, {kAscend910, "Ascend910"}, {kAscend310, "Ascend310"},
   };
   auto iter = kDeviceTypeStrs.find(type);
   if (iter != kDeviceTypeStrs.end()) {
@@ -68,6 +67,12 @@ Status Model::Build(GraphCell graph_cell, const std::shared_ptr<Context> &model_
 
 Status Model::Build(const void *model_data, size_t data_size, ModelType model_type,
                     const std::shared_ptr<Context> &model_context, const Key &dec_key, const std::string &dec_mode) {
+  MS_LOG(ERROR) << "Unsupported Feature.";
+  return kMCFailed;
+}
+
+Status Model::Build(const std::string &model_path, ModelType model_type, const std::shared_ptr<Context> &model_context,
+                    const Key &dec_key, const std::string &dec_mode) {
   MS_LOG(ERROR) << "Unsupported Feature.";
   return kMCFailed;
 }
