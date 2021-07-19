@@ -117,7 +117,8 @@ Status InferenceLoader::LoadMindSporeModelWrap() {
   ms_lib_handle_ = dlopen(kServingAscendLibName, RTLD_NOW | RTLD_GLOBAL);
   if (ms_lib_handle_ == nullptr) {
     return INFER_STATUS_LOG_ERROR(FAILED)
-           << "dlopen failed, lib name:" << kServingAscendLibName << ", dlopen error: " << get_dlerror();
+           << "dlopen failed, please check whether the MindSpore and Serving versions match, lib name:"
+           << kServingAscendLibName << ", dlopen error: " << get_dlerror();
   }
   MSI_LOG_INFO << "Load " << kServingAscendLibName << " successful";
   ms_create_handle_ = (CreateInferHandle)dlsym(ms_lib_handle_, "ServingCreateInfer");
