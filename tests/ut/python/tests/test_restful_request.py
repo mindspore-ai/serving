@@ -402,7 +402,7 @@ def add_cast(x1, x2):
     server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
     server.start_restful_server("0.0.0.0:5500")
     # Client
-    instance_count = 12
+    instance_count = 2
     instances, _ = create_multi_instances_with_batch_fp32(instance_count)
     result = post_restful("localhost:5500", base.servable_name, "add_cast", instances)
 
