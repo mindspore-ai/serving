@@ -115,7 +115,7 @@ To run MindSpore Serving, configure the following environment variables:
 - [Servable Provided Through Model Configuration](https://www.mindspore.cn/serving/docs/en/r1.3/serving_model.html)
 - [MindSpore Serving-based Distributed Inference Service Deployment](https://www.mindspore.cn/serving/docs/en/r1.3/serving_distributed_example.html)
 
-For more details about the installation guide, tutorials, and APIs, see [MindSpore Python API](https://www.mindspore.cn/doc/api_python/en/master/index.html).
+For more details about the installation guide, tutorials, and APIs, see [MindSpore Python API](https://www.mindspore.cn/docs/api/en/r1.3/index.html).
 
 ## Community
 
