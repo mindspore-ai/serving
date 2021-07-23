@@ -317,7 +317,8 @@ def add_cast(x1, x2):
 
     print(result)
     if "error_msg" in result:
-        assert "Preprocess Failed" in str(result["error_msg"])
+        assert "Preprocess Failed" in str(result["error_msg"]) or \
+               "servable is not available" in str(result["error_msg"])
     else:
         assert len(result["instances"]) == 3
         assert "Preprocess Failed" in str(result["instances"][0]["error_msg"])
@@ -489,7 +490,8 @@ def add_cast(x1, x2):
     instances, _ = create_multi_instances_fp32(instance_count)
     result = post_restful("localhost:5500", base.servable_name, "add_cast", instances)
     if "error_msg" in result:
-        assert "Postprocess Failed" in str(result["error_msg"])
+        assert "Postprocess Failed" in str(result["error_msg"]) or \
+               "servable is not available" in str(result["error_msg"])
     else:
         assert len(result["instances"]) == 3
         assert "Postprocess Failed" in str(result["instances"][0]["error_msg"])
