@@ -95,15 +95,18 @@ def post_restful(address, servable_name, method_name, json_instances, version_nu
         request_url = f"{protocol}://{address}/model/{servable_name}/version/{version_number}:{method_name}"
     else:
         request_url = f"{protocol}://{address}/model/{servable_name}:{method_name}"
-
-    send_pipe, recv_pipe = Pipe()
-    sub_process = Process(target=post_request, args=(request_url, post_payload, send_pipe))
-    sub_process.start()
-    sub_process.join()
-    if recv_pipe.poll(0.1):
-        result = recv_pipe.recv()
-    else:
-        result = "post failed"
+    result = None
+    for _ in range(2):
+        send_pipe, recv_pipe = Pipe()
+        sub_process = Process(target=post_request, args=(request_url, post_payload, send_pipe))
+        sub_process.start()
+        sub_process.join()
+        if recv_pipe.poll(0.1):
+            result = recv_pipe.recv()
+            if result != "post failed":
+                break
+        else:
+            result = "post failed"
     print(f"result outer: {result}")
     return result
 
