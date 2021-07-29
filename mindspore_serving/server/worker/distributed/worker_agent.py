@@ -52,6 +52,14 @@ def start_worker_agent(start_config, dec_key, dec_mode):
         logger.info(f"Env {item}: {os.getenv(item, None)}")
     if dec_key is None:
         dec_key = ''
+    # change work directory to device_{device_id}
+    cur_dir = os.getcwd()
+    work_dir = f"device_{start_config.device_id}"
+    try:
+        os.mkdir(work_dir)
+    except FileExistsError:
+        pass
+    os.chdir(os.path.join(cur_dir, work_dir))
     WorkerAgent_.start_agent(start_config, dec_key, dec_mode)
 
     start_wait_and_clear()
