@@ -108,7 +108,8 @@ Status InferenceLoader::LoadMindSporeModelWrap() {
       ms_cxx_lib_handle_ = dlopen(lib_path.c_str(), RTLD_NOW | RTLD_GLOBAL);
       if (ms_cxx_lib_handle_ == nullptr) {
         return INFER_STATUS_LOG_ERROR(FAILED)
-               << "dlopen failed, lib path:" << lib_path << ", dlopen error: " << get_dlerror();
+               << "dlopen failed, please check whether the MindSpore and Ascend/GPU software package versions match"
+               << ", lib path:" << lib_path << ", dlopen error: " << get_dlerror();
       }
       MSI_LOG_INFO << "Load " << kMindSporeLibName << " in " << item << " successful";
       break;
