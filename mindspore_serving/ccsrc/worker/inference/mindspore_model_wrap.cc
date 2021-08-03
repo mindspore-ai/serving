@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
+#include "worker/inference/mindspore_model_wrap.h"
+#include <unistd.h>
+#include <sys/stat.h>
 #include <functional>
 #include <map>
 #include <vector>
-
-#include "worker/inference/mindspore_model_wrap.h"
 
 namespace mindspore {
 namespace serving {
@@ -79,6 +80,32 @@ Status MindSporeModelWrap::LoadModelFromFile(serving::DeviceType device_type, ui
                                              bool with_batch_dim, const std::vector<int> &without_batch_dim_inputs,
                                              const std::map<std::string, std::string> &other_options,
                                              const std::string &dec_key, const std::string &dec_mode) {
+  char path[PATH_MAX];
+  std::string current_path = getcwd(path, PATH_MAX);
+  std::string build_dir = current_path + "/models_build_temp/";
+  (void)mkdir(build_dir.c_str(), S_IRWXU | S_IRWXG);
+  build_dir += "device_" + std::to_string(device_id);
+  (void)mkdir(build_dir.c_str(), S_IRWXU | S_IRWXG);
+  auto error_no = chdir(build_dir.c_str());
+  if (error_no != 0) {
+    MSI_LOG_WARNING << "Failed to call chdir, target build directory: " << build_dir << ", error no: " << error_no;
+  }
+
+  auto status = LoadModelFromFileInner(device_type, device_id, file_names, model_type, with_batch_dim,
+                                       without_batch_dim_inputs, other_options, dec_key, dec_mode);
+
+  error_no = chdir(current_path.c_str());
+  if (error_no != 0) {
+    MSI_LOG_WARNING << "Failed to call chdir, target directory: " << current_path << ", error no: " << error_no;
+  }
+  return status;
+}
+
+Status MindSporeModelWrap::LoadModelFromFileInner(serving::DeviceType device_type, uint32_t device_id,
+                                                  const std::vector<std::string> &file_names, ModelType model_type,
+                                                  bool with_batch_dim, const std::vector<int> &without_batch_dim_inputs,
+                                                  const std::map<std::string, std::string> &other_options,
+                                                  const std::string &dec_key, const std::string &dec_mode) {
   auto ms_model_type = GetMsModelType(model_type);
   if (ms_model_type == mindspore::kUnknownType) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Invalid model type " << model_type;

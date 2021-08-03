@@ -17,6 +17,7 @@
 #ifndef MINDSPORE_SERVING_TEST_SERVABLE_COMMON_H
 #define MINDSPORE_SERVING_TEST_SERVABLE_COMMON_H
 
+#include <unistd.h>
 #include <fstream>
 #include <memory>
 #include <set>
@@ -110,11 +111,13 @@ class TestMasterWorker : public UT::Common {
   }
 
   static Status StartServable(const std::string &servable_dir, const std::string &servable_name, int version_number) {
+    char path[PATH_MAX];
+    std::string current_path = getcwd(path, PATH_MAX);
     auto notify_master = std::make_shared<FakeNotifyMaster>();
     ServableContext::Instance()->SetDeviceId(0);
     ServableContext::Instance()->SetDeviceTypeStr("Ascend");
     auto servable = std::make_shared<LocalModelServable>();
-    auto status = servable->StartServable(servable_dir, servable_name, version_number, "", "");
+    auto status = servable->StartServable(current_path + "/" + servable_dir, servable_name, version_number, "", "");
     if (status != SUCCESS) {
       return status;
     }

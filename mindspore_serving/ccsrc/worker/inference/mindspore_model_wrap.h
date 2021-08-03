@@ -82,6 +82,12 @@ class MindSporeModelWrap : public InferenceBase {
   Status ExecuteModelCommon(size_t request_size, const FuncMakeInBuffer &in_func, const FuncMakeOutTensor &out_func,
                             bool return_result, uint64_t subgraph = 0);
   Status GetModelInfos(ApiModelInfo *model_info);
+
+  Status LoadModelFromFileInner(serving::DeviceType device_type, uint32_t device_id,
+                                const std::vector<std::string> &file_names, ModelType model_type, bool with_batch_dim,
+                                const std::vector<int> &without_batch_dim_inputs,
+                                const std::map<std::string, std::string> &other_options, const std::string &dec_key,
+                                const std::string &dec_mode);
   std::shared_ptr<Context> TransformModelContext(serving::DeviceType device_type, uint32_t device_id,
                                                  const std::map<std::string, std::string> &other_options);
 
