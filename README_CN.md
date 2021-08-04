@@ -114,7 +114,7 @@ MindSpore Serving运行需要配置以下环境变量：
 - [通过配置模型提供Servable](https://www.mindspore.cn/serving/docs/zh-CN/r1.3/serving_model.html)
 - [基于MindSpore Serving部署分布式推理服务](https://www.mindspore.cn/serving/docs/zh-CN/r1.3/serving_distributed_example.html)
 
-有关安装指南、教程和API的更多详细信息，请参阅[用户文档](https://www.mindspore.cn/doc/api_python/zh-CN/master/index.html)。
+有关安装指南、教程和API的更多详细信息，请参阅[用户文档](https://www.mindspore.cn/docs/api/zh-CN/r1.3/index.html)。
 
 ## 社区
 
