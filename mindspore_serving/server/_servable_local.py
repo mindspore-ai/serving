@@ -20,7 +20,8 @@ import random
 import sys
 import subprocess
 
-from mindspore_serving.server.common import check_type
+import mindspore_serving.log as logger
+from mindspore_serving.server.common import check_type, get_abs_path
 from mindspore_serving.server._servable_common import ServableContextDataBase
 from mindspore_serving._mindspore_serving import Worker_
 
@@ -58,6 +59,10 @@ class ServableStartConfig:
                  dec_key=None, dec_mode='AES-GCM'):
         super(ServableStartConfig, self).__init__()
         check_type.check_str("servable_directory", servable_directory)
+        logger.info(f"input servable directory: {servable_directory}")
+        servable_directory = get_abs_path(servable_directory)
+        logger.info(f"absolute servable directory: {servable_directory}")
+
         check_type.check_str("servable_name", servable_name)
         check_type.check_int("version_number", version_number, 0)
         if dec_key is not None:

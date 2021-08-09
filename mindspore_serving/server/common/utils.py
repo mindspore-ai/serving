@@ -12,8 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-"""MindSpore Serving."""
+"""common function utils"""
+import os
+import sys
 
-from . import check_type
-from .utils import get_abs_path
-from .decorator import deprecated
+
+def get_abs_path(path):
+    """get the absolute path"""
+    script_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
+    abs_path = os.path.realpath(os.path.join(script_dir, path))
+    return abs_path
