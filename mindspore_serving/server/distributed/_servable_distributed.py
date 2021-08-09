@@ -17,7 +17,7 @@
 import os
 import sys
 import subprocess
-from mindspore_serving.server.common import check_type
+from mindspore_serving.server.common import check_type, get_abs_path
 import mindspore_serving.log as logger
 from mindspore_serving.server._servable_common import ServableContextDataBase
 
@@ -46,13 +46,19 @@ class DistributedStartConfig:
                  distributed_address, wait_agents_time_in_seconds):
         super(DistributedStartConfig, self).__init__()
         check_type.check_str('servable_directory', servable_directory)
+        logger.info(f"input servable directory: {servable_directory}")
+        servable_directory = get_abs_path(servable_directory)
+        logger.info(f"absolute servable directory: {servable_directory}")
+
         check_type.check_str('servable_name', servable_name)
         check_type.check_int('version_number', version_number, 0)
         if version_number == 0:
             version_number = 1
 
         check_type.check_str('rank_table_json_file', rank_table_json_file)
-        rank_table_json_file = self._get_rank_table_abs_path(rank_table_json_file)
+        logger.info(f"input rank table file: {rank_table_json_file}")
+        rank_table_json_file = get_abs_path(rank_table_json_file)
+        logger.info(f"absolute path of rank table file: {rank_table_json_file}")
 
         check_type.check_str('distributed_address', distributed_address)
         check_type.check_int('wait_agents_time_in_seconds', wait_agents_time_in_seconds, 0)
@@ -63,15 +69,6 @@ class DistributedStartConfig:
         self.rank_table_json_file_ = rank_table_json_file
         self.distributed_address_ = distributed_address
         self.wait_agents_time_in_seconds_ = wait_agents_time_in_seconds
-
-    @staticmethod
-    def _get_rank_table_abs_path(rank_table_json_file):
-        """Get absolute path of rank table file"""
-        script_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
-        logger.info(f"input rank table file: {rank_table_json_file}")
-        rank_table_json_file = os.path.realpath(os.path.join(script_dir, rank_table_json_file))
-        logger.info(f"absolute path of rank table file: {rank_table_json_file}")
-        return rank_table_json_file
 
     @property
     def servable_directory(self):
