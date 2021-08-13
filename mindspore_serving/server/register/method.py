@@ -17,7 +17,6 @@
 import inspect
 import ast
 from functools import wraps
-from easydict import EasyDict
 
 from mindspore_serving._mindspore_serving import ServableStorage_, PipelineStorage_
 from mindspore_serving._mindspore_serving import PipelineSignature_, MethodSignature_, PredictPhaseTag_
@@ -29,7 +28,7 @@ from .postprocess import register_postprocess, check_postprocess
 from .pipeline import register_pipeline_args
 
 method_def_context_ = MethodSignature_()
-method_def_ast_meta_ = EasyDict()
+method_def_ast_meta_ = {}
 pipeline_def_context_ = PipelineSignature_()
 
 method_tag_input = PredictPhaseTag_.kPredictPhaseTag_Input
@@ -346,7 +345,7 @@ def _get_method_def_func_meta(method_def_func):
     """Parse register_method func, and get the input and output count of preprocess, servable and postprocess"""
     source = inspect.getsource(method_def_func)
     call_list = ast.parse(source).body[0].body
-    func_meta = EasyDict()
+    func_meta = {}
 
     for call_item in call_list:
         if not isinstance(call_item, ast.Assign):
