@@ -336,7 +336,6 @@ int64_t MSTensor::ElementNum() const {
     // element number of scalar is 1
     return 1;
   }
-
   return std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int64_t>());
 }
 
@@ -359,6 +358,26 @@ bool MSTensor::IsDevice() const {
   MS_EXCEPTION_IF_NULL(impl_);
   return impl_->IsDevice();
 }
+
+void MSTensor::SetShape(const std::vector<int64_t> &) { MS_LOG_EXCEPTION << "Invalid implement."; }
+
+void MSTensor::SetDataType(enum DataType) { MS_LOG_EXCEPTION << "Invalid implement."; }
+
+void MSTensor::SetTensorName(const std::string &) { MS_LOG_EXCEPTION << "Invalid implement."; }
+
+void MSTensor::SetAllocator(std::shared_ptr<Allocator>) { MS_LOG_EXCEPTION << "Invalid implement."; }
+
+std::shared_ptr<Allocator> MSTensor::allocator() const { MS_LOG_EXCEPTION << "Invalid implement."; }
+
+void MSTensor::SetFormat(mindspore::Format) { MS_LOG_EXCEPTION << "Invalid implement."; }
+
+mindspore::Format MSTensor::format() const { MS_LOG_EXCEPTION << "Invalid implement."; }
+
+void MSTensor::SetData(void *) { MS_LOG_EXCEPTION << "Invalid implement."; }
+
+std::vector<QuantParam> MSTensor::QuantParams() const { MS_LOG_EXCEPTION << "Invalid implement."; }
+
+void MSTensor::SetQuantParams(std::vector<QuantParam>) { MS_LOG_EXCEPTION << "Invalid implement."; }
 
 Buffer::Buffer() : impl_(std::make_shared<Impl>()) {}
 Buffer::Buffer(const void *data, size_t data_len) : impl_(std::make_shared<Impl>(data, data_len)) {}
@@ -395,4 +414,6 @@ bool Buffer::SetData(const void *data, size_t data_len) {
   MS_EXCEPTION_IF_NULL(impl_);
   return impl_->SetData(data, data_len);
 }
+
+std::vector<char> CharVersion() { return {}; }
 }  // namespace mindspore
