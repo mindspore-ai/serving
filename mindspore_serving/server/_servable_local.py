@@ -13,7 +13,6 @@
 # limitations under the License.
 # ============================================================================
 """Interface for start up single core servable"""
-import logging
 import os
 import random
 
@@ -181,9 +180,8 @@ def _check_and_merge_config(configs):
             if newest_version == 0:
                 raise RuntimeError(f"There is no valid version of servable, servable directory: "
                                    f"{config.servable_directory}, servable name: {config.servable_name}")
-            # pylint: disable=logging-fstring-interpolation
-            logging.info(f"The newest version number of servable {config.servable_name} is {newest_version}, "
-                         f"servable directory: {config.servable_directory}")
+            logger.info(f"The newest version number of servable {config.servable_name} is {newest_version}, "
+                        f"servable directory: {config.servable_directory}")
             servable_dir_list[config.servable_name] = config.servable_directory
             newest_version_number_list[config.servable_name] = newest_version
             servable_device_ids[config.servable_name] = {}
