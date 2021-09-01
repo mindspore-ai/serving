@@ -33,6 +33,16 @@ else
 fi
 cd ../
 
+ls device*/ -l
+
+num=`ls device*/matmul.mindir -l | wc -l`
+if [ ${num} -ne 8 ]
+then
+  echo "export matmul mindir failed"
+  cat device0/inference.log0
+  exit 2
+fi
+
 output_dir=../model
 rm -rf ${output_dir}/device*
 for ((i = 0; i < ${RANK_SIZE}; i++)); do
