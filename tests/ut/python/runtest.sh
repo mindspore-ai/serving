@@ -30,8 +30,6 @@ rm -rf mindspore_serving
 mkdir -p mindspore_serving/proto
 cp ../mindspore_serving/proto/ms_service*.py mindspore_serving/proto/
 cp _mindspore_serving*.so mindspore_serving/
-cp -r ${PROJECT_PATH}/mindspore_serving/master mindspore_serving/
-cp -r ${PROJECT_PATH}/mindspore_serving/worker mindspore_serving/
 cp -r ${PROJECT_PATH}/mindspore_serving/server mindspore_serving/
 cp -r ${PROJECT_PATH}/mindspore_serving/client mindspore_serving/
 cp ${PROJECT_PATH}/mindspore_serving/*.py mindspore_serving/
