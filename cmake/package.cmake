@@ -74,8 +74,6 @@ install(
 )
 install(
         DIRECTORY
-        ${CMAKE_SOURCE_DIR}/mindspore_serving/master
-        ${CMAKE_SOURCE_DIR}/mindspore_serving/worker
         ${CMAKE_SOURCE_DIR}/mindspore_serving/server
         ${CMAKE_SOURCE_DIR}/mindspore_serving/client
         DESTINATION ${INSTALL_PY_DIR}
