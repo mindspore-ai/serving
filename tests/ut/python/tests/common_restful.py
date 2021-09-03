@@ -69,9 +69,10 @@ def check_number_result(result, y_data_list, output_name="y"):
 
 
 def post_restful(address, servable_name, method_name, json_instances, version_number=None, verify="ca.crt",
-                 cert=("client.crt", "client.key"), https=False):
-    instances_map = {"instances": json_instances}
-    post_payload = json.dumps(instances_map)
+                 cert=("client.crt", "client.key"), https=False, post_payload=None):
+    if not post_payload:
+        instances_map = {"instances": json_instances}
+        post_payload = json.dumps(instances_map)
     print("request:", post_payload[:200])
     protocol = "http"
     if https:
