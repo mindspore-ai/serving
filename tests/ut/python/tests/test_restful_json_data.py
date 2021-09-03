@@ -14,6 +14,7 @@
 # ============================================================================
 """test Serving RESTful, with master, worker and client"""
 
+import numpy as np
 from common import serving_test
 from common_restful import compare_float_value, post_restful
 from common_restful import start_str_restful_server, start_bool_int_float_restful_server
@@ -117,6 +118,16 @@ def test_restful_str_invalid_array_input_failed():
 
     result = post_restful("localhost:5500", base.servable_name, "str_concat", instances)
     assert "json array, string or bytes type only support one item" in str(result["error_msg"])
+
+
+@serving_test
+def test_restful_str_invalid_str_message_failed():
+    base = start_str_restful_server()
+    # Client
+    post_payload = np.array([1.1, 2.2], np.float32).tobytes()
+
+    result = post_restful("localhost:5500", base.servable_name, "str_concat", None, post_payload=post_payload)
+    assert "Illegal JSON format" in str(result["error_msg"])
 
 
 @serving_test

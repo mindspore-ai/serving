@@ -290,7 +290,7 @@ Status RestfulService::GetInstancesType(const json &instances) {
 
 Status RestfulService::CheckObj(const json &js) {
   if (!js.is_object()) {
-    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "json is not object" << js.dump();
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "json is not object";
   }
 
   if (js.empty()) {
@@ -695,9 +695,16 @@ void RestfulService::RunRestfulInner(const std::shared_ptr<RestfulRequest> &rest
   }
   auto callback = [restful_service, restful_request, time_start_RunRestful]() {
     nlohmann::json predict_json;
-    auto status = restful_service->ParseReply(restful_service->reply_, &predict_json);
+    Status status;
+    try {
+      status = restful_service->ParseReply(restful_service->reply_, &predict_json);
+    } catch (std::exception &e) {
+      MSI_LOG_ERROR << "Failed to construct the response: " << e.what();
+      restful_request->ErrorMessage(Status(status.StatusCode(), "Failed to construct the response"));
+      return;
+    }
     if (status != SUCCESS) {
-      std::string msg = "Parse reply failed, " + status.StatusMessage();
+      std::string msg = "Failed to construct the response: " + status.StatusMessage();
       restful_request->ErrorMessage(Status(status.StatusCode(), msg));
     } else {
       restful_request->RestfulReplay(predict_json.dump());

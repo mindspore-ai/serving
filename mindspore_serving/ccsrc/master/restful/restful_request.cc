@@ -83,7 +83,14 @@ Status DecomposeEvRequest::GetPostMessageToJson() {
     request_message_ = nlohmann::json::parse(message);
   } catch (nlohmann::json::exception &e) {
     std::string json_exception = e.what();
-    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Illegal JSON format." + json_exception;
+    MSI_LOG_ERROR << "Illegal JSON format." + json_exception;
+    // Remove invalid character that cannot be converted to Json.
+    const std::string find_msg = "invalid literal";  // invalid literal; last read: '{invalid character}'
+    auto find_pos = json_exception.find(find_msg);
+    if (find_pos != std::string::npos) {
+      json_exception = json_exception.substr(0, find_pos + find_msg.size());
+    }
+    return INFER_STATUS(INVALID_INPUTS) << "Illegal JSON format." + json_exception;
   }
   MSI_TIME_STAMP_END(ParseJson)
 
@@ -185,8 +192,14 @@ Status RestfulRequest::RestfulReplay(const std::string &replay) {
 }
 
 void RestfulRequest::ErrorMessage(Status status) {
-  nlohmann::json error_json = {{"error_msg", status.StatusMessage()}};
-  std::string out_error_str = error_json.dump();
+  std::string out_error_str;
+  try {
+    nlohmann::json error_json = {{"error_msg", status.StatusMessage()}};
+    out_error_str = error_json.dump();
+  } catch (nlohmann::json::exception &e) {
+    nlohmann::json error_json = {{"error_msg", "Illegal JSON format."}};
+    out_error_str = error_json.dump();
+  }
   (void)RestfulReplay(out_error_str);
 }
 
