@@ -19,25 +19,9 @@ BASEPATH=$(
   pwd
 )
 PROJECT_PATH=${BASEPATH}/../../..
-if [ $BUILD_PATH ]; then
-  echo "BUILD_PATH = $BUILD_PATH"
-else
-  BUILD_PATH=${PROJECT_PATH}/build
-  echo "BUILD_PATH = $BUILD_PATH"
-fi
-cd ${BUILD_PATH}/mindspore_serving/tests/ut/python
-rm -rf mindspore_serving
-mkdir -p mindspore_serving/proto
-cp ../mindspore_serving/proto/ms_service*.py mindspore_serving/proto/
-cp _mindspore_serving*.so mindspore_serving/
-cp -r ${PROJECT_PATH}/mindspore_serving/server mindspore_serving/
-cp -r ${PROJECT_PATH}/mindspore_serving/client mindspore_serving/
-cp ${PROJECT_PATH}/mindspore_serving/*.py mindspore_serving/
 
-export PYTHONPATH=${BUILD_PATH}/mindspore_serving/tests/ut/python:${PROJECT_PATH}/tests/ut/python:$PYTHONPATH
-export LD_LIBRARY_PATH=${BUILD_PATH}/mindspore_serving/tests/ut/:${LD_LIBRARY_PATH}
-export LD_LIBRARY_PATH=${BUILD_PATH}/mindspore_serving/tests/ut/lib:${LD_LIBRARY_PATH}
-export LD_LIBRARY_PATH=${BUILD_PATH}/mindspore_serving/tests/ut/python:${LD_LIBRARY_PATH}
+export PYTHONPATH=${PROJECT_PATH}/build/package:${PROJECT_PATH}/tests/ut/python:$PYTHONPATH
+export LD_LIBRARY_PATH=${PROJECT_PATH}/build/package/tests/mindspore/lib:${LD_LIBRARY_PATH}
 
 echo "PYTHONPATH=$PYTHONPATH"
 echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
@@ -61,7 +45,6 @@ for port in ${port_list[*]}; do
   clear_port ${port}
 done
 
-cd -
 cd ${PROJECT_PATH}/tests/ut/python/tests/
 if [ $# -gt 0 ]; then
   pytest -s -v . -k "$1"

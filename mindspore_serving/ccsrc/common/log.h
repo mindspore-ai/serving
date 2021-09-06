@@ -31,7 +31,7 @@ namespace mindspore::serving {
 #define SERVING_LOG_HDR_FILE_REL_PATH "mindspore_serving/ccsrc/common/log.h"
 
 // Get start index of file relative path in __FILE__
-static constexpr int GetRelPathPos() noexcept {
+static constexpr size_t GetRelPathPos() noexcept {
   return sizeof(__FILE__) > sizeof(SERVING_LOG_HDR_FILE_REL_PATH)
            ? sizeof(__FILE__) - sizeof(SERVING_LOG_HDR_FILE_REL_PATH)
            : 0;
