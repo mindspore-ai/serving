@@ -61,11 +61,14 @@ include_directories(${PYTHON_INCLUDE_DIRS})
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden")
 find_package(Threads REQUIRED)
 
-if(MS_WHL_LIB_PATH OR MS_BACKEND)
-    add_subdirectory(mindspore_serving)
-    include(cmake/package.cmake)
-endif()
 
 if(ENABLE_TESTCASES)
     add_subdirectory(tests)
+    set(MS_WHL_LIB_PATH ${CMAKE_SOURCE_DIR}/build/package/tests/mindspore/lib/)
+    message(------------MS_WHL_LIB_PATH------------ ${MS_WHL_LIB_PATH})
+endif()
+
+if(MS_WHL_LIB_PATH OR MS_BACKEND)
+    add_subdirectory(mindspore_serving)
+    include(cmake/package.cmake)
 endif()
