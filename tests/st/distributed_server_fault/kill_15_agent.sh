@@ -44,7 +44,7 @@ kill_serving_agent()
     echo "------------------------------ agent failed log end"
     clean_pid && exit 1
   fi
-  sleep 1
+  sleep 5
 
   get_serving_server_count
   if [ $? -ne 0 ]
