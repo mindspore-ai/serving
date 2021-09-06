@@ -16,6 +16,8 @@
 import os
 import importlib
 
+# pylint: disable=unused-import
+import mindspore.dataset
 from mindspore_serving import log as logger
 from mindspore_serving._mindspore_serving import Worker_
 from .check_version import check_version_and_env_config, check_version_and_try_set_env_lib
