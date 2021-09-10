@@ -5,6 +5,11 @@
 # Looks for protobuf-config.cmake file installed by Protobuf's cmake installation.
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,-rpath,$ORIGIN:$ORIGIN/lib -Wl,--no-as-needed")
 
+if(ENABLE_COVERAGE)
+    add_compile_options(-coverage)
+    add_link_options(-lgcov --coverage)
+endif()
+
 add_library(protobuf::libprotobuf ALIAS protobuf::protobuf)
 add_executable(protobuf::libprotoc ALIAS protobuf::protoc)
 

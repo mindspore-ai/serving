@@ -156,6 +156,7 @@ def serving_test(func):
             os.system(f"rm -rf {unix_socket_files_dir}")
             unix_socket_files_dir = os.path.join(os.getcwd(), "device_")
             os.system(f"rm -rf {unix_socket_files_dir}*")
+            os.system(f"rm -rf *.crt *.key *.csr *.srl")
             logger.info("Serving test end clear")
 
     return wrap_test
