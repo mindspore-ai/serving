@@ -81,7 +81,8 @@ TEST_F(TestMasterWorkerClient, test_master_worker_success_version_number_2_reque
   RegisterAddServable();
 
   // start_servable
-  StartAddServable();
+  auto status = StartServable(servable_dir_, servable_name_, 2);
+  ASSERT_TRUE(status.IsSuccess());
 
   // run servable
   proto::PredictRequest request;
@@ -99,7 +100,8 @@ TEST_F(TestMasterWorkerClient, test_master_worker_success_version_number_2_reque
   RegisterAddServable();
 
   // start_servable
-  StartAddServable();
+  auto status = StartServable(servable_dir_, servable_name_, 2);
+  ASSERT_TRUE(status.IsSuccess());
 
   // run servable
   proto::PredictRequest request;
@@ -120,7 +122,8 @@ TEST_F(TestMasterWorkerClient, test_master_worker_success_multi_version_number_1
   RegisterAddServable();
 
   // start_servable
-  StartAddServable();
+  auto status = StartServable(servable_dir_, servable_name_, 2);
+  ASSERT_TRUE(status.IsSuccess());
 
   // run servable
   proto::PredictRequest request;
@@ -141,7 +144,8 @@ TEST_F(TestMasterWorkerClient, test_master_worker_success_version_number_1_2_req
   RegisterAddServable();
 
   // start_servable
-  StartAddServable();
+  auto status = StartServable(servable_dir_, servable_name_, 2);
+  ASSERT_TRUE(status.IsSuccess());
 
   // run servable
   proto::PredictRequest request;
@@ -162,7 +166,8 @@ TEST_F(TestMasterWorkerClient, test_master_worker_success_version_number_1_2_req
   RegisterAddServable();
 
   // start_servable
-  StartAddServable();
+  auto status = StartServable(servable_dir_, servable_name_, 2);
+  ASSERT_TRUE(status.IsSuccess());
 
   // run servable
   proto::PredictRequest request;

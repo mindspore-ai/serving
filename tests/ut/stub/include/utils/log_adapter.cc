@@ -480,5 +480,4 @@ void common_log_init(void) {
 #endif
   mindspore::InitSubModulesLogLevel();
 }
-
 }

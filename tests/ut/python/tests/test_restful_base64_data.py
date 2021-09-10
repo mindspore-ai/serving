@@ -532,18 +532,13 @@ def test_restful_base64_mix_all_type_success():
     servable_content = servable_config_import
     servable_content += servable_config_declare_servable
     servable_content += r"""
-def preprocess(float_val):
-    return np.ones([2,2], np.float32), np.ones([2,2], np.float32)  
-    
-def postprocess(bool_val, int_val, float_val, str_val, bytes_val):
+def func_test(bool_val, int_val, float_val, str_val, bytes_val):
     return ~bool_val, int_val+1, float_val+1, str_val+"123", str.encode(bytes.decode(bytes_val.tobytes()) + "456") 
 
 @register.register_method(output_names=['bool_val', 'int_val', 'float_val', 'str_val', 'bytes_val'])
 def mix_all_type(bool_val, int_val, float_val, str_val, bytes_val):
-    x1, x2 = register.call_preprocess(preprocess, float_val)
-    y = register.call_servable(x1, x2)    
     bool_val, int_val, float_val, str_val, bytes_val = \
-        register.call_postprocess(postprocess, bool_val, int_val, float_val, str_val, bytes_val)
+        register.add_stage(func_test, bool_val, int_val, float_val, str_val, bytes_val, outputs_count=5)
     return bool_val, int_val, float_val, str_val, bytes_val
 """
     base.init_servable_with_servable_config(1, servable_content)

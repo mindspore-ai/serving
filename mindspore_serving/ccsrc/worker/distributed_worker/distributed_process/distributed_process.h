@@ -28,7 +28,7 @@
 #include "proto/ms_service.grpc.pb.h"
 #include "proto/ms_distributed.pb.h"
 #include "proto/ms_distributed.grpc.pb.h"
-#include "worker/distributed_worker/distributed_servable.h"
+#include "worker/distributed_worker/distributed_model_loader.h"
 #include "worker/grpc/worker_process.h"
 
 namespace mindspore {
@@ -37,7 +37,7 @@ namespace serving {
 // Service Implement
 class MSDistributedImpl {
  public:
-  explicit MSDistributedImpl(std::shared_ptr<DistributedServable> servable, const std::string server_address)
+  explicit MSDistributedImpl(std::shared_ptr<DistributedModelLoader> servable, const std::string server_address)
       : servable_(servable) {
     if (!watcher_) {
       watcher_ = std::make_shared<Watcher<proto::MSAgent, proto::MSAgent>>(server_address);
@@ -57,7 +57,7 @@ class MSDistributedImpl {
   grpc::Status Pong(grpc::ServerContext *context, const proto::PongRequest *request, proto::PongReply *reply);
 
  private:
-  std::shared_ptr<DistributedServable> servable_;
+  std::shared_ptr<DistributedModelLoader> servable_;
 
   std::shared_ptr<Watcher<proto::MSAgent, proto::MSAgent>> watcher_;
 };

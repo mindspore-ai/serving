@@ -43,6 +43,7 @@ message PredictReply {
 
 message Instance{
   map<string, Tensor> items = 1;
+  map<string, ShmTensorData> output_buffers = 2;
 }
 
 enum DataType {
@@ -67,6 +68,13 @@ message TensorShape {
   repeated int64 dims = 1;
 };
 
+message ShmTensorData {
+  string memory_key = 1;
+  uint64 bytes_size = 2; // the total shared memory size
+  uint64 data_offset = 3;
+  uint64 data_size = 4;
+}
+
 message Tensor {
   // tensor shape info
   TensorShape shape = 1;
@@ -75,7 +83,10 @@ message Tensor {
   DataType dtype = 2;
 
   // tensor data
-  bytes data = 3;
+  oneof tensor_data {
+    bytes data = 3;
+    ShmTensorData shm_data = 5;
+  }
 
   // for string type and images, the dtype is MS_BYTES.
   repeated bytes bytes_val = 4;
@@ -105,4 +116,11 @@ message PongRequest {
 
 message PongReply {
   string address = 1;
+}
+
+message TensorInfo {
+  TensorShape shape = 1; // tensor shape info
+  DataType dtype = 2; // tensor content data type
+  uint64 size = 3;
+  bool is_no_batch_dim = 4;
 }

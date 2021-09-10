@@ -14,7 +14,6 @@
 # ============================================================================
 """Interface for start up servable"""
 
-import threading
 from functools import wraps
 from mindspore_serving import log as logger
 from mindspore_serving.server.common import check_type
@@ -39,21 +38,6 @@ def _set_device_type(device_type):
         ServableContext_.get_instance().set_device_type_str(device_type)
     else:
         ServableContext_.get_instance().set_device_type_str('None')  # depend on MindSpore build target
-
-
-def _start_wait_and_clear():
-    """Waiting for Ctrl+C, and clear up environment"""
-
-    def thread_func():
-        Worker_.wait_and_clear()
-        _join_py_task()
-        logger.info("Serving worker: exited ------------------------------------")
-        print("Serving worker: exited ------------------------------------")
-
-    global _wait_and_clear_thread
-    if not _wait_and_clear_thread:
-        _wait_and_clear_thread = threading.Thread(target=thread_func)
-        _wait_and_clear_thread.start()
 
 
 def stop():
@@ -111,6 +95,11 @@ def _load_servable_config(servable_directory, servable_name):
         logger.error(f"import {servable_name}.servable_config failed, {str(e)}")
         raise RuntimeError(f"import {servable_name}.servable_config failed, {str(e)}")
 
+    model_names = Worker_.get_declared_model_names()
+    if not model_names:
+        raise RuntimeError(
+            f"There is no model declared, servable directory: {servable_directory}, servable name: {servable_name}")
+
 
 @stop_on_except
 def start_servable(servable_directory, servable_name, version_number,
@@ -118,33 +107,7 @@ def start_servable(servable_directory, servable_name, version_number,
                    master_address, worker_address, dec_key, dec_mode):
     r"""
     Start up the servable named 'servable_name' defined in 'servable_directory', and link the worker to the master
-    through gRPC (master_ip, master_port).
-
-    Serving has two running modes. One is running in a single process, providing the Serving service of a single model.
-    The other includes a master and multiple workers. This interface is for the second scenario.
-
-    The master is responsible for providing the Serving access interface for clients,
-    while the worker is responsible for providing the inference service of the specific model. The communications
-    between the master and workers through gPRC are defined as (master_ip, master_port) and (worker_ip, worker_port).
-
-    Args:
-        servable_directory (str): The directory where the servable is located in. There expects to has a directory
-            named `servable_name`. For more detail:
-            `How to config Servable <https://www.mindspore.cn/serving/docs/zh-CN/master/serving_model.html>`_ .
-
-        servable_name (str): The servable name.
-        version_number (int): Servable version number to be loaded. The version number should be a positive integer,
-            starting from 1, and 0 means to load the latest version. Default: 0.
-        device_type (str): Currently only supports "Ascend", "Davinci" and None, Default: None.
-            "Ascend" means the device type can be Ascend910 or Ascend310, etc.
-            "Davinci" has the same meaning as "Ascend".
-            None means the device type is determined by the MindSpore environment.
-        device_id (int): The id of the device the model loads into and runs in.
-        master_address (str): The master socket address the worker linked to.
-        worker_address (str): The worker socket address the master linked to.
-        dec_key (str): Byte type key used for decryption. Tha valid length is 16, 24, or 32.
-        dec_mode (str): Specifies the decryption mode, take effect when dec_key is set.
-            Option: 'AES-GCM' or 'AES-CBC'. Default: 'AES-GCM'.
+    through gRPC master_address and worker_address.
     """
     check_type.check_str('servable_directory', servable_directory)
     check_type.check_str('servable_name', servable_name)
@@ -162,10 +125,26 @@ def start_servable(servable_directory, servable_name, version_number,
 
     init_mindspore.init_mindspore_cxx_env()
     _load_servable_config(servable_directory, servable_name)
-
     _set_device_type(device_type)
     _set_device_id(device_id)
     Worker_.start_servable(servable_directory, servable_name, version_number, master_address, worker_address,
                            dec_key, dec_mode)
-    _start_py_task(Worker_.get_batch_size())
-    _start_wait_and_clear()
+    _start_py_task()
+
+
+@stop_on_except
+def start_extra_servable(servable_directory, servable_name, version_number, master_address, worker_address):
+    r"""
+    Start up the servable named 'servable_name' defined in 'servable_directory', and link the worker to the master
+    through gRPC master_address and worker_address.
+    """
+    check_type.check_str('servable_directory', servable_directory)
+    check_type.check_str('servable_name', servable_name)
+    check_type.check_int('version_number', version_number, 1)
+    check_type.check_str('master_address', master_address)
+    check_type.check_str('worker_address', worker_address)
+
+    init_mindspore.init_mindspore_cxx_env()
+    _load_servable_config(servable_directory, servable_name)
+    Worker_.start_extra_servable(servable_directory, servable_name, version_number, master_address, worker_address)
+    _start_py_task()

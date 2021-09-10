@@ -38,7 +38,7 @@ class AscendGraphImpl : public GraphCell::GraphImpl {
   std::vector<MSTensor> GetOutputs() override;
 
  private:
-  static std::shared_ptr<GraphCell::GraphImpl> graph_imp_stub_;
+  std::shared_ptr<GraphCell::GraphImpl> graph_imp_stub_;
 };
 
 }  // namespace mindspore

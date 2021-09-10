@@ -16,10 +16,10 @@
 from mindspore_serving.server import distributed
 from mindspore_serving.server import register
 
-distributed.declare_servable(rank_size=8, stage_size=1, with_batch_dim=False)
+model = distributed.declare_servable(rank_size=8, stage_size=1, with_batch_dim=False)
 
 
 @register.register_method(output_names=["y"])
 def predict(x):
-    y = register.call_servable(x)
+    y = register.add_stage(model, x, outputs_count=1)
     return y

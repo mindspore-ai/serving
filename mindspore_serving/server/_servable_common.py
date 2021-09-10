@@ -50,6 +50,10 @@ class ServableContextDataBase:
         """Whether the worker can restart"""
         return True
 
+    def own_device(self):
+        """Whether the worker occupy device"""
+        return True
+
 
 class WorkerContext:
     """Used to monitor and manage workers"""
@@ -85,6 +89,9 @@ class WorkerContext:
     @property
     def is_in_process_switching(self):
         return self.is_in_process_switching_
+
+    def own_device(self):
+        return self.context_data_.own_device()
 
     def ready(self):
         """Is worker ready to provide service"""

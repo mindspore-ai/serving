@@ -23,7 +23,7 @@
 #include "common/buffer_tensor.h"
 #include "common/servable.h"
 #include "master/dispacther.h"
-#include "worker/pipeline.h"
+#include "common/shared_memory.h"
 
 using std::string;
 using std::unordered_map;
@@ -73,6 +73,13 @@ void ProtoTensor::set_shape(const std::vector<int64_t> &shape) {
 
 bool ProtoTensor::resize_data(size_t data_len) {
   MSI_EXCEPTION_IF_NULL(tensor_);
+  if (tensor_->has_shm_data()) {
+    if (data_len == tensor_->shm_data().data_size()) {
+      return true;
+    }
+    MSI_LOG_EXCEPTION << "Cannot resize shared memory data size from " << tensor_->shm_data().data_size() << " to "
+                      << data_len;
+  }
   string *buffer = tensor_->mutable_data();
   if (buffer == nullptr) {
     MSI_LOG_ERROR << "invalid buffer data";
@@ -84,6 +91,9 @@ bool ProtoTensor::resize_data(size_t data_len) {
 
 size_t ProtoTensor::data_size() const {
   MSI_EXCEPTION_IF_NULL(tensor_);
+  if (tensor_->has_shm_data()) {
+    return tensor_->shm_data().data_size();
+  }
   return tensor_->data().size();
 }
 
@@ -92,6 +102,13 @@ uint8_t *ProtoTensor::mutable_data() {
   if (data_size() == 0) {
     return nullptr;
   }
+  if (tensor_->has_shm_data()) {
+    auto status = AttachSharedMemory();
+    if (status != SUCCESS) {
+      return nullptr;
+    }
+    return shm_attach_.offset_address;
+  }
   return reinterpret_cast<uint8_t *>(tensor_->mutable_data()->data());
 }
 
@@ -99,6 +116,13 @@ const uint8_t *ProtoTensor::data() const {
   MSI_EXCEPTION_IF_NULL(tensor_);
   if (data_size() == 0) {
     return nullptr;
+  }
+  if (tensor_->has_shm_data()) {
+    auto status = AttachSharedMemory();
+    if (status != SUCCESS) {
+      return nullptr;
+    }
+    return shm_attach_.offset_address;
   }
   return reinterpret_cast<const uint8_t *>(tensor_->data().data());
 }
@@ -167,6 +191,31 @@ DataType ProtoTensor::TransDataType2Inference(proto::DataType data_type) {
   }
 }
 
+void ProtoTensor::SetSharedMemory(const proto::ShmTensorData &shm_data) { *tensor_->mutable_shm_data() = shm_data; }
+
+Status ProtoTensor::AttachSharedMemory() const {
+  if (has_attached_shm_) {
+    return SUCCESS;
+  }
+  if (tensor_ == nullptr) {
+    return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "The proto tensor object cannot be nullptr";
+  }
+  if (!tensor_->has_shm_data()) {
+    return SUCCESS;
+  }
+  const proto::ShmTensorData &shm_data = tensor_->shm_data();
+  auto status = SharedMemoryManager::Instance().Attach(shm_data.memory_key(), shm_data.bytes_size(),
+                                                       shm_data.data_offset(), shm_data.data_size(), &shm_attach_);
+  if (status != SUCCESS) {
+    MSI_LOG_ERROR << "Attach shared memory failed, memory key: " << shm_data.memory_key()
+                  << ", bytes size: " << shm_data.bytes_size() << ", data offset: " << shm_data.data_offset()
+                  << ", data size: " << shm_data.data_size();
+    return status;
+  }
+  has_attached_shm_ = true;
+  return SUCCESS;
+}
+
 void GrpcTensorHelper::GetRequestSpec(const proto::PredictRequest &request, RequestSpec *request_spec) {
   MSI_EXCEPTION_IF_NULL(request_spec);
   request_spec->servable_name = request.servable_spec().name();
@@ -174,9 +223,9 @@ void GrpcTensorHelper::GetRequestSpec(const proto::PredictRequest &request, Requ
   request_spec->version_number = request.servable_spec().version_number();
 }
 
-void GrpcTensorHelper::GetWorkerSpec(const proto::RegisterRequest &request, WorkerRegSpec *worker_spec) {
+void GrpcTensorHelper::ConvertProtoWorkerSpec(const proto::RegisterRequest &proto_request, WorkerRegSpec *worker_spec) {
   MSI_EXCEPTION_IF_NULL(worker_spec);
-  auto &proto_worker_spec = request.worker_spec();
+  auto &proto_worker_spec = proto_request.worker_spec();
   worker_spec->worker_address = proto_worker_spec.address();
   worker_spec->worker_pid = proto_worker_spec.worker_pid();
 
@@ -185,43 +234,115 @@ void GrpcTensorHelper::GetWorkerSpec(const proto::RegisterRequest &request, Work
   servable_spec.servable_name = proto_spec.name();
   servable_spec.version_number = proto_spec.version_number();
   servable_spec.batch_size = proto_spec.batch_size();
+  servable_spec.own_device = proto_spec.own_device();
   for (const auto &proto_method : proto_spec.methods()) {
     ServableMethodInfo method_info;
     method_info.name = proto_method.name();
+    method_info.only_model_stage = proto_method.only_model_stage();
     for (auto &name : proto_method.input_names()) {
       method_info.input_names.push_back(name);
     }
     servable_spec.methods.push_back(method_info);
   }
+  ConvertProtoModelInfos(proto_spec.model_infos(), &servable_spec.models);
 }
 
-Status GrpcTensorHelper::CreateInstanceFromRequest(const proto::PredictRequest &request, RequestSpec *request_spec,
+void GrpcTensorHelper::ConvertWorkerSpec(const WorkerRegSpec &worker_spec, proto::RegisterRequest *proto_request) {
+  auto proto_worker_spec = proto_request->mutable_worker_spec();
+  proto_worker_spec->set_address(worker_spec.worker_address);
+  proto_worker_spec->set_worker_pid(worker_spec.worker_pid);
+
+  auto proto_spec = proto_worker_spec->mutable_servable_spec();
+  const auto &spec = worker_spec.servable_spec;
+  proto_spec->set_name(spec.servable_name);
+  proto_spec->set_version_number(spec.version_number);
+  proto_spec->set_batch_size(spec.batch_size);
+  proto_spec->set_own_device(spec.own_device);
+  for (auto &method : spec.methods) {
+    auto proto_method = proto_spec->add_methods();
+    proto_method->set_name(method.name);
+    proto_method->set_only_model_stage(method.only_model_stage);
+    for (auto &name : method.input_names) {
+      proto_method->add_input_names(name);
+    }
+  }
+  ConvertModelInfos(spec.models, proto_spec->mutable_model_infos());
+}
+
+void GrpcTensorHelper::ConvertProtoModelInfos(const proto::ModelInfos &proto_model_infos,
+                                              std::map<std::string, ModelInfo> *model_infos) {
+  MSI_EXCEPTION_IF_NULL(model_infos);
+  model_infos->clear();
+  auto convert_tensor_info = [](const proto::TensorInfo &proto_tensor_info) -> TensorInfo {
+    TensorInfo tensor_info;
+    tensor_info.is_no_batch_dim = proto_tensor_info.is_no_batch_dim();
+    tensor_info.size = proto_tensor_info.size();
+    tensor_info.data_type = ProtoTensor::TransDataType2Inference(proto_tensor_info.dtype());
+    auto &proto_shape = proto_tensor_info.shape().dims();
+    std::copy(proto_shape.begin(), proto_shape.end(), std::back_inserter(tensor_info.shape));
+    return tensor_info;
+  };
+  for (const auto &proto_model_it : proto_model_infos.model_infos()) {
+    auto &model_key = proto_model_it.first;
+    auto &proto_model = proto_model_it.second;
+    ModelInfo &model_info = (*model_infos)[model_key];
+    model_info.batch_size = proto_model.batch_size();
+    for (auto &proto_subgraph : proto_model.subgraph_infos()) {
+      ModelSubgraphInfo subgraph_info;
+      for (auto &input_tensor : proto_subgraph.inputs()) {
+        subgraph_info.input_infos.push_back(convert_tensor_info(input_tensor));
+      }
+      for (auto &output_tensor : proto_subgraph.outputs()) {
+        subgraph_info.output_infos.push_back(convert_tensor_info(output_tensor));
+      }
+      model_info.sub_graph_infos.push_back(subgraph_info);
+    }
+  }
+}
+
+void GrpcTensorHelper::ConvertModelInfos(const std::map<std::string, ModelInfo> &model_infos,
+                                         proto::ModelInfos *proto_model_infos) {
+  MSI_EXCEPTION_IF_NULL(proto_model_infos);
+  proto_model_infos->Clear();
+  auto convert_tensor_info = [](const TensorInfo &tensor_info, proto::TensorInfo *proto_tensor_info) {
+    proto_tensor_info->set_is_no_batch_dim(tensor_info.is_no_batch_dim);
+    proto_tensor_info->set_size(tensor_info.size);
+    proto_tensor_info->set_dtype(ProtoTensor::TransDataType2Proto(tensor_info.data_type));
+    auto proto_shape = proto_tensor_info->mutable_shape()->mutable_dims();
+    for (auto &dim : tensor_info.shape) {
+      proto_shape->Add(dim);
+    }
+  };
+  auto &proto_models_items = *(proto_model_infos->mutable_model_infos());
+  for (const auto &model_it : model_infos) {
+    auto &model_key = model_it.first;
+    auto &model_info = model_it.second;
+    auto &proto_model = proto_models_items[model_key];
+    proto_model.set_batch_size(model_info.batch_size);
+    for (auto &subgraph_info : model_info.sub_graph_infos) {
+      auto proto_subgraph = proto_model.add_subgraph_infos();
+      for (auto &input_tensor : subgraph_info.input_infos) {
+        convert_tensor_info(input_tensor, proto_subgraph->add_inputs());
+      }
+      for (auto &output_tensor : subgraph_info.output_infos) {
+        convert_tensor_info(output_tensor, proto_subgraph->add_outputs());
+      }
+    }
+  }
+}
+
+Status GrpcTensorHelper::CreateInstanceFromRequest(const MethodSignature &method, const proto::PredictRequest &request,
                                                    vector<InstanceData> *results) {
-  MSI_EXCEPTION_IF_NULL(request_spec);
   MSI_EXCEPTION_IF_NULL(results);
   results->clear();
 
   Status status;
-  GetRequestSpec(request, request_spec);
-
-  auto servable_name = request_spec->servable_name;
-  auto method_name = request_spec->method_name;
-
-  ServableSignature servable_signature;
-  if (!ServableStorage::Instance().GetServableDef(servable_name, &servable_signature)) {
-    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Servable " << servable_name << " is not declared";
-  }
-  MethodSignature method_signature;
-  if (!servable_signature.GetMethodDeclare(request_spec->method_name, &method_signature)) {
-    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
-           << "Method " << method_name << " is not registered for servable " << servable_name;
-  }
-
   if (request.instances_size() == 0) {
     return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
-           << "Instances count of request cannot be 0, servable: " << servable_name << ", method: " << method_name;
+           << "Instances count of request cannot be 0, servable: " << method.servable_name
+           << ", method: " << method.method_name;
   }
-  status = CreateInstanceFromRequestInstances(request, method_signature.inputs, results);
+  status = CreateInstanceFromRequestInstances(request, method, results);
   if (status != SUCCESS) {
     MSI_LOG_ERROR << "Create instances from request instances failed";
     return status;
@@ -229,44 +350,9 @@ Status GrpcTensorHelper::CreateInstanceFromRequest(const proto::PredictRequest &
   return SUCCESS;
 }
 
-Status GrpcTensorHelper::CreatePipelineInstanceFromRequest(const proto::PredictRequest &request,
-                                                           RequestSpec *request_spec,
-                                                           std::vector<InstanceData> *results) {
-  MSI_EXCEPTION_IF_NULL(request_spec);
-  MSI_EXCEPTION_IF_NULL(results);
-  results->clear();
-
-  Status status;
-  GetRequestSpec(request, request_spec);
-
-  auto servable_name = request_spec->servable_name;
-  auto method_name = request_spec->method_name;
-
-  ServableSignature servable_signature;
-  if (!ServableStorage::Instance().GetServableDef(servable_name, &servable_signature)) {
-    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Pipeline " << servable_name << " is not declared";
-  }
-  PipelineSignature method_signature;
-  if (!PipelineStorage::Instance().GetMethodDeclare(request_spec->method_name, &method_signature)) {
-    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
-           << "Method " << method_name << " is not registered for pipeline " << servable_name;
-  }
-
-  if (request.instances_size() == 0) {
-    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
-           << "Instances count of request cannot be 0, servable: " << servable_name << ", method: " << method_name;
-  }
-  status = CreateInstanceFromRequestInstances(request, method_signature.inputs, results);
-  if (status != SUCCESS) {
-    MSI_LOG_ERROR << "Create instances from request instances failed";
-    return status;
-  }
-  return SUCCESS;
-}
-
-void GrpcTensorHelper::CreateReplyFromInstances(const proto::PredictRequest &request,
+void GrpcTensorHelper::CreateReplyFromInstances(const proto::PredictRequest &request, const MethodSignature &method,
                                                 const vector<InstancePtr> &instances, proto::PredictReply *reply) {
-  auto status = CreateReplyFromInstancesInner(request, instances, reply);
+  auto status = CreateReplyFromInstancesInner(request, method, instances, reply);
   if (status != SUCCESS) {
     CreateReplyFromErrorMsg(status, reply);
   }
@@ -293,19 +379,11 @@ Status GrpcTensorHelper::CreateInstanceFromPredictReply(const RequestSpec &reque
   return SUCCESS;
 }
 
-void GrpcTensorHelper::SetReplySpec(const RequestSpec &request_spec, proto::PredictReply *reply) {
-  proto::ServableSpec &spec = *reply->mutable_servable_spec();
-  spec.set_name(request_spec.servable_name);
-  spec.set_method_name(request_spec.method_name);
-  spec.set_version_number(request_spec.version_number);
-}
-
 Status GrpcTensorHelper::CreatePredictReplyFromInstances(const proto::PredictRequest &request,
                                                          const std::vector<proto::ErrorMsg> &errors,
                                                          const std::vector<const proto::Instance *> &instances,
                                                          proto::PredictReply *reply) {
   MSI_EXCEPTION_IF_NULL(reply);
-  *reply->mutable_servable_spec() = request.servable_spec();
   for (auto &instance : instances) {
     auto proto_instance = reply->add_instances();
     if (instance) {
@@ -339,13 +417,6 @@ Status GrpcTensorHelper::CreatePredictReplyFromInstances(const proto::PredictReq
   return SUCCESS;
 }
 
-void GrpcTensorHelper::SetRequestSpec(const RequestSpec &request_spec, proto::PredictRequest *request) {
-  proto::ServableSpec spec;
-  spec.set_name(request_spec.servable_name);
-  spec.set_method_name(request_spec.method_name);
-  spec.set_version_number(request_spec.version_number);
-  *request->mutable_servable_spec() = spec;
-}
 Status GrpcTensorHelper::CreatePredictRequestFromInstances(const RequestSpec &request_spec,
                                                            const std::vector<const proto::Instance *> &instances,
                                                            proto::PredictRequest *request) {
@@ -356,30 +427,33 @@ Status GrpcTensorHelper::CreatePredictRequestFromInstances(const RequestSpec &re
   proto_spec->set_version_number(request_spec.version_number);
   for (auto &instance : instances) {
     auto proto_instance = request->add_instances();
-    *proto_instance->mutable_items() = instance->items();
+    *proto_instance = *instance;
   }
   return SUCCESS;
 }
 
 Status GrpcTensorHelper::CreateReplyFromInstancesInner(const proto::PredictRequest &request,
+                                                       const MethodSignature &method,
                                                        const std::vector<InstancePtr> &instances,
                                                        proto::PredictReply *reply) {
   MSI_EXCEPTION_IF_NULL(reply);
-  *reply->mutable_servable_spec() = request.servable_spec();
   if (instances.empty()) {
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Result instances count invalid, cannot be 0";
+  }
+  if (instances.size() != static_cast<size_t>(request.instances_size())) {
     return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
-           << "Result instances count invalid, cannot be 0, request instances count " << request.instances_size();
+           << "Result instances number " << instances.size() << " is inconsistent with request instances number "
+           << request.instances_size();
   }
   Status status;
-  MethodSignature method_signature = instances[0]->context.user_context->method_def;
   size_t err_cnt = 0;
   for (auto &instance : instances) {
     if (instance->error_msg != SUCCESS) {
       err_cnt++;
-    } else if (instance->data.size() != method_signature.outputs.size()) {
+    } else if (instance->data.size() != method.outputs.size()) {
       return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
              << "Result data tensor size " << instance->data.size() << " not equal outputs size "
-             << method_signature.outputs.size() << "defined in method signature";
+             << method.outputs.size() << " defined in method signature";
     }
   }
   if (err_cnt > 0) {
@@ -394,16 +468,45 @@ Status GrpcTensorHelper::CreateReplyFromInstancesInner(const proto::PredictReque
     }
   }
   // create instance reply, same with request
-  for (auto &instance : instances) {
+  for (size_t index = 0; index < instances.size(); index++) {
     auto proto_instance = reply->add_instances();
+    auto &instance = instances[index];
     if (instance->data.empty()) {
       continue;
     }
+    auto &request_output_buffers = request.instances(index).output_buffers();
     auto proto_items = proto_instance->mutable_items();
-    for (size_t i = 0; i < method_signature.outputs.size(); i++) {
+    for (size_t i = 0; i < method.outputs.size(); i++) {
       auto &output_tensor = instance->data[i];
-      auto &proto_tensor = (*proto_items)[method_signature.outputs[i]];
+      auto &output_name = method.outputs[i];
+
+      auto &proto_tensor = (*proto_items)[method.outputs[i]];
       ProtoTensor result_tensor(&proto_tensor);
+
+      auto it = request_output_buffers.find(output_name);
+      if (it != request_output_buffers.end()) {
+        if (output_tensor->is_bytes_val_data()) {
+          return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
+                 << "The output shared memory cannot be specified in the request"
+                 << " when the data type of output " << output_name << " is " << output_tensor->data_type()
+                 << ", output name: " << output_name;
+        }
+        auto &shm_data = it->second;
+        if (shm_data.data_size() != output_tensor->data_size()) {
+          return INFER_STATUS_LOG_ERROR(FAILED)
+                 << "The data size " << shm_data.data_size() << " of output shared memory "
+                 << " is inconsistent with the data size " << output_tensor->data_size()
+                 << " of result, output name: " << output_name;
+        }
+        result_tensor.SetSharedMemory(shm_data);
+        status = result_tensor.AttachSharedMemory();
+        if (status != SUCCESS) {
+          return INFER_STATUS_LOG_ERROR(FAILED)
+                 << "Attach output shared memory failed, memory key: " << shm_data.memory_key()
+                 << ", bytes size: " << shm_data.bytes_size() << ", data offset: " << shm_data.data_offset()
+                 << ", data size: " << shm_data.data_size() << ", output name: " << output_name;
+        }
+      }
       result_tensor.assign(*output_tensor);
     }
   }
@@ -411,12 +514,14 @@ Status GrpcTensorHelper::CreateReplyFromInstancesInner(const proto::PredictReque
 }
 
 Status GrpcTensorHelper::CreateInstanceFromRequestInstances(const proto::PredictRequest &request,
-                                                            const std::vector<std::string> &input_names,
+                                                            const MethodSignature &method,
                                                             std::vector<InstanceData> *results) {
   MSI_EXCEPTION_IF_NULL(results);
   auto servable_name = request.servable_spec().name();
   auto method_name = request.servable_spec().method_name();
   Status status;
+  auto &input_names = method.inputs;
+  auto &output_names = method.outputs;
   for (auto &proto_instance : request.instances()) {
     InstanceData instance_data;
     for (const auto &input_name : input_names) {
@@ -426,14 +531,46 @@ Status GrpcTensorHelper::CreateInstanceFromRequestInstances(const proto::Predict
                << "Cannot find input " << input_name << " in instance input , servable " << servable_name << ", method "
                << method_name;
       }
-      status = CheckRequestTensor(it->second);
+      auto &tensor_proto = it->second;
+      status = CheckRequestTensor(tensor_proto);
       if (status != SUCCESS) {
         auto status2 = INFER_STATUS(INVALID_INPUTS) << "Instances input " << input_name << " check failed";
         MSI_LOG_ERROR << status2.StatusMessage();
         return Status(INVALID_INPUTS, status2.StatusMessage() + ", detail: " + status.StatusMessage());
       }
-      auto add_tensor = std::make_shared<ProtoTensor>(const_cast<proto::Tensor *>(&it->second));
+      auto add_tensor = std::make_shared<ProtoTensor>(const_cast<proto::Tensor *>(&tensor_proto));
+      if (tensor_proto.has_shm_data()) {
+        status = add_tensor->AttachSharedMemory();
+        if (status != SUCCESS) {
+          auto &shm_data = tensor_proto.shm_data();
+          MSI_LOG_ERROR << "Attach input shared memory failed, memory key: " << shm_data.memory_key()
+                        << ", bytes size: " << shm_data.bytes_size() << ", data offset: " << shm_data.data_offset()
+                        << ", data size: " << shm_data.data_size() << ", input name: " << input_name;
+          return status;
+        }
+      }
       instance_data.push_back(add_tensor);
+    }
+    auto &output_buffers = proto_instance.output_buffers();
+    if (!output_buffers.empty()) {
+      for (auto &buffer : output_buffers) {
+        auto it = std::find(output_names.begin(), output_names.end(), buffer.first);
+        if (it == output_names.end()) {
+          return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
+                 << "The name " << buffer.first << " of the output buffers cannot be found in the output names "
+                 << output_names << " of the method, servable " << servable_name << ", method " << method_name;
+        }
+        auto &shm_data = buffer.second;
+        SharedMemoryAttachItem item;
+        status = SharedMemoryManager::Instance().Attach(shm_data.memory_key(), shm_data.bytes_size(),
+                                                        shm_data.data_offset(), shm_data.data_size(), &item);
+        if (status != SUCCESS) {
+          MSI_LOG_ERROR << "Attach output shared memory failed, memory key: " << shm_data.memory_key()
+                        << ", bytes size: " << shm_data.bytes_size() << ", data offset: " << shm_data.data_offset()
+                        << ", data size: " << shm_data.data_size() << ", output name: " << buffer.first;
+          return status;
+        }
+      }
     }
     results->push_back(instance_data);
   }
@@ -471,6 +608,7 @@ void GrpcTensorHelper::CopyFromAgentSpec(const proto::AgentSpec &specs, WorkerAg
     TensorInfo info;
     info.data_type = ProtoTensor::TransDataType2Inference(in.dtype());
     info.size = in.size();
+    info.is_no_batch_dim = in.is_no_batch_dim();
     for (auto &dim : in.shape().dims()) {
       info.shape.push_back(dim);
     }
@@ -480,6 +618,7 @@ void GrpcTensorHelper::CopyFromAgentSpec(const proto::AgentSpec &specs, WorkerAg
     TensorInfo info;
     info.data_type = ProtoTensor::TransDataType2Inference(out.dtype());
     info.size = out.size();
+    info.is_no_batch_dim = out.is_no_batch_dim();
     for (auto &dim : out.shape().dims()) {
       info.shape.push_back(dim);
     }
@@ -498,6 +637,7 @@ void GrpcTensorHelper::CopyFromWorkerAgentSpec(const std::vector<WorkerAgentSpec
       auto proto_method = worker_spec->add_inputs();
       proto_method->set_dtype(ProtoTensor::TransDataType2Proto(method.data_type));
       proto_method->set_size(method.size);
+      proto_method->set_is_no_batch_dim(method.is_no_batch_dim);
       auto proto_shape = proto_method->mutable_shape();
       for (auto &dim : method.shape) {
         proto_shape->add_dims(dim);
@@ -507,6 +647,7 @@ void GrpcTensorHelper::CopyFromWorkerAgentSpec(const std::vector<WorkerAgentSpec
       auto proto_method = worker_spec->add_outputs();
       proto_method->set_dtype(ProtoTensor::TransDataType2Proto(method.data_type));
       proto_method->set_size(method.size);
+      proto_method->set_is_no_batch_dim(method.is_no_batch_dim);
       auto proto_shape = proto_method->mutable_shape();
       for (auto &dim : method.shape) {
         proto_shape->add_dims(dim);
@@ -529,24 +670,34 @@ Status GrpcTensorHelper::CheckRequestTensor(const proto::Tensor &tensor) {
                                                     << " shape can only be (1,) or empty, but given shape is " << shape;
     }
   } else {
-    size_t element_num = tensor_input.element_cnt();
     bool zero_dim = false;
-    for (auto &shape_item : tensor_input.shape()) {
+    for (auto &shape_item : tensor.shape().dims()) {
       if (shape_item < 0 || zero_dim) {
         return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Tensor check failed: input "
-                                                      << " shape " << tensor_input.shape() << " invalid";
+                                                      << " shape " << shape << " invalid";
       }
       if (shape_item == 0) {
         zero_dim = true;
       }
     }
-    if (tensor_input.data_type() == kMSI_Unknown || tensor_input.itemsize() == 0) {
-      return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Tensor check failed: input "
-                                                    << " data type " << tensor.dtype() << " invalid";
-    }
-    if (element_num * tensor_input.itemsize() != tensor_input.data_size()) {
+    auto item_size = tensor_input.itemsize();
+    if (item_size == 0) {
       return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
-             << "Tensor check failed: input data size " << tensor.data().size() << " invalid";
+             << "Tensor check failed: input data type " << tensor.dtype() << " invalid";
+    }
+    size_t element_num = tensor_input.element_cnt();
+    auto expect_data_size = element_num * item_size;
+    if (tensor.tensor_data_case() == proto::Tensor::TensorDataCase::kShmData) {
+      if (expect_data_size != tensor.shm_data().data_size()) {
+        return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
+               << "Tensor check failed: input shared memory data size " << tensor.shm_data().data_size()
+               << " not equal to expected size " << expect_data_size;
+      }
+    } else {
+      if (expect_data_size != tensor.data().size()) {
+        return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
+               << "Tensor check failed: input data size " << tensor.data().size() << " invalid";
+      }
     }
   }
   return SUCCESS;

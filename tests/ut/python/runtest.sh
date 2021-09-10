@@ -20,6 +20,11 @@ BASEPATH=$(
 )
 PROJECT_PATH=${BASEPATH}/../../..
 
+rm -rf ${PROJECT_PATH}/build/package/mindspore_serving/server
+rm -rf ${PROJECT_PATH}/build/package/mindspore_serving/client
+cp -r ${PROJECT_PATH}/mindspore_serving/server ${PROJECT_PATH}/build/package/mindspore_serving/
+cp -r ${PROJECT_PATH}/mindspore_serving/client ${PROJECT_PATH}/build/package/mindspore_serving/
+
 export PYTHONPATH=${PROJECT_PATH}/build/package:${PROJECT_PATH}/tests/ut/python:$PYTHONPATH
 export LD_LIBRARY_PATH=${PROJECT_PATH}/build/package/tests/mindspore/lib:${LD_LIBRARY_PATH}
 
@@ -51,5 +56,8 @@ if [ $# -gt 0 ]; then
 else
   pytest -v .
 fi
+
+rm -f *.crt *.csr *.key *.srl
+rm -rf unix_socket_files
 
 exit $?

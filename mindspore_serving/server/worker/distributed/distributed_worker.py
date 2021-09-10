@@ -16,7 +16,7 @@
 from mindspore_serving._mindspore_serving import Worker_
 
 from mindspore_serving.server.common import check_type
-from mindspore_serving.server.worker._worker import _start_py_task, _start_wait_and_clear
+from mindspore_serving.server.worker._worker import _start_py_task
 from mindspore_serving.server.worker._worker import stop_on_except, _load_servable_config
 
 
@@ -37,5 +37,4 @@ def start_servable(servable_directory, servable_name, rank_table_json_file, vers
     Worker_.start_distributed_servable(servable_directory, servable_name, rank_table_json_file, version_number,
                                        distributed_address, master_address, worker_address,
                                        wait_agents_time_in_seconds)
-    _start_py_task(Worker_.get_batch_size())
-    _start_wait_and_clear()
+    _start_py_task()

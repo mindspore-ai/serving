@@ -22,32 +22,52 @@
 #include <condition_variable>
 #include <atomic>
 #include <vector>
+#include <map>
+#include <memory>
+#include <string>
 #include "common/instance.h"
+#include "worker/inference/inference.h"
+#include "worker/task_queue.h"
+#include "worker/model_loader_base.h"
 
 namespace mindspore::serving {
 
-using PredictFun = std::function<void(const std::vector<InstancePtr> &inputs)>;
+struct PredictSubgraphInfo {
+  std::vector<TensorInfo> input_infos;
+};
+
+struct PredictModelInfo {
+  std::vector<PredictSubgraphInfo> sub_graph_infos;
+  uint64_t batch_size = 0;
+};
+
 class MS_API PredictThread {
  public:
   PredictThread();
   ~PredictThread();
 
-  Status PushPredictTask(const std::vector<InstancePtr> &inputs);
-  void Start(PredictFun predict_fun, uint32_t batch_size);
+  void PushPredictTask(const MethodStage &stage, const std::vector<InstancePtr> &inputs);
+  void Start(const std::string &que_name, const std::shared_ptr<ModelLoaderBase> &model_loader,
+             const ModelMeta &model_meta, TaskCallBack task_callback);
   void Stop();
 
- private:
-  std::thread predict_thread_;
-  std::queue<InstancePtr> predict_buffer_;
-  PredictFun predict_fun_;
-  uint32_t batch_size_ = 0;
+  uint64_t GetBatchSize() const { return executor_info_.batch_size; }
 
-  std::mutex m_lock_;
-  std::condition_variable cond_var_;
-  std::atomic<bool> is_running_ = false;
+ private:
+  TaskQueue task_que_;
+  std::thread predict_thread_;
+  ModelMeta model_meta_;
+  std::shared_ptr<ModelLoaderBase> model_loader_ = nullptr;
+  PredictModelInfo executor_info_;
 
   static void ThreadFunc(PredictThread *queue);
   void Predict();
+
+  void PredictHandle(const TaskInfo &task_info, const std::vector<InstancePtr> &instances);
+  Status PredictInner(const TaskInfo &task_info, const std::vector<InstancePtr> &instances,
+                      std::vector<ResultInstance> *instance_result);
+  Status CheckPredictInput(uint64_t subgraph, const InstancePtr &instance);
+  std::string AsGroupName(const std::string &model_key, uint64_t subgraph) const;
 };
 
 }  // namespace mindspore::serving

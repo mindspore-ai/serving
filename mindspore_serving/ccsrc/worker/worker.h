@@ -31,19 +31,12 @@
 #include "common/grpc_server.h"
 #include "worker/task_queue.h"
 #include "common/grpc_async_server.h"
-#include "worker/sevable_base.h"
+#include "worker/model_loader_base.h"
 #include "worker/grpc/worker_server.h"
 #include "worker/distributed_worker/distributed_process/distributed_server.h"
 
 namespace mindspore {
 namespace serving {
-
-struct ServableWorkerContext {
-  ServableRegSpec servable_spec;
-  ServableSignature servable_signature;
-  std::shared_ptr<WorkExecutor> worker_service = nullptr;
-  std::shared_ptr<ServableBase> servable = nullptr;
-};
 
 class MS_API Worker {
  public:
@@ -52,34 +45,32 @@ class MS_API Worker {
 
   static Worker &GetInstance();
   void Clear();
-  Status Run(const RequestSpec &request_spec, const std::vector<InstanceData> instances_data,
+  Status Run(const RequestSpec &request_spec, const std::vector<InstanceData> &instances_data,
              std::vector<InstancePtr> *out);
   Status RunAsync(const proto::PredictRequest &request, proto::PredictReply *reply, PredictOnFinish on_finish);
-  Status StartServable(const std::shared_ptr<ServableBase> &servable, const std::string &master_address,
-                       const std::string &worker_address);
+
+  Status RunAsync(const RequestSpec &request_spec, const std::vector<InstanceData> &instances_data,
+                  const WorkCallBack &on_process_done);
+  Status StartServable(const std::string &servable_directory, const std::string &servable_name, uint32_t version_number,
+                       const std::map<std::string, std::shared_ptr<ModelLoaderBase>> &models,
+                       const std::string &master_address, const std::string &worker_address, bool own_device);
 
   Status StartGrpcServer(const std::string &server_address);
-  Status StartDistributedGrpcServer(std::shared_ptr<DistributedServable> servable, const std::string &server_address);
+  Status StartDistributedGrpcServer(std::shared_ptr<DistributedModelLoader> servable,
+                                    const std::string &server_address);
 
   void StopServable(bool notify_master = true);
   bool IsRunning();
   Status RegisterWorker(const std::string &master_address, const std::string &worker_address);
 
-  PyTaskQueueGroup &GetPyTaskQueueGroup() { return py_task_queue_group_; }
-  size_t GetBatchSize() const;
-  void PushPyPreprocessResult(std::vector<ResultInstance> outputs);
-  void PushPyPostprocessResult(std::vector<ResultInstance> outputs);
+  WorkExecutor &GetWorkExecutor() { return worker_executor_; }
   void ClearOnSystemFailed(const Status &error_msg);
-  void PushPyPipelineResult(std::vector<ResultInstance> outputs);
-  void InitPipeline(const std::string &servable_name, uint64_t version_number);
-  Status RunPipeline(const proto::PredictRequest &request, proto::PredictReply *reply, PredictOnFinish on_finish);
+  std::shared_ptr<GrpcNotifyMaster> GetGrpcNotifyMaster() { return notify_master_; }
 
  private:
-  ServableWorkerContext servable_context_;
-  ServableRegSpec pipeline_spec_;
-  PyTaskQueueGroup py_task_queue_group_;
-  PreprocessThreadPool cpp_preprocess_;
-  PostprocessThreadPool cpp_postprocess_;
+  WorkExecutor worker_executor_;
+
+  ServableRegSpec servable_spec_;
 
   std::atomic_bool exit_notify_master_ = true;
   std::atomic_bool servable_started_ = false;
@@ -90,15 +81,12 @@ class MS_API Worker {
 
   std::shared_mutex worker_shared_lock_;
 
-  Status StartServableInner(const std::shared_ptr<ServableBase> &servable);
+  Status StartServableInner(const std::string &servable_name, uint32_t version_number,
+                            const std::map<std::string, std::shared_ptr<ModelLoaderBase>> &models, bool own_device);
 
-  Status RunAsyncInner(const proto::PredictRequest &request, proto::PredictReply *reply, PredictOnFinish on_finish);
+  Status RunAsyncInner(const RequestSpec &request_spec, const std::vector<InstanceData> &instances_data,
+                       const WorkCallBack &on_process_done);
   bool CheckServableRequest(const RequestSpec &request_spec);
-  std::shared_ptr<TaskQueue> GetPyTaskQueuePreprocess() { return py_task_queue_group_.GetPreprocessTaskQueue(); }
-  std::shared_ptr<TaskQueue> GetPyTaskQueuePostprocess() { return py_task_queue_group_.GetPostprocessTaskQueue(); }
-  std::shared_ptr<TaskQueue> GetCppTaskQueuePreprocess() { return cpp_preprocess_.GetTaskQueue(); }
-  std::shared_ptr<TaskQueue> GetCppTaskQueuePostprocess() { return cpp_postprocess_.GetTaskQueue(); }
-  std::shared_ptr<TaskQueue> GetPyTaskQueuePipeline() { return py_task_queue_group_.GetPipelineTaskQueue(); }
 };
 
 }  // namespace serving

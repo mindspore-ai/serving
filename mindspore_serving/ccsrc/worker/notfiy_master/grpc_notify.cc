@@ -19,34 +19,25 @@
 #include <grpcpp/health_check_service_interface.h>
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
 #include <thread>
-#include "common/exit_handle.h"
 #include "common/grpc_server.h"
+#include "worker/servable_register.h"
+#include "common/shared_memory.h"
+#include "common/proto_tensor.h"
 
 namespace mindspore {
 namespace serving {
 
 GrpcNotifyMaster::GrpcNotifyMaster(const std::string &master_address, const std::string &worker_address)
-    : master_address_(master_address), worker_address_(worker_address) {}
+    : master_address_(master_address), worker_address_(worker_address) {
+  auto channel = GrpcServer::CreateChannel(master_address_);
+  stub_ = proto::MSMaster::NewStub(channel);
+}
 
 GrpcNotifyMaster::~GrpcNotifyMaster() = default;
 
 Status GrpcNotifyMaster::Register(const WorkerRegSpec &worker_spec) {
   proto::RegisterRequest request;
-  auto proto_worker_spec = request.mutable_worker_spec();
-  proto_worker_spec->set_address(worker_address_);
-  proto_worker_spec->set_worker_pid(getpid());
-  const auto &spec = worker_spec.servable_spec;
-  auto proto_spec = proto_worker_spec->mutable_servable_spec();
-  proto_spec->set_name(spec.servable_name);
-  proto_spec->set_version_number(spec.version_number);
-  proto_spec->set_batch_size(spec.batch_size);
-  for (auto &method : spec.methods) {
-    auto proto_method = proto_spec->add_methods();
-    proto_method->set_name(method.name);
-    for (auto &name : method.input_names) {
-      proto_method->add_input_names(name);
-    }
-  }
+  GrpcTensorHelper::ConvertWorkerSpec(worker_spec, &request);
 
   MSI_LOG(INFO) << "Register to " << master_address_;
   proto::RegisterReply reply;
@@ -54,9 +45,7 @@ Status GrpcNotifyMaster::Register(const WorkerRegSpec &worker_spec) {
   const int32_t TIME_OUT = 1;
   std::chrono::system_clock::time_point deadline = std::chrono::system_clock::now() + std::chrono::seconds(TIME_OUT);
   context.set_deadline(deadline);
-  auto channel = GrpcServer::CreateChannel(master_address_);
-  auto stub = proto::MSMaster::NewStub(channel);
-  grpc::Status status = stub->Register(&context, request, &reply);
+  grpc::Status status = stub_->Register(&context, request, &reply);
   if (status.ok()) {
     MSI_LOG(INFO) << "Register SUCCESS ";
     is_running_ = true;
@@ -79,15 +68,14 @@ Status GrpcNotifyMaster::Unregister() {
   const int32_t TIME_OUT = 1;
   std::chrono::system_clock::time_point deadline = std::chrono::system_clock::now() + std::chrono::seconds(TIME_OUT);
   context.set_deadline(deadline);
-  auto channel = GrpcServer::CreateChannel(master_address_);
-  auto stub = proto::MSMaster::NewStub(channel);
-  grpc::Status status = stub->Exit(&context, request, &reply);
+  grpc::Status status = stub_->Exit(&context, request, &reply);
   if (status.ok()) {
     MSI_LOG(INFO) << "Exit SUCCESS ";
     return SUCCESS;
   }
-  return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
-         << "Exit Failed, Grpc message: " << status.error_code() << ", " << status.error_message();
+  return INFER_STATUS_LOG_WARNING(FAILED)
+         << "Exit Failed, master may have exited, Grpc message: " << status.error_code() << ", "
+         << status.error_message();
 }
 
 Status GrpcNotifyMaster::NotifyFailed(const std::string &master_address, const std::string &error_msg) {
@@ -107,6 +95,152 @@ Status GrpcNotifyMaster::NotifyFailed(const std::string &master_address, const s
   MSI_LOG_WARNING << "Failed to notify master " << master_address << " error message of worker: " << error_msg
                   << ", grpc error: " << status.error_message();
   return FAILED;
+}
+
+Status GrpcNotifyMaster::GetModelInfos(const std::string &master_address, const std::string &servable_name,
+                                       uint32_t version_number, proto::GetModelInfoReply *reply) {
+  proto::GetModelInfoRequest request;
+  request.set_servable_name(servable_name);
+  request.set_version_number(version_number);
+  auto channel = GrpcServer::CreateChannel(master_address);
+  auto stub = proto::MSMaster::NewStub(channel);
+
+  grpc::ClientContext context;
+  grpc::Status grpc_status = stub->GetModelInfo(&context, request, reply);
+  if (!grpc_status.ok()) {
+    return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
+           << "Get model infos failed, master address:" << master_address
+           << ", Grpc message: " << grpc_status.error_code() << ", " << grpc_status.error_message();
+  }
+  return SUCCESS;
+}
+
+Status GrpcNotifyMaster::CreateRequestShmInstance(const RemoteCallModelContext &model_context,
+                                                  const InstanceData &instance, proto::Instance *proto_instance) {
+  Status status;
+  auto &memory_instance = SharedMemoryAllocator::Instance();
+  auto &proto_items = *(proto_instance->mutable_items());
+  for (size_t i = 0; i < instance.size(); i++) {
+    auto &input = instance[i];
+    auto &memory_key = model_context.request_memory[i];
+    SharedMemoryItem memory_item;
+    status = memory_instance.AllocMemoryItem(memory_key, &memory_item);
+    if (status != SUCCESS) {
+      MSI_LOG_ERROR << "Alloc request memory failed, memory: " << memory_key;
+      return status;
+    }
+    auto &proto_tensor = proto_items["x" + std::to_string(i)];  // input: x0, x1, x2,...
+    ProtoTensor tensor(&proto_tensor);
+    tensor.set_data_type(input->data_type());
+    tensor.set_shape(input->shape());
+    auto proto_shm_data = proto_tensor.mutable_shm_data();
+    proto_shm_data->set_memory_key(memory_item.memory_key);
+    proto_shm_data->set_bytes_size(memory_item.bytes_size);
+    proto_shm_data->set_data_size(memory_item.size);
+    proto_shm_data->set_data_offset(memory_item.offset);
+    auto ret = memcpy_s(memory_item.offset_address, memory_item.size, input->data(), input->data_size());
+    if (ret != EOK) {
+      return INFER_STATUS_LOG_ERROR(FAILED) << "Copy tensor to shared memory failed, dst size: " << memory_item.size
+                                            << ", src size: " << input->data_size();
+    }
+  }
+  return SUCCESS;
+}
+
+Status GrpcNotifyMaster::CreateResultShmInstance(const RemoteCallModelContext &model_context,
+                                                 ResultInstance *result_instance, proto::Instance *proto_instance) {
+  Status status;
+  auto &memory_instance = SharedMemoryAllocator::Instance();
+  auto &proto_reply_items = *(proto_instance->mutable_output_buffers());
+  for (size_t i = 0; i < model_context.output_infos.size(); i++) {
+    auto &output_info = model_context.output_infos[i];
+    auto &memory_key = model_context.reply_memory[i];
+    SharedMemoryItem memory_item;
+    status = memory_instance.AllocMemoryItem(memory_key, &memory_item);
+    if (status != SUCCESS) {
+      MSI_LOG_ERROR << "Alloc request memory failed, memory: " << memory_key;
+      return status;
+    }
+    auto &proto_output = proto_reply_items["y" + std::to_string(i)];
+    proto_output.set_memory_key(memory_item.memory_key);
+    proto_output.set_bytes_size(memory_item.bytes_size);
+    proto_output.set_data_size(memory_item.size);
+    proto_output.set_data_offset(memory_item.offset);
+    auto result_tensor =
+      std::make_shared<ShmTensor>(output_info.tensor_info.data_type, output_info.shape_one_batch, memory_item);
+    result_instance->data.push_back(result_tensor);
+  }
+  return SUCCESS;
+}
+
+Status GrpcNotifyMaster::CallModel(const RemoteCallModelContext &model_context,
+                                   const std::vector<InstanceData> &request, std::vector<ResultInstance> *reply) {
+  grpc::ClientContext context;
+  const int32_t TIME_OUT = 1;
+  std::chrono::system_clock::time_point deadline = std::chrono::system_clock::now() + std::chrono::seconds(TIME_OUT);
+  context.set_deadline(deadline);
+
+  proto::PredictRequest proto_request;
+  auto servable_spec = proto_request.mutable_servable_spec();
+  servable_spec->set_name(ServableRegister::Instance().GetServableSignature().servable_name);
+  servable_spec->set_method_name(
+    ServableRegister::GetCallModelMethodName(model_context.model_name, model_context.subgraph));
+  servable_spec->set_version_number(model_context.version_number);
+  auto proto_instances = proto_request.mutable_instances();
+  Status status;
+  std::vector<ResultInstance> result_instances;
+  for (auto &instance : request) {
+    auto proto_instance = proto_instances->Add();
+    status = CreateRequestShmInstance(model_context, instance, proto_instance);
+    if (status != SUCCESS) {
+      return status;
+    }
+    ResultInstance result_instance;
+    status = CreateResultShmInstance(model_context, &result_instance, proto_instance);
+    if (status != SUCCESS) {
+      return status;
+    }
+    result_instances.push_back(result_instance);
+  }
+  proto::PredictReply proto_reply;
+  MSI_TIME_STAMP_START(CallModel)
+  grpc::Status grpc_status = stub_->CallModel(&context, proto_request, &proto_reply);
+  MSI_TIME_STAMP_END_EXTRA(CallModel, "Request count " + std::to_string(request.size()))
+  if (!grpc_status.ok()) {
+    return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
+           << "Remote call model failed, master address:" << master_address_
+           << ", Grpc message: " << grpc_status.error_code() << ", " << grpc_status.error_message();
+  }
+  auto &error_msgs = proto_reply.error_msg();
+  auto &reply_instances = proto_reply.instances();
+  if (error_msgs.size() == 1 && error_msgs[0].error_code() != 0) {
+    if (error_msgs[0].error_code() == SERVABLE_UNAVAILABLE) {
+      return INFER_STATUS_LOG_ERROR(FAILED) << "There are no available inference processes that occupy devices";
+    }
+    return INFER_STATUS_LOG_ERROR(FAILED) << "Remote call model failed: " << error_msgs[0].error_msg();
+  }
+  if (!reply_instances.empty() && static_cast<size_t>(reply_instances.size()) != request.size()) {
+    return INFER_STATUS_LOG_ERROR(FAILED) << "Remote call model failed, reply instances size " << reply_instances.size()
+                                          << " is not equal to request instances size " << request.size();
+  }
+  for (int i = 0; i < reply_instances.size(); i++) {
+    ResultInstance result_instance;
+    if (i < error_msgs.size() && error_msgs[i].error_code() != 0) {
+      result_instance.error_msg = INFER_STATUS_LOG_ERROR(FAILED)
+                                  << "Result instance " << i << "failed: " << error_msgs[i].error_msg();
+    } else {
+      auto &proto_instance = reply_instances[i];
+      auto &proto_items = proto_instance.items();
+      for (auto &output : proto_items) {
+        if (!output.second.has_shm_data()) {
+          return INFER_STATUS_LOG_ERROR(FAILED) << "Result instance " << i << " invalid, there no shared memory data";
+        }
+      }
+      result_instance.data = result_instances[i].data;
+    }
+    reply->push_back(result_instance);
+  }
+  return SUCCESS;
 }
 
 }  // namespace serving

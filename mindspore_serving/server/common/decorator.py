@@ -14,6 +14,8 @@
 # ============================================================================
 """Providing decorators."""
 
+from functools import wraps
+
 from mindspore_serving import log
 
 
@@ -26,6 +28,7 @@ def deprecated(version, substitute):
     """
 
     def decorate(func):
+        @wraps(func)
         def wrapper(*args, **kwargs):
             name = func.__name__
             log.warning(f"'{name}' is deprecated from version {version} and "

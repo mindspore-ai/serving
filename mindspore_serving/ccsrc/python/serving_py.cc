@@ -15,9 +15,6 @@
  */
 
 #include <string>
-#include "python/worker/preprocess_py.h"
-#include "python/worker/postprocess_py.h"
-#include "python/worker/pipeline_py.h"
 #include "python/worker/worker_py.h"
 #include "python/worker/servable_py.h"
 #include "python/tensor_py.h"
@@ -27,6 +24,7 @@
 #include "master/master_context.h"
 #include "master/worker_context.h"
 #include "worker/context.h"
+#include "worker/stage_function.h"
 #include "python/master/master_py.h"
 #include "python/agent/agent_py.h"
 #include "common/exit_handle.h"
@@ -39,44 +37,21 @@ void PyRegServable(pybind11::module *m_ptr) {
   // avoid as numpy object memory copy in PyTensor::AsPythonData
   py::class_<TensorBase, TensorBasePtr>(m, "Tensor_");
 
-  py::class_<PyPreprocessStorage, std::shared_ptr<PyPreprocessStorage>>(m, "PreprocessStorage_")
+  py::class_<PyStageFunctionStorage, std::shared_ptr<PyStageFunctionStorage>>(m, "StageFunctionStorage_")
     .def(py::init<>())
-    .def_static("get_instance", &PyPreprocessStorage::Instance)
-    .def("register", &PyPreprocessStorage::Register)
-    .def("get_pycpp_preprocess_info", &PyPreprocessStorage::GetPyCppPreprocessInfo);
-
-  py::class_<PyPostprocessStorage, std::shared_ptr<PyPostprocessStorage>>(m, "PostprocessStorage_")
-    .def(py::init<>())
-    .def_static("get_instance", &PyPostprocessStorage::Instance)
-    .def("register", &PyPostprocessStorage::Register)
-    .def("get_pycpp_postprocess_info", &PyPostprocessStorage::GetPyCppPostprocessInfo);
-
-  py::enum_<PredictPhaseTag>(m, "PredictPhaseTag_")
-    .value("kPredictPhaseTag_Input", PredictPhaseTag::kPredictPhaseTag_Input)
-    .value("kPredictPhaseTag_Preproces", PredictPhaseTag::kPredictPhaseTag_Preproces)
-    .value("kPredictPhaseTag_Predict", PredictPhaseTag::kPredictPhaseTag_Predict)
-    .value("kPredictPhaseTag_Postprocess", PredictPhaseTag::kPredictPhaseTag_Postprocess)
-    .export_values();
+    .def_static("get_instance", &PyStageFunctionStorage::Instance)
+    .def("register", &PyStageFunctionStorage::Register)
+    .def("get_pycpp_function_info", &PyStageFunctionStorage::GetPyCppFunctionInfo);
 
   py::class_<MethodSignature>(m, "MethodSignature_")
     .def(py::init<>())
+    .def_readwrite("servable_name", &MethodSignature::servable_name)
     .def_readwrite("method_name", &MethodSignature::method_name)
-    .def_readwrite("subgraph", &MethodSignature::subgraph)
     .def_readwrite("inputs", &MethodSignature::inputs)
     .def_readwrite("outputs", &MethodSignature::outputs)
-    .def_readwrite("preprocess_name", &MethodSignature::preprocess_name)
-    .def_readwrite("preprocess_inputs", &MethodSignature::preprocess_inputs)
-    .def_readwrite("postprocess_name", &MethodSignature::postprocess_name)
-    .def_readwrite("postprocess_inputs", &MethodSignature::postprocess_inputs)
-    .def_readwrite("servable_name", &MethodSignature::servable_name)
-    .def_readwrite("servable_inputs", &MethodSignature::servable_inputs)
-    .def_readwrite("returns", &MethodSignature::returns);
-
-  py::class_<PipelineSignature>(m, "PipelineSignature_")
-    .def(py::init<>())
-    .def_readwrite("pipeline_name", &PipelineSignature::pipeline_name)
-    .def_readwrite("inputs", &PipelineSignature::inputs)
-    .def_readwrite("outputs", &PipelineSignature::outputs);
+    .def("add_stage_function", &MethodSignature::AddStageFunction)
+    .def("add_stage_model", &MethodSignature::AddStageModel)
+    .def("set_return", &MethodSignature::SetReturn);
 
   py::class_<RequestSpec>(m, "RequestSpec_")
     .def(py::init<>())
@@ -84,47 +59,43 @@ void PyRegServable(pybind11::module *m_ptr) {
     .def_readwrite("version_number", &RequestSpec::version_number)
     .def_readwrite("method_name", &RequestSpec::method_name);
 
-  py::class_<CommonServableMeta>(m, "CommonServableMeta_")
+  py::class_<CommonModelMeta>(m, "CommonModelMeta_")
     .def(py::init<>())
-    .def_readwrite("servable_name", &CommonServableMeta::servable_name)
-    .def_readwrite("inputs_count", &CommonServableMeta::inputs_count)
-    .def_readwrite("outputs_count", &CommonServableMeta::outputs_count)
-    .def_readwrite("with_batch_dim", &CommonServableMeta::with_batch_dim)
-    .def_readwrite("without_batch_dim_inputs", &CommonServableMeta::without_batch_dim_inputs);
+    .def_readwrite("servable_name", &CommonModelMeta::servable_name)
+    .def_readwrite("model_key", &CommonModelMeta::model_key)
+    .def_readwrite("inputs_count", &CommonModelMeta::inputs_count)
+    .def_readwrite("outputs_count", &CommonModelMeta::outputs_count)
+    .def_readwrite("with_batch_dim", &CommonModelMeta::with_batch_dim)
+    .def_readwrite("without_batch_dim_inputs", &CommonModelMeta::without_batch_dim_inputs);
 
-  py::class_<LocalServableMeta>(m, "LocalServableMeta_")
+  py::class_<LocalModelMeta>(m, "LocalModelMeta_")
     .def(py::init<>())
-    .def_readwrite("servable_file", &LocalServableMeta::servable_files)
-    .def_readwrite("options", &LocalServableMeta::load_options)
-    .def("set_model_format", &LocalServableMeta::SetModelFormat);
+    .def_readwrite("model_file", &LocalModelMeta::model_files)
+    .def_readwrite("options", &LocalModelMeta::load_options)
+    .def("set_model_format", &LocalModelMeta::SetModelFormat);
 
-  py::class_<DistributedServableMeta>(m, "DistributedServableMeta_")
+  py::class_<DistributedModelMeta>(m, "DistributedModelMeta_")
     .def(py::init<>())
-    .def_readwrite("rank_size", &DistributedServableMeta::rank_size)
-    .def_readwrite("stage_size", &DistributedServableMeta::stage_size);
+    .def_readwrite("rank_size", &DistributedModelMeta::rank_size)
+    .def_readwrite("stage_size", &DistributedModelMeta::stage_size);
 
-  py::class_<ServableMeta>(m, "ServableMeta_")
+  py::class_<ModelMeta>(m, "ModelMeta_")
     .def(py::init<>())
-    .def_readwrite("common_meta", &ServableMeta::common_meta)
-    .def_readwrite("local_meta", &ServableMeta::local_meta)
-    .def_readwrite("distributed_meta", &ServableMeta::distributed_meta);
+    .def_readwrite("common_meta", &ModelMeta::common_meta)
+    .def_readwrite("local_meta", &ModelMeta::local_meta)
+    .def_readwrite("distributed_meta", &ModelMeta::distributed_meta);
 
   py::class_<ServableSignature>(m, "ServableSignature_")
     .def(py::init<>())
-    .def_readwrite("servable_meta", &ServableSignature::servable_meta)
+    .def_readwrite("servable_meta", &ServableSignature::model_metas)
     .def_readwrite("methods", &ServableSignature::methods);
 
-  py::class_<PyServableStorage>(m, "ServableStorage_")
-    .def_static("register_servable_input_output_info", &PyServableStorage::RegisterInputOutputInfo)
-    .def_static("register_method", &PyServableStorage::RegisterMethod)
-    .def_static("declare_servable", &PyServableStorage::DeclareServable)
-    .def_static("declare_distributed_servable", &PyServableStorage::DeclareDistributedServable);
-
-  py::class_<PyPipelineStorage, std::shared_ptr<PyPipelineStorage>>(m, "PipelineStorage_")
-    .def(py::init<>())
-    .def_static("get_instance", &PyPipelineStorage::Instance)
-    .def("register", &PyPipelineStorage::Register)
-    .def("run", &PyPipelineStorage::Run);
+  py::class_<PyServableRegister>(m, "ServableRegister_")
+    .def_static("register_model_input_output_info", &PyServableRegister::RegisterInputOutputInfo)
+    .def_static("register_method", &PyServableRegister::RegisterMethod)
+    .def_static("declare_model", &PyServableRegister::DeclareModel)
+    .def_static("declare_distributed_model", &PyServableRegister::DeclareDistributedModel)
+    .def_static("run", &PyServableRegister::Run);
 
   py::class_<OneRankConfig>(m, "OneRankConfig_")
     .def(py::init<>())
@@ -146,7 +117,8 @@ void PyRegMaster(pybind11::module *m_ptr) {
     .def_static("start_grpc_master_server", &PyMaster::StartGrpcMasterServer)
     .def_static("start_restful_server", &PyMaster::StartRestfulServer)
     .def_static("wait_and_clear", &PyMaster::WaitAndClear)
-    .def_static("stop_and_clear", &PyMaster::StopAndClear);
+    .def_static("stop_and_clear", &PyMaster::StopAndClear)
+    .def_static("only_model_stage", &PyMaster::OnlyModelStage);
 
   py::class_<WorkerContext, std::shared_ptr<WorkerContext>>(m, "WorkerContext_")
     .def_static("init_worker", &WorkerContext::PyInitWorkerContext)
@@ -173,43 +145,33 @@ void PyRegMaster(pybind11::module *m_ptr) {
 
 void PyRegWorker(pybind11::module *m_ptr) {
   auto &m = *m_ptr;
-  py::class_<TaskContext>(m, "TaskContext_").def(py::init<>());
-
   py::class_<TaskItem>(m, "TaskItem_")
     .def(py::init<>())
-    .def_readwrite("task_type", &TaskItem::task_type)
-    .def_readwrite("name", &TaskItem::name)
-    .def_property_readonly("instance_list",
-                           [](const TaskItem &item) {
-                             py::tuple instances(item.instance_list.size());
-                             for (size_t i = 0; i < item.instance_list.size(); i++) {
-                               instances[i] = PyTensor::AsNumpyTuple(item.instance_list[i]->data);
-                             }
-                             return instances;
-                           })
-    .def_readwrite("context_list", &TaskItem::context_list);
+    .def_readonly("has_stopped", &TaskItem::has_stopped)
+    .def_property_readonly("method_name", [](const TaskItem &item) { return item.task_info.group_name; })
+    .def_property_readonly("stage_index", [](const TaskItem &item) { return item.task_info.priority; })
+    .def_property_readonly("task_name", [](const TaskItem &item) { return item.task_info.task_name; })
+    .def_property_readonly("instance_list", [](const TaskItem &item) {
+      py::tuple instances(item.instance_list.size());
+      for (size_t i = 0; i < item.instance_list.size(); i++) {
+        instances[i] = PyTensor::AsNumpyTuple(item.instance_list[i]->data);
+      }
+      return instances;
+    });
 
   py::class_<PyWorker>(m, "Worker_")
     .def_static("start_servable", &PyWorker::StartServable, py::call_guard<py::gil_scoped_release>())
     .def_static("start_distributed_servable", &PyWorker::StartDistributedServable,
                 py::call_guard<py::gil_scoped_release>())
-    .def_static("get_batch_size", &PyWorker::GetBatchSize)
+    .def_static("start_extra_servable", &PyWorker::StartExtraServable, py::call_guard<py::gil_scoped_release>())
+    .def_static("get_declared_model_names", &PyWorker::GetDeclaredModelNames)
     .def_static("wait_and_clear", &PyWorker::WaitAndClear)
     .def_static("stop_and_clear", PyWorker::StopAndClear)
+    .def_static("enable_pytask_que", PyWorker::EnablePyTaskQueue)
     .def_static("get_py_task", &PyWorker::GetPyTask, py::call_guard<py::gil_scoped_release>())
-    .def_static("get_pipeline_task", &PyWorker::GetPipelineTask, py::call_guard<py::gil_scoped_release>())
-    .def_static("try_get_preprocess_py_task", &PyWorker::TryGetPreprocessPyTask)
-    .def_static("try_get_postprocess_py_task", &PyWorker::TryGetPostprocessPyTask)
-    .def_static("try_get_pipeline_py_task", &PyWorker::TryGetPipelinePyTask)
-    .def_static("push_pipeline_result", &PyWorker::PushPipelinePyResult)
-    .def_static("push_pipeline_failed", &PyWorker::PushPipelinePyFailed)
-    .def_static("push_pipeline_system_failed", &PyWorker::PushPipelinePySystemFailed)
-    .def_static("push_preprocess_result", &PyWorker::PushPreprocessPyResult)
-    .def_static("push_preprocess_failed", &PyWorker::PushPreprocessPyFailed)
-    .def_static("push_preprocess_system_failed", &PyWorker::PushPreprocessPySystemFailed)
-    .def_static("push_postprocess_result", &PyWorker::PushPostprocessPyResult)
-    .def_static("push_postprocess_failed", &PyWorker::PushPostprocessPyFailed)
-    .def_static("push_postprocess_system_failed", &PyWorker::PushPostprocessPySystemFailed)
+    .def_static("push_pytask_result", &PyWorker::PushPyTaskResult)
+    .def_static("push_pytask_failed", &PyWorker::PushPyTaskFailed)
+    .def_static("push_pytask_system_failed", &PyWorker::PushPyTaskSystemFailed)
     .def_static("get_device_type", &PyWorker::GetDeviceType)
     .def_static("notify_failed", &PyWorker::NotifyFailed);
 

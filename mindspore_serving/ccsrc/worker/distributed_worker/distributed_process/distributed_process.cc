@@ -93,6 +93,7 @@ grpc::Status MSDistributedImpl::AgentConfigAcquire(grpc::ServerContext *context,
   // set reply message:AgentConfigAcquireReply, parameter:common_meta
   auto reply_common_meta = reply->mutable_common_meta();
   reply_common_meta->set_servable_name(agent_config.common_meta.servable_name);
+  reply_common_meta->set_model_key(agent_config.common_meta.model_key);
   reply_common_meta->set_with_batch_dim(agent_config.common_meta.with_batch_dim);
   auto &without_batch_dim_inputs_list = agent_config.common_meta.without_batch_dim_inputs;
   for (auto &without_batch_dim_input : without_batch_dim_inputs_list) {

@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-#include "worker/postprocess.h"
+#include "worker/stage_function.h"
 #include "mindspore_serving/ccsrc/common/tensor.h"
 
 namespace mindspore::serving {
 
-class ArgmaxPostprocess : public PostprocessBase {
+class ArgmaxStageFunc : public CppStageFunctionBase {
  public:
   template <typename DT>
   void ArgmaxImp(const void *input, int64_t *output, size_t data_size, size_t elemsize) {
@@ -33,7 +33,7 @@ class ArgmaxPostprocess : public PostprocessBase {
     }
   }
 
-  Status Postprocess(const std::string &postprocess_name, const InstanceData &input, InstanceData *output) override {
+  Status Call(const std::string &func_name, const InstanceData &input, InstanceData *output) override {
     MSI_EXCEPTION_IF_NULL(output);
     auto input_x = input[0];
     auto x_data = input_x->data();
@@ -80,11 +80,11 @@ class ArgmaxPostprocess : public PostprocessBase {
     return SUCCESS;
   }
 
-  size_t GetInputsCount(const std::string &postprocess_name) const override { return 1; }
+  size_t GetInputsCount(const std::string &func_name) const override { return 1; }
 
-  size_t GetOutputsCount(const std::string &postprocess_name) const override { return 1; }
+  size_t GetOutputsCount(const std::string &func_name) const override { return 1; }
 };
 
-REGISTER_POSTPROCESS(ArgmaxPostprocess, "argmax_cpp")
+REGISTER_STAGE_FUNCTION(ArgmaxStageFunc, "argmax_cpp")
 
 }  // namespace mindspore::serving

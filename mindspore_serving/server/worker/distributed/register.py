@@ -17,7 +17,8 @@
 from mindspore_serving import log as logger
 from mindspore_serving.server.common import check_type
 from mindspore_serving.server.register.utils import get_servable_dir
-from mindspore_serving._mindspore_serving import ServableMeta_, ServableStorage_
+from mindspore_serving.server.register.model import append_declared_model
+from mindspore_serving._mindspore_serving import ModelMeta_, ServableRegister_
 
 
 def declare_servable(rank_size, stage_size, with_batch_dim=True, without_batch_dim_inputs=None):
@@ -40,8 +41,9 @@ def declare_servable(rank_size, stage_size, with_batch_dim=True, without_batch_d
     """
     check_type.check_bool('with_batch_dim', with_batch_dim)
 
-    meta = ServableMeta_()
+    meta = ModelMeta_()
     meta.common_meta.servable_name = get_servable_dir()
+    meta.common_meta.model_key = get_servable_dir()  # used to identify model
     meta.common_meta.with_batch_dim = with_batch_dim
     if without_batch_dim_inputs:
         without_batch_dim_inputs = check_type.check_and_as_int_tuple_list('without_batch_dim_inputs',
@@ -53,7 +55,8 @@ def declare_servable(rank_size, stage_size, with_batch_dim=True, without_batch_d
     check_type.check_int("stage_size", stage_size, 1)
     meta.distributed_meta.rank_size = rank_size
     meta.distributed_meta.stage_size = stage_size
-    ServableStorage_.declare_distributed_servable(meta)
-    logger.info(f"Declare distributed servable, servable_name: {meta.common_meta.servable_name} "
+    ServableRegister_.declare_distributed_model(meta)
+    logger.info(f"Declare distributed servable, servable name: {meta.common_meta.model_key} "
                 f", rank_size: {rank_size} , stage_size: {stage_size},  with_batch_dim: {with_batch_dim} "
                 f", without_batch_dim_inputs: {without_batch_dim_inputs}")
+    return append_declared_model(meta.common_meta.model_key)

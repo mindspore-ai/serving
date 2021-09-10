@@ -15,33 +15,91 @@
  */
 #include "python/worker/servable_py.h"
 #include <string>
+#include <sstream>
+#include <vector>
+#include "worker/servable_register.h"
+#include "worker/worker.h"
 
 namespace mindspore::serving {
 
-void PyServableStorage::RegisterMethod(const MethodSignature &method) {
-  auto status = ServableStorage::Instance().RegisterMethod(method);
+void PyServableRegister::RegisterMethod(const MethodSignature &method) {
+  auto status = ServableRegister::Instance().RegisterMethod(method);
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
 }
-void PyServableStorage::DeclareServable(const ServableMeta &servable) {
-  auto status = ServableStorage::Instance().DeclareServable(servable);
+void PyServableRegister::DeclareModel(const ModelMeta &servable) {
+  auto status = ServableRegister::Instance().DeclareModel(servable);
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
 }
-void PyServableStorage::DeclareDistributedServable(const ServableMeta &servable) {
-  auto status = ServableStorage::Instance().DeclareDistributedServable(servable);
+void PyServableRegister::DeclareDistributedModel(const ModelMeta &servable) {
+  auto status = ServableRegister::Instance().DeclareDistributedModel(servable);
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
 }
-void PyServableStorage::RegisterInputOutputInfo(const std::string &servable_name, size_t inputs_count,
-                                                size_t outputs_count, uint64_t subgraph) {
-  auto status =
-    ServableStorage::Instance().RegisterInputOutputInfo(servable_name, inputs_count, outputs_count, subgraph);
+void PyServableRegister::RegisterInputOutputInfo(const std::string &model_key, size_t inputs_count,
+                                                 size_t outputs_count, uint64_t subgraph) {
+  auto status = ServableRegister::Instance().RegisterInputOutputInfo(model_key, inputs_count, outputs_count, subgraph);
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
 }
+
+py::tuple PyServableRegister::Run(const std::string &model_key, const py::tuple &args, uint64_t subgraph) {
+  std::stringstream model_stream;
+  if (subgraph == 0) {
+    model_stream << "Model(" << model_key << ").call()";
+  } else {
+    model_stream << "Model(" << model_key << ", subgraph=" << subgraph << ").call()";
+  }
+  const std::string model_str = model_stream.str();
+  RequestSpec request;
+  auto const &signature = ServableRegister::Instance().GetServableSignature();
+  auto model_meta = signature.GetModelDeclare(model_key);
+  if (model_meta == nullptr) {
+    MSI_LOG_EXCEPTION << model_str << " failed: the model is not declared";
+  }
+  auto &common_meta = model_meta->common_meta;
+  auto input_it = common_meta.inputs_count.find(subgraph);
+  if (input_it == common_meta.inputs_count.end()) {
+    MSI_LOG_EXCEPTION << model_str << " failed: The model does not have subgraph of index " << subgraph
+                      << ", the subgraph count of the model is " << common_meta.inputs_count.size();
+  }
+  auto input_count = input_it->second;
+
+  request.servable_name = ServableRegister::Instance().GetServableSignature().servable_name;
+  request.method_name = ServableRegister::Instance().GetCallModelMethodName(model_key, subgraph);
+
+  std::vector<InstanceData> inputs;
+  auto inputs_args = py::cast<py::tuple>(args);
+  for (size_t i = 0; i < inputs_args.size(); i++) {
+    auto input = PyTensor::AsInstanceData(py::cast<py::tuple>(inputs_args[i]));
+    if (input.size() != input_count) {
+      MSI_LOG_EXCEPTION << model_str << " failed: The inputs count " << input.size() << " of instance " << i
+                        << " is not equal to the inputs count " << input_count << " of the model";
+    }
+    inputs.push_back(input);
+  }
+  std::vector<InstancePtr> outs;
+  {
+    py::gil_scoped_release release;
+    auto status = Worker::GetInstance().Run(request, inputs, &outs);
+    if (status != SUCCESS || outs.size() == 0) {
+      MSI_LOG_EXCEPTION << model_str << " failed: " << status.StatusMessage();
+    }
+  }
+  py::tuple outputs(outs.size());
+  for (size_t i = 0; i < outs.size(); i++) {
+    auto &out = outs[i];
+    if (out->error_msg != SUCCESS) {
+      MSI_LOG_EXCEPTION << model_str << " failed: " << out->error_msg.StatusMessage();
+    }
+    outputs[i] = PyTensor::AsNumpyTuple(out->data);
+  }
+  return outputs;
+}
+
 }  // namespace mindspore::serving

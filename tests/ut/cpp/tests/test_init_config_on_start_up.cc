@@ -16,7 +16,7 @@
 #include "common/common_test.h"
 #include "common/tensor_base.h"
 #define private public
-#include "worker/distributed_worker/distributed_servable.h"
+#include "worker/distributed_worker/distributed_model_loader.h"
 #undef private
 
 using std::string;
@@ -42,7 +42,7 @@ TEST_F(TestParseRankTableFile, test_init_config_on_startup_empty_file_failed) {
   fp << "empty rank table file";
   fp.close();
   config_file_list_.emplace(empty_rank_table_file);
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
   auto status = servable->InitConfigOnStartup(empty_rank_table_file);
   ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
 }
@@ -67,7 +67,7 @@ TEST_F(TestParseRankTableFile, test_init_config_on_startup_success) {
   fp << rank_table_server_list;
   fp.close();
   config_file_list_.emplace(rank_table_file);
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
   auto status = servable->InitConfigOnStartup(rank_table_file);
   ASSERT_EQ(status.StatusCode(), SUCCESS);
 }
@@ -95,7 +95,7 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_with_server_list_succe
       "status": "completed"
   }
   )"_json;
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
   auto status = servable->ParserRankTableWithServerList("rank_table_file", rank_table_server_list);
   ASSERT_EQ(status.StatusCode(), SUCCESS);
   ASSERT_EQ(servable->config_.rank_list.size(), 8);
@@ -117,7 +117,7 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_not_server_list_failed
       "status": "completed"
   }
   )"_json;
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
   auto status = servable->ParserRankTableWithServerList("rank_table_file", rank_table_server_list);
   ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
 }
@@ -131,7 +131,7 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_invalid_server_list_fa
       "status": "completed"
   }
   )"_json;
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
   auto status = servable->ParserRankTableWithServerList("rank_table_file", rank_table_server_list);
   ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
 }
@@ -145,7 +145,7 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_empty_server_list_fail
       "status": "completed"
   }
   )"_json;
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
   auto status = servable->ParserRankTableWithServerList("rank_table_file", rank_table_server_list);
   ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
 }
@@ -166,7 +166,7 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_with_not_server_id_fai
       "status": "completed"
   }
   )"_json;
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
   auto status = servable->ParserRankTableWithServerList("rank_table_file", rank_table_server_list);
   ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
 }
@@ -188,7 +188,7 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_with_invalid_server_id
       "status": "completed"
   }
   )"_json;
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
   auto status = servable->ParserRankTableWithServerList("rank_table_file", rank_table_server_list);
   ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
 }
@@ -210,7 +210,7 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_with_empty_server_id_f
       "status": "completed"
   }
   )"_json;
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
   auto status = servable->ParserRankTableWithServerList("rank_table_file", rank_table_server_list);
   ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
 }
@@ -229,7 +229,7 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_with_not_device_failed
       "status": "completed"
   }
   )"_json;
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
   auto status = servable->ParserRankTableWithServerList("rank_table_file", rank_table_server_list);
   ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
 }
@@ -249,7 +249,7 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_with_invalid_device_fa
       "status": "completed"
   }
   )"_json;
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
   auto status = servable->ParserRankTableWithServerList("rank_table_file", rank_table_server_list);
   ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
 }
@@ -269,7 +269,7 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_with_empty_device_fail
       "status": "completed"
   }
   )"_json;
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
   auto status = servable->ParserRankTableWithServerList("rank_table_file", rank_table_server_list);
   ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
 }
@@ -290,7 +290,7 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_with_not_device_id_fai
       "status": "completed"
   }
   )"_json;
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
   auto status = servable->ParserRankTableWithServerList("rank_table_file", rank_table_server_list);
   ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
 }
@@ -311,7 +311,7 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_with_invalid_device_id
       "status": "completed"
   }
   )"_json;
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
   auto status = servable->ParserRankTableWithServerList("rank_table_file", rank_table_server_list);
   ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
 }
@@ -332,7 +332,7 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_with_not_rank_id_faile
       "status": "completed"
   }
   )"_json;
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
   auto status = servable->ParserRankTableWithServerList("rank_table_file", rank_table_server_list);
   ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
 }
@@ -353,7 +353,7 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_with_invalid_rank_id_f
       "status": "completed"
   }
   )"_json;
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
   auto status = servable->ParserRankTableWithServerList("rank_table_file", rank_table_server_list);
   ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
 }
@@ -374,7 +374,7 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_with_invalid_rank_id_f
       "status": "completed"
   }
   )"_json;
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
   auto status = servable->ParserRankTableWithServerList("rank_table_file", rank_table_server_list);
   ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
 }
@@ -409,7 +409,7 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_with_group_list_succes
       "status": "completed"
   }
   )"_json;
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
   auto status = servable->ParserRankTableWithGroupList("rank_table_file", rank_table_group_list);
   ASSERT_EQ(status.StatusCode(), SUCCESS);
   ASSERT_EQ(servable->config_.rank_list.size(), 2);
@@ -432,7 +432,7 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_not_group_list_failed)
       "status": "completed"
   }
   )"_json;
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
   auto status = servable->ParserRankTableWithGroupList("rank_table_file", rank_table_group_list);
   ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
 }
@@ -447,7 +447,7 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_invalid_group_list_fai
       "status": "completed"
   }
   )"_json;
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
   auto status = servable->ParserRankTableWithGroupList("rank_table_file", rank_table_server_list);
   ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
 }
@@ -462,7 +462,7 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_empty_group_list_faile
       "status": "completed"
   }
   )"_json;
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
   auto status = servable->ParserRankTableWithGroupList("rank_table_file", rank_table_server_list);
   ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
 }
@@ -482,7 +482,7 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_not_instance_list_fail
       "status": "completed"
   }
   )"_json;
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
   auto status = servable->ParserRankTableWithGroupList("rank_table_file", rank_table_group_list);
   ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
 }
@@ -503,7 +503,7 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_invalid_instance_list_
       "status": "completed"
   }
   )"_json;
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
   auto status = servable->ParserRankTableWithGroupList("rank_table_file", rank_table_group_list);
   ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
 }
@@ -524,7 +524,7 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_empty_instance_list_fa
       "status": "completed"
   }
   )"_json;
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
   auto status = servable->ParserRankTableWithGroupList("rank_table_file", rank_table_group_list);
   ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
 }
@@ -547,7 +547,7 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_with_group_list_not_se
       "status": "completed"
   }
   )"_json;
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
   auto status = servable->ParserRankTableWithGroupList("rank_table_file", rank_table_server_list);
   ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
 }
@@ -571,7 +571,7 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_with_group_list_invali
       "status": "completed"
   }
   )"_json;
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
   auto status = servable->ParserRankTableWithGroupList("rank_table_file", rank_table_server_list);
   ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
 }
@@ -595,7 +595,7 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_with_group_list_empty_
       "status": "completed"
   }
   )"_json;
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
   auto status = servable->ParserRankTableWithGroupList("rank_table_file", rank_table_server_list);
   ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
 }
@@ -618,7 +618,7 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_with_group_list_not_de
       "status": "completed"
   }
   )"_json;
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
   auto status = servable->ParserRankTableWithGroupList("rank_table_file", rank_table_server_list);
   ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
 }
@@ -642,7 +642,7 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_with_group_list_invali
       "status": "completed"
   }
   )"_json;
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
   auto status = servable->ParserRankTableWithGroupList("rank_table_file", rank_table_server_list);
   ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
 }
@@ -666,7 +666,7 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_with_group_list_empty_
       "status": "completed"
   }
   )"_json;
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
   auto status = servable->ParserRankTableWithGroupList("rank_table_file", rank_table_server_list);
   ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
 }
@@ -690,7 +690,7 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_with_group_list_not_de
       "status": "completed"
   }
   )"_json;
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
   auto status = servable->ParserRankTableWithGroupList("rank_table_file", rank_table_server_list);
   ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
 }
@@ -714,7 +714,7 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_with_group_list_invali
       "status": "completed"
   }
   )"_json;
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
   auto status = servable->ParserRankTableWithGroupList("rank_table_file", rank_table_server_list);
   ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
 }
@@ -737,7 +737,7 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_with_group_list_not_ra
       "status": "completed"
   }
   )"_json;
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
   auto status = servable->ParserRankTableWithGroupList("rank_table_file", rank_table_server_list);
   ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
 }
@@ -761,7 +761,7 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_with_group_list_invali
       "status": "completed"
   }
   )"_json;
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
   auto status = servable->ParserRankTableWithGroupList("rank_table_file", rank_table_server_list);
   ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
 }
@@ -785,7 +785,7 @@ TEST_F(TestParseRankTableFile, test_parse_rank_table_file_with_group_list_invali
       "status": "completed"
   }
   )"_json;
-  auto servable = std::make_shared<DistributedServable>();
+  auto servable = std::make_shared<DistributedModelLoader>();
   auto status = servable->ParserRankTableWithGroupList("rank_table_file", rank_table_server_list);
   ASSERT_EQ(status.StatusCode(), INVALID_INPUTS);
 }

@@ -98,7 +98,7 @@ class MindSporeModelWrap : public InferenceBase {
   std::shared_ptr<DeviceInfoContext> TransformNvidiaGPUModelContext(uint32_t device_id,
                                                                     const std::map<std::string, std::string> &options);
 
-  void GetModelBatchSize(ApiModelInfo *model_info);
+  Status CalculateBatchSize(ApiModelInfo *api_model_info);
   static mindspore::ModelType GetMsModelType(serving::ModelType model_type);
   static mindspore::DeviceType GetMsDeviceType(serving::DeviceType device_type);
 };

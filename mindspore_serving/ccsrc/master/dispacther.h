@@ -44,9 +44,11 @@ class MS_API Dispatcher {
   Status NotifyWorkerFailed(const proto::NotifyFailedRequest *request, proto::NotifyFailedReply *reply);
   Status NotifyWorkerNotAlive(WorkerContext *worker_context);
   Status NotifyWorkerNotAvailable(WorkerContext *worker_context);
+  void GetModelInfo(const proto::GetModelInfoRequest *request, proto::GetModelInfoReply *reply);
   void Clear();
 
   std::shared_ptr<WorkerContext> InitWorkerContext(const ServableReprInfo &repr, uint64_t worker_pid);
+  bool OnlyModelStage(const std::string &servable_name);
 
  private:
   std::vector<std::shared_ptr<ServableEndPoint>> servable_list_;

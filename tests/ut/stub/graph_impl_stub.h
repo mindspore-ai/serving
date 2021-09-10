@@ -31,9 +31,8 @@
 namespace mindspore {
 class GraphImplStubAdd : public GraphCell::GraphImpl {
  public:
-  GraphImplStubAdd();
-  explicit GraphImplStubAdd(const std::vector<int64_t> &add_shape);
-  ~GraphImplStubAdd() override;
+  GraphImplStubAdd() = default;
+  ~GraphImplStubAdd() = default;
 
   Status Run(const std::vector<MSTensor> &inputs, std::vector<MSTensor> *outputs) override;
   Status Load(uint32_t device_id) override;
@@ -44,8 +43,12 @@ class GraphImplStubAdd : public GraphCell::GraphImpl {
  private:
   std::vector<MSTensor> inputs_;
   std::vector<MSTensor> outputs_;
+  uint64_t input_count = 2;
+  uint64_t output_count = 1;
+  bool sub_ = false;  // add or sub op
 
   void Init(const std::vector<int64_t> &add_shape);
+  void LoadInner();
 };
 
 }  // namespace mindspore

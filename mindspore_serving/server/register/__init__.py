@@ -16,19 +16,21 @@
 See how to configure servable_config.py file, please refer to
 `Servable Provided Through Model Configuration <https://www.mindspore.cn/serving/docs/zh-CN/master/serving_model.html>`_."""
 
-from .servable import declare_servable, AclOptions, GpuOptions
-from .method import register_pipeline, register_method, call_preprocess, call_servable, call_postprocess
+from .model import declare_model, AclOptions, GpuOptions
+from .method import register_method, add_stage
+
+from .model import declare_servable
+from .method import call_preprocess, call_servable, call_postprocess
 from .method import call_preprocess_pipeline, call_postprocess_pipeline
-from .pipeline import PipelineServable
 
 __all__ = []
 __all__.extend([
-    "declare_servable",
+    "declare_model",
     "AclOptions",
     "GpuOptions",
-    "PipelineServable",
-    "register_pipeline",
     'register_method',
+    'add_stage',
+    "declare_servable",
     'call_preprocess',
     'call_preprocess_pipeline',
     'call_servable',

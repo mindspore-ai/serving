@@ -36,18 +36,14 @@ Status ServableEndPoint::DispatchAsync(const proto::PredictRequest &request, pro
 }
 
 Status ServableEndPoint::RegisterWorker(const ServableRegSpec &servable_spec, std::shared_ptr<WorkerContext> worker) {
-  worker_contexts_.push_back(worker);
-  if (version_number_ == 0) {
-    version_number_ = servable_spec.version_number;
-  }
-  methods_ = servable_spec.methods;
-  std::vector<std::string> method_names;
-  for (auto &method : methods_) {
-    // cppcheck-suppress useStlAlgorithm
-    method_names.push_back(method.name);
-  }
-  if (model_thread_list_.empty()) {
-    for (auto &method : methods_) {
+  auto &methods = servable_spec.methods;
+  // first init
+  if (worker_contexts_.empty()) {
+    methods_ = servable_spec.methods;
+    if (version_number_ == 0) {
+      version_number_ = servable_spec.version_number;
+    }
+    for (auto &method : methods) {
       if (servable_spec.batch_size <= 0) {
         MSI_LOG_ERROR << "Register Worker,method batch_size should be greater than 0";
         return FAILED;
@@ -57,8 +53,16 @@ Status ServableEndPoint::RegisterWorker(const ServableRegSpec &servable_spec, st
       model_thread_list_.emplace(method.name, model_thread);
     }
   }
-  for (auto &model_thread : model_thread_list_) {
-    model_thread.second->AddWorker(worker->GetWorkerPid(), worker);
+  worker_contexts_.push_back(worker);
+  std::vector<std::string> method_names;
+  for (auto &method : methods) {
+    auto it = model_thread_list_.find(method.name);
+    if (it == model_thread_list_.end()) {
+      return INFER_STATUS_LOG_ERROR(FAILED) << "Cannot find method " << method.name << " registered before";
+    }
+    it->second->AddWorker(worker->GetWorkerPid(), worker);
+    // cppcheck-suppress useStlAlgorithm
+    method_names.push_back(method.name);
   }
   MSI_LOG_INFO << "Register to servable endpoint success, servable name: " << worker_repr_.servable_name
                << ", version number: " << servable_spec.version_number << ", methods: " << method_names

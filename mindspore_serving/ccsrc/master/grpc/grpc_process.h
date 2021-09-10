@@ -48,17 +48,16 @@ class MSServiceImpl {
 };
 
 // Service Implement
-class MSMasterImpl final : public proto::MSMaster::Service {
+class MSMasterImpl {
  public:
-  explicit MSMasterImpl(std::shared_ptr<Dispatcher> dispatcher, const std::string server_address)
-      : dispatcher_(dispatcher) {}
+  explicit MSMasterImpl(std::shared_ptr<Dispatcher> dispatcher) : dispatcher_(dispatcher) {}
   ~MSMasterImpl() = default;
 
-  grpc::Status Register(grpc::ServerContext *context, const proto::RegisterRequest *request,
-                        proto::RegisterReply *reply) override;
-  grpc::Status Exit(grpc::ServerContext *context, const proto::ExitRequest *request, proto::ExitReply *reply) override;
-  grpc::Status NotifyFailed(grpc::ServerContext *context, const proto::NotifyFailedRequest *request,
-                            proto::NotifyFailedReply *reply) override;
+  grpc::Status Register(const proto::RegisterRequest *request, proto::RegisterReply *reply);
+  grpc::Status Exit(const proto::ExitRequest *request, proto::ExitReply *reply);
+  grpc::Status NotifyFailed(const proto::NotifyFailedRequest *request, proto::NotifyFailedReply *reply);
+  grpc::Status GetModelInfo(const proto::GetModelInfoRequest *request, proto::GetModelInfoReply *reply);
+  void PredictAsync(const proto::PredictRequest *request, proto::PredictReply *reply, PredictOnFinish on_finish);
 
  private:
   std::shared_ptr<Dispatcher> dispatcher_;

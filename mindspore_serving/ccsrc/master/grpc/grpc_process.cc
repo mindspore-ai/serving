@@ -42,8 +42,7 @@ void MSServiceImpl::PredictAsync(const proto::PredictRequest *request, proto::Pr
   dispatcher_->DispatchAsync(*request, reply, on_finish);
 }
 
-grpc::Status MSMasterImpl::Register(grpc::ServerContext *context, const proto::RegisterRequest *request,
-                                    proto::RegisterReply *reply) {
+grpc::Status MSMasterImpl::Register(const proto::RegisterRequest *request, proto::RegisterReply *reply) {
   MSI_EXCEPTION_IF_NULL(request);
   MSI_EXCEPTION_IF_NULL(reply);
   auto worker_sig = [request]() {
@@ -62,8 +61,7 @@ grpc::Status MSMasterImpl::Register(grpc::ServerContext *context, const proto::R
   return grpc::Status::OK;
 }
 
-grpc::Status MSMasterImpl::Exit(grpc::ServerContext *context, const proto::ExitRequest *request,
-                                proto::ExitReply *reply) {
+grpc::Status MSMasterImpl::Exit(const proto::ExitRequest *request, proto::ExitReply *reply) {
   MSI_EXCEPTION_IF_NULL(request);
   MSI_EXCEPTION_IF_NULL(reply);
   auto worker_sig = [request]() {
@@ -81,10 +79,19 @@ grpc::Status MSMasterImpl::Exit(grpc::ServerContext *context, const proto::ExitR
   return grpc::Status::OK;
 }
 
-grpc::Status MSMasterImpl::NotifyFailed(grpc::ServerContext *context, const proto::NotifyFailedRequest *request,
-                                        proto::NotifyFailedReply *reply) {
+grpc::Status MSMasterImpl::NotifyFailed(const proto::NotifyFailedRequest *request, proto::NotifyFailedReply *reply) {
   dispatcher_->NotifyWorkerFailed(request, reply);
   return grpc::Status::OK;
+}
+
+grpc::Status MSMasterImpl::GetModelInfo(const proto::GetModelInfoRequest *request, proto::GetModelInfoReply *reply) {
+  dispatcher_->GetModelInfo(request, reply);
+  return grpc::Status::OK;
+}
+
+void MSMasterImpl::PredictAsync(const proto::PredictRequest *request, proto::PredictReply *reply,
+                                PredictOnFinish on_finish) {
+  dispatcher_->DispatchAsync(*request, reply, on_finish);
 }
 
 }  // namespace serving

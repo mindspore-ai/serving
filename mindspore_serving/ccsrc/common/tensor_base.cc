@@ -24,10 +24,12 @@
 namespace mindspore::serving {
 
 bool TensorBase::set_data(const void *data, size_t data_len) {
-  resize_data(data_len);
-  if (data_len == 0) {
-    MSI_LOG_INFO << "set data to data len 0";
-    return true;
+  if (data_size() != data_len) {
+    resize_data(data_len);
+    if (data_len == 0) {
+      MSI_LOG_INFO << "set data to data len 0";
+      return true;
+    }
   }
   if (mutable_data() == nullptr) {
     MSI_LOG_ERROR << "set data failed, data len " << data_len;

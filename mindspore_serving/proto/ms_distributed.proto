@@ -20,12 +20,6 @@ syntax = "proto3";
 package mindspore.serving.proto;
 import "mindspore_serving/proto/ms_service.proto";
 
-message TensorInfo {
-  TensorShape shape = 1; // tensor shape info
-  DataType dtype = 2; // tensor content data type
-  int64 size = 3;
-}
-
 message AgentSpec {
   int64 rank_id = 1;
   int64 batch_size = 2;
@@ -33,15 +27,16 @@ message AgentSpec {
   repeated TensorInfo outputs = 4;
 }
 
-message CommonServableMeta {
+message CommonModelMeta {
   string servable_name = 1;
-  bool with_batch_dim = 2;
-  repeated int64 without_batch_dim_inputs = 3;
-  map<uint64, int64> inputs_count = 4;
-  map<uint64, int64> outputs_count = 5;
+  string model_key = 2;
+  bool with_batch_dim = 3;
+  repeated int64 without_batch_dim_inputs = 4;
+  map<uint64, int64> inputs_count = 5;
+  map<uint64, int64> outputs_count = 6;
 }
 
-message DistributedServableMeta {
+message DistributedModelMeta {
   int64 rank_size = 1;
   int64 stage_size = 2;
 }
@@ -83,6 +78,6 @@ message AgentConfigAcquireReply {
   }
   string rank_table_content = 1;
   repeated OneRankConfig rank_list = 2;
-  CommonServableMeta common_meta = 3;
-  DistributedServableMeta distributed_meta = 4;
+  CommonModelMeta common_meta = 3;
+  DistributedModelMeta distributed_meta = 4;
 }

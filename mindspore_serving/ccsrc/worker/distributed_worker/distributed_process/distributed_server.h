@@ -184,7 +184,7 @@ class WorkerPongContext : public DistributedServiceContext<WorkerPongContext> {
 
 class DistributedWorkerGrpcServer : public GrpcAsyncServer<proto::MSDistributedWorker::AsyncService> {
  public:
-  DistributedWorkerGrpcServer(std::shared_ptr<DistributedServable> servable, const std::string server_address)
+  DistributedWorkerGrpcServer(std::shared_ptr<DistributedModelLoader> servable, const std::string server_address)
       : GrpcAsyncServer<proto::MSDistributedWorker::AsyncService>(),
         service_impl_(MSDistributedImpl(servable, server_address)) {}
 

@@ -81,6 +81,7 @@ class MS_API WorkerContext : public std::enable_shared_from_this<WorkerContext> 
   // from py
   void OnNotAlive();
   void Clear();
+  bool OwnDevice() const;
 
  private:
   std::mutex lock_;

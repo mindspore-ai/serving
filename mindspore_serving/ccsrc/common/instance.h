@@ -17,64 +17,27 @@
 #ifndef MINDSPORE_SERVING_INSTANCE_H
 #define MINDSPORE_SERVING_INSTANCE_H
 
-#include <vector>
-#include <unordered_map>
+#include <map>
 #include <memory>
-#include <string>
-#include <future>
 #include "common/serving_common.h"
 #include "common/servable.h"
+#include "common/instance_data.h"
 
 namespace mindspore::serving {
 
-using InstanceData = std::vector<TensorBasePtr>;
-using TensorsData = std::vector<TensorBasePtr>;
-struct Instance;
-using InstancePtr = std::shared_ptr<Instance>;
-
-struct WorkerUserContext {
-  RequestSpec request_spec;
-  MethodSignature method_def;
-};
-
-enum InstancePhase {
-  kInstancePhaseNone,
-  kInstancePhasePipeline,
-  kInstancePhasePreprocess,
-  kInstancePhasePredict,
-  kInstancePhasePostprocess,
-  kInstancePhaseDone,
-};
-
-struct InstanceContext {
-  uint64_t user_id = 0;
-  uint32_t instance_index = 0;
-
-  std::promise<void> promise;
-  std::shared_ptr<WorkerUserContext> user_context = nullptr;
-
-  bool operator==(const InstanceContext &other) const {
-    return user_id == other.user_id && instance_index == other.instance_index;
-  }
-};
-
 struct Instance {
-  InstanceData data;  // for inputs of pipeline, preprocess, predict, postprocess or output
+  InstanceData data;  // for inputs of function, predict, output
 
-  InstanceData input_data;        // input data
-  InstanceData pipeline_data;     // pipeline data
-  InstanceData preprocess_data;   // preprocess result
-  InstanceData predict_data;      // predict result
-  InstanceData postprocess_data;  // postprocess result
-  InstanceContext context;
-  InstancePhase phase = kInstancePhaseNone;
+  const MethodSignature *method_def = nullptr;
+  uint64_t stage_index = 0;
+  uint64_t stage_max = 0;
+  std::map<size_t, InstanceData> stage_data_list;  // input: 0, stage: 1-n
+
+  uint64_t user_id = 0;
   Status error_msg = SUCCESS;
 };
 
-struct ResultInstance {
-  InstanceData data;
-  Status error_msg = SUCCESS;
-};
+using InstancePtr = std::shared_ptr<Instance>;
 
 }  // namespace mindspore::serving
 

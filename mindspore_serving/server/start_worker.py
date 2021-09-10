@@ -64,7 +64,7 @@ def start_worker(servable_directory, servable_name, version_number,
     signal.signal(signal.SIGCHLD, signal.SIG_DFL)  # for ccec compiler
     check_type.check_str('servable_directory', servable_directory)
     check_type.check_str('servable_name', servable_name)
-    check_type.check_int('version_number', version_number, 0)
+    check_type.check_int('version_number', version_number, 1)
 
     check_type.check_int('device_id', device_id, 0)
 
@@ -98,7 +98,7 @@ def start_worker(servable_directory, servable_name, version_number,
 def parse_args_and_start():
     """Parse args and start distributed worker"""
     if len(sys.argv) != 10:
-        raise RuntimeError("Expect length of input argv to be 8: str{servable_directory} str{servable_name} "
+        raise RuntimeError("Expect length of input argv to be 10: str{servable_directory} str{servable_name} "
                            "int{version_number} str{device_type} int{device_id} str{master_address} "
                            "str{dec_key_pipe_file}, str{dec_mode} bool{listening_master}")
     servable_directory = sys.argv[1]

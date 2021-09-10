@@ -18,27 +18,48 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <map>
 #include "common/exit_handle.h"
 #include "worker/notfiy_master/grpc_notify.h"
-#include "worker/local_servable/local_sevable.h"
-#include "worker/distributed_worker/distributed_servable.h"
+#include "worker/local_servable/local_model_loader.h"
+#include "worker/distributed_worker/distributed_model_loader.h"
 #include "worker/inference/inference.h"
+#include "worker/servable_register.h"
+#include "worker/extra_worker/remote_call_model.h"
 
 namespace mindspore::serving {
 
-void PyWorker::StartServable(const std::string &model_directory, const std::string &model_name, uint32_t version_number,
-                             const std::string &master_address, const std::string &worker_address,
-                             const std::string &dec_key, const std::string &dec_mode) {
+void PyWorker::StartServable(const std::string &servable_directory, const std::string &servable_name,
+                             uint32_t version_number, const std::string &master_address,
+                             const std::string &worker_address, const std::string &dec_key,
+                             const std::string &dec_mode) {
   if (Worker::GetInstance().IsRunning()) {
     MSI_LOG_EXCEPTION << "A servable has been started, only one servable can run in a process currently.";
   }
-  auto servable = std::make_shared<LocalModelServable>();
-  auto status = servable->StartServable(model_directory, model_name, version_number, dec_key, dec_mode);
-  if (status != SUCCESS) {
-    servable->Clear();
-    MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
+  const auto &signature = ServableRegister::Instance().GetServableSignature();
+  if (signature.servable_name != servable_name) {
+    MSI_LOG_EXCEPTION << "Servable '" << servable_name << "' has not been registered";
   }
-  status = Worker::GetInstance().StartServable(servable, master_address, worker_address);
+  Status status;
+  std::map<std::string, std::shared_ptr<ModelLoaderBase>> models_loader;
+  for (auto &model_meta : signature.model_metas) {
+    auto &model_key = model_meta.common_meta.model_key;
+    auto local_models_loader = std::make_shared<LocalModelLoader>();
+    status =
+      local_models_loader->LoadModel(servable_directory, servable_name, version_number, model_meta, dec_key, dec_mode);
+    if (status != SUCCESS) {
+      local_models_loader->Clear();
+      MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
+    }
+    status = local_models_loader->AfterLoadModel();
+    if (status != SUCCESS) {
+      local_models_loader->Clear();
+      MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
+    }
+    models_loader[model_key] = local_models_loader;
+  }
+  status = Worker::GetInstance().StartServable(servable_directory, servable_name, version_number, models_loader,
+                                               master_address, worker_address, true);
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
@@ -53,129 +74,102 @@ void PyWorker::StartDistributedServable(const std::string &servable_directory, c
   }
 
   Status status;
-  auto servable = std::make_shared<DistributedServable>();
-  status = Worker::GetInstance().StartDistributedGrpcServer(servable, distributed_address);
+  auto model_loader = std::make_shared<DistributedModelLoader>();
+  status = Worker::GetInstance().StartDistributedGrpcServer(model_loader, distributed_address);
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
 
-  status = servable->StartServable(servable_directory, servable_name, rank_table_json_file, version_number,
-                                   wait_agents_time_in_seconds);
+  status = model_loader->LoadModel(servable_name, rank_table_json_file, wait_agents_time_in_seconds);
   if (status != SUCCESS) {
-    servable->Clear();
+    model_loader->Clear();
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
-  status = Worker::GetInstance().StartServable(servable, master_address, worker_address);
+  status = model_loader->AfterLoadModel();
+  if (status != SUCCESS) {
+    model_loader->Clear();
+    MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
+  }
+  std::map<std::string, std::shared_ptr<ModelLoaderBase>> models_loader;
+  models_loader[model_loader->GetModelKey()] = model_loader;
+  status = Worker::GetInstance().StartServable(servable_directory, servable_name, version_number, models_loader,
+                                               master_address, worker_address, true);
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
 }
+
+void PyWorker::StartExtraServable(const std::string &servable_directory, const std::string &servable_name,
+                                  uint32_t version_number, const std::string &master_address,
+                                  const std::string &worker_address) {
+  if (Worker::GetInstance().IsRunning()) {
+    MSI_LOG_EXCEPTION << "A servable has been started, only one servable can run in a process currently.";
+  }
+  const auto &signature = ServableRegister::Instance().GetServableSignature();
+  if (signature.servable_name != servable_name) {
+    MSI_LOG_EXCEPTION << "Servable '" << servable_name << "' has not been registered";
+  }
+  Status status;
+  std::map<std::string, std::shared_ptr<ModelLoaderBase>> model_loaders;
+  status = RemoteCallModel::InitRemote(servable_name, version_number, master_address, &model_loaders);
+  if (status != SUCCESS) {
+    MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
+  }
+  status = Worker::GetInstance().StartServable(servable_directory, servable_name, version_number, model_loaders,
+                                               master_address, worker_address, false);
+  if (status != SUCCESS) {
+    MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
+  }
+}
+
+std::vector<std::string> PyWorker::GetDeclaredModelNames() {
+  std::vector<std::string> model_names;
+  for (auto &model_meta : ServableRegister::Instance().GetServableSignature().model_metas) {
+    // cppcheck-suppress useStlAlgorithm
+    model_names.push_back(model_meta.common_meta.model_key);
+  }
+  return model_names;
+}
+
+bool PyWorker::EnablePyTaskQueue() { return Worker::GetInstance().GetWorkExecutor().GetPyTaskQueue().IsRunning(); }
 
 TaskItem PyWorker::GetPyTask() {
   TaskItem item;
-  Worker::GetInstance().GetPyTaskQueueGroup().PopPyTask(&item);
+  Worker::GetInstance().GetWorkExecutor().GetPyTaskQueue().PyPopTask(&item);
   return item;
 }
 
-TaskItem PyWorker::GetPipelineTask() {
-  TaskItem item;
-  Worker::GetInstance().GetPyTaskQueueGroup().PopPipelineTask(&item);
-  return item;
-}
-
-TaskItem PyWorker::TryGetPreprocessPyTask() {
-  TaskItem item;
-  Worker::GetInstance().GetPyTaskQueueGroup().TryPopPreprocessTask(&item);
-  return item;
-}
-
-TaskItem PyWorker::TryGetPostprocessPyTask() {
-  TaskItem item;
-  Worker::GetInstance().GetPyTaskQueueGroup().TryPopPostprocessTask(&item);
-  return item;
-}
-
-TaskItem PyWorker::TryGetPipelinePyTask() {
-  TaskItem item;
-  Worker::GetInstance().GetPyTaskQueueGroup().TryPopPipelineTask(&item);
-  return item;
-}
-void PyWorker::PushPipelinePyResult(const py::tuple &output_batch) {
-  MSI_TIME_STAMP_START(PushPipelinePyResult)
+void PyWorker::PushPyTaskResult(const py::tuple &instance_outputs) {
+  MSI_TIME_STAMP_START(PushPyTaskResult)
   std::vector<ResultInstance> outputs;
-  for (auto &output : output_batch) {
-    ResultInstance instance;
-    instance.data = PyTensor::AsInstanceData(py::cast<py::tuple>(output));
-    outputs.push_back(instance);
-  }
-  Worker::GetInstance().PushPyPipelineResult(outputs);
-  MSI_TIME_STAMP_END(PushPipelinePyResult)
+  ResultInstance instance;
+  instance.data = PyTensor::AsInstanceData(instance_outputs);
+  outputs.push_back(instance);
+  Worker::GetInstance().GetWorkExecutor().GetPyTaskQueue().PyPushTaskResult(outputs);
+  MSI_TIME_STAMP_END(PushPyTaskResult)
 }
 
-void PyWorker::PushPipelinePyFailed(int count) {
+void PyWorker::PushPyTaskFailed(int count, const std::string &error_msg) {
+  auto &task_que = Worker::GetInstance().GetWorkExecutor().GetPyTaskQueue();
+  auto task_info = task_que.GetHandledTaskInfo();
+  auto status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
+                << "Call " << task_info.tag << " Failed, method: '" << task_info.group_name
+                << "', stage index(begin with 1): " << task_info.priority << ", error msg: " << error_msg;
   std::vector<ResultInstance> results;
-  Status error_msg(INVALID_INPUTS, "Pipeline Failed");
   for (int i = 0; i < count; i++) {
     ResultInstance result_instance;
-    result_instance.error_msg = error_msg;
+    result_instance.error_msg = status;
     results.push_back(result_instance);
   }
-  Worker::GetInstance().PushPyPipelineResult(results);
-}
-void PyWorker::PushPreprocessPyResult(const py::tuple &output_batch) {
-  MSI_TIME_STAMP_START(PushPreprocessPyResult)
-  std::vector<ResultInstance> outputs;
-  for (auto &output : output_batch) {
-    ResultInstance instance;
-    instance.data = PyTensor::AsInstanceData(py::cast<py::tuple>(output));
-    outputs.push_back(instance);
-  }
-  Worker::GetInstance().PushPyPreprocessResult(outputs);
-  MSI_TIME_STAMP_END(PushPreprocessPyResult)
+  task_que.PyPushTaskResult(results);
 }
 
-void PyWorker::PushPreprocessPyFailed(int count) {
-  std::vector<ResultInstance> results;
-  Status error_msg(INVALID_INPUTS, "Preprocess Failed");
-  for (int i = 0; i < count; i++) {
-    ResultInstance result_instance;
-    result_instance.error_msg = error_msg;
-    results.push_back(result_instance);
-  }
-  Worker::GetInstance().PushPyPreprocessResult(results);
-}
-
-void PyWorker::PushPostprocessPyResult(const py::tuple &output_batch) {
-  std::vector<ResultInstance> outputs;
-  for (auto &output : output_batch) {
-    ResultInstance instance;
-    instance.data = PyTensor::AsInstanceData(py::cast<py::tuple>(output));
-    outputs.push_back(instance);
-  }
-  Worker::GetInstance().PushPyPostprocessResult(outputs);
-}
-
-void PyWorker::PushPostprocessPyFailed(int count) {
-  std::vector<ResultInstance> results;
-  Status error_msg(INVALID_INPUTS, "Postprocess Failed");
-  for (int i = 0; i < count; i++) {
-    ResultInstance result_instance;
-    result_instance.error_msg = error_msg;
-    results.push_back(result_instance);
-  }
-  Worker::GetInstance().PushPyPostprocessResult(results);
-}
-
-void PyWorker::PushPreprocessPySystemFailed() {
-  Worker::GetInstance().ClearOnSystemFailed(Status(SYSTEM_ERROR, "Preprocess Failed"));
-}
-
-void PyWorker::PushPostprocessPySystemFailed() {
-  Worker::GetInstance().ClearOnSystemFailed(Status(SYSTEM_ERROR, "Postprocess Failed"));
-}
-
-void PyWorker::PushPipelinePySystemFailed() {
-  Worker::GetInstance().ClearOnSystemFailed(Status(SYSTEM_ERROR, "Pipeline Failed"));
+void PyWorker::PushPyTaskSystemFailed(const std::string &error_msg) {
+  auto task_info = Worker::GetInstance().GetWorkExecutor().GetPyTaskQueue().GetHandledTaskInfo();
+  auto status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
+                << "Call " << task_info.tag << " Failed, method: '" << task_info.group_name
+                << "', stage index(begin with 1): " << task_info.priority << ", error msg: " << error_msg;
+  Worker::GetInstance().ClearOnSystemFailed(status);
 }
 
 void PyWorker::WaitAndClear() {
@@ -190,8 +184,6 @@ void PyWorker::StopAndClear() {
   ExitSignalHandle::Instance().Stop();
   Worker::GetInstance().Clear();
 }
-
-int PyWorker::GetBatchSize() { return Worker::GetInstance().GetBatchSize(); }
 
 std::string PyWorker::GetDeviceType() {
   auto device_type = InferenceLoader::Instance().GetSupportDeviceType(kDeviceTypeNotSpecified, kUnknownType);

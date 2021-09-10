@@ -38,6 +38,13 @@ const uint8_t *BufferTensor::data() const { return data_; }
 
 size_t BufferTensor::data_size() const { return data_len_; }
 
+bool BufferTensor::resize_data(size_t data_len) {
+  if (data_len != data_len_) {
+    MSI_LOG_EXCEPTION << "Buffer tensor cannot resize data";
+  }
+  return true;
+}
+
 uint8_t *BufferTensor::mutable_data() {
   if (data_readonly_) {
     MSI_LOG_EXCEPTION << "Buffer tensor is create readonly";

@@ -13,7 +13,7 @@
 # limitations under the License.
 # ============================================================================
 """test distributed worker"""
-
+import logging
 import os
 import signal
 import time
@@ -32,7 +32,7 @@ from mindspore_serving.server import register
 """
 
 distributed_declare_servable = r"""
-distributed.declare_servable(rank_size=8, stage_size=1, with_batch_dim=False)
+model = distributed.declare_servable(rank_size=8, stage_size=1, with_batch_dim=False)
 """
 
 rank_table_content = r"""
@@ -66,7 +66,7 @@ def init_distributed_servable():
     servable_content += r"""
 @register.register_method(output_names=["y"])
 def predict(x1, x2):
-    y = register.call_servable(x1, x2)
+    y = register.add_stage(model, x1, x2, outputs_count=1)
     return y
 """
     base.init_distributed_servable(servable_content, 8, rank_table_content)
@@ -103,6 +103,7 @@ def start_agents(model_file_list, group_config_list, start_port, dec_key=None, d
             send_pipe.send("Success")
         # pylint: disable=broad-except
         except Exception as e:
+            logging.exception(e)
             send_pipe.send(e)
         send_pipe.close()
 
@@ -330,7 +331,7 @@ def test_distributed_worker_dec_model_success():
     base = start_distributed_grpc_server()
     worker_process = start_distributed_worker(base)
     base.add_on_exit(lambda: send_exit(worker_process))
-    agent_process = start_agents(base.model_file_list, base.group_config_list, 7000, dec_key=('abcd1234'*3).encode())
+    agent_process = start_agents(base.model_file_list, base.group_config_list, 7000, dec_key=('abcd1234' * 3).encode())
     base.add_on_exit(lambda: send_exit(agent_process))
 
     client = create_client("localhost:5500", base.servable_name, "predict")

@@ -343,7 +343,7 @@ def _startup_agents(common_meta, distributed_address,
                     model_files, group_config_files, rank_table_file,
                     dec_key, dec_mode):
     """Start up all agents in one machine"""
-    servable_name = common_meta.servable_name
+    servable_name = common_meta.model_key
     send_pipe_list = []
     subprocess_list = []
     c_send_pipe, p_recv_pipe = Pipe()
@@ -410,7 +410,7 @@ class DistributedServableConfig:
         for item in config.rank_list:
             new_item = {"device_id": item.device_id, "ip": item.ip}
             self.rank_list.append(new_item)
-        self.common_meta = {"servable_name": config.common_meta.servable_name,
+        self.common_meta = {"model_key": config.common_meta.model_key,
                             "with_batch_dim": config.common_meta.with_batch_dim,
                             "without_batch_dim_inputs": config.common_meta.without_batch_dim_inputs,
                             "inputs_count": config.common_meta.inputs_count,
@@ -430,7 +430,7 @@ class DistributedServableConfig:
             new_item.ip = item["ip"]
             rank_list.append(new_item)
         config.rank_list = rank_list
-        config.common_meta.servable_name = self.common_meta["servable_name"]
+        config.common_meta.model_key = self.common_meta["model_key"]
         config.common_meta.with_batch_dim = self.common_meta["with_batch_dim"]
         config.common_meta.without_batch_dim_inputs = self.common_meta["without_batch_dim_inputs"]
         config.common_meta.inputs_count = self.common_meta["inputs_count"]

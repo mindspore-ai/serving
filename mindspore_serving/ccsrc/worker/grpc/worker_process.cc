@@ -28,7 +28,6 @@ void MSWorkerImpl::Exit(grpc::ServerContext *context, const proto::ExitRequest *
 void MSWorkerImpl::PredictAsync(grpc::ServerContext *context, const proto::PredictRequest *request,
                                 proto::PredictReply *reply, PredictOnFinish on_finish) {
   Status status(WORKER_UNAVAILABLE);
-  MSI_LOG(INFO) << "Begin call service Eval";
   try {
     status = Worker::GetInstance().RunAsync(*request, reply, on_finish);
   } catch (const std::bad_alloc &ex) {
@@ -40,7 +39,6 @@ void MSWorkerImpl::PredictAsync(grpc::ServerContext *context, const proto::Predi
   } catch (...) {
     MSI_LOG(ERROR) << "Serving Error: exception occurred";
   }
-  MSI_LOG(INFO) << "Finish call service Eval";
 
   if (status != SUCCESS) {
     GrpcTensorHelper::CreateReplyFromErrorMsg(status, reply);

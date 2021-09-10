@@ -39,6 +39,8 @@ class MS_API PyMaster {
                                  int max_msg_mb_size = 100);
   static void WaitAndClear();
   static void StopAndClear();
+
+  static bool OnlyModelStage(const std::string &servable_name);
 };
 
 }  // namespace serving
