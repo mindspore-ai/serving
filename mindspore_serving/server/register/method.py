@@ -89,7 +89,7 @@ def call_preprocess(preprocess_fun, *args):
 
     .. warning::
         'call_preprocess' is deprecated from version 1.5.0 and will be removed in a future version, use
-        'mindspore_serving.server.register.add_stage' instead.
+        :class:`mindspore_serving.server.register.add_stage` instead.
 
     Note:
         The length of 'args' should be equal to the inputs number of preprocess_fun.
@@ -138,7 +138,7 @@ def call_preprocess_pipeline(preprocess_fun, *args):
 
     .. warning::
         'call_preprocess_pipeline' is deprecated from version 1.5.0 and will be removed in a future version, use
-        'mindspore_serving.server.register.add_stage' instead.
+        :class:`mindspore_serving.server.register.add_stage` instead.
 
     A single request can include multiple instances, so multiple queued requests will also have multiple instances.
     If you need to process multiple instances through multi thread or other parallel processing capability
@@ -195,7 +195,7 @@ def call_postprocess(postprocess_fun, *args):
 
     .. warning::
         'call_postprocess' is deprecated from version 1.5.0 and will be removed in a future version, use
-        'mindspore_serving.server.register.add_stage' instead.
+        :class:`mindspore_serving.server.register.add_stage` instead.
 
     Note:
         The length of 'args' should be equal to the inputs number of postprocess_fun.
@@ -224,7 +224,7 @@ def call_postprocess_pipeline(postprocess_fun, *args):
 
     .. warning::
         'call_postprocess_pipeline' is deprecated from version 1.5.0 and will be removed in a future version, use
-        'mindspore_serving.server.register.add_stage' instead.
+        :class:`mindspore_serving.server.register.add_stage` instead.
 
     A single request can include multiple instances, so multiple queued requests will also have multiple instances.
     If you need to process multiple instances through multi thread or other parallel processing capability
@@ -258,7 +258,7 @@ def call_servable(*args):
 
     .. warning::
         'call_servable' is deprecated from version 1.5.0 and will be removed in a future version, use
-        'mindspore_serving.server.register.add_stage' instead.
+        :class:`mindspore_serving.server.register.add_stage` instead.
 
     Note:
         The length of 'args' should be equal to the inputs number of model.
@@ -316,7 +316,7 @@ def add_stage(stage, *args, outputs_count, batch_size=None, tag=None):
 
                 - None, The input of the function will be the inputs of one instance.
                 - int value >= 1, The input of the function will be tuple object of instances, and the maximum number
-                    of the instances is the value specified by 'batch_size'.
+                  of the instances is the value specified by 'batch_size'.
 
         args: Stage inputs placeholders, which come from the inputs of the function wrapped by register_method or the
             outputs of add_stage. The length of 'args' should equal to the input number of the function or model.

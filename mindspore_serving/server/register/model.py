@@ -29,8 +29,8 @@ def declare_servable(servable_file, model_format, with_batch_dim=True, options=N
     declare one model.
 
     .. warning::
-        'mindspore_serving.server.register.declare_servable' is deprecated from version 1.5.0 and will be removed in a
-         future version, use 'mindspore_serving.server.register.declare_model' instead.
+        'register.declare_servable' is deprecated from version 1.5.0 and will be removed in a future version, use
+        :class:`mindspore_serving.server.register.declare_model` instead.
 
     Args:
         servable_file (Union[str, list[str]]): Model files name.
@@ -46,7 +46,7 @@ def declare_servable(servable_file, model_format, with_batch_dim=True, options=N
         RuntimeError: The type or value of the parameters are invalid.
 
     Return:
-        Model, identification of this model.
+        Model, identification of this model, used as input of add_stage.
     """
     return declare_model(servable_file, model_format, with_batch_dim, options, without_batch_dim_inputs)
 
