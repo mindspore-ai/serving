@@ -35,9 +35,12 @@ def declare_servable(rank_size, stage_size, with_batch_dim=True, without_batch_d
     Raises:
         RuntimeError: The type or value of the parameters are invalid.
 
+    Return:
+        Model, identification of this model, used as input of add_stage.
+
     Examples:
         >>> from mindspore_serving.server import distributed
-        >>> distributed.declare_servable(rank_size=8, stage_size=1)
+        >>> model = distributed.declare_servable(rank_size=8, stage_size=1)
     """
     check_type.check_bool('with_batch_dim', with_batch_dim)
 

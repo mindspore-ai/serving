@@ -16,7 +16,7 @@
 See how to configure servable_config.py file, please refer to
 `Servable Provided Through Model Configuration <https://www.mindspore.cn/serving/docs/zh-CN/master/serving_model.html>`_."""
 
-from .model import declare_model, AclOptions, GpuOptions
+from .model import declare_model, AclOptions, GpuOptions, Model
 from .method import register_method, add_stage
 
 from .model import declare_servable
@@ -26,6 +26,7 @@ from .method import call_preprocess_pipeline, call_postprocess_pipeline
 __all__ = []
 __all__.extend([
     "declare_model",
+    "Model",
     "AclOptions",
     "GpuOptions",
     'register_method',
