@@ -87,64 +87,6 @@ void TensorBase::assign(const TensorBase &other) {
     set_data(other.data(), other.data_size());
   }
 }
-Status TensorBase::concat(const std::vector<TensorBasePtr> &inputs) {
-  if (inputs.empty()) {
-    MSI_LOG_ERROR << "inputs is empty";
-    return FAILED;
-  }
-  if (is_bytes_val_data()) {
-    clear_bytes_data();
-  }
-  auto &input0 = inputs[0];
-  std::vector<int64_t> new_shape = input0->shape();
-  new_shape.insert(new_shape.begin(), static_cast<int64_t>(inputs.size()));
-  set_shape(new_shape);
-  set_data_type(input0->data_type());
-  if (input0->is_bytes_val_data()) {
-    if (input0->bytes_data_size() != 1) {
-      MSI_LOG_ERROR << "input 0 bytes data batch size " << input0->bytes_data_size() << " is not 1";
-      return FAILED;
-    }
-    const uint8_t *data;
-    size_t data_len;
-    input0->get_bytes_data(0, &data, &data_len);
-    add_bytes_data(data, data_len);
-  } else {
-    resize_data(input0->data_size() * inputs.size());
-    memcpy_s(mutable_data(), data_size(), input0->data(), input0->data_size());
-  }
-  for (size_t i = 1; i < inputs.size(); i++) {
-    auto &other = inputs[i];
-    if (input0->data_type() != other->data_type()) {
-      MSI_LOG_ERROR << "input " << i << " data type " << other->data_type() << " not match input 0 "
-                    << input0->data_type();
-      return FAILED;
-    }
-    if (input0->shape() != other->shape()) {
-      MSI_LOG_ERROR << "input " << i << " shape " << other->shape() << " not match input 0 " << input0->shape();
-      return FAILED;
-    }
-    if (input0->is_bytes_val_data()) {
-      if (other->bytes_data_size() != 1) {
-        MSI_LOG_ERROR << "input " << i << " bytes data batch size " << other->bytes_data_size() << " is not 1";
-        return FAILED;
-      }
-      const uint8_t *data = nullptr;
-      size_t data_len = 0;
-      other->get_bytes_data(0, &data, &data_len);
-      add_bytes_data(data, data_len);
-    } else {
-      if (input0->data_size() != other->data_size()) {
-        MSI_LOG_ERROR << "input " << i << " data size " << other->data_size() << " not match input 0 "
-                      << input0->data_size();
-        return FAILED;
-      }
-      memcpy_s(mutable_data() + input0->data_size() * i, data_size() - input0->data_size() * i, other->data(),
-               other->data_size());
-    }
-  }
-  return SUCCESS;
-}
 
 LogStream &operator<<(LogStream &stream, DataType data_type) {
   const std::map<DataType, std::string> type_name_map{

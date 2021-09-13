@@ -32,21 +32,6 @@ GrpcNotifyWorker::GrpcNotifyWorker(const std::string &worker_address) {
 
 GrpcNotifyWorker::~GrpcNotifyWorker() = default;
 
-Status GrpcNotifyWorker::Exit() {
-  if (stub_) {
-    proto::ExitRequest request;
-    request.set_address(worker_address_);
-    proto::ExitReply reply;
-    grpc::ClientContext context;
-    const int32_t TIME_OUT = 1;
-    std::chrono::system_clock::time_point deadline = std::chrono::system_clock::now() + std::chrono::seconds(TIME_OUT);
-    context.set_deadline(deadline);
-
-    (void)stub_->Exit(&context, request, &reply);
-  }
-  return SUCCESS;
-}
-
 Status GrpcNotifyWorker::DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
                                        PredictOnFinish on_finish) {
   if (!stub_) {

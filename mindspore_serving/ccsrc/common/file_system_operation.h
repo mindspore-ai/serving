@@ -22,11 +22,7 @@
 
 namespace mindspore {
 namespace serving {
-char *ReadFile(const char *file, size_t *size);
 bool DirOrFileExist(const std::string &file_path);
-std::vector<std::string> GetAllSubDirs(const std::string &dir_path);
-std::vector<std::string> GetAllSubDirsNotFullPath(const std::string &dir_path);
-time_t GetModifyTime(const std::string &file_path);
 }  // namespace serving
 }  // namespace mindspore
 

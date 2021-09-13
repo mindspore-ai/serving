@@ -30,44 +30,5 @@ bool DirOrFileExist(const std::string &file_path) {
   int ret = access(file_path.c_str(), 0);
   return (ret == -1) ? false : true;
 }
-
-std::vector<std::string> GetAllSubDirs(const std::string &dir_path) {
-  std::vector<std::string> SubDirs = GetAllSubDirsNotFullPath(dir_path);
-  for (auto &item : SubDirs) {
-    // cppcheck-suppress useStlAlgorithm
-    item = dir_path + "/" + item;
-  }
-  return SubDirs;
-}
-
-std::vector<std::string> GetAllSubDirsNotFullPath(const std::string &dir_path) {
-  DIR *dir = nullptr;
-  struct dirent *ptr = nullptr;
-  std::vector<std::string> SubDirs;
-
-  if ((dir = opendir(dir_path.c_str())) == NULL) {
-    MSI_LOG(ERROR) << "Open " << dir_path << " error!";
-    return std::vector<std::string>();
-  }
-
-  while ((ptr = readdir(dir)) != NULL) {
-    std::string name = ptr->d_name;
-    if (name == "." || name == "..") {
-      continue;
-    }
-    if (ptr->d_type == DT_DIR) {
-      SubDirs.push_back(name);
-    }
-  }
-  closedir(dir);
-  std::sort(SubDirs.begin(), SubDirs.end());
-  return SubDirs;
-}
-
-time_t GetModifyTime(const std::string &file_path) {
-  struct stat info;
-  (void)stat(file_path.c_str(), &info);
-  return info.st_mtime;
-}
 }  // namespace serving
 }  // namespace mindspore

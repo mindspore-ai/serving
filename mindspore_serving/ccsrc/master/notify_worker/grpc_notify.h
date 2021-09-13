@@ -32,8 +32,6 @@ class MS_API GrpcNotifyWorker : public BaseNotifyWorker {
   explicit GrpcNotifyWorker(const std::string &worker_address);
   ~GrpcNotifyWorker() override;
 
-  Status Exit() override;
-
   Status DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
                        PredictOnFinish on_finish) override;
 
