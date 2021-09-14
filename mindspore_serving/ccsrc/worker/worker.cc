@@ -19,7 +19,6 @@
 #include <condition_variable>
 #include "pybind11/pybind11.h"
 #include "common/proto_tensor.h"
-#include "common/file_system_operation.h"
 #include "common/exit_handle.h"
 #include "worker/context.h"
 #include "worker/grpc/worker_process.h"

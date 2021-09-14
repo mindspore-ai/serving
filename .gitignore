@@ -3,7 +3,7 @@ build/
 mindspore_serving/lib
 output
 *.ir
-.coverage
+.coverage*
 htmlcov/
 cov_output/
 

@@ -34,44 +34,9 @@ static inline std::string GetEnv(const std::string &envvar) {
   return std::string(value);
 }
 
-static inline Status CheckAddress(const std::string &address, const std::string &server_tag, std::string *ip,
-                                  uint16_t *port) {
-  Status status;
-  auto position = address.find_last_of(':');
-  if (position == std::string::npos) {
-    status = INFER_STATUS_LOG_ERROR(FAILED)
-             << "Serving Error: The format of the " << server_tag << " address '" << address << "' is illegal";
-    return status;
-  }
-  if (position == 0 || position == address.size() - 1) {
-    status = INFER_STATUS_LOG_ERROR(FAILED)
-             << "Serving Error: Missing ip or port of the " << server_tag << " address '" << address << "'";
-    return status;
-  }
-  if (ip != nullptr) {
-    *ip = address.substr(0, position);
-  }
-  try {
-    auto port_number = std::stoi(address.substr(position + 1, address.size()));
-    if (port_number < 1 || port_number > 65535) {
-      status = INFER_STATUS_LOG_ERROR(FAILED) << "Serving Error: The port of the " << server_tag << " address '"
-                                              << address << "' is out of legal range [1 ~ 65535]";
-      return status;
-    }
-    if (port != nullptr) {
-      *port = port_number;
-    }
-  } catch (const std::invalid_argument &) {
-    status = INFER_STATUS_LOG_ERROR(FAILED)
-             << "Serving Error: The type of " << server_tag << " address '" << address << "' port is not a number";
-    return status;
-  } catch (const std::out_of_range &) {
-    status = INFER_STATUS_LOG_ERROR(FAILED) << "Serving Error: The port of the " << server_tag << " address '"
-                                            << address << "' is out of legal range [1 ~ 65535]";
-    return status;
-  }
-  return SUCCESS;
-}
+Status CheckAddress(const std::string &address, const std::string &server_tag, std::string *ip, uint16_t *port);
+
+bool DirOrFileExist(const std::string &file_path);
 
 }  // namespace common
 }  // namespace serving
