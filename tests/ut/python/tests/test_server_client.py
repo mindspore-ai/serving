@@ -14,6 +14,11 @@
 # ============================================================================
 """test Serving with master, worker and client"""
 
+import os
+import time
+import signal
+import psutil
+
 import numpy as np
 
 from common import ServingTestBase, serving_test, create_client, generate_cert
@@ -937,3 +942,75 @@ def predict(x1, x2, x3, x4, x5, x6):
     assert is_float_equal(result[0]["y"], ys[0])
     assert is_float_equal(result[1]["y"], ys[1])
     assert is_float_equal(result[2]["y"], ys[2])
+
+
+@serving_test
+def test_server_client_worker_exit_success():
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
+    server.start_grpc_server("0.0.0.0:5500")
+    # Client
+    client = create_client("localhost:5500", base.servable_name, "add_common")
+    instance_count = 3
+    instances, y_data_list = create_multi_instances_fp32(instance_count)
+    result = client.infer(instances)
+
+    print(result)
+    check_result(result, y_data_list)
+
+    cur_process = psutil.Process(os.getpid())
+    children = cur_process.children(recursive=False)
+    for item in children:
+        os.kill(item.pid, signal.SIGINT)
+    time.sleep(2)
+    result = client.infer(instances)
+    print(result)
+    assert "Grpc Error, (14, 'unavailable')" in result["error"]
+
+
+@serving_test
+def test_server_client_worker_kill_restart_success():
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
+    server.start_grpc_server("0.0.0.0:5500")
+    # Client
+    client = create_client("localhost:5500", base.servable_name, "add_common")
+    instance_count = 3
+    instances, y_data_list = create_multi_instances_fp32(instance_count)
+    result = client.infer(instances)
+
+    print(result)
+    check_result(result, y_data_list)
+
+    cur_process = psutil.Process(os.getpid())
+    children = cur_process.children(recursive=False)
+    for item in children:
+        os.kill(item.pid, signal.SIGKILL)
+    time.sleep(3)
+    result = client.infer(instances)
+    print(result)
+    check_result(result, y_data_list)
+
+
+@serving_test
+def test_server_client_worker_kill_no_restart_success():
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
+    server.start_grpc_server("0.0.0.0:5500")
+
+    cur_process = psutil.Process(os.getpid())
+    children = cur_process.children(recursive=False)
+    for item in children:
+        os.kill(item.pid, signal.SIGKILL)
+    time.sleep(3)
+
+    # Client
+    client = create_client("localhost:5500", base.servable_name, "add_common")
+    instance_count = 3
+    instances, _ = create_multi_instances_fp32(instance_count)
+    result = client.infer(instances)
+    print(result)
+    assert "Grpc Error, (14, 'unavailable')" in result["error"]

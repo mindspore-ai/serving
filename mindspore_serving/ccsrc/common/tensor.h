@@ -54,61 +54,6 @@ class MS_API Tensor : public TensorBase {
   std::vector<std::vector<uint8_t>> bytes_;
 };
 
-class MS_API VectorTensorWrapReply : public ReplyBase {
- public:
-  explicit VectorTensorWrapReply(std::vector<Tensor> *tensor_list);
-  ~VectorTensorWrapReply();
-
-  size_t size() const override;
-  TensorBase *operator[](size_t index) override;
-  const TensorBase *operator[](size_t index) const override;
-  TensorBase *add() override;
-  void clear() override;
-
- private:
-  std::vector<Tensor> *tensor_list_;
-};
-
-class MS_API VectorTensorWrapRequest : public RequestBase {
- public:
-  explicit VectorTensorWrapRequest(const std::vector<Tensor> &tensor_list) : tensor_list_(tensor_list) {}
-  ~VectorTensorWrapRequest() = default;
-
-  size_t size() const override { return tensor_list_.size(); }
-  const TensorBase *operator[](size_t index) const override;
-
- private:
-  const std::vector<Tensor> &tensor_list_;
-};
-
-class MS_API VectorTensorPtrWrapReply : public ReplyBase {
- public:
-  explicit VectorTensorPtrWrapReply(std::vector<TensorBasePtr> *tensor_list, std::function<TensorBasePtr()> create_fun);
-  ~VectorTensorPtrWrapReply();
-
-  size_t size() const override;
-  TensorBase *operator[](size_t index) override;
-  const TensorBase *operator[](size_t index) const override;
-  TensorBase *add() override;
-  void clear() override;
-
- private:
-  std::vector<TensorBasePtr> *tensor_list_;
-  std::function<TensorBasePtr()> tensor_create_fun_;
-};
-
-class MS_API VectorTensorPtrWrapRequest : public RequestBase {
- public:
-  explicit VectorTensorPtrWrapRequest(const std::vector<TensorBasePtr> &tensor_list) : tensor_list_(tensor_list) {}
-  ~VectorTensorPtrWrapRequest() = default;
-
-  size_t size() const override { return tensor_list_.size(); }
-  const TensorBase *operator[](size_t index) const override;
-
- private:
-  std::vector<TensorBasePtr> tensor_list_;
-};
-
 }  // namespace mindspore::serving
 
 #endif  // MINDSPORE_SERVING_TENSOR_H

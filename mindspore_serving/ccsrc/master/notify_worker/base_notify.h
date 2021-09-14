@@ -31,7 +31,6 @@ class MS_API BaseNotifyWorker {
  public:
   BaseNotifyWorker() = default;
   virtual ~BaseNotifyWorker() = default;
-  virtual Status Exit() = 0;
   virtual Status DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
                                PredictOnFinish on_finish) = 0;
 };

@@ -85,7 +85,6 @@ class MS_API TensorBase : public std::enable_shared_from_this<TensorBase> {
   // TensorBase(const TensorBase& other) = delete;
   // TensorBase& operator=(const TensorBase& other) = delete;
   void assign(const TensorBase &other);
-  Status concat(const std::vector<TensorBasePtr> &inputs);
   bool is_bytes_val_data() const { return data_type() == kMSI_Bytes || data_type() == kMSI_String; }
 };
 

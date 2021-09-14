@@ -3,6 +3,9 @@ build/
 mindspore_serving/lib
 output
 *.ir
+.coverage
+htmlcov/
+cov_output/
 
 # Cmake files
 CMakeFiles/
