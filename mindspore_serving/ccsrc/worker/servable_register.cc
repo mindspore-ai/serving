@@ -364,7 +364,11 @@ Status ServableRegister::CheckMethods() {
 }
 
 Status ServableRegister::InitMethodBatchSize(const std::map<std::string, std::shared_ptr<ModelLoaderBase>> &models) {
+  // stages only use method inputs as inputs batch_size == mini model batch size
+  // other stages batch_size == max model batch size
   for (auto &method : servable_signatures_.methods) {
+    uint64_t mini_batch_size = UINT32_MAX;
+    uint64_t max_batch_size = 0;
     for (auto &stage_it : method.stage_map) {
       auto &stage = stage_it.second;
       if (stage.stage_type == kMethodStageTypeModel) {
@@ -373,8 +377,28 @@ Status ServableRegister::InitMethodBatchSize(const std::map<std::string, std::sh
           return INFER_STATUS_LOG_ERROR(FAILED) << "Model " << stage.stage_key << " has not been loaded";
         }
         stage.batch_size = model_it->second->GetBatchSize();
-      } else if (stage.batch_size == 0) {
-        stage.batch_size = 1;
+        if (stage.batch_size < mini_batch_size) {
+          mini_batch_size = stage.batch_size;
+        }
+        if (stage.batch_size > max_batch_size) {
+          max_batch_size = stage.batch_size;
+        }
+      }
+    }
+    if (mini_batch_size == UINT32_MAX || max_batch_size == 0) {
+      mini_batch_size = 1;
+      max_batch_size = 1;
+    }
+    for (auto &stage_it : method.stage_map) {
+      auto &stage = stage_it.second;
+      if (stage.stage_type != kMethodStageTypeModel && stage.batch_size == 0) {
+        auto all_method_input = std::all_of(stage.stage_inputs.begin(), stage.stage_inputs.end(),
+                                            [](const std::pair<size_t, uint64_t> &item) { return item.first == 0; });
+        if (all_method_input) {
+          stage.batch_size = mini_batch_size;
+        } else {
+          stage.batch_size = max_batch_size;
+        }
       }
     }
   }
