@@ -186,7 +186,7 @@ def call_preprocess_pipeline(preprocess_fun, *args):
                            f"or call_postprocess_pipeline should be invoked after call_preprocess_pipeline")
     has_called_preprocess_ = True
     outputs_count = _get_stage_outputs_count('call_preprocess_pipeline')
-    return add_stage(preprocess_fun, *args, outputs_count=outputs_count, batch_size=1, tag="Preprocess")
+    return add_stage(preprocess_fun, *args, outputs_count=outputs_count, batch_size=0, tag="Preprocess")
 
 
 @deprecated("1.5.0", "mindspore_serving.server.register.add_stage")
@@ -249,7 +249,7 @@ def call_postprocess_pipeline(postprocess_fun, *args):
                            f"call_postprocess or call_postprocess_pipeline should not be invoked more than once")
     has_called_postprocess_ = True
     outputs_count = _get_stage_outputs_count('call_postprocess_pipeline')
-    return add_stage(postprocess_fun, *args, outputs_count=outputs_count, batch_size=1, tag="Postprocess")
+    return add_stage(postprocess_fun, *args, outputs_count=outputs_count, batch_size=0, tag="Postprocess")
 
 
 @deprecated("1.5.0", "mindspore_serving.server.register.add_stage")
@@ -315,6 +315,8 @@ def add_stage(stage, *args, outputs_count, batch_size=None, tag=None):
             can process multi instances at a time. default None.
 
             - None, The input of the function will be the inputs of one instance.
+            - 0, The input of the function will be tuple object of instances, and the maximum number
+              of the instances is determined by the server based on the batch size of models.
             - int value >= 1, The input of the function will be tuple object of instances, and the maximum number
               of the instances is the value specified by 'batch_size'.
 
@@ -368,7 +370,7 @@ def add_stage(stage, *args, outputs_count, batch_size=None, tag=None):
                                     inputs_count=inputs_count, outputs_count=outputs_count)
             batch_size = 0
         else:
-            check_type.check_int("batch_size", batch_size, 1)
+            check_type.check_int("batch_size", batch_size, 0)
             register_stage_function(method_name, stage, inputs_count=inputs_count, outputs_count=outputs_count)
         func_name = get_servable_dir() + "." + get_func_name(stage)
         method_def_context_.add_stage_function(func_name, func_inputs, batch_size, tag)

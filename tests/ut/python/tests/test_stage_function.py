@@ -539,7 +539,7 @@ def predict(x1, x2):
 
 
 @serving_test
-def test_stage_function_one_function_stage_error_batch_size_failed():
+def test_stage_function_one_function_stage_batch_size_0_success():
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -556,11 +556,48 @@ def predict(x1, x2):
     y = register.add_stage(func_test_batch, x1, x2, outputs_count=1, batch_size=0)
     return y
     """
+    base = start_serving_server(servable_content, model_file="tensor_add.mindir")
+    # Client
+    instances = []
+    ys = []
+    for i in range(3):
+        x1 = np.array([[1.1, 2.2], [3.3, 4.4]], np.float32) * 1.1 * (i + 1)
+        x2 = np.array([[5.5, 6.6], [7.7, 8.8]], np.float32) * 1.1 * (i + 1)
+        y = x1 + x2
+        instances.append({"x1": x1, "x2": x2})
+        ys.append(y)
+
+    client = create_client("localhost:5500", base.servable_name, "predict")
+    result = client.infer(instances)
+    print("result", result)
+    assert is_float_equal(result[0]["y"], ys[0])
+    assert is_float_equal(result[1]["y"], ys[1])
+    assert is_float_equal(result[2]["y"], ys[2])
+
+
+@serving_test
+def test_stage_function_one_function_stage_error_batch_size_failed():
+    servable_content = r"""
+import numpy as np
+from mindspore_serving.server import register
+tensor_add = register.declare_model(model_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=False)
+
+def func_test_batch(instances):
+    results = []
+    for instance in instances:
+        y = instance[0] + instance[1]
+        yield y
+
+@register.register_method(output_names="y")
+def predict(x1, x2):
+    y = register.add_stage(func_test_batch, x1, x2, outputs_count=1, batch_size=-1)
+    return y
+    """
     try:
         start_serving_server(servable_content, model_file="tensor_add.mindir")
         assert False
     except RuntimeError as e:
-        assert "Parameter 'batch_size' should be >= 1" in str(e)
+        assert "Parameter 'batch_size' should be >= 0" in str(e)
 
 
 @serving_test
