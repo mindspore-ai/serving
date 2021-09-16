@@ -106,15 +106,6 @@ class SharedMemoryManager {
   Status Attach(const std::string &memory_key, uint64_t bytes_size, SharedMemoryAttach *attach_mem);
 };
 
-class ShmAttachTensor : public BufferTensor {
- public:
-  ShmAttachTensor(DataType type, std::vector<int64_t> shape, const SharedMemoryAttachItem &item);
-  ~ShmAttachTensor();
-
- private:
-  SharedMemoryAttachItem shm_info_;
-};
-
 }  // namespace serving
 }  // namespace mindspore
 

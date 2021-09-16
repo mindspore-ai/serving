@@ -16,7 +16,6 @@
 #include "worker/inference/inference.h"
 #include <dlfcn.h>
 #include "glog/logging.h"
-#include "common/file_system_operation.h"
 
 namespace mindspore::serving {
 
@@ -102,7 +101,7 @@ Status InferenceLoader::LoadMindSporeModelWrap() {
     MSI_LOG_INFO << "Search " << kMindSporeLibName << " directory: " << ms_search_path_list;
     for (auto &item : ms_search_path_list) {
       auto lib_path = item + "/" + kMindSporeLibName;
-      if (!DirOrFileExist(lib_path)) {
+      if (!common::DirOrFileExist(lib_path)) {
         continue;
       }
       ms_cxx_lib_handle_ = dlopen(lib_path.c_str(), RTLD_NOW | RTLD_GLOBAL);

@@ -1014,3 +1014,120 @@ def test_server_client_worker_kill_no_restart_success():
     result = client.infer(instances)
     print(result)
     assert "Grpc Error, (14, 'unavailable')" in result["error"]
+
+
+@serving_test
+def test_start_server_invalid_grpc_address_failed():
+    try:
+        server.start_grpc_server("invalid address")
+        assert False
+    except RuntimeError as e:
+        assert "The format of the Serving gRPC address 'invalid address' is illegal" in str(e)
+
+
+@serving_test
+def test_start_server_invalid_grpc_address2_failed():
+    try:
+        server.start_grpc_server("127.0.0.1")
+        assert False
+    except RuntimeError as e:
+        assert "The format of the Serving gRPC address '127.0.0.1' is illegal" in str(e)
+
+
+@serving_test
+def test_start_server_invalid_grpc_address3_failed():
+    try:
+        server.start_grpc_server("127.0.0.0.1:5000")
+        assert False
+    except RuntimeError as e:
+        assert "Serving gRPC server start failed, create server failed, address 127.0.0.0.1:5000" in str(e)
+
+
+@serving_test
+def test_start_server_invalid_grpc_address4_failed():
+    try:
+        server.start_grpc_server("127.0.0.1:5000000")
+        assert False
+    except RuntimeError as e:
+        assert "The port of the Serving gRPC address '127.0.0.1:5000000' is out of legal range [1 ~ 65535]" in str(e)
+
+
+@serving_test
+def test_start_server_invalid_grpc_address5_failed():
+    try:
+        server.start_grpc_server("unix:")
+        assert False
+    except RuntimeError as e:
+        assert "Empty grpc server unix domain socket address" in str(e)
+
+
+@serving_test
+def test_start_server_invalid_grpc_address6_failed():
+    try:
+        server.start_grpc_server("127.0.256.1:5000")
+        assert False
+    except RuntimeError as e:
+        assert "Serving gRPC server start failed, create server failed, address 127.0.256.1:5000" in str(e)
+
+
+@serving_test
+def test_start_server_invalid_grpc_address7_failed():
+    try:
+        server.start_grpc_server("127.0.0.1:5000:5000")
+        assert False
+    except RuntimeError as e:
+        assert "Serving gRPC server start failed, create server failed, address 127.0.0.1:5000:5000" in str(e)
+
+
+@serving_test
+def test_start_server_invalid_restful_address_failed():
+    try:
+        server.start_restful_server("invalid address")
+        assert False
+    except RuntimeError as e:
+        assert "The format of the RESTful server address 'invalid address' is illegal" in str(e)
+
+
+@serving_test
+def test_start_server_invalid_restful_address2_failed():
+    try:
+        server.start_restful_server("127.0.0.1")
+        assert False
+    except RuntimeError as e:
+        assert "The format of the RESTful server address '127.0.0.1' is illegal" in str(e)
+
+
+@serving_test
+def test_start_server_invalid_restful_address3_failed():
+    try:
+        server.start_restful_server("127.0.0.0.1:5000")
+        assert False
+    except RuntimeError as e:
+        assert "RESTful server start failed, bind to the socket address 127.0.0.0.1:5000 failed" in str(e)
+
+
+@serving_test
+def test_start_server_invalid_restful_address4_failed():
+    try:
+        server.start_restful_server("127.0.0.1:5000000")
+        assert False
+    except RuntimeError as e:
+        assert "The port of the RESTful server address '127.0.0.1:5000000' is out of legal range [1 ~ 65535]" in str(e)
+
+
+@serving_test
+def test_start_server_invalid_restful_address5_failed():
+    try:
+        server.start_restful_server("127.0.256.1:5000")
+        assert False
+    except RuntimeError as e:
+        assert "RESTful server start failed, bind to the socket address 127.0.256.1:5000 failed" in str(e)
+
+
+@serving_test
+def test_start_server_invalid_restful_address6_failed():
+    try:
+        server.start_restful_server("unix:address_temp")
+        assert False
+    except RuntimeError as e:
+        assert "RESTful server does not support binding to unix domain socket" in str(e)

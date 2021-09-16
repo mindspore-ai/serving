@@ -21,7 +21,6 @@
 #include <vector>
 #include <string>
 #include "common/tensor.h"
-#include "common/file_system_operation.h"
 #include "worker/context.h"
 #include "worker/servable_register.h"
 
@@ -116,7 +115,7 @@ Status LocalModelLoader::LoadModel(uint64_t version_number, const std::string &d
   auto context = ServableContext::Instance();
   std::string model_dir =
     base_spec_.servable_directory + "/" + base_spec_.servable_name + "/" + std::to_string(version_number);
-  if (!DirOrFileExist(model_dir)) {
+  if (!common::DirOrFileExist(model_dir)) {
     return INFER_STATUS_LOG_ERROR(FAILED)
            << "Start servable failed, there is no specified version directory of models, specified version number: "
            << version_number << ", servable directory: '" << base_spec_.servable_directory << "', servable name: '"

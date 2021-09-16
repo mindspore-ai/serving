@@ -32,8 +32,7 @@ def test_inference():
     network = Net(matmul_size=(96, 16))
     model = Model(network)
     model.infer_predict_layout(Tensor(predict_data))
-    # pylint: disable=protected-access
-    export(model._predict_network, Tensor(predict_data), file_name="matmul", file_format="MINDIR")
+    export(model.predict_network, Tensor(predict_data), file_name="matmul", file_format="MINDIR")
 
 
 def create_predict_data():

@@ -36,12 +36,13 @@ export GLOG_v=1
 unset http_proxy
 unset https_proxy
 
+rm -rf cov_output htmlcov .coverage
+
 # run python ut
 pytest -v ${PROJECT_PATH}/tests/ut/python/tests/ --cov=${BUILD_PKG}/mindspore_serving --cov-config=${BASEPATH}/cov_config --cov-report=html --cov-branch
 # run cpp ut
 bash ../cpp/runtest.sh
 
-rm -rf cov_output
 mkdir cov_output && cd cov_output
 lcov --capture --directory ${PROJECT_PATH}/build/mindspore_serving/ --output-file coverage.info;
 lcov --extract coverage.info '*/ccsrc/*' -o coverage.info;

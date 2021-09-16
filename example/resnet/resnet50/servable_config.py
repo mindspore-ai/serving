@@ -97,13 +97,13 @@ def postprocess_top5(score):
     return ";".join(ret_label), ret_score
 
 
-model = register.declare_model(model_file="resnet50_1b_cifar10.mindir", model_format="MindIR")
+resnet_model = register.declare_model(model_file="resnet50_1b_cifar10.mindir", model_format="MindIR")
 
 
 def call_resnet_model(image):
     """call model with only one instance a time"""
     image = preprocess_eager(image)
-    score = model.call(image)  # for only one instance
+    score = resnet_model.call(image)  # for only one instance
     return postprocess_top1(score)
 
 
@@ -114,7 +114,7 @@ def call_resnet_model_batch(instances):
         image = instance[0] # only one input
         image = preprocess_eager(image) # [3,224,224]
         input_instances.append([image])
-    output_instances = model.call(input_instances)  # for multiply instances
+    output_instances = resnet_model.call(input_instances)  # for multiply instances
     for instance in output_instances:
         output = instance[0]  # only one output for each instance
         output = postprocess_top1(output)
@@ -126,17 +126,17 @@ def classify_top1_batch(image):
     """Define method `classify_top1` for servable `resnet50`.
      The input is `image` and the output is `lable`."""
     x = register.add_stage(preprocess_batch, image, outputs_count=1, batch_size=1024)
-    x = register.add_stage(model, x, outputs_count=1)
+    x = register.add_stage(resnet_model, x, outputs_count=1)
     x = register.add_stage(postprocess_top1, x, outputs_count=1)
     return x
 
 
 @register.register_method(output_names=["label"])
-def classify_top1_v1(image):  # pipeline: preprocess_eager/postprocess_top1, model
-    """Define method `classify_top1_v1` for servable `resnet50`.
+def classify_top1(image):  # pipeline: preprocess_eager/postprocess_top1, model
+    """Define method `classify_top1` for servable `resnet50`.
      The input is `image` and the output is `label`. """
     x = register.add_stage(preprocess_eager, image, outputs_count=1)
-    x = register.add_stage(model, x, outputs_count=1)
+    x = register.add_stage(resnet_model, x, outputs_count=1)
     x = register.add_stage(postprocess_top1, x, outputs_count=1)
     return x
 
@@ -162,6 +162,6 @@ def classify_top5(image):
     """Define method `classify_top5` for servable `resnet50`.
      The input is `image` and the output is `label` and `score`. """
     x = register.add_stage(preprocess_eager, image, outputs_count=1)
-    x = register.add_stage(model, x, outputs_count=1)
+    x = register.add_stage(resnet_model, x, outputs_count=1)
     label, score = register.add_stage(postprocess_top5, x, outputs_count=2)
     return label, score

@@ -168,11 +168,6 @@ ShmTensor::ShmTensor(DataType type, std::vector<int64_t> shape, const SharedMemo
 
 ShmTensor::~ShmTensor() { SharedMemoryAllocator::Instance().ReleaseMemoryItem(shm_info_); }
 
-ShmAttachTensor::ShmAttachTensor(DataType type, std::vector<int64_t> shape, const SharedMemoryAttachItem &item)
-    : BufferTensor(type, shape, item.offset_address, item.size, false), shm_info_(item) {}
-
-ShmAttachTensor::~ShmAttachTensor() = default;
-
 SharedMemoryManager &SharedMemoryManager::Instance() {
   static SharedMemoryManager instance;
   return instance;

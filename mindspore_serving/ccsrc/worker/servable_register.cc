@@ -197,7 +197,7 @@ Status ServableRegister::CheckModels(const std::map<std::string, std::shared_ptr
     return INFER_STATUS_LOG_ERROR(FAILED) << "There is no method registered for servable";
   }
   if (models.size() != signature.model_metas.size()) {
-    return INFER_STATUS_LOG_WARNING(FAILED)
+    return INFER_STATUS_LOG_ERROR(FAILED)
            << "The number " << signature.model_metas.size() << " of models declared is not equal to the number "
            << models.size() << " of models loaded";
   }
