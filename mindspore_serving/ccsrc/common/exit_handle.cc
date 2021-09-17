@@ -84,11 +84,12 @@ bool ExitSignalHandle::HasStopped() { return !is_running_; }
 
 void ExitSignalHandle::HandleSignal(int sig) {
   auto &instance = Instance();
-  instance.HandleSignalInner();
+  instance.HandleSignalInner(sig);
 }
 
-void ExitSignalHandle::HandleSignalInner() {
+void ExitSignalHandle::HandleSignalInner(int sig) {
   if (!has_exited_.test_and_set()) {
+    MSI_LOG_WARNING << "Receive exit signal " << sig;
     master_exit_requested_.set_value();
     worker_exit_requested_.set_value();
     agent_exit_requested_.set_value();

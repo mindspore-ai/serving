@@ -116,7 +116,8 @@ Status GrpcNotifyMaster::GetModelInfos(const std::string &master_address, const 
 }
 
 Status GrpcNotifyMaster::CreateRequestShmInstance(const RemoteCallModelContext &model_context,
-                                                  const InstanceData &instance, proto::Instance *proto_instance) {
+                                                  const InstanceData &instance, proto::Instance *proto_instance,
+                                                  std::vector<SharedMemoryItem> *alloc_shm_request) {
   Status status;
   auto &memory_instance = SharedMemoryAllocator::Instance();
   auto &proto_items = *(proto_instance->mutable_items());
@@ -129,6 +130,7 @@ Status GrpcNotifyMaster::CreateRequestShmInstance(const RemoteCallModelContext &
       MSI_LOG_ERROR << "Alloc request memory failed, memory: " << memory_key;
       return status;
     }
+    alloc_shm_request->push_back(memory_item);
     auto &proto_tensor = proto_items["x" + std::to_string(i)];  // input: x0, x1, x2,...
     ProtoTensor tensor(&proto_tensor);
     tensor.set_data_type(input->data_type());
@@ -173,8 +175,9 @@ Status GrpcNotifyMaster::CreateResultShmInstance(const RemoteCallModelContext &m
   return SUCCESS;
 }
 
-Status GrpcNotifyMaster::CallModel(const RemoteCallModelContext &model_context,
-                                   const std::vector<InstanceData> &request, std::vector<ResultInstance> *reply) {
+Status GrpcNotifyMaster::CallModelInner(const RemoteCallModelContext &model_context,
+                                        const std::vector<InstanceData> &request, std::vector<ResultInstance> *reply,
+                                        std::vector<SharedMemoryItem> *alloc_shm_request) {
   grpc::ClientContext context;
   const int32_t TIME_OUT = 1;
   std::chrono::system_clock::time_point deadline = std::chrono::system_clock::now() + std::chrono::seconds(TIME_OUT);
@@ -191,7 +194,7 @@ Status GrpcNotifyMaster::CallModel(const RemoteCallModelContext &model_context,
   std::vector<ResultInstance> result_instances;
   for (auto &instance : request) {
     auto proto_instance = proto_instances->Add();
-    status = CreateRequestShmInstance(model_context, instance, proto_instance);
+    status = CreateRequestShmInstance(model_context, instance, proto_instance, alloc_shm_request);
     if (status != SUCCESS) {
       return status;
     }
@@ -241,6 +244,17 @@ Status GrpcNotifyMaster::CallModel(const RemoteCallModelContext &model_context,
     reply->push_back(result_instance);
   }
   return SUCCESS;
+}
+
+Status GrpcNotifyMaster::CallModel(const RemoteCallModelContext &model_context,
+                                   const std::vector<InstanceData> &request, std::vector<ResultInstance> *reply) {
+  std::vector<SharedMemoryItem> alloc_shm_request;
+  auto status = CallModelInner(model_context, request, reply, &alloc_shm_request);
+  auto &memory_instance = SharedMemoryAllocator::Instance();
+  for (auto &item : alloc_shm_request) {
+    memory_instance.ReleaseMemoryItem(item);
+  }
+  return status;
 }
 
 }  // namespace serving

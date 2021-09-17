@@ -15,13 +15,15 @@
  */
 #include "common/tensor_base.h"
 #include <securec.h>
-#include <functional>
 #include <string>
 #include "common/log.h"
 
 #define TENSOR_MAX_ELEMENT_COUNT UINT32_MAX
 
 namespace mindspore::serving {
+
+TensorBase::TensorBase() = default;
+TensorBase::~TensorBase() = default;
 
 bool TensorBase::set_data(const void *data, size_t data_len) {
   if (data_size() != data_len) {

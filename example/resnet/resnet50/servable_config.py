@@ -71,7 +71,7 @@ def preprocess_batch(instances):
     ]
     resnet_ds = resnet_ds.map(operations=TC.Compose(trans), input_columns="image", num_parallel_workers=2)
 
-    for data in resnet_ds.create_dict_iterator():
+    for data in resnet_ds.create_dict_iterator(num_epochs=1):
         image_result = data["image"]
         yield (image_result,)
 

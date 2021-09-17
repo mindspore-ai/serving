@@ -53,8 +53,8 @@ using TensorBasePtr = std::shared_ptr<TensorBase>;
 
 class MS_API TensorBase : public std::enable_shared_from_this<TensorBase> {
  public:
-  TensorBase() = default;
-  virtual ~TensorBase() = default;
+  TensorBase();
+  virtual ~TensorBase();
 
   // For all data type
   virtual std::vector<int64_t> shape() const = 0;

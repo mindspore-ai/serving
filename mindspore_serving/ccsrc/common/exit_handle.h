@@ -46,7 +46,7 @@ class MS_API ExitSignalHandle {
   std::atomic_bool is_running_ = false;
 
   static void HandleSignal(int sig);
-  void HandleSignalInner();
+  void HandleSignalInner(int sig);
 };
 
 }  // namespace serving

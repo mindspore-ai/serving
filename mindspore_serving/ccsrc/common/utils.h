@@ -20,9 +20,7 @@
 #include <string>
 #include "common/status.h"
 
-namespace mindspore {
-namespace serving {
-namespace common {
+namespace mindspore::serving::common {
 
 static inline std::string GetEnv(const std::string &envvar) {
   const char *value = ::getenv(envvar.c_str());
@@ -38,8 +36,6 @@ Status CheckAddress(const std::string &address, const std::string &server_tag, s
 
 bool DirOrFileExist(const std::string &file_path);
 
-}  // namespace common
-}  // namespace serving
-}  // namespace mindspore
+}  // namespace mindspore::serving::common
 
 #endif  // MINDSPORE_SERVING_COMMON_UTILS_H
