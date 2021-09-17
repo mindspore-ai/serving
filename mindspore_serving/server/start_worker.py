@@ -38,7 +38,8 @@ def start_listening_parent_thread(servable_name, device_id):
         while parent_process.is_running() and not ExitSignalHandle_.has_stopped():
             time.sleep(0.1)
         logger.warning(f"Worker {servable_name} device_id {device_id}, detect parent "
-                       f"pid={parent_process.pid} has exited or receive Ctrl+C message, worker begin to exit")
+                       f"pid={parent_process.pid} has exited or receive Ctrl+C message, worker begin to exit"
+                       f", parent running {parent_process.is_running()}, exit status {ExitSignalHandle_.has_stopped()}")
         worker.stop()
         cur_process = psutil.Process(os.getpid())
         for _ in range(100):  # 100x0.1=10s

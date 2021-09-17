@@ -202,7 +202,7 @@ class WorkerContext:
         """Send signal to worker process, used to exit the worker process"""
         if not self.is_alive():
             return
-        logger.info(f"Send signal {sig} to worker, {self.to_string()}")
+        logger.warning(f"Send signal {sig} to worker, {self.to_string()}")
         try:
             child_process = psutil.Process(self.worker_pid)
             if not child_process.is_running():
