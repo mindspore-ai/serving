@@ -20,13 +20,13 @@
 
 namespace mindspore {
 namespace serving {
-void MSWorkerImpl::Exit(grpc::ServerContext *context, const proto::ExitRequest *request, proto::ExitReply *reply) {
+void MSWorkerImpl::Exit(const proto::ExitRequest *request, proto::ExitReply *reply) {
   MSI_LOG(INFO) << "Master Exit";
   Worker::GetInstance().StopServable(false);
 }
 
-void MSWorkerImpl::PredictAsync(grpc::ServerContext *context, const proto::PredictRequest *request,
-                                proto::PredictReply *reply, PredictOnFinish on_finish) {
+void MSWorkerImpl::PredictAsync(const proto::PredictRequest *request, proto::PredictReply *reply,
+                                const PredictOnFinish &on_finish) {
   Status status(WORKER_UNAVAILABLE);
   try {
     status = Worker::GetInstance().RunAsync(*request, reply, on_finish);

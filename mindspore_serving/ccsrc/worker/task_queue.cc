@@ -23,13 +23,14 @@ namespace mindspore::serving {
 
 TaskQueue::TaskQueue() {}
 
-void TaskQueue::Start(const std::string &que_name, const std::vector<TaskInfo> &task_infos, TaskCallBack callback) {
+void TaskQueue::Start(const std::string &que_name, const std::vector<TaskInfo> &task_infos,
+                      const TaskCallBack &callback) {
   std::unique_lock<std::mutex> lock{que_lock_};
   if (is_running) {
     return;
   }
   que_name_ = que_name;
-  task_callback_ = std::move(callback);
+  task_callback_ = callback;
   methods_queue_.group_que_map.clear();
   methods_queue_.groups_que_instances_count = 0;
   for (auto &info : task_infos) {
@@ -194,7 +195,7 @@ void TaskQueue::PushTaskResult(const std::vector<InstancePtr> &inputs, const Sta
 }
 
 void PyTaskQueue::Start(const std::string &que_name, const std::vector<MethodStage> &stage_infos,
-                        TaskCallBack callback) {
+                        const TaskCallBack &callback) {
   std::vector<TaskInfo> task_infos;
   for (auto &item : stage_infos) {
     TaskInfo info;
@@ -205,7 +206,7 @@ void PyTaskQueue::Start(const std::string &que_name, const std::vector<MethodSta
     info.tag = item.tag;
     task_infos.push_back(info);
   }
-  task_queue_.Start(que_name, task_infos, std::move(callback));
+  task_queue_.Start(que_name, task_infos, callback);
   py_task_item_processing_ = TaskItem();
 }
 
@@ -264,7 +265,7 @@ void CppTaskQueueThreadPool::ThreadFunc(CppTaskQueueThreadPool *thread_pool) {
 }
 
 void CppTaskQueueThreadPool::Start(const std::string &que_name, const std::vector<MethodStage> &stage_infos,
-                                   TaskCallBack callback, uint32_t size) {
+                                   const TaskCallBack &callback, uint32_t size) {
   if (is_running_) {
     return;
   }

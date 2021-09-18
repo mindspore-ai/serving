@@ -432,7 +432,6 @@ class ServableExtraContextData(ServableContextDataBase):
         self.log_new_file = False
         log_file_name = f"{serving_logs_dir}/log_{servable_config.servable_name}_extra{self.index}" \
                         f"_version{self.version_number}.log"
-        print("----------------------------------", log_file_name)
         with open(log_file_name, write_mode) as fp:
             sub = subprocess.Popen(args=args, shell=False, stdout=fp, stderr=fp)
         return sub

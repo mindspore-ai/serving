@@ -57,7 +57,7 @@ class MSMasterImpl {
   grpc::Status Exit(const proto::ExitRequest *request, proto::ExitReply *reply);
   grpc::Status NotifyFailed(const proto::NotifyFailedRequest *request, proto::NotifyFailedReply *reply);
   grpc::Status GetModelInfo(const proto::GetModelInfoRequest *request, proto::GetModelInfoReply *reply);
-  void PredictAsync(const proto::PredictRequest *request, proto::PredictReply *reply, PredictOnFinish on_finish);
+  void PredictAsync(const proto::PredictRequest *request, proto::PredictReply *reply, const PredictOnFinish &on_finish);
 
  private:
   std::shared_ptr<Dispatcher> dispatcher_;

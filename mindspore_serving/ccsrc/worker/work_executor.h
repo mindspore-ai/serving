@@ -45,7 +45,8 @@ class WorkExecutor : public std::enable_shared_from_this<WorkExecutor> {
   ~WorkExecutor();
 
   Status Init(const std::map<std::string, std::shared_ptr<ModelLoaderBase>> &model_loaders);
-  Status Work(const RequestSpec &request_spec, const std::vector<InstanceData> &inputs, WorkCallBack on_process_done);
+  Status Work(const RequestSpec &request_spec, const std::vector<InstanceData> &inputs,
+              const WorkCallBack &on_process_done);
   void Stop();
 
   static uint64_t GetNextUserId();

@@ -116,6 +116,58 @@ get_worker_count()
   return ${num}
 }
 
+wait_master_exit()
+{
+    get_master_count
+    count=0
+    while [[ $? -ne 0 && ${count} -lt 15 ]]
+    do
+      sleep 1
+      count=$(($count+1))
+      get_master_count
+    done
+
+    if [ ${count} -eq 15 ]
+    then
+      echo "serving master exit failed"
+      ps -ef | grep serving_server.py | grep -v grep
+      echo "---------------------------------- server server log begin"
+      cat serving_server.log
+      echo "---------------------------------- server server log end"
+
+      echo "---------------------------------- server worker log begin"
+      cat serving_logs/*.log
+      echo "---------------------------------- server worker log end"
+      clean_pid && exit 1
+    fi
+}
+
+wait_worker_exit()
+{
+    get_worker_count
+    count=0
+    while [[ $? -ne 0 && ${count} -lt 15 ]]
+    do
+      sleep 1
+      count=$(($count+1))
+      get_worker_count
+    done
+
+    if [ ${count} -eq 15 ]
+    then
+      echo "serving worker exit failed"
+      ps -ef | grep start_worker.py | grep -v grep
+      echo "---------------------------------- server server log begin"
+      cat serving_server.log
+      echo "---------------------------------- server server log end"
+
+      echo "---------------------------------- server worker log begin"
+      cat serving_logs/*.log
+      echo "---------------------------------- server worker log end"
+      clean_pid && exit 1
+    fi
+}
+
 init()
 {
   rm -rf serving *.log *.mindir *.dat kernel_meta

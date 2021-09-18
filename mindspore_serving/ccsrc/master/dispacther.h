@@ -37,7 +37,8 @@ class MS_API Dispatcher {
  public:
   Dispatcher();
   ~Dispatcher();
-  void DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply, PredictOnFinish on_finish);
+  void DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
+                     const PredictOnFinish &on_finish);
 
   Status RegisterServable(const proto::RegisterRequest &request, proto::RegisterReply *reply);
   Status NotifyWorkerExit(const proto::ExitRequest &request, proto::ExitReply *reply);
@@ -65,7 +66,7 @@ class MS_API Dispatcher {
   Status RegisterServableCommon(const WorkerRegSpec &worker_spec, CreateNotifyWorkerFunc func);
   Status UnregisterServableCommon(const std::string &worker_address);
   Status DispatchAsyncInner(const proto::PredictRequest &request, proto::PredictReply *reply,
-                            PredictOnFinish on_finish);
+                            const PredictOnFinish &on_finish);
   Status RegisterWorkerContext(std::shared_ptr<WorkerContext> worker_context);
 };
 

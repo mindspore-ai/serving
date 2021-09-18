@@ -25,7 +25,7 @@ ServableEndPoint::ServableEndPoint(const ServableReprInfo &repr) : worker_repr_(
 ServableEndPoint::~ServableEndPoint() { Clear(); }
 
 Status ServableEndPoint::DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
-                                       PredictOnFinish on_finish) {
+                                       const PredictOnFinish &on_finish) {
   auto method_name = request.servable_spec().method_name();
   auto it = model_thread_list_.find(method_name);
   if (it == model_thread_list_.end()) {

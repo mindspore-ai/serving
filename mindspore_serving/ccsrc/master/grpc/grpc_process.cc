@@ -90,7 +90,7 @@ grpc::Status MSMasterImpl::GetModelInfo(const proto::GetModelInfoRequest *reques
 }
 
 void MSMasterImpl::PredictAsync(const proto::PredictRequest *request, proto::PredictReply *reply,
-                                PredictOnFinish on_finish) {
+                                const PredictOnFinish &on_finish) {
   dispatcher_->DispatchAsync(*request, reply, on_finish);
 }
 

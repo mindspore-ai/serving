@@ -39,13 +39,13 @@ class MS_API TestNotify : public BaseNotifyWorker {
   ~TestNotify() override = default;
 
   Status DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
-                       PredictOnFinish on_finish) override;
+                       const PredictOnFinish &on_finish) override;
 
   proto::PredictReply reply_;
 };
 
 Status TestNotify::DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
-                                 PredictOnFinish on_finish) {
+                                 const PredictOnFinish &on_finish) {
   *reply = reply_;
   on_finish();
   return SUCCESS;

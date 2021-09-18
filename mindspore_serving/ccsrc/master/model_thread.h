@@ -63,7 +63,8 @@ class MS_API ModelThread {
   ~ModelThread();
   Status DelWorker(uint64_t pid);
   Status AddWorker(uint64_t pid, const std::shared_ptr<WorkerContext> &notify);
-  Status DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply, PredictOnFinish callback);
+  Status DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
+                       const PredictOnFinish &callback);
 
  private:
   std::map<uint64_t, std::shared_ptr<WorkerContext>> pid_process_;
@@ -82,7 +83,7 @@ class MS_API ModelThread {
   void Clear();
   void InnerClear();
   Status FindProcessQueue(uint64_t *pid);
-  Status PushTasks(const proto::PredictRequest &request, proto::PredictReply *reply, PredictOnFinish callback);
+  Status PushTasks(const proto::PredictRequest &request, proto::PredictReply *reply, const PredictOnFinish &callback);
   Status Combine(const std::vector<std::pair<uint64_t, uint64_t>> &ids, uint64_t pid, proto::PredictRequest *msg);
   void OnTasksFinished(const std::shared_ptr<PredictContext> &context);
   void SendTasks();

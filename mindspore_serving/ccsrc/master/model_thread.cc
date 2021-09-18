@@ -157,7 +157,7 @@ Status ModelThread::FindProcessQueue(uint64_t *pid) {
 }
 
 Status ModelThread::PushTasks(const proto::PredictRequest &request, proto::PredictReply *reply,
-                              PredictOnFinish callback) {
+                              const PredictOnFinish &callback) {
   auto status = GrpcTensorHelper::CheckRequestInstances(request, method_info_.input_names);
   if (status != SUCCESS) {
     MSI_LOG_ERROR << "Check request failed";
@@ -170,25 +170,21 @@ Status ModelThread::PushTasks(const proto::PredictRequest &request, proto::Predi
     return INFER_STATUS_LOG_ERROR(SERVABLE_UNAVAILABLE)
            << "Request " << request_spec.Repr() << ", servable is not available";
   }
-  std::vector<const proto::Instance *> instances_data;
-  for (auto &item : request.instances()) {
-    // cppcheck-suppress useStlAlgorithm
-    instances_data.push_back(&item);
-  }
   auto it = job_.find(job_id_);
   if (it != job_.end()) {
     MSI_LOG(ERROR) << "job_id has existed: " << job_id_;
     return FAILED;
   }
+  int instance_size = request.instances_size();
   Job job;
-  job.wait_task_num = instances_data.size();
+  job.wait_task_num = instance_size;
   job.callback = callback;
   job.request = &request;
   job.reply = reply;
-  job.task.resize(instances_data.size());
-  for (unsigned int i = 0; i < instances_data.size(); i++) {
+  job.task.resize(instance_size);
+  for (int i = 0; i < instance_size; i++) {
     Task &task = job.task[i];
-    task.input = instances_data[i];
+    task.input = &request.instances(i);
     task.pid = 0;
     task_wait_queue_.push(std::make_pair(job_id_, i));
   }
@@ -198,8 +194,8 @@ Status ModelThread::PushTasks(const proto::PredictRequest &request, proto::Predi
 }
 
 Status ModelThread::DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
-                                  PredictOnFinish callback) {
-  auto status = PushTasks(request, reply, std::move(callback));
+                                  const PredictOnFinish &callback) {
+  auto status = PushTasks(request, reply, callback);
   if (status != SUCCESS) {
     MSI_LOG_ERROR << "Push tasks into queue failed";
     return status;

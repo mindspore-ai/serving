@@ -71,7 +71,8 @@ class MS_API WorkerContext : public std::enable_shared_from_this<WorkerContext> 
   void NotifyNotAvailable();
   void UpdateWorkerPid(uint64_t new_worker_pid);
   // from Dispatcher
-  Status DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply, PredictOnFinish on_finish);
+  Status DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
+                       const PredictOnFinish &on_finish);
   // from worker
   void OnWorkerRegRequest(const WorkerRegSpec &worker_spec, std::shared_ptr<BaseNotifyWorker> notify);
   void OnReady();

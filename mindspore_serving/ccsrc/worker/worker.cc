@@ -46,7 +46,8 @@ Status Worker::RegisterWorker(const std::string &master_address, const std::stri
   return status;
 }
 
-Status Worker::RunAsync(const proto::PredictRequest &request, proto::PredictReply *reply, PredictOnFinish on_finish) {
+Status Worker::RunAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
+                        const PredictOnFinish &on_finish) {
   Status status;
   RequestSpec request_spec;
   GrpcTensorHelper::GetRequestSpec(request, &request_spec);
@@ -63,7 +64,7 @@ Status Worker::RunAsync(const proto::PredictRequest &request, proto::PredictRepl
     return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
            << "Method " << method_name << " is not registered for servable " << servable_name;
   }
-  const MethodSignature method = *method_signature;
+  const MethodSignature &method = *method_signature;
   std::vector<InstanceData> instances_data;
   status = GrpcTensorHelper::CreateInstanceFromRequest(method, request, &instances_data);
   if (status != SUCCESS) {
@@ -81,6 +82,7 @@ Status Worker::RunAsync(const proto::PredictRequest &request, proto::PredictRepl
 Status Worker::RunAsync(const RequestSpec &request_spec, const std::vector<InstanceData> &instances_data,
                         const WorkCallBack &on_process_done) {
   while (true) {
+    // avoid deadlock when Worker::Clear->gRPC shutdown, while gRPC shutdown waiting all request finished
     if (worker_shared_lock_.try_lock_shared()) {
       auto status = RunAsyncInner(request_spec, instances_data, on_process_done);
       worker_shared_lock_.unlock_shared();

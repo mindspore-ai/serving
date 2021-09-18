@@ -47,7 +47,7 @@ class MS_API Worker {
   void Clear();
   Status Run(const RequestSpec &request_spec, const std::vector<InstanceData> &instances_data,
              std::vector<InstancePtr> *out);
-  Status RunAsync(const proto::PredictRequest &request, proto::PredictReply *reply, PredictOnFinish on_finish);
+  Status RunAsync(const proto::PredictRequest &request, proto::PredictReply *reply, const PredictOnFinish &on_finish);
 
   Status RunAsync(const RequestSpec &request_spec, const std::vector<InstanceData> &instances_data,
                   const WorkCallBack &on_process_done);

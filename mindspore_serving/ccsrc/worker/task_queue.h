@@ -64,7 +64,7 @@ struct TaskQueueGroups {
 class TaskQueue {
  public:
   TaskQueue();
-  void Start(const std::string &que_name, const std::vector<TaskInfo> &task_infos, TaskCallBack callback);
+  void Start(const std::string &que_name, const std::vector<TaskInfo> &task_infos, const TaskCallBack &callback);
   void Stop();
   void PushTask(const std::string &group_name, size_t priority, const std::vector<InstancePtr> &instances);
   void PopTask(TaskItem *task_item);
@@ -84,8 +84,6 @@ class TaskQueue {
   std::condition_variable cond_var_;
   bool is_running = false;
 
-  std::chrono::steady_clock::time_point time_last_ = std::chrono::steady_clock::now();
-
   bool FindProcessTaskQueue(std::string *method_name);
 };
 
@@ -94,7 +92,7 @@ class MS_API PyTaskQueue {
   PyTaskQueue() = default;
   ~PyTaskQueue() = default;
 
-  void Start(const std::string &que_name, const std::vector<MethodStage> &stage_infos, TaskCallBack callback);
+  void Start(const std::string &que_name, const std::vector<MethodStage> &stage_infos, const TaskCallBack &callback);
   void Stop();
   void PushTask(const std::string &method_name, size_t stage_index, const std::vector<InstancePtr> &instances);
   // for python task
@@ -114,7 +112,7 @@ class CppTaskQueueThreadPool {
   CppTaskQueueThreadPool();
   virtual ~CppTaskQueueThreadPool();
 
-  void Start(const std::string &que_name, const std::vector<MethodStage> &stage_infos, TaskCallBack callback,
+  void Start(const std::string &que_name, const std::vector<MethodStage> &stage_infos, const TaskCallBack &callback,
              uint32_t size = 4);
   void Stop();
 
