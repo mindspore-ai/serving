@@ -32,16 +32,12 @@ std::shared_ptr<WorkerContext> WorkerContext::PyInitWorkerContext(std::string se
 
 // from Dispatcher
 Status WorkerContext::DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
-                                    PredictOnFinish on_finish) {
+                                    const PredictOnFinish &on_finish) {
   auto shared_this = shared_from_this();
   PredictOnFinish callback = [shared_this, on_finish, reply]() {
-    bool has_error = false;
     auto &error_msg = reply->error_msg();
-    for (auto &item : error_msg) {
-      if (item.error_code() != 0) {
-        has_error = true;
-      }
-    }
+    auto has_error =
+      std::any_of(error_msg.begin(), error_msg.end(), [](const proto::ErrorMsg &msg) { return msg.error_code() != 0; });
     if (!has_error && reply->instances_size() != 0) {
       shared_this->normal_handled_count += 1;
       shared_this->total_normal_handled_count += 1;

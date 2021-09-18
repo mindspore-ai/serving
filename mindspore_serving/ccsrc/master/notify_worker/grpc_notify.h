@@ -33,7 +33,7 @@ class MS_API GrpcNotifyWorker : public BaseNotifyWorker {
   ~GrpcNotifyWorker() override;
 
   Status DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
-                       PredictOnFinish on_finish) override;
+                       const PredictOnFinish &on_finish) override;
 
  private:
   std::string worker_address_;

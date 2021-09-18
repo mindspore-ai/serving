@@ -57,7 +57,7 @@ class WorkerPredictContext : public WorkerServiceContext<WorkerPredictContext> {
       responder_.Finish(response_, grpc::Status::OK, this);
       MSI_TIME_STAMP_END_EXTRA(WorkerRequestHandle, "Method " + method_name)
     };
-    service_impl_->PredictAsync(&ctx_, &request_, &response_, on_finish);
+    service_impl_->PredictAsync(&request_, &response_, on_finish);
   }
 
  private:
@@ -77,7 +77,7 @@ class WorkerExitContext : public WorkerServiceContext<WorkerPredictContext> {
   void StartEnqueueRequest() override { async_service_->RequestExit(&ctx_, &request_, &responder_, cq_, cq_, this); }
 
   void HandleRequest() override {
-    service_impl_->Exit(&ctx_, &request_, &response_);
+    service_impl_->Exit(&request_, &response_);
     responder_.Finish(response_, grpc::Status::OK, this);
   }
 

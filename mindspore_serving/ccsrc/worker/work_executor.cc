@@ -138,13 +138,13 @@ void WorkExecutor::Stop() {
 }
 
 Status WorkExecutor::Work(const RequestSpec &request_spec, const std::vector<InstanceData> &instances_data,
-                          WorkCallBack on_process_done) {
+                          const WorkCallBack &on_process_done) {
   if (!init_flag_) {
     MSI_LOG_EXCEPTION << "Worker service has not been initialized";
   }
   auto user_id = WorkExecutor::GetNextUserId();
   InferSession infer_session;
-  infer_session.call_back = std::move(on_process_done);
+  infer_session.call_back = on_process_done;
 
   Status status;
   auto const &signature = ServableRegister::Instance().GetServableSignature();
@@ -209,9 +209,11 @@ void WorkExecutor::OnReceiveStageInputs(const MethodSignature &method_def, uint6
 }
 
 bool WorkExecutor::ReplyRequest(const std::vector<InstancePtr> &outputs) {
+  MSI_TIME_STAMP_START(ReplyRequest)
   for (auto &item : outputs) {
     ReplyRequest(item);
   }
+  MSI_TIME_STAMP_END(ReplyRequest)
   return true;
 }
 

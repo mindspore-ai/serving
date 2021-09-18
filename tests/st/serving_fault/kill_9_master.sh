@@ -24,14 +24,7 @@ kill_master()
   then
     echo "kill master failed"
   fi
-  sleep 5
-  get_worker_count
-  if [ $? -ne 0 ]
-  then
-    echo "worker exit failed"
-    echo $?
-    clean_pid && exit 1
-  fi
+  wait_worker_exit
 }
 
 test_master_fault_model()

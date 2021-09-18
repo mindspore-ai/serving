@@ -22,13 +22,11 @@
 
 namespace mindspore::serving::common {
 
-static inline std::string GetEnv(const std::string &envvar) {
-  const char *value = ::getenv(envvar.c_str());
-
+static inline std::string GetEnv(const std::string &env_var) {
+  const char *value = ::getenv(env_var.c_str());
   if (value == nullptr) {
     return std::string();
   }
-
   return std::string(value);
 }
 

@@ -33,7 +33,7 @@ GrpcNotifyWorker::GrpcNotifyWorker(const std::string &worker_address) {
 GrpcNotifyWorker::~GrpcNotifyWorker() = default;
 
 Status GrpcNotifyWorker::DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
-                                       PredictOnFinish on_finish) {
+                                       const PredictOnFinish &on_finish) {
   if (!stub_) {
     return INFER_STATUS_LOG_ERROR(WORKER_UNAVAILABLE)
            << "Predict failed, worker gRPC has not been inited or has already exited, worker address "

@@ -59,32 +59,6 @@ listening_worker_restart()
   echo "### serving server worker restart end ###"
 }
 
-listening_master_exit()
-{
-  count=0
-  get_master_count
-  while [[ $? -ne 0 && ${count} -lt 15 ]]
-  do
-    sleep 1
-    count=$(($count+1))
-    get_master_count
-  done
-
-  if [ ${count} -eq 15 ]
-  then
-    clean_pid
-    echo "---------------------------------- server server log begin"
-    cat serving_server.log
-    echo "---------------------------------- server server log end"
-
-    echo "---------------------------------- server worker log begin"
-    cat serving_logs/*.log
-    echo "---------------------------------- server worker log end"
-    echo "serving server kill -15 test failed!" && exit 1
-  fi
-  echo "### serving server kill -15 test end ###"
-}
-
 test_restart()
 {
   start_serving_server
@@ -132,7 +106,7 @@ test_restart()
 
   kill -s 15 ${worker_pids[0]}
   kill -s 15 ${worker_pids[1]}
-  listening_master_exit
+  wait_master_exit
   clean_pid
 }
 

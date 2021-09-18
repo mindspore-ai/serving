@@ -164,6 +164,50 @@ start_serving_agent()
   echo "### start serving agent end ###"
 }
 
+wait_server_exit()
+{
+  get_serving_server_count
+  count=0
+  while [[ $? -ne 0 && ${count} -lt 15 ]]
+  do
+    sleep 1
+    count=$(($count+1))
+    get_serving_server_count
+  done
+
+  if [ ${count} -eq 15 ]
+  then
+    echo "serving server exit failed"
+    ps -ef | grep serving_server.py | grep -v grep
+    echo "------------------------------ serving server failed log begin: "
+    cat serving_server.log
+    echo "------------------------------ serving server failed log end"
+    clean_pid && exit 1
+  fi
+}
+
+wait_agent_exit()
+{
+  get_serving_agent_count
+  count=0
+  while [[ $? -ne 0 && ${count} -lt 15 ]]
+  do
+    sleep 1
+    count=$(($count+1))
+    get_serving_agent_count
+  done
+
+  if [ ${count} -eq 15 ]
+  then
+    echo "serving agent exit failed"
+    ps -ef | grep serving_agent.py | grep -v grep
+    echo "------------------------------ serving agent failed log begin: "
+    cat serving_agent.log
+    echo "------------------------------ serving agent failed log end"
+    clean_pid && exit 1
+  fi
+}
+
 init()
 {
   rm -rf serving *.log *.mindir *.dat matmul kernel_meta

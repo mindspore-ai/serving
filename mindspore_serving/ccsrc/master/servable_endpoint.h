@@ -34,7 +34,8 @@ class ServableEndPoint {
  public:
   explicit ServableEndPoint(const ServableReprInfo &repr);
   ~ServableEndPoint();
-  Status DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply, PredictOnFinish on_finish);
+  Status DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
+                       const PredictOnFinish &on_finish);
 
   Status RegisterWorker(const ServableRegSpec &servable_spec, std::shared_ptr<WorkerContext> worker);
   Status UnregisterWorker(const std::string &worker_address);

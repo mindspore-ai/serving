@@ -32,7 +32,7 @@ class MS_API BaseNotifyWorker {
   BaseNotifyWorker() = default;
   virtual ~BaseNotifyWorker() = default;
   virtual Status DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
-                               PredictOnFinish on_finish) = 0;
+                               const PredictOnFinish &on_finish) = 0;
 };
 
 }  // namespace serving

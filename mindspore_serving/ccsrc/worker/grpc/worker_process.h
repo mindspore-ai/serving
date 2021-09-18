@@ -39,9 +39,8 @@ class MSWorkerImpl {
  public:
   MSWorkerImpl() = default;
   ~MSWorkerImpl() = default;
-  void Exit(grpc::ServerContext *context, const proto::ExitRequest *request, proto::ExitReply *reply);
-  void PredictAsync(grpc::ServerContext *context, const proto::PredictRequest *request, proto::PredictReply *reply,
-                    PredictOnFinish on_finish);
+  void Exit(const proto::ExitRequest *request, proto::ExitReply *reply);
+  void PredictAsync(const proto::PredictRequest *request, proto::PredictReply *reply, const PredictOnFinish &on_finish);
 };
 
 }  // namespace serving

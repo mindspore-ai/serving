@@ -81,11 +81,11 @@ class MSServiceClient {
     }
   }
 
-  void PredictAsync(const Request &request, Reply *reply, MSStub *stub, AsyncPredictCallback callback,
+  void PredictAsync(const Request &request, Reply *reply, MSStub *stub, const AsyncPredictCallback &callback,
                     const std::string &target_address) {
     AsyncClientCall *call = new AsyncClientCall;
     call->reply = reply;
-    call->callback = std::move(callback);
+    call->callback = callback;
     call->target_address = target_address;
     call->response_reader = stub->PrepareAsyncPredict(&call->context, request, &cq_);
     call->response_reader->StartCall();

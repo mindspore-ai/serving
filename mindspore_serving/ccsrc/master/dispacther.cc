@@ -59,7 +59,7 @@ Status Dispatcher::JudgeInferNum() {
 }
 
 void Dispatcher::DispatchAsync(const proto::PredictRequest &request, proto::PredictReply *reply,
-                               PredictOnFinish on_finish) {
+                               const PredictOnFinish &on_finish) {
   MSI_EXCEPTION_IF_NULL(reply);
   (*reply->mutable_servable_spec()) = request.servable_spec();
   Status status = JudgeInferNum();
@@ -92,7 +92,7 @@ void Dispatcher::DispatchAsync(const proto::PredictRequest &request, proto::Pred
 }
 
 Status Dispatcher::DispatchAsyncInner(const proto::PredictRequest &request, proto::PredictReply *reply,
-                                      PredictOnFinish on_finish) {
+                                      const PredictOnFinish &on_finish) {
   MSI_EXCEPTION_IF_NULL(reply);
   std::shared_lock<std::shared_mutex> lock(servable_shared_lock_);
   RequestSpec request_spec;
@@ -108,7 +108,7 @@ Status Dispatcher::DispatchAsyncInner(const proto::PredictRequest &request, prot
   if (!find_method) {
     return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "Request " << request_spec.Repr() << ", method is not available";
   }
-  return endpoint->DispatchAsync(request, reply, std::move(on_finish));
+  return endpoint->DispatchAsync(request, reply, on_finish);
 }
 
 Status Dispatcher::UnregisterServableCommon(const std::string &worker_address) {
