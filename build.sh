@@ -7,9 +7,9 @@ export BUILD_PATH="${PROJECTPATH}/build/"
 usage()
 {
   echo "Usage:"
-  echo "    bash build.sh -p {mindspore_shared_lib}] [-j[n]] [-d]"
-  echo "    bash build.sh -e gpu|ascend|cpu|npu [-V 9.2|10.1|310|910] [-j[n]] [-d] "
-  echo "    bash build.sh -t on [-j[n]] [-d]"
+  echo "    bash build.sh -p {mindspore_shared_lib}] [-j[n]] [-d] [-S on|off] "
+  echo "    bash build.sh -e gpu|ascend|cpu|npu [-V 9.2|10.1|310|910] [-j[n]] [-d] [-S on|off] "
+  echo "    bash build.sh -t on [-j[n]] [-d] [-S on|off] "
   echo ""
   echo "Options:"
   echo "    -p MindSpore lib {mindspore_shared_lib} path."
@@ -18,7 +18,7 @@ usage()
   echo "    -j[n] Set the threads when building (Default: -j8)"
   echo "    -d Debug model"
   echo "    -t Build testcases."
-
+  echo "    -S Enable enable download cmake compile dependency from gitee , default off"
 }
 
 # check value of input is 'on' or 'off'
@@ -46,9 +46,10 @@ checkopts()
   MS_BACKEND=""
   MS_VERSION=""
   RUN_TESTCASES="off"
+  ENABLE_GITEE="off"
 
   # Process the options
-  while getopts 'dvc:j:a:p:e:V:t:' opt
+  while getopts 'dvc:j:a:p:e:V:t:S:' opt
   do
     LOW_OPTARG=$(echo ${OPTARG} | tr '[A-Z]' '[a-z]')
 
@@ -98,6 +99,11 @@ checkopts()
         echo "user opt: -t"${LOW_OPTARG}
         RUN_TESTCASES="$OPTARG"
         ;;
+      S)
+        check_on_off $OPTARG S
+        ENABLE_GITEE="$OPTARG"
+        echo "enable download from gitee"
+        ;;
       *)
         echo "Unknown option ${opt}!"
         usage
@@ -139,6 +145,9 @@ build_mindspore_serving()
   fi
   if [[ "X$RUN_TESTCASES" = "Xon" ]]; then
     CMAKE_ARGS="${CMAKE_ARGS} -DENABLE_TESTCASES=ON"
+  fi
+  if [[ "X$ENABLE_GITEE" = "Xon" ]]; then
+    CMAKE_ARGS="${CMAKE_ARGS} -DENABLE_GITEE=ON"
   fi
   echo "${CMAKE_ARGS}"
   cmake ${CMAKE_ARGS} ../..
