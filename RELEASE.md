@@ -653,7 +653,7 @@ if __name__ == "__main__":
 
 A Incremental inference models can include a full input graph and an incremental input graph, and the Serving
 orchestrates the two static graphs using a user-defined Python script. For more details, please refer
-to [Serving pangu alpha](https://gitee.com/mindspore/mindspore/blob/master/model_zoo/official/nlp/pangu_alpha/serving_increment)
+to [Serving pangu alpha](https://gitee.com/mindspore/models/tree/master/official/nlp/pangu_alpha/serving_increment)
 .
 
 #### Deprecations
