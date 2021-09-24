@@ -34,12 +34,6 @@ namespace serving {
 DecomposeEvRequest::DecomposeEvRequest(struct evhttp_request *request, int max_msg_size)
     : event_request_(request), max_msg_size_(max_msg_size) {}
 
-DecomposeEvRequest::~DecomposeEvRequest() {
-  if (event_request_ && evhttp_request_is_owned(event_request_)) {
-    evhttp_request_free(event_request_);
-  }
-}
-
 std::string DecomposeEvRequest::UrlQuery(const std::string &url, const std::string &key) {
   std::string::size_type start_pos(0);
   if (key == kUrlKeyEnd) {
