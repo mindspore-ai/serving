@@ -143,13 +143,6 @@ struct bufferevent *RestfulServer::bevcb(struct event_base *base, void *args) {
 }
 
 Status RestfulServer::InitEvHttp() {
-  auto free_event_base = [this] {
-    if (event_base_ != nullptr) {
-      event_base_free(event_base_);
-      event_base_ = nullptr;
-    }
-  };
-
   event_base_ = event_base_new();
   Status status(SUCCESS);
   if (event_base_ == nullptr) {
@@ -161,27 +154,22 @@ Status RestfulServer::InitEvHttp() {
   if (event_http_ == nullptr) {
     status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
              << "Serving Error: RESTful server start failed, create http server failed";
-    free_event_base();
+    event_base_free(event_base_);
+    event_base_ = nullptr;
     return status;
   }
   return status;
 }
 
 void RestfulServer::FreeEvhttp() {
-  auto free_event_base = [this] {
-    if (event_base_ != nullptr) {
-      event_base_free(event_base_);
-      event_base_ = nullptr;
-    }
-  };
-  auto free_evhttp = [this] {
-    if (event_http_ != nullptr) {
-      evhttp_free(event_http_);
-      event_http_ = nullptr;
-    }
-  };
-  free_event_base();
-  free_evhttp();
+  if (event_http_ != nullptr) {
+    evhttp_free(event_http_);
+    event_http_ = nullptr;
+  }
+  if (event_base_ != nullptr) {
+    event_base_free(event_base_);
+    event_base_ = nullptr;
+  }
 }
 
 void RestfulServer::RunEvhttp() {
@@ -262,16 +250,7 @@ void RestfulServer::Stop() {
     event_thread_.join();
   }
   in_running_ = false;
-  if (event_base_ != nullptr) {
-    event_base_free(event_base_);
-    event_base_ = nullptr;
-  }
-  if (event_http_ != nullptr) {
-    evhttp_free(event_http_);
-    event_http_ = nullptr;
-  }
-
-  remove(socket_address_.c_str());
+  FreeEvhttp();
 }
 
 void RestfulServer::InitOpenSSL() {
