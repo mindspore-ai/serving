@@ -168,7 +168,11 @@ def append_declared_model(model_key):
 
 def declare_model(model_file, model_format, with_batch_dim=True, options=None, without_batch_dim_inputs=None):
     r"""
-    declare one model.
+    Declare one model when importing servable_config.py of one servable.
+
+    Note:
+        This interface should take effect when importing servable_config.py by the serving server. Therefore, it's
+        recommended that this interface be used globally in servable_config.py.
 
     Args:
         model_file (Union[str, list[str]]): Model files name.

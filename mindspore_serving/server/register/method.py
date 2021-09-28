@@ -359,7 +359,8 @@ def add_stage(stage, *args, outputs_count, batch_size=None, tag=None):
         if stage not in g_declared_models:
             raise RuntimeError(
                 f"Check failed in method '{method_name}', the parameter 'stage' of add_stage must be function "
-                f"or Model returned by declare_model")
+                f"or Model returned by declare_model, and ensure that interface 'declare_model' can take effect "
+                f"when importing servable_config.py by the serving server")
         model = stage
         model_key = model.model_key
         ServableRegister_.register_model_input_output_info(model_key, inputs_count, outputs_count, 0)
@@ -486,8 +487,12 @@ def _get_method_def_stage_meta(method_def_func):
 
 
 def register_method(output_names):
-    """Define a method of the servable, MindSpore Serving supports a service consisting of multiple python functions and
-    multiple models.
+    """Define a method of the servable when importing servable_config.py of one servable. MindSpore Serving supports a
+    service consisting of multiple python functions and multiple models.
+
+    Note:
+        This interface should take effect when importing servable_config.py by the serving server. Therefore, it's
+        recommended that this interface be used globally in servable_config.py.
 
     A method is an interface for clients to access the servable, and the servable can include one or more methods.
     This interface will defines the signatures and pipeline of the method.
