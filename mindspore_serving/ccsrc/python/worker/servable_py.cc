@@ -60,7 +60,9 @@ py::tuple PyServableRegister::Run(const std::string &model_key, const py::tuple 
   auto const &signature = ServableRegister::Instance().GetServableSignature();
   auto model_meta = signature.GetModelDeclare(model_key);
   if (model_meta == nullptr) {
-    MSI_LOG_EXCEPTION << model_str << " failed: the model is not declared";
+    MSI_LOG_EXCEPTION << model_str
+                      << " failed: the model is not declared, ensure that interface 'declare_model' can take effect "
+                         "when importing servable_config.py by the serving server";
   }
   auto &common_meta = model_meta->common_meta;
   auto input_it = common_meta.inputs_count.find(subgraph);
