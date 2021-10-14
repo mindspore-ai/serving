@@ -61,7 +61,7 @@ def test_serving_fault_kill_9_worker():
 @pytest.mark.level0
 @pytest.mark.platform_arm_ascend_training
 @pytest.mark.env_single
-def test_serving_fault_restart():
+def serving_fault_restart():
     """test_serving"""
     sh_path = os.path.split(os.path.realpath(__file__))[0]
     ret = os.system(f"sh {sh_path}/restart.sh")
@@ -73,4 +73,3 @@ if __name__ == '__main__':
     test_serving_fault_kill_15_master()
     test_serving_fault_kill_9_worker()
     test_serving_fault_kill_15_worker()
-    test_serving_fault_restart()
