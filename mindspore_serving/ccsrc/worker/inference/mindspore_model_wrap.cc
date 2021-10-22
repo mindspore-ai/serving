@@ -31,6 +31,8 @@ MS_API InferenceBase *ServingCreateInfer() {
 }
 }
 
+std::mutex MindSporeModelWrap::infer_mutex_;
+
 mindspore::DataType TransInferDataType2ApiTypeId(DataType data_type) {
   const std::map<DataType, mindspore::DataType> type2id_map{
     {serving::kMSI_Unknown, mindspore::DataType::kTypeUnknown},
@@ -155,13 +157,13 @@ Status MindSporeModelWrap::LoadModelFromFileInner(serving::DeviceType device_typ
     return Status(FAILED, ex.what());
   }
   uint64_t last_batch_size = 0;
+  common_model_info_.device_type = device_type;
+  common_model_info_.device_id = device_id;
+  common_model_info_.with_batch_dim = with_batch_dim;
+  common_model_info_.without_batch_dim_inputs = without_batch_dim_inputs;
   for (size_t i = 0; i < file_names.size(); i++) {
     ApiModelInfo api_model_info;
     api_model_info.model = models[i];
-    api_model_info.device_type = device_type;
-    api_model_info.device_id = device_id;
-    api_model_info.with_batch_dim = with_batch_dim;
-    api_model_info.without_batch_dim_inputs = without_batch_dim_inputs;
     auto st = GetModelInfos(&api_model_info);
     if (st != SUCCESS) {
       return st;
@@ -182,11 +184,11 @@ Status MindSporeModelWrap::LoadModelFromFileInner(serving::DeviceType device_typ
       MSI_LOG_ERROR << "Calculate batch size failed, model file: " << file_names[i] << ", subgraph: " << i;
       return status;
     }
-    if (last_batch_size != 0 && last_batch_size != api_model_info.batch_size) {
+    if (last_batch_size != 0 && last_batch_size != common_model_info_.batch_size) {
       return INFER_STATUS_LOG_ERROR(FAILED) << "Expect batch size to be same, last batch size: " << last_batch_size
-                                            << ", subgraph " << i << " batch size: " << api_model_info.batch_size;
+                                            << ", subgraph " << i << " batch size: " << common_model_info_.batch_size;
     }
-    last_batch_size = api_model_info.batch_size;
+    last_batch_size = common_model_info_.batch_size;
     models_.push_back(api_model_info);
   }
   MSI_LOG_INFO << "Load model from file success, model file: " << file_names << ", device_type: '" << device_type
@@ -317,8 +319,8 @@ Status MindSporeModelWrap::GetModelInfos(ApiModelInfo *api_model_info) {
 Status MindSporeModelWrap::CalculateBatchSize(ApiModelInfo *api_model_info) {
   auto &input_infos = api_model_info->input_tensor_infos;
   auto &output_infos = api_model_info->output_tensor_infos;
-  if (!api_model_info->with_batch_dim) {
-    api_model_info->batch_size = 1;
+  if (!common_model_info_.with_batch_dim) {
+    common_model_info_.batch_size = 1;
     for (auto &input : input_infos) {
       input.is_no_batch_dim = true;
     }
@@ -327,7 +329,7 @@ Status MindSporeModelWrap::CalculateBatchSize(ApiModelInfo *api_model_info) {
     }
     return SUCCESS;
   }
-  const auto &list = api_model_info->without_batch_dim_inputs;
+  const auto &list = common_model_info_.without_batch_dim_inputs;
   uint32_t cur_batch_size = 0;
   for (size_t i = 0; i < input_infos.size(); i++) {
     auto &input = input_infos[i];
@@ -365,7 +367,7 @@ Status MindSporeModelWrap::CalculateBatchSize(ApiModelInfo *api_model_info) {
   if (cur_batch_size == 0) {
     cur_batch_size = 1;
   }
-  api_model_info->batch_size = cur_batch_size;
+  common_model_info_.batch_size = cur_batch_size;
   return SUCCESS;
 }
 
@@ -451,7 +453,13 @@ Status MindSporeModelWrap::ExecuteModelCommon(size_t request_size, const FuncMak
     mindspore::MSTensor::DestroyTensorPtr(tensor);
   }
   std::vector<mindspore::MSTensor> outputs;
-  mindspore::Status status = model->Predict(inputs, &outputs);
+  mindspore::Status status;
+  if (common_model_info_.device_type == kDeviceTypeAscendCL) {
+    status = model->Predict(inputs, &outputs);
+  } else {
+    std::unique_lock<std::mutex> lock(infer_mutex_);
+    status = model->Predict(inputs, &outputs);
+  }
   if (!status.IsOk()) {
     MSI_LOG_ERROR << "Predict failed: " << status.ToString();
     return Status(FAILED, "Predict Failed");
@@ -484,7 +492,7 @@ std::vector<serving::TensorInfo> MindSporeModelWrap::GetOutputInfos(uint64_t sub
   return models_[subgraph].output_tensor_infos;
 }
 
-ssize_t MindSporeModelWrap::GetBatchSize(uint64_t subgraph) const { return models_[subgraph].batch_size; }
+ssize_t MindSporeModelWrap::GetBatchSize(uint64_t subgraph) const { return common_model_info_.batch_size; }
 
 uint64_t MindSporeModelWrap::GetSubGraphNum() const { return models_.size(); }
 

@@ -22,6 +22,7 @@
 #include <memory>
 #include <vector>
 #include <map>
+#include <mutex>
 #include "common/serving_common.h"
 #include "worker/inference/inference.h"
 #include "api/model.h"
@@ -39,6 +40,9 @@ struct ApiModelInfo {
   std::vector<std::string> output_names;
   std::vector<serving::TensorInfo> output_tensor_infos;
   std::shared_ptr<mindspore::Model> model = nullptr;
+};
+
+struct ApiCommonModelInfo {
   uint32_t batch_size = 0;
   serving::DeviceType device_type;
   uint32_t device_id = 0;
@@ -74,7 +78,9 @@ class MindSporeModelWrap : public InferenceBase {
   uint64_t GetSubGraphNum() const override;
 
  private:
+  ApiCommonModelInfo common_model_info_;
   std::vector<ApiModelInfo> models_;
+  static std::mutex infer_mutex_;
 
   using FuncMakeInBuffer = std::function<mindspore::MSTensor *(size_t index, const std::string &name)>;
   using FuncMakeOutTensor =
