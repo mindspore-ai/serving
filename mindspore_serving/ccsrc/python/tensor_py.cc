@@ -19,6 +19,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <set>
 #include "mindspore_serving/ccsrc/common/tensor.h"
 
 namespace mindspore::serving {

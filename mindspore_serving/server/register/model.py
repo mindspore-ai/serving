@@ -53,7 +53,11 @@ def declare_servable(servable_file, model_format, with_batch_dim=True, options=N
 
 class Model:
     """Indicate a model. User should not construct Model object directly, it's need to returned from declare_model
-    or declare_servable"""
+    or declare_servable
+
+    Args:
+        model_key (str): Model key identifies the model.
+    """
 
     def __init__(self, model_key):
         self.model_key = model_key
