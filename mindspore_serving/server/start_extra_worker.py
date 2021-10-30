@@ -65,7 +65,7 @@ def start_extra_worker(servable_directory, servable_name, version_number, index,
     signal.signal(signal.SIGCHLD, signal.SIG_DFL)  # for ccec compiler
     check_type.check_str('servable_directory', servable_directory)
     check_type.check_str('servable_name', servable_name)
-    check_type.check_int('version_number', version_number, 1)
+    check_type.check_int('version_number', version_number, 0)
     check_type.check_int('index', index, 0)
 
     check_type.check_str('master_address', master_address)

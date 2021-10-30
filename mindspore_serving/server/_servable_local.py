@@ -21,6 +21,7 @@ import subprocess
 
 from mindspore_serving import log as logger
 from mindspore_serving.server.common import check_type, get_abs_path
+from mindspore_serving.server.worker import init_mindspore
 from mindspore_serving.server._servable_common import ServableContextDataBase
 from mindspore_serving._mindspore_serving import Worker_
 
@@ -37,7 +38,8 @@ class ServableStartConfig:
         servable_directory (str): The directory where the servable is located in. There expects to has a directory
             named `servable_name`.
         servable_name (str): The servable name.
-        device_ids (Union[int, list[int], tuple[int]]): The device list the model loads into and runs in.
+        device_ids (Union[int, list[int], tuple[int]], optional): The device list the model loads into and runs in.
+            Used when device type is Nvidia GPU, Ascend 310/710/910. Default None.
         version_number (int, optional): Servable version number to be loaded. The version number should be a positive
             integer, starting from 1, and 0 means to load the latest version. Default: 0.
         device_type (str, optional): Currently supports "Ascend", "GPU" and None. Default: None.
@@ -58,7 +60,7 @@ class ServableStartConfig:
         RuntimeError: The type or value of the parameters are invalid.
     """
 
-    def __init__(self, servable_directory, servable_name, device_ids, version_number=0, device_type=None,
+    def __init__(self, servable_directory, servable_name, device_ids=None, version_number=0, device_type=None,
                  num_parallel_workers=0, dec_key=None, dec_mode='AES-GCM'):
         super(ServableStartConfig, self).__init__()
         check_type.check_str("servable_directory", servable_directory)
@@ -83,10 +85,14 @@ class ServableStartConfig:
         self.servable_directory_ = servable_directory
         self.servable_name_ = servable_name
         self.version_number_ = version_number
-        self.device_ids_ = check_type.check_and_as_int_tuple_list("device_ids", device_ids, 0)
-        self.num_parallel_workers_ = num_parallel_workers
-        if not self.device_ids_:
-            raise RuntimeError(f"Parameter 'device_ids' cannot be empty when num_parallel_workers is 0")
+        if device_ids is None:
+            device_ids = []
+        device_ids = check_type.check_and_as_int_tuple_list("device_ids", device_ids, 0)
+        self.device_ids_ = device_ids
+        if not device_ids and not num_parallel_workers:
+            self.num_parallel_workers_ = 1
+        else:
+            self.num_parallel_workers_ = num_parallel_workers
         if device_type is not None:
             check_type.check_str("device_type", device_type)
         else:
@@ -133,9 +139,9 @@ class DeployConfig:
 
     def __init__(self, version_number, device_ids, num_parallel_workers=0, dec_key=None, dec_mode='AES-GCM'):
         check_type.check_int("version_number", version_number)
+        if device_ids is None:
+            device_ids = []
         device_ids = check_type.check_and_as_int_tuple_list("device_ids", device_ids, 0)
-        if not device_ids:
-            raise RuntimeError(f"Parameter 'device_ids' cannot be empty")
         check_type.check_int("num_parallel_workers", num_parallel_workers, 0)
 
         if dec_key is not None:
@@ -151,7 +157,10 @@ class DeployConfig:
 
         self.version_number = version_number
         self.device_ids = set(device_ids)
-        self.num_parallel_workers = num_parallel_workers
+        if not device_ids and not num_parallel_workers:
+            self.num_parallel_workers = 1
+        else:
+            self.num_parallel_workers = num_parallel_workers
         self.dec_key = dec_key
         self.dec_mode = dec_mode
 
@@ -178,9 +187,6 @@ class ServableStartConfigGroup:
         self.check_servable_location()
         self.deploy_configs = {}
         self.newest_version_number = self.get_newest_version_number()
-        if self.newest_version_number == 0:
-            raise RuntimeError(f"There is no valid version directory of models, servable directory: "
-                               f"{self.servable_directory}, servable name: {self.servable_name}")
         logger.info(f"The newest version number of servable {self.servable_name} is {self.newest_version_number}, "
                     f"servable directory: {self.servable_directory}")
 
@@ -204,16 +210,6 @@ class ServableStartConfigGroup:
             raise RuntimeError(f"Parameter 'deploy_config' should be type of DeployConfig")
         if deploy_config.version_number == 0:
             deploy_config.version_number = self.newest_version_number
-        else:
-            version_dir = os.path.join(self.servable_directory, self.servable_name, str(deploy_config.version_number))
-            if not os.path.exists(version_dir):
-                raise RuntimeError(f"There is no specified version directory of models, "
-                                   f"specified version number: {deploy_config.version_number}, "
-                                   f"servable directory: {self.servable_directory}, "
-                                   f"servable name: {self.servable_name}")
-            if not os.path.isdir(version_dir):
-                raise RuntimeError(f"Expect {version_dir} to be a directory, servable directory: "
-                                   f"{self.servable_directory}, servable name: {self.servable_name}")
 
         if deploy_config.version_number not in self.deploy_configs:
             self.deploy_configs[deploy_config.version_number] = deploy_config
@@ -259,30 +255,44 @@ class ServableStartConfigGroup:
         return max_version
 
 
+g_device_type = None
+g_all_reuse_device = None
+
+
 def _get_device_type():
     """Get device type supported, this will load libmindspore.so"""
     # Get Device type: AscendCL, AscendMS, Gpu, Cpu, set Ascend in ServableStartConfig instead of AscendCL, AscendMS
+    global g_device_type, g_all_reuse_device
+    if g_device_type is not None:
+        return g_device_type, g_all_reuse_device
+
+    init_mindspore.set_mindspore_cxx_env()
     device_type = Worker_.get_device_type()
     all_reuse_device = True
     if device_type == "AscendMS":
         all_reuse_device = False
     if device_type in ("AscendMS", "AscendCL"):
         device_type = "Ascend"
-    return device_type, all_reuse_device
+    g_device_type = device_type
+    g_all_reuse_device = all_reuse_device
+    return g_device_type, g_all_reuse_device
 
 
 def _check_and_merge_config(configs):
     """Merge ServableStartConfig with the same version number"""
     start_config_groups = {}
 
-    device_type, _ = _get_device_type()
+    device_type = None
     for config in configs:
         if not isinstance(config, ServableStartConfig):
             continue
-        if config.device_type != "None" and config.device_type.lower() != device_type.lower():
-            raise RuntimeError(f"The device type '{config.device_type}' of servable name {config.servable_name} "
-                               f"is inconsistent with current running environment, supported device type: "
-                               f"'None' or '{device_type}'")
+        if config.device_type != "None":
+            if device_type is None:
+                device_type, _ = _get_device_type()
+            if config.device_type.lower() != device_type.lower():
+                raise RuntimeError(f"The device type '{config.device_type}' of servable name {config.servable_name} "
+                                   f"is inconsistent with current running environment, supported device type: "
+                                   f"'None' or '{device_type}'")
         if config.servable_name in start_config_groups:
             if config.servable_directory != start_config_groups[config.servable_name].servable_directory:
                 raise RuntimeError(
@@ -309,15 +319,17 @@ def merge_config(configs):
         start_configs = config_group.export_as_start_configs()
         configs_ret.extend(start_configs)
 
-    _, allow_reuse_device = _get_device_type()
+    allow_reuse_device = None
     device_ids_used = set()
-    if not allow_reuse_device:
-        for config in configs_ret:
-            for device_id in config.device_ids:
-                if device_id in device_ids_used:
+    for config in configs_ret:
+        for device_id in config.device_ids:
+            if device_id in device_ids_used:
+                if allow_reuse_device is None:
+                    _, allow_reuse_device = _get_device_type()
+                if not allow_reuse_device:
                     raise RuntimeError(f"Ascend 910 device id {device_id} is used repeatedly in servable "
                                        f"{config.servable_name}")
-                device_ids_used.add(device_id)
+            device_ids_used.add(device_id)
     for config in configs:
         if not isinstance(config, ServableStartConfig):
             configs_ret.append(config)

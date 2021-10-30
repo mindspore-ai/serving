@@ -95,11 +95,6 @@ def _load_servable_config(servable_directory, servable_name):
         logger.error(f"import {servable_name}.servable_config failed, {str(e)}")
         raise RuntimeError(f"import {servable_name}.servable_config failed, {str(e)}")
 
-    model_names = Worker_.get_declared_model_names()
-    if not model_names:
-        raise RuntimeError(
-            f"There is no model declared, servable directory: {servable_directory}, servable name: {servable_name}")
-
 
 @stop_on_except
 def start_servable(servable_directory, servable_name, version_number,
@@ -112,9 +107,7 @@ def start_servable(servable_directory, servable_name, version_number,
     check_type.check_str('servable_directory', servable_directory)
     check_type.check_str('servable_name', servable_name)
     check_type.check_int('version_number', version_number, 0)
-
     check_type.check_int('device_id', device_id, 0)
-
     check_type.check_str('master_address', master_address)
     check_type.check_str('worker_address', worker_address)
     if dec_key is not None:
@@ -123,8 +116,17 @@ def start_servable(servable_directory, servable_name, version_number,
         dec_key = ''
     check_type.check_str('dec_mode', dec_mode)
 
-    init_mindspore.init_mindspore_cxx_env()
     _load_servable_config(servable_directory, servable_name)
+    model_names = Worker_.get_declared_model_names()
+    if model_names:
+        init_mindspore.init_mindspore_cxx_env()
+    if version_number == 0:
+        if model_names:
+            raise RuntimeError(
+                f"There is no valid version directory of models while there are models declared in servable_config.py, "
+                f"servable directory: {servable_directory}, servable name: {servable_name}")
+        version_number = 1
+
     _set_device_type(device_type)
     _set_device_id(device_id)
     Worker_.start_servable(servable_directory, servable_name, version_number, master_address, worker_address,
@@ -140,11 +142,20 @@ def start_extra_servable(servable_directory, servable_name, version_number, mast
     """
     check_type.check_str('servable_directory', servable_directory)
     check_type.check_str('servable_name', servable_name)
-    check_type.check_int('version_number', version_number, 1)
+    check_type.check_int('version_number', version_number, 0)
     check_type.check_str('master_address', master_address)
     check_type.check_str('worker_address', worker_address)
 
-    init_mindspore.init_mindspore_cxx_env()
     _load_servable_config(servable_directory, servable_name)
+    model_names = Worker_.get_declared_model_names()
+    if model_names:
+        init_mindspore.init_mindspore_cxx_env()
+    if version_number == 0:
+        if model_names:
+            raise RuntimeError(
+                f"There is no valid version directory of models while there are models declared in servable_config.py, "
+                f"servable directory: {servable_directory}, servable name: {servable_name}")
+        version_number = 1
+
     Worker_.start_extra_servable(servable_directory, servable_name, version_number, master_address, worker_address)
     _start_py_task()

@@ -56,7 +56,7 @@ TEST_F(TestStartWorker, test_worker_start_error_version_number) {
   EXPECT_FALSE(status.IsSuccess());
   ExpectContainMsg(
     status.StatusMessage(),
-    "Start servable failed, there is no specified version directory of models, specified version number: 2");
+    "Start servable failed: There is no specified version directory of models, specified version number: 2");
 }
 
 TEST_F(TestStartWorker, test_worker_start_multi_version_number) {
@@ -87,7 +87,7 @@ TEST_F(TestStartWorker, test_worker_start_version_number_no_valid) {
   EXPECT_FALSE(status.IsSuccess());
   ExpectContainMsg(
     status.StatusMessage(),
-    "Start servable failed, there is no specified version directory of models, specified version number: 1");
+    "Start servable failed: There is no specified version directory of models, specified version number: 1");
 }
 
 TEST_F(TestStartWorker, test_worker_start_error_servable_dir) {
@@ -101,7 +101,7 @@ TEST_F(TestStartWorker, test_worker_start_error_servable_dir) {
   EXPECT_FALSE(status.IsSuccess());
   ExpectContainMsg(
     status.StatusMessage(),
-    "Start servable failed, there is no specified version directory of models, specified version number: 0");
+    "Start servable failed: There is no specified version directory of models, specified version number: 0");
 }
 
 TEST_F(TestStartWorker, test_worker_start_error_servable_name) {

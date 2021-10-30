@@ -109,11 +109,13 @@ void PyWorker::StartExtraServable(const std::string &servable_directory, const s
   if (signature.servable_name != servable_name) {
     MSI_LOG_EXCEPTION << "Servable '" << servable_name << "' has not been registered";
   }
-  Status status;
   std::map<std::string, std::shared_ptr<ModelLoaderBase>> model_loaders;
-  status = RemoteCallModel::InitRemote(servable_name, version_number, master_address, &model_loaders);
-  if (status != SUCCESS) {
-    MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
+  Status status;
+  if (!signature.model_metas.empty()) {
+    status = RemoteCallModel::InitRemote(servable_name, version_number, master_address, &model_loaders);
+    if (status != SUCCESS) {
+      MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
+    }
   }
   status = Worker::GetInstance().StartServable(servable_directory, servable_name, version_number, model_loaders,
                                                master_address, worker_address, false);

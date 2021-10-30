@@ -23,29 +23,12 @@ from mindspore_serving import server
 
 
 @serving_test
-def test_register_method_without_declared_model_failed():
-    servable_content = r"""
-import numpy as np
-from mindspore_serving.server import register
-
-def function_test(x1, x2):
-    y = x1+x2
-    return y
-
-@register.register_method(output_names="y")
-def predict(x1, x2):
-    y = register.add_stage(function_test, x1, x2, outputs_count=1)
-    return y
-    """
-    try:
-        start_serving_server(servable_content)  # no model files and version number directory
-        assert False
-    except RuntimeError as e:
-        assert "There is no model declared, servable directory" in str(e)
-
-
-@serving_test
 def test_register_method_with_model_success():
+    """
+    Feature: test register method
+    Description: method with only python function stage, python function has model.call
+    Expectation: success to start serving server.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -74,59 +57,12 @@ def predict(x1, x2):
 
 
 @serving_test
-def test_register_method_with_model_start_newest_version_success():
-    servable_content = r"""
-import numpy as np
-from mindspore_serving.server import register
-model = register.declare_model(model_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=False)
-
-def call_model(x1, x2):
-    y = model.call(x1, x2)
-    return y
-
-@register.register_method(output_names="y")
-def predict(x1, x2):
-    y = register.add_stage(call_model, x1, x2, outputs_count=1)
-    return y
-    """
-    base = start_serving_server(servable_content, version_number=2, start_version_number=0)
-    # Client
-    x1 = np.array([[1.1, 2.2], [3.3, 4.4]], np.float32)
-    x2 = np.array([[5.5, 6.6], [7.7, 8.8]], np.float32)
-    y = x1 + x2
-    instances = [{"x1": x1, "x2": x2}]
-
-    client = create_client("localhost:5500", base.servable_name, "predict", version_number=2)
-    result = client.infer(instances)
-    print("result", result)
-    assert (result[0]["y"] == y).all()
-
-
-@serving_test
-def test_register_method_with_model_start_version_invalid_failed():
-    servable_content = r"""
-import numpy as np
-from mindspore_serving.server import register
-model = register.declare_model(model_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=False)
-
-def call_model(x1, x2):
-    y = model.call(x1, x2)
-    return y
-
-@register.register_method(output_names="y")
-def predict(x1, x2):
-    y = register.add_stage(call_model, x1, x2, outputs_count=1)
-    return y
-    """
-    try:
-        start_serving_server(servable_content, version_number=1, start_version_number=2)
-        assert False
-    except RuntimeError as e:
-        assert "There is no specified version directory of models, specified version number: 2" in str(e)
-
-
-@serving_test
 def test_register_method_without_add_stage_success():
+    """
+    Feature: test register method
+    Description: method without any stages
+    Expectation: success to start serving server.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -153,6 +89,11 @@ def predict(x1, x2):
 
 @serving_test
 def test_register_method_without_register_method_failed():
+    """
+    Feature: test register method
+    Description: without any methods
+    Expectation: failed to start serving server.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -168,25 +109,11 @@ model = register.declare_model(model_file="tensor_add.mindir", model_format="Min
 
 @serving_test
 def test_register_method_two_input_one_output_one_model_stage_input_more_failed():
-    servable_content = r"""
-import numpy as np
-from mindspore_serving.server import register
-tensor_add = register.declare_model(model_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=False)
-
-@register.register_method(output_names="y")
-def predict(x1, x2, x3):
-    y = register.add_stage(tensor_add, x1, x2, x3, outputs_count=1)
-    return y
     """
-    try:
-        start_serving_server(servable_content, model_file="tensor_add.mindir")
-        assert False
-    except RuntimeError as e:
-        assert "The inputs count 3 in register_method not equal to the count 2 defined in model" in str(e)
-
-
-@serving_test
-def test_register_method_two_input_one_output_one_model_stage_input_more2_failed():
+    Feature: test register method
+    Description: model input count not equal to model stage input count
+    Expectation: failed to start serving server.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -194,11 +121,6 @@ tensor_add = register.declare_model(model_file="tensor_add.mindir", model_format
 
 @register.register_method(output_names="y")
 def predict(x1, x2, x3):
-    y = register.add_stage(tensor_add, x1, x2, x3, outputs_count=1)
-    return y
-    
-@register.register_method(output_names="y")
-def predict2(x1, x2, x3):
     y = register.add_stage(tensor_add, x1, x2, x3, outputs_count=1)
     return y
     """
@@ -211,6 +133,11 @@ def predict2(x1, x2, x3):
 
 @serving_test
 def test_register_method_two_input_one_output_one_model_stage_input_less_failed():
+    """
+    Feature: test register method
+    Description: model input count not equal to model stage input count
+    Expectation: failed to start serving server.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -230,6 +157,11 @@ def predict(x1, x2, x3):
 
 @serving_test
 def test_register_method_two_input_one_output_one_model_stage_input_less2_failed():
+    """
+    Feature: test register method
+    Description: model input count not equal to some model stage input count
+    Expectation: failed to start serving server.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -250,6 +182,11 @@ def predict(x1, x2, x3):
 
 @serving_test
 def test_register_method_two_input_one_output_one_model_stage_input_less3_failed():
+    """
+    Feature: test register method
+    Description: model input count not equal to model stage input count
+    Expectation: failed to start serving server.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -274,6 +211,11 @@ def predict2(x1, x2, x3):
 
 @serving_test
 def test_register_method_two_input_one_output_one_model_stage_with_batch_dim_input_more_failed():
+    """
+    Feature: test register method
+    Description: model input count not equal to model stage input count, with_batch_dim is True
+    Expectation: failed to start serving server.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -293,6 +235,11 @@ def predict(x1, x2, x3):
 
 @serving_test
 def test_register_method_two_input_one_output_one_model_stage_with_batch_dim_input_less_failed():
+    """
+    Feature: test register method
+    Description: model input count not equal to model stage input count, with_batch_dim is True
+    Expectation: failed to start serving server.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -312,6 +259,11 @@ def predict(x1, x2, x3):
 
 @serving_test
 def test_register_method_two_input_two_output_one_model_stage_output_more_failed():
+    """
+    Feature: test register method
+    Description: model output count not equal to model stage output count, with_batch_dim is True
+    Expectation: failed to start serving server.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -331,6 +283,11 @@ def predict(x1, x2):
 
 @serving_test
 def test_register_method_three_input_two_output_one_model_stage_output_less_failed():
+    """
+    Feature: test register method
+    Description: model output count not equal to model stage output count, with_batch_dim is True
+    Expectation: failed to start serving server.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -350,6 +307,11 @@ def predict(x1, x2):
 
 @serving_test
 def test_register_method_three_input_two_output_one_model_stage_output_less2_failed():
+    """
+    Feature: test register method
+    Description: model output count not equal to some model stage output count, with_batch_dim is True
+    Expectation: failed to start serving server.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -370,6 +332,11 @@ def predict(x1, x2):
 
 @serving_test
 def test_register_method_three_input_two_output_one_model_stage_output_less3_failed():
+    """
+    Feature: test register method
+    Description: model output count not equal to some model stage output count, with_batch_dim is True
+    Expectation: failed to start serving server.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -394,6 +361,11 @@ def predict2(x1, x2):
 
 @serving_test
 def test_register_method_model_file_repeat_failed():
+    """
+    Feature: test register method
+    Description: same model file repeatedly used in diff declare_model
+    Expectation: failed to start serving server.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -414,6 +386,11 @@ def predict(x1, x2):
 
 @serving_test
 def test_register_method_model_file_repeat2_failed():
+    """
+    Feature: test register method
+    Description: same model file repeatedly used in diff declare_model
+    Expectation: failed to start serving server.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -434,6 +411,11 @@ def predict(x1, x2):
 
 @serving_test
 def test_register_method_model_file_repeat3_failed():
+    """
+    Feature: test register method
+    Description: same model file repeatedly used in diff declare_model
+    Expectation: failed to start serving server.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -454,6 +436,11 @@ def predict(x1, x2):
 
 @serving_test
 def test_register_method_method_registered_repeat_failed():
+    """
+    Feature: test register method
+    Description: methods with same name
+    Expectation: failed to start serving server.
+    """
     servable_content = r"""
 from mindspore_serving.server import register
 tensor_add = register.declare_model(model_file="tensor_add.mindir", model_format="MindIR")
@@ -477,6 +464,11 @@ def add_cast(x1, x2):
 
 @serving_test
 def test_register_method_input_arg_invalid_failed():
+    """
+    Feature: test register method
+    Description: method input args invalid
+    Expectation: failed to start serving server.
+    """
     servable_content = r"""
 from mindspore_serving.server import register
 tensor_add = register.declare_model(model_file="tensor_add.mindir", model_format="MindIR")
@@ -495,6 +487,11 @@ def add_cast(x1, **x2):
 
 @serving_test
 def test_register_method_input_arg_invalid2_failed():
+    """
+    Feature: test register method
+    Description: method input args invalid
+    Expectation: failed to start serving server.
+    """
     servable_content = r"""
 from mindspore_serving.server import register
 tensor_add = register.declare_model(model_file="tensor_add.mindir", model_format="MindIR")
@@ -513,6 +510,11 @@ def add_cast(x1, *x2):
 
 @serving_test
 def test_register_method_function_stage_invalid_input_failed():
+    """
+    Feature: test register method
+    Description: stage input args invalid
+    Expectation: failed to start serving server.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -536,6 +538,11 @@ def add_cast(x1, x2):
 
 @serving_test
 def test_register_method_function_stage_invalid_input2_failed():
+    """
+    Feature: test register method
+    Description: stage input args invalid
+    Expectation: failed to start serving server.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -559,6 +566,11 @@ def add_cast(x1, x2):
 
 @serving_test
 def test_register_method_model_stage_invalid_input_failed():
+    """
+    Feature: test register method
+    Description: stage input args invalid
+    Expectation: failed to start serving server.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -578,6 +590,11 @@ def add_cast(x1, x2):
 
 @serving_test
 def test_register_method_invalid_return_failed():
+    """
+    Feature: test register method
+    Description: method return invalid
+    Expectation: failed to start serving server.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -597,6 +614,11 @@ def add_cast(x1, x2):
 
 @serving_test
 def test_register_method_function_stage_batch_input_count_not_same_failed():
+    """
+    Feature: test register method
+    Description: function stage input count diff in diff method
+    Expectation: failed to start serving server.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -634,6 +656,11 @@ def add_cast2(x1, x2):
 
 @serving_test
 def test_register_method_function_stage_batch_input_count_not_same2_failed():
+    """
+    Feature: test register method
+    Description: function stage input count diff in diff method
+    Expectation: failed to start serving server.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -671,6 +698,11 @@ def add_cast2(x1, x2, x3):
 
 @serving_test
 def test_register_method_function_stage_batch_output_count_not_same_failed():
+    """
+    Feature: test register method
+    Description: function stage output count diff in diff method
+    Expectation: failed to start serving server.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -708,6 +740,11 @@ def add_cast2(x1, x2):
 
 @serving_test
 def test_register_method_function_stage_batch_output_count_not_same2_failed():
+    """
+    Feature: test register method
+    Description: function stage output count diff in diff method
+    Expectation: failed to start serving server.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -745,6 +782,11 @@ def add_cast2(x1, x2):
 
 @serving_test
 def test_register_method_method_output_count_not_match_output_names_failed():
+    """
+    Feature: test register method
+    Description: outputs count registered not equal to the count return in function
+    Expectation: failed to start serving server.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register

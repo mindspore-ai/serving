@@ -65,7 +65,7 @@ def start_worker(servable_directory, servable_name, version_number,
     signal.signal(signal.SIGCHLD, signal.SIG_DFL)  # for ccec compiler
     check_type.check_str('servable_directory', servable_directory)
     check_type.check_str('servable_name', servable_name)
-    check_type.check_int('version_number', version_number, 1)
+    check_type.check_int('version_number', version_number, 0)
 
     check_type.check_int('device_id', device_id, 0)
 
@@ -76,6 +76,8 @@ def start_worker(servable_directory, servable_name, version_number,
     if listening_master:
         start_listening_parent_thread(servable_name, device_id)
 
+    # for servable_config.py to get device id of current worker.
+    os.environ["SERVING_DEVICE_ID"] = str(device_id)
     worker_pid = os.getpid()
     unix_socket_dir = "unix_socket_files"
     try:
