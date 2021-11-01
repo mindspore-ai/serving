@@ -61,14 +61,14 @@ class ServingTestBase:
             os.mkdir(self.servable_name_path)
         except FileExistsError:
             pass
-        if self.model_files_path:
+        if self.model_files_path and version_number is not None:
             try:
                 os.mkdir(self.version_number_path)
             except FileExistsError:
                 pass
-        for file in self.model_files_path:
-            with open(file, "w") as fp:
-                print("model content", file=fp)
+            for file in self.model_files_path:
+                with open(file, "w") as fp:
+                    print("model content", file=fp)
         if servable_config_content is not None:
             config_file = os.path.join(self.servable_name_path, "servable_config.py")
             with open(config_file, "w") as fp:
@@ -330,12 +330,14 @@ def float_plus_1(float_val):
     return base
 
 
-def start_serving_server(servable_content, model_file="tensor_add.mindir", version_number=1, start_version_number=None):
+def start_serving_server(servable_content, model_file="tensor_add.mindir", version_number=1, start_version_number=None,
+                         device_ids=0, num_parallel_workers=0):
     base = ServingTestBase()
     base.init_servable_with_servable_config(version_number, servable_content, model_file=model_file)
     if start_version_number is None:
         start_version_number = version_number
-    server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0,
-                                                      version_number=start_version_number))
+    server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=device_ids,
+                                                      version_number=start_version_number,
+                                                      num_parallel_workers=num_parallel_workers))
     server.start_grpc_server("0.0.0.0:5500")
     return base

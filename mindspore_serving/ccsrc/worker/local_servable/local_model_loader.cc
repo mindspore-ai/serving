@@ -117,7 +117,7 @@ Status LocalModelLoader::LoadModel(uint64_t version_number, const std::string &d
     base_spec_.servable_directory + "/" + base_spec_.servable_name + "/" + std::to_string(version_number);
   if (!common::DirOrFileExist(model_dir)) {
     return INFER_STATUS_LOG_ERROR(FAILED)
-           << "Start servable failed, there is no specified version directory of models, specified version number: "
+           << "Start servable failed: There is no specified version directory of models, specified version number: "
            << version_number << ", servable directory: '" << base_spec_.servable_directory << "', servable name: '"
            << base_spec_.servable_name << "'";
   }
