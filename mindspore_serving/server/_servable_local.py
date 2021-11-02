@@ -21,7 +21,7 @@ import subprocess
 
 from mindspore_serving import log as logger
 from mindspore_serving.server.common import check_type, get_abs_path
-from mindspore_serving.server.worker import init_mindspore
+from mindspore_serving.server.worker import init_mindspore, get_newest_version_number
 from mindspore_serving.server._servable_common import ServableContextDataBase
 from mindspore_serving._mindspore_serving import Worker_
 
@@ -186,7 +186,7 @@ class ServableStartConfigGroup:
         self.device_type = device_type
         self.check_servable_location()
         self.deploy_configs = {}
-        self.newest_version_number = self.get_newest_version_number()
+        self.newest_version_number = get_newest_version_number(servable_directory, servable_name)
         logger.info(f"The newest version number of servable {self.servable_name} is {self.newest_version_number}, "
                     f"servable directory: {self.servable_directory}")
 
@@ -235,24 +235,6 @@ class ServableStartConfigGroup:
                                                dec_key=config.dec_key, dec_mode=config.dec_mode)
             configs.append(start_config)
         return configs
-
-    def get_newest_version_number(self):
-        """Get newest version number of servable"""
-        max_version = 0
-        version_root_dir = os.path.join(self.servable_directory, self.servable_name)
-        try:
-            files = os.listdir(version_root_dir)
-        except FileNotFoundError:
-            return 0
-        for file in files:
-            if not os.path.isdir(os.path.join(version_root_dir, file)):
-                continue
-            if not file.isdigit() or file == "0" and str(int(file)) != file:
-                continue
-            version = int(file)
-            if max_version < version:
-                max_version = version
-        return max_version
 
 
 g_device_type = None

@@ -14,10 +14,13 @@
 # ============================================================================
 """Interface for start up servable"""
 
+import os
+import sys
 from functools import wraps
 from mindspore_serving import log as logger
-from mindspore_serving.server.common import check_type
+from mindspore_serving.server.common import check_type, get_abs_path
 from mindspore_serving.server.worker import init_mindspore
+
 from mindspore_serving._mindspore_serving import ExitSignalHandle_
 from mindspore_serving._mindspore_serving import Worker_
 from mindspore_serving._mindspore_serving import ServableContext_
@@ -38,6 +41,26 @@ def _set_device_type(device_type):
         ServableContext_.get_instance().set_device_type_str(device_type)
     else:
         ServableContext_.get_instance().set_device_type_str('None')  # depend on MindSpore build target
+
+
+def get_newest_version_number(servable_directory, servable_name):
+    """Get newest version number of servable"""
+    max_version = 0
+    servable_directory = get_abs_path(servable_directory)
+    version_root_dir = os.path.join(servable_directory, servable_name)
+    try:
+        files = os.listdir(version_root_dir)
+    except FileNotFoundError:
+        return 0
+    for file in files:
+        if not os.path.isdir(os.path.join(version_root_dir, file)):
+            continue
+        if not file.isdigit() or file == "0" and str(int(file)) != file:
+            continue
+        version = int(file)
+        if max_version < version:
+            max_version = version
+    return max_version
 
 
 def stop():
@@ -77,9 +100,6 @@ def stop_on_except(func):
 
 def _load_servable_config(servable_directory, servable_name):
     """Load servable config named servable_config.py in directory `servable_directory`/`servable_name` """
-
-    import sys
-    import os
     config_dir = os.path.join(servable_directory, servable_name)
     if not os.path.isdir(config_dir):
         raise RuntimeError(f"Load servable config failed, directory '{config_dir}' not exist, "
@@ -120,11 +140,12 @@ def start_servable(servable_directory, servable_name, version_number,
     model_names = Worker_.get_declared_model_names()
     if model_names:
         init_mindspore.init_mindspore_cxx_env()
-    if version_number == 0:
-        if model_names:
+        newest_version_number = get_newest_version_number(servable_directory, servable_name)
+        if not newest_version_number:
             raise RuntimeError(
                 f"There is no valid version directory of models while there are models declared in servable_config.py, "
                 f"servable directory: {servable_directory}, servable name: {servable_name}")
+    if version_number == 0:
         version_number = 1
 
     _set_device_type(device_type)
@@ -150,11 +171,12 @@ def start_extra_servable(servable_directory, servable_name, version_number, mast
     model_names = Worker_.get_declared_model_names()
     if model_names:
         init_mindspore.init_mindspore_cxx_env()
-    if version_number == 0:
-        if model_names:
+        newest_version_number = get_newest_version_number(servable_directory, servable_name)
+        if not newest_version_number:
             raise RuntimeError(
                 f"There is no valid version directory of models while there are models declared in servable_config.py, "
                 f"servable directory: {servable_directory}, servable name: {servable_name}")
+    if version_number == 0:
         version_number = 1
 
     Worker_.start_extra_servable(servable_directory, servable_name, version_number, master_address, worker_address)
