@@ -743,7 +743,7 @@ def predict(x1, x2):
         assert False
     except RuntimeError as e:
         # "Cannot find model {} version 1 registered"
-        assert "Cannot find model" in str(e)
+        assert "There is no valid version directory of models" in str(e)
 
 
 @serving_test
@@ -867,4 +867,4 @@ def predict(x1, x2):
         assert False
     except RuntimeError as e:
         # "Cannot find model {} version 1 registered"
-        assert "There is no specified version directory of models, specified version number: 1" in str(e)
+        assert "There is no valid version directory of models" in str(e)

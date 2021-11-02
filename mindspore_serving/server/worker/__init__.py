@@ -14,4 +14,4 @@
 # ============================================================================
 """MindSpore worker implement"""
 
-from ._worker import start_servable, start_extra_servable, stop
+from ._worker import start_servable, start_extra_servable, stop, get_newest_version_number
