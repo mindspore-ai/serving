@@ -137,6 +137,7 @@ def _start_workers_with_devices(master_address, servable_configs):
 def _start_extra_workers(master_address, servable_configs):
     """Start workers that do not occupy devices"""
     worker_list = []
+    worker_pid_set = set()
     for config in servable_configs:
         if not isinstance(config, ServableStartConfig):
             continue
@@ -151,6 +152,10 @@ def _start_extra_workers(master_address, servable_configs):
             try:
                 context_data = ServableExtraContextData(config, master_address, index)
                 sub_process = context_data.new_worker_process()
+                if sub_process.pid in worker_pid_set:
+                    raise RuntimeError(
+                        f"Extra worker {sub_process.pid} has exited and its' pid is reused by new extra worker")
+                worker_pid_set.add(sub_process.pid)
                 worker_context = WorkerContext(context_data, master_address, sub_process)
             except RuntimeError as e:
                 _send_exit_signal_to_children(worker_list)

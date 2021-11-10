@@ -210,7 +210,8 @@ void Dispatcher::GetModelInfo(const proto::GetModelInfoRequest *request, proto::
     }
   }
   auto status = INFER_STATUS_LOG_ERROR(FAILED)
-                << "Cannot find model " << servable_name << " version " << version_number << " registered";
+                << "Servable '" << servable_name << "' has models declared by declare_model, but parameter 'device_ids'"
+                << " of ServableStartConfig is not set in Serving startup script when the device target is not CPU";
   auto error_msg = reply->mutable_error_msg();
   error_msg->set_error_code(FAILED);
   error_msg->set_error_msg(status.StatusMessage());

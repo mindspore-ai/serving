@@ -25,6 +25,11 @@ def is_float_equal(left, right):
 
 @serving_test
 def test_stage_function_one_function_stage_float_success():
+    """
+    Feature: test servable_config.py stage
+    Description: Test stage with two inputs, one output
+    Expectation: Serving server work ok.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -65,6 +70,11 @@ def predict(x1, x2):
 
 @serving_test
 def test_stage_function_one_function_stage_two_output_success():
+    """
+    Feature: test servable_config.py stage
+    Description: Test stage with one input, two outputs
+    Expectation: Serving server work ok.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -105,6 +115,11 @@ def predict(x1):
 
 @serving_test
 def test_stage_function_one_function_stage_output_more_failed():
+    """
+    Feature: test servable_config.py stage
+    Description: Test stage declared outputs_count < python function outputs count
+    Expectation: Serving server report error.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -128,15 +143,20 @@ def predict(x1, x2):
     result = client.infer(instances)
     print("result", result)
     if isinstance(result, dict):
-        assert "Servable is not available" in result["error"] \
+        assert "servable is not available" in result["error"] \
                or f"Call Function '{base.servable_name}.func_test' Failed" in result["error"]
     else:
-        assert "Servable is not available" in result[0]["error"] \
+        assert "servable is not available" in result[0]["error"] \
                or f"Call Function '{base.servable_name}.func_test' Failed" in result[0]["error"]
 
 
 @serving_test
 def test_stage_function_one_function_stage_output_less_failed():
+    """
+    Feature: test servable_config.py stage
+    Description: Test stage declared outputs_count > python function outputs count
+    Expectation: Serving server report error.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -160,15 +180,20 @@ def predict(x1, x2):
     result = client.infer(instances)
     print("result", result)
     if isinstance(result, dict):
-        assert "Servable is not available" in result["error"] \
+        assert "servable is not available" in result["error"] \
                or f"Call Function '{base.servable_name}.func_test' Failed" in result["error"]
     else:
-        assert "Servable is not available" in result[0]["error"] \
+        assert "servable is not available" in result[0]["error"] \
                or f"Call Function '{base.servable_name}.func_test' Failed" in result[0]["error"]
 
 
 @serving_test
 def test_stage_function_one_function_stage_error_outputs_count_failed():
+    """
+    Feature: test servable_config.py stage
+    Description: Test stage declared outputs_count > python function outputs count
+    Expectation: Serving server report error.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -191,6 +216,11 @@ def predict(x1, x2):
 
 @serving_test
 def test_stage_function_one_function_stage_error_outputs_count2_failed():
+    """
+    Feature: test servable_config.py stage
+    Description: Test stage declared outputs_count < python function outputs count
+    Expectation: Serving server report error.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -213,13 +243,18 @@ def predict(x1, x2):
 
 @serving_test
 def test_stage_function_one_function_stage_input_more_failed():
+    """
+    Feature: test servable_config.py stage
+    Description: Test stage declared inputs count < python function inputs count
+    Expectation: Serving server startup error.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
 model = register.declare_model(model_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=False)
 
 def func_test(x1, x2, x3):
-    return x1+x2
+    return x1, x2
 
 @register.register_method(output_names=["y1", "y2"])
 def predict(x1, x2):
@@ -235,13 +270,18 @@ def predict(x1, x2):
 
 @serving_test
 def test_stage_function_one_function_stage_input_less_failed():
+    """
+    Feature: test servable_config.py stage
+    Description: Test stage declared inputs count > python function inputs count
+    Expectation: Serving server startup error.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
 model = register.declare_model(model_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=False)
 
 def func_test(x1):
-    return x1+x2
+    return x1, x2
 
 @register.register_method(output_names=["y1", "y2"])
 def predict(x1, x2):
@@ -257,6 +297,11 @@ def predict(x1, x2):
 
 @serving_test
 def test_stage_function_one_function_stage_raise_exception_failed():
+    """
+    Feature: test servable_config.py stage
+    Description: Stage python function raise exception
+    Expectation: Serving server report error.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -280,15 +325,20 @@ def predict(x1, x2):
     result = client.infer(instances)
     print("result", result)
     if isinstance(result, dict):
-        assert "Servable is not available" in result["error"] \
+        assert "servable is not available" in result["error"] \
                or f"Call Function '{base.servable_name}.func_test' Failed" in result["error"]
     else:
-        assert "Servable is not available" in result[0]["error"] \
+        assert "servable is not available" in result[0]["error"] \
                or f"Call Function '{base.servable_name}.func_test' Failed" in result[0]["error"]
 
 
 @serving_test
 def test_stage_function_one_function_stage_none_outputs_failed():
+    """
+    Feature: test servable_config.py stage
+    Description: Stage python function return None
+    Expectation: Serving server report error.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -312,15 +362,20 @@ def predict(x1, x2):
     result = client.infer(instances)
     print("result", result)
     if isinstance(result, dict):
-        assert "Servable is not available" in result["error"] \
+        assert "servable is not available" in result["error"] \
                or f"Call Function '{base.servable_name}.func_test' Failed" in result["error"]
     else:
-        assert "Servable is not available" in result[0]["error"] \
+        assert "servable is not available" in result[0]["error"] \
                or f"Call Function '{base.servable_name}.func_test' Failed" in result[0]["error"]
 
 
 @serving_test
 def test_stage_function_one_function_stage_invalid_output_dtype_failed():
+    """
+    Feature: test servable_config.py stage
+    Description: Stage python function return invalid data, dtype is not supported
+    Expectation: Serving server report error.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -344,15 +399,20 @@ def predict(x1, x2):
     result = client.infer(instances)
     print("result", result)
     if isinstance(result, dict):
-        assert "Servable is not available" in result["error"] \
+        assert "servable is not available" in result["error"] \
                or f"Call Function '{base.servable_name}.func_test' Failed" in result["error"]
     else:
-        assert "Servable is not available" in result[0]["error"] \
+        assert "servable is not available" in result[0]["error"] \
                or f"Call Function '{base.servable_name}.func_test' Failed" in result[0]["error"]
 
 
 @serving_test
 def test_stage_function_one_function_stage_batch_size_success():
+    """
+    Feature: test servable_config.py stage
+    Description: Stage python function run with batch_size parameter, and result output count is 1, tuple/list
+    Expectation: Serving server work ok.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -391,6 +451,11 @@ def predict(x1, x2):
 
 @serving_test
 def test_stage_function_one_function_stage_batch_size2_success():
+    """
+    Feature: test servable_config.py stage
+    Description: Stage python function run with batch_size parameter, and result output count is 1, not tuple/list
+    Expectation: Serving server work ok.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -429,6 +494,11 @@ def predict(x1, x2):
 
 @serving_test
 def test_stage_function_one_function_stage_batch_size3_success():
+    """
+    Feature: test servable_config.py stage
+    Description: Stage python function run with batch_size parameter, use yield, not tuple/list
+    Expectation: Serving server work ok.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -466,6 +536,11 @@ def predict(x1, x2):
 
 @serving_test
 def test_stage_function_one_function_stage_batch_size4_success():
+    """
+    Feature: test servable_config.py stage
+    Description: Stage python function run with batch_size parameter, use yield, use tuple/list
+    Expectation: Serving server work ok.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -503,6 +578,11 @@ def predict(x1, x2):
 
 @serving_test
 def test_stage_function_one_function_stage_batch_size_equal1_success():
+    """
+    Feature: test servable_config.py stage
+    Description: Stage python function run with batch_size parameter, batch size = 1
+    Expectation: Serving server work ok.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -540,6 +620,11 @@ def predict(x1, x2):
 
 @serving_test
 def test_stage_function_one_function_stage_batch_size_0_success():
+    """
+    Feature: test servable_config.py stage
+    Description: Stage python function run with batch_size parameter, batch size=0, batch size is determined by system
+    Expectation: Serving server work ok.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -577,6 +662,11 @@ def predict(x1, x2):
 
 @serving_test
 def test_stage_function_one_function_stage_error_batch_size_failed():
+    """
+    Feature: test servable_config.py stage
+    Description: Stage python function run with batch_size parameter, batch size is invalid
+    Expectation: Serving server startup failed.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -602,6 +692,11 @@ def predict(x1, x2):
 
 @serving_test
 def test_stage_function_one_function_stage_batch_size_two_outputs_success():
+    """
+    Feature: test servable_config.py stage
+    Description: Stage python function run with batch_size parameter, yield, result outputs count is 2
+    Expectation: Serving server work well.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -646,6 +741,11 @@ def predict(x1, x2):
 
 @serving_test
 def test_stage_function_one_function_stage_batch_size_two_outputs_multi_times_success():
+    """
+    Feature: test servable_config.py stage
+    Description: Stage python function run with batch_size parameter, multi stage
+    Expectation: Serving server work well.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -690,7 +790,12 @@ def predict(x1, x2):
 
 
 @serving_test
-def test_stage_function_one_function_stage_batch_size_two_outputs2_failed():
+def test_stage_function_one_function_stage_batch_size_two_outputs2_success():
+    """
+    Feature: test servable_config.py stage
+    Description: Stage python function run with batch_size parameter, result output count is 2
+    Expectation: Serving server work well.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -735,7 +840,12 @@ def predict(x1, x2):
 
 
 @serving_test
-def test_stage_function_one_function_stage_batch_size_input_more_failed():
+def test_stage_function_one_function_stage_batch_size_input_more_success():
+    """
+    Feature: test servable_config.py stage
+    Description: Stage python function run with batch_size parameter, used inputs count 2 < declared inputs count 3
+    Expectation: Serving server work well.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -782,6 +892,11 @@ def predict(x1, x2, x3):
 
 @serving_test
 def test_stage_function_one_function_stage_batch_size_input_less_failed():
+    """
+    Feature: test servable_config.py stage
+    Description: Stage python function run with batch_size parameter, used inputs count 2 > declared inputs count 1
+    Expectation: Serving server report error.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -811,15 +926,20 @@ def predict(x1):
     result = client.infer(instances)
     print("result", result)
     if isinstance(result, dict):
-        assert "Servable is not available" in result["error"] \
+        assert "servable is not available" in result["error"] \
                or f"Call Function '{base.servable_name}.func_test_batch' Failed" in result["error"]
     else:
-        assert "Servable is not available" in result[0]["error"] \
+        assert "servable is not available" in result[0]["error"] \
                or f"Call Function '{base.servable_name}.func_test_batch' Failed" in result[0]["error"]
 
 
 @serving_test
 def test_stage_function_one_function_stage_batch_size_output_more_failed():
+    """
+    Feature: test servable_config.py stage
+    Description: Stage python function run with batch_size parameter, outputs count 2 < declared outputs_count 3
+    Expectation: Serving server report error.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -850,15 +970,20 @@ def predict(x1, x2):
     result = client.infer(instances)
     print("result", result)
     if isinstance(result, dict):
-        assert "Servable is not available" in result["error"] \
+        assert "servable is not available" in result["error"] \
                or f"Call Function '{base.servable_name}.func_test_batch' Failed" in result["error"]
     else:
-        assert "Servable is not available" in result[0]["error"] \
+        assert "servable is not available" in result[0]["error"] \
                or f"Call Function '{base.servable_name}.func_test_batch' Failed" in result[0]["error"]
 
 
 @serving_test
 def test_stage_function_one_function_stage_batch_size_output_less_failed():
+    """
+    Feature: test servable_config.py stage
+    Description: Stage python function run with batch_size parameter, outputs count 2 > declared outputs_count 1
+    Expectation: Serving server report error.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -889,15 +1014,20 @@ def predict(x1, x2):
     result = client.infer(instances)
     print("result", result)
     if isinstance(result, dict):
-        assert "Servable is not available" in result["error"] \
+        assert "servable is not available" in result["error"] \
                or f"Call Function '{base.servable_name}.func_test_batch' Failed" in result["error"]
     else:
-        assert "Servable is not available" in result[0]["error"] \
+        assert "servable is not available" in result[0]["error"] \
                or f"Call Function '{base.servable_name}.func_test_batch' Failed" in result[0]["error"]
 
 
 @serving_test
 def test_stage_function_one_function_stage_batch_size_output_less2_failed():
+    """
+    Feature: test servable_config.py stage
+    Description: Stage python function run with batch_size parameter, outputs count 2 > declared outputs_count 1, yield
+    Expectation: Serving server report error.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -927,15 +1057,20 @@ def predict(x1, x2):
     result = client.infer(instances)
     print("result", result)
     if isinstance(result, dict):
-        assert "Servable is not available" in result["error"] \
+        assert "servable is not available" in result["error"] \
                or f"Call Function '{base.servable_name}.func_test_batch' Failed" in result["error"]
     else:
-        assert "Servable is not available" in result[0]["error"] \
+        assert "servable is not available" in result[0]["error"] \
                or f"Call Function '{base.servable_name}.func_test_batch' Failed" in result[0]["error"]
 
 
 @serving_test
 def test_stage_function_one_function_stage_batch_size_raise_exception_failed():
+    """
+    Feature: test servable_config.py stage
+    Description: Stage python function run with batch_size parameter, raise exception
+    Expectation: Serving server report error.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -961,15 +1096,20 @@ def predict(x1, x2):
     result = client.infer(instances)
     print("result", result)
     if isinstance(result, dict):
-        assert "Servable is not available" in result["error"] \
+        assert "servable is not available" in result["error"] \
                or f"Call Function '{base.servable_name}.func_test_batch' Failed" in result["error"]
     else:
-        assert "Servable is not available" in result[0]["error"] \
+        assert "servable is not available" in result[0]["error"] \
                or f"Call Function '{base.servable_name}.func_test_batch' Failed" in result[0]["error"]
 
 
 @serving_test
 def test_stage_function_one_function_stage_batch_size_none_return_failed():
+    """
+    Feature: test servable_config.py stage
+    Description: Stage python function run with batch_size parameter, return None
+    Expectation: Serving server report error.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -995,15 +1135,20 @@ def predict(x1, x2):
     result = client.infer(instances)
     print("result", result)
     if isinstance(result, dict):
-        assert "Servable is not available" in result["error"] \
+        assert "servable is not available" in result["error"] \
                or f"Call Function '{base.servable_name}.func_test_batch' Failed" in result["error"]
     else:
-        assert "Servable is not available" in result[0]["error"] \
+        assert "servable is not available" in result[0]["error"] \
                or f"Call Function '{base.servable_name}.func_test_batch' Failed" in result[0]["error"]
 
 
 @serving_test
 def test_stage_function_one_function_stage_batch_size_invalid_output_dtype_failed():
+    """
+    Feature: test servable_config.py stage
+    Description: Stage python function run with batch_size parameter, return invalid data
+    Expectation: Serving server report error.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -1034,15 +1179,21 @@ def predict(x1, x2):
     result = client.infer(instances)
     print("result", result)
     if isinstance(result, dict):
-        assert "Servable is not available" in result["error"] \
+        assert "servable is not available" in result["error"] \
                or f"Call Function '{base.servable_name}.func_test_batch' Failed" in result["error"]
     else:
-        assert "Servable is not available" in result[0]["error"] \
+        assert "servable is not available" in result[0]["error"] \
                or f"Call Function '{base.servable_name}.func_test_batch' Failed" in result[0]["error"]
 
 
 @serving_test
 def test_servable_postprocess_result_count_less():
+    """
+    Feature: test servable_config.py stage
+    Description: Stage python function run with batch_size parameter, return instances count less then input
+        instances count
+    Expectation: Serving server report error.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -1079,6 +1230,12 @@ def add_common(x1, x2):
 
 @serving_test
 def test_servable_postprocess_result_count_more():
+    """
+    Feature: test servable_config.py stage
+    Description: Stage python function run with batch_size parameter, return instances count more then input
+        instances count
+    Expectation: Serving server work well.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -1117,6 +1274,12 @@ def add_common(x1, x2):
 
 @serving_test
 def test_stage_function_preprocess_result_count_less():
+    """
+    Feature: test servable_config.py stage
+    Description: Stage python function run with batch_size parameter, return instances count less then input
+        instances count
+    Expectation: Serving server report error.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
@@ -1156,6 +1319,12 @@ def add_common(x1, x2):
 
 @serving_test
 def test_stage_function_preprocess_result_count_more():
+    """
+    Feature: test servable_config.py stage
+    Description: Stage python function run with batch_size parameter, return instances count more then input
+        instances count
+    Expectation: Serving server work well.
+    """
     servable_content = r"""
 import numpy as np
 from mindspore_serving.server import register
