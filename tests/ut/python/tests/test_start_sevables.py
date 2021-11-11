@@ -742,7 +742,6 @@ def predict(x1, x2):
                              version_number=None, start_version_number=1)
         assert False
     except RuntimeError as e:
-        # "Cannot find model {} version 1 registered"
         assert "There is no valid version directory of models" in str(e)
 
 
@@ -773,8 +772,8 @@ def predict(x1, x2):
                              version_number=1, start_version_number=0)
         assert False
     except RuntimeError as e:
-        # "Cannot find model {} version 1 registered"
-        assert "Cannot find model" in str(e)
+        # "Servable '{}'  has models declared by declare_model, but parameter 'device_ids'"
+        assert " has models declared by declare_model, but parameter 'device_ids'" in str(e)
 
 
 @serving_test
@@ -804,8 +803,8 @@ def predict(x1, x2):
                              version_number=1, start_version_number=1)
         assert False
     except RuntimeError as e:
-        # "Cannot find model {} version 1 registered"
-        assert "Cannot find model" in str(e)
+        # "Servable '{}'  has models declared by declare_model, but parameter 'device_ids'"
+        assert " has models declared by declare_model, but parameter 'device_ids'" in str(e)
 
 
 @serving_test
@@ -835,7 +834,6 @@ def predict(x1, x2):
                              version_number=None, start_version_number=0)
         assert False
     except RuntimeError as e:
-        # "Cannot find model {} version 1 registered"
         assert "There is no valid version directory of models" in str(e)
 
 
@@ -866,5 +864,4 @@ def predict(x1, x2):
                              version_number=None, start_version_number=1)
         assert False
     except RuntimeError as e:
-        # "Cannot find model {} version 1 registered"
         assert "There is no valid version directory of models" in str(e)
