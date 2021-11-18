@@ -804,3 +804,37 @@ def add_cast(x1, x2):
         assert False
     except RuntimeError as e:
         assert "Method return output size 2 not match registered 1" in str(e)
+
+
+@serving_test
+def test_register_method_method_python_function_batch_size_exist_inconsistently_failed():
+    """
+    Feature: test register method
+    Description: python function used in multi add_stage, one with batch_size, other without batch_size
+    Expectation: failed to start serving server.
+    """
+    servable_content = r"""
+import numpy as np
+from mindspore_serving.server import register
+tensor_add = register.declare_model(model_file="tensor_add.mindir", model_format="MindIR")
+
+def stage_test_fun(x1, x2):
+    return x1+x2
+
+@register.register_method(output_names=["y"])
+def add_cast(x1, x2):
+    y = register.add_stage(stage_test_fun, x1, x2, outputs_count=1)
+    return y
+
+@register.register_method(output_names=["y"])
+def add_cast(x1, x2):
+    y = register.add_stage(stage_test_fun, x1, x2, outputs_count=1, batch_size=4)
+    return y
+"""
+    base = ServingTestBase()
+    base.init_servable_with_servable_config(1, servable_content)
+    try:
+        server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0))
+        assert False
+    except RuntimeError as e:
+        assert "parameter 'batch_size' in multiple 'add_stage' should be enabled or disabled consistently" in str(e)

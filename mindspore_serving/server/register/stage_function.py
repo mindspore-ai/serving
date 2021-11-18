@@ -48,9 +48,14 @@ class StageFunctionStorage:
         self.function = {}
         self.storage = StageFunctionStorage_.get_instance()
 
-    def register(self, method_name, fun, function_name, inputs_count, outputs_count):
+    def register(self, method_name, fun, function_name, inputs_count, outputs_count, use_with_size):
         check_stage_function(method_name, function_name, inputs_count, outputs_count)
-        self.function[function_name] = {"fun": fun, "inputs_count": inputs_count, "outputs_count": outputs_count}
+        if function_name in self.function:
+            if self.function[function_name]["use_with_size"] != use_with_size:
+                raise RuntimeError(f"Failed to add stage function {function_name}: parameter 'batch_size' in "
+                                   f"multiple 'add_stage' should be enabled or disabled consistently")
+        self.function[function_name] = {"fun": fun, "inputs_count": inputs_count, "outputs_count": outputs_count,
+                                        "use_with_size": use_with_size}
         self.storage.register(function_name, inputs_count, outputs_count)
 
     def get(self, function_name):
@@ -63,11 +68,11 @@ class StageFunctionStorage:
 stage_function_storage = StageFunctionStorage()
 
 
-def register_stage_function(method_name, func, inputs_count, outputs_count):
+def register_stage_function(method_name, func, inputs_count, outputs_count, use_with_size):
     """register stage function"""
     servable_name = get_servable_dir()
     func_name = get_func_name(func)
     name = servable_name + "." + func_name
 
-    logger.info(f"Register stage function {name} {inputs_count} {outputs_count}")
-    stage_function_storage.register(method_name, func, name, inputs_count, outputs_count)
+    logger.info(f"Register stage function {name} {inputs_count} {outputs_count}, use batch size: {use_with_size}")
+    stage_function_storage.register(method_name, func, name, inputs_count, outputs_count, use_with_size)
