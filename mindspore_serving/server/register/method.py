@@ -368,11 +368,12 @@ def add_stage(stage, *args, outputs_count, batch_size=None, tag=None):
     elif inspect.isfunction(stage):
         if batch_size is None:
             register_stage_function(method_name, _wrap_fun_to_batch(stage, inputs_count),
-                                    inputs_count=inputs_count, outputs_count=outputs_count)
+                                    inputs_count=inputs_count, outputs_count=outputs_count, use_with_size=False)
             batch_size = 0
         else:
             check_type.check_int("batch_size", batch_size, 0)
-            register_stage_function(method_name, stage, inputs_count=inputs_count, outputs_count=outputs_count)
+            register_stage_function(method_name, stage, inputs_count=inputs_count, outputs_count=outputs_count,
+                                    use_with_size=True)
         func_name = get_servable_dir() + "." + get_func_name(stage)
         method_def_context_.add_stage_function(func_name, func_inputs, batch_size, tag)
     else:
