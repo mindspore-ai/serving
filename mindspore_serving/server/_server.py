@@ -150,7 +150,7 @@ def _start_extra_workers(master_address, servable_configs):
         extra_worker_count = config.num_parallel_workers - len(config.device_ids)
         for index in range(extra_worker_count):
             try:
-                context_data = ServableExtraContextData(config, master_address, index)
+                context_data = ServableExtraContextData(config, master_address, index, not config.device_ids)
                 sub_process = context_data.new_worker_process()
                 if sub_process.pid in worker_pid_set:
                     raise RuntimeError(

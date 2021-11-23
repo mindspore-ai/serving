@@ -15,10 +15,10 @@
 """Start worker process with single core servable"""
 
 import os
-import sys
 import time
 import threading
 import signal
+import argparse
 import psutil
 
 import mindspore_serving.log as logger
@@ -66,7 +66,7 @@ def start_worker(servable_directory, servable_name, version_number,
     check_type.check_str('servable_directory', servable_directory)
     check_type.check_str('servable_name', servable_name)
     check_type.check_int('version_number', version_number, 0)
-
+    check_type.check_str('device_type', device_type)
     check_type.check_int('device_id', device_id, 0)
 
     check_type.check_str('master_address', master_address)
@@ -100,17 +100,25 @@ def start_worker(servable_directory, servable_name, version_number,
 
 def parse_args_and_start():
     """Parse args and start distributed worker"""
-    if len(sys.argv) != 10:
-        raise RuntimeError("Expect length of input argv to be 10: str{servable_directory} str{servable_name} "
-                           "int{version_number} str{device_type} int{device_id} str{master_address} "
-                           "str{dec_key_pipe_file}, str{dec_mode} bool{listening_master}")
-    servable_directory = sys.argv[1]
-    servable_name = sys.argv[2]
-    version_number = int(sys.argv[3])
-    device_type = sys.argv[4]
-    device_id = int(sys.argv[5])
-    master_address = sys.argv[6]
-    dec_key_pipe = sys.argv[7]
+    parser = argparse.ArgumentParser(description="Serving start extra worker")
+    parser.add_argument('--servable_directory', type=str, required=True, help="servable directory")
+    parser.add_argument('--servable_name', type=str, required=True, help="servable name")
+    parser.add_argument('--version_number', type=int, required=True, help="version numbers")
+    parser.add_argument('--device_type', type=str, required=True, help="device type")
+    parser.add_argument('--device_id', type=str, required=True, help="device id")
+    parser.add_argument('--master_address', type=str, required=True, help="master address")
+    parser.add_argument('--dec_key_pipe_file', type=str, required=True, help="dec key pipe file")
+    parser.add_argument('--dec_mode', type=str, required=True, help="dec mode")
+    parser.add_argument('--listening_master', type=str, required=True, help="whether listening master")
+    args = parser.parse_args()
+
+    servable_directory = args.servable_directory
+    servable_name = args.servable_name
+    version_number = int(args.version_number)
+    device_type = args.device_type
+    device_id = int(args.device_id)
+    master_address = args.master_address
+    dec_key_pipe = args.dec_key_pipe_file
     if dec_key_pipe != "None":
         with open(dec_key_pipe, "rb") as fp:
             dec_key = fp.read()
@@ -119,9 +127,9 @@ def parse_args_and_start():
             os.remove(dec_key_pipe)
     else:
         dec_key = None
-    dec_mode = sys.argv[8]
+    dec_mode = args.dec_mode
     # pylint: disable=simplifiable-if-expression
-    listening_master = True if sys.argv[9].lower() == "true" else False
+    listening_master = True if args.listening_master.lower() == "true" else False
     try:
         start_worker(servable_directory, servable_name, version_number, device_type, device_id, master_address,
                      dec_key, dec_mode, listening_master)

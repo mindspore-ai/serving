@@ -127,6 +127,7 @@ def serving_test(func):
     @wraps(func)
     def wrap_test(*args, **kwargs):
         try:
+            os.environ["SERVING_ENABLE_CPU_DEVICE"] = "0"
             func(*args, **kwargs)
         except Exception:
             logger.error("Serving test catch exception")

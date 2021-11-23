@@ -22,6 +22,19 @@ namespace mindspore::serving {
 InferenceLoader::InferenceLoader() {}
 InferenceLoader::~InferenceLoader() {}
 
+std::string ModelContext::AsString() const {
+  std::stringstream ss;
+  ss << "thread num: ";
+  ss << AsStringHelper::AsString(thread_num);
+  ss << ", thread_affinity_list: ";
+  ss << AsStringHelper::AsString(thread_affinity_core_list);
+  ss << ", enable_parallel: ";
+  ss << AsStringHelper::AsString(enable_parallel);
+  ss << ", the device_info list: ";
+  ss << AsStringHelper::AsString(device_list);
+  return ss.str();
+}
+
 InferenceLoader &InferenceLoader::Instance() {
   static InferenceLoader inference;
   return inference;
@@ -33,6 +46,8 @@ std::shared_ptr<InferenceBase> InferenceLoader::CreateMindSporeInfer() {
 
 Status InferenceLoader::LoadMindSporeModelWrap() { return SUCCESS; }
 
+bool InferenceLoader::GetEnableLite() const { return enable_lite_; }
+
 DeviceType InferenceLoader::GetSupportDeviceType(DeviceType device_type, ModelType model_type) {
   auto mindspore_infer = CreateMindSporeInfer();
   if (mindspore_infer == nullptr) {
@@ -43,14 +58,15 @@ DeviceType InferenceLoader::GetSupportDeviceType(DeviceType device_type, ModelTy
     model_type = kMindIR;
   }
   if (device_type == kDeviceTypeNotSpecified) {
-    auto ascend_list = {kDeviceTypeAscendCL, kDeviceTypeAscendMS, kDeviceTypeGpu};
+    auto ascend_list = {kDeviceTypeAscend310, kDeviceTypeAscend710, kDeviceTypeAscend910, kDeviceTypeGpu,
+                        kDeviceTypeCpu};
     for (auto item : ascend_list) {
       if (mindspore_infer->CheckModelSupport(item, model_type)) {
         return item;
       }
     }
   } else if (device_type == kDeviceTypeAscend) {
-    auto ascend_list = {kDeviceTypeAscendCL, kDeviceTypeAscendMS};
+    auto ascend_list = {kDeviceTypeAscend310, kDeviceTypeAscend710, kDeviceTypeAscend910};
     for (auto item : ascend_list) {
       if (mindspore_infer->CheckModelSupport(item, model_type)) {
         return item;

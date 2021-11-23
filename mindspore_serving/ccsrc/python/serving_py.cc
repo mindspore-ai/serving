@@ -71,8 +71,17 @@ void PyRegServable(pybind11::module *m_ptr) {
   py::class_<LocalModelMeta>(m, "LocalModelMeta_")
     .def(py::init<>())
     .def_readwrite("model_file", &LocalModelMeta::model_files)
-    .def_readwrite("options", &LocalModelMeta::load_options)
+    .def_readwrite("config_file", &LocalModelMeta::config_file)
+    .def_readwrite("model_context", &LocalModelMeta::model_context)
     .def("set_model_format", &LocalModelMeta::SetModelFormat);
+
+  py::class_<ModelContext>(m, "ModelContext_")
+    .def(py::init<>())
+    .def_readwrite("thread_num", &ModelContext::thread_num)
+    .def_readwrite("thread_affinity_core_list", &ModelContext::thread_affinity_core_list)
+    .def_readwrite("enable_parallel", &ModelContext::enable_parallel)
+    .def_readwrite("device_list", &ModelContext::device_list)
+    .def("append_device_info", &ModelContext::AppendDeviceInfo);
 
   py::class_<DistributedModelMeta>(m, "DistributedModelMeta_")
     .def(py::init<>())

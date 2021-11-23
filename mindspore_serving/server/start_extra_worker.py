@@ -15,10 +15,10 @@
 """Start worker process with single core servable"""
 
 import os
-import sys
 import time
 import threading
 import signal
+import argparse
 import psutil
 
 import mindspore_serving.log as logger
@@ -59,13 +59,15 @@ def start_listening_parent_thread(servable_name, index):
     thread.start()
 
 
-def start_extra_worker(servable_directory, servable_name, version_number, index, master_address,
-                       listening_master=False):
+def start_extra_worker(servable_directory, servable_name, version_number, device_type, device_ids_empty,
+                       index, master_address, dec_key, dec_mode, listening_master=False):
     """Start worker process with single core servable"""
     signal.signal(signal.SIGCHLD, signal.SIG_DFL)  # for ccec compiler
     check_type.check_str('servable_directory', servable_directory)
     check_type.check_str('servable_name', servable_name)
     check_type.check_int('version_number', version_number, 0)
+    check_type.check_str('device_type', device_type)
+    check_type.check_bool('device_ids_empty', device_ids_empty)
     check_type.check_int('index', index, 0)
 
     check_type.check_str('master_address', master_address)
@@ -87,7 +89,8 @@ def start_extra_worker(servable_directory, servable_name, version_number, index,
         worker_address = worker_address[:50] + "___" + worker_address[-50:]
     try:
         worker.start_extra_servable(servable_directory=servable_directory, servable_name=servable_name,
-                                    version_number=version_number,
+                                    version_number=version_number, device_type=device_type,
+                                    device_ids_empty=device_ids_empty, dec_key=dec_key, dec_mode=dec_mode,
                                     master_address=master_address, worker_address=worker_address)
     except Exception as ex:
         Worker_.notify_failed(master_address,
@@ -97,18 +100,43 @@ def start_extra_worker(servable_directory, servable_name, version_number, index,
 
 def parse_args_and_start():
     """Parse args and start distributed worker"""
-    if len(sys.argv) != 7:
-        raise RuntimeError("Expect length of input argv to be 6: str{servable_directory} str{servable_name} "
-                           "int{version_number} int{index} str{master_address} bool{listening_master}")
-    servable_directory = sys.argv[1]
-    servable_name = sys.argv[2]
-    version_number = int(sys.argv[3])
-    index = int(sys.argv[4])
-    master_address = sys.argv[5]
+    parser = argparse.ArgumentParser(description="Serving start extra worker")
+    parser.add_argument('--servable_directory', type=str, required=True, help="servable directory")
+    parser.add_argument('--servable_name', type=str, required=True, help="servable name")
+    parser.add_argument('--version_number', type=int, required=True, help="version numbers")
+    parser.add_argument('--device_type', type=str, required=True, help="device type")
+    parser.add_argument('--device_ids_empty', type=str, required=True, help="device id")
+    parser.add_argument('--index', type=int, required=True, help="device id")
+    parser.add_argument('--master_address', type=str, required=True, help="master address")
+    parser.add_argument('--dec_key_pipe_file', type=str, required=True, help="dec key pipe file")
+    parser.add_argument('--dec_mode', type=str, required=True, help="dec mode")
+    parser.add_argument('--listening_master', type=str, required=True, help="whether listening master")
+    args = parser.parse_args()
+
+    servable_directory = args.servable_directory
+    servable_name = args.servable_name
+    version_number = int(args.version_number)
+    device_type = args.device_type
     # pylint: disable=simplifiable-if-expression
-    listening_master = True if sys.argv[6].lower() == "true" else False
+    device_ids_empty = True if args.device_ids_empty.lower() == "true" else False
+    index = int(args.index)
+    master_address = args.master_address
+    dec_key_pipe = args.dec_key_pipe_file
+    if dec_key_pipe != "None":
+        with open(dec_key_pipe, "rb") as fp:
+            dec_key = fp.read()
+        prefix = "serving_temp_dec_"
+        if dec_key_pipe[:len(prefix)] == prefix:
+            os.remove(dec_key_pipe)
+    else:
+        dec_key = None
+    dec_mode = args.dec_mode
+    # pylint: disable=simplifiable-if-expression
+    listening_master = True if args.listening_master.lower() == "true" else False
+
     try:
-        start_extra_worker(servable_directory, servable_name, version_number, index, master_address, listening_master)
+        start_extra_worker(servable_directory, servable_name, version_number, device_type, device_ids_empty,
+                           index, master_address, dec_key, dec_mode, listening_master)
     finally:
         global _main_thread_exited
         _main_thread_exited = True

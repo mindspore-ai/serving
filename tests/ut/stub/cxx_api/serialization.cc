@@ -165,7 +165,7 @@ Status Serialization::Load(const std::vector<char> &file, ModelType model_type, 
     return status;
   }
 
-  if (model_type == kMindIR) {
+  if (model_type == kMindIR || model_type ==  kMindIR_Opt) {
     FuncGraphPtr anf_graph;
     if (dec_key.len > dec_key.max_key_len) {
       err_msg << "The key length exceeds maximum length: " << dec_key.max_key_len;

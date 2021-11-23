@@ -24,6 +24,7 @@
 #include <sstream>
 #include <memory>
 #include <string>
+#include <utility>
 
 namespace mindspore::serving {
 #define MS_API __attribute__((visibility("default")))
@@ -41,6 +42,75 @@ static constexpr size_t GetRelPathPos() noexcept {
   (sizeof(__FILE__) > mindspore::serving::GetRelPathPos()                        \
      ? static_cast<const char *>(__FILE__) + mindspore::serving::GetRelPathPos() \
      : static_cast<const char *>(__FILE__))
+
+class AsStringHelper {
+ public:
+  template <typename T>
+  static std::string AsString(const T &val) noexcept {
+    std::stringstream ss;
+    ss << val;
+    return ss.str();
+  }
+  static std::string AsString(const bool &val) noexcept { return val ? "true" : "false"; }
+
+  template <typename T>
+  static std::string AsString(const std::vector<T> &val) noexcept {
+    std::stringstream ss;
+    ss << "[";
+    for (size_t i = 0; i < val.size(); i++) {
+      ss << AsString(val[i]);
+      if (i + 1 < val.size()) {
+        ss << ", ";
+      }
+    }
+    ss << "]";
+    return ss.str();
+  }
+
+  template <typename K, typename V>
+  static std::string AsString(const std::unordered_map<K, V> &val) noexcept {
+    std::stringstream ss;
+    ss << "{";
+    size_t index = 0;
+    for (auto &item : val) {
+      ss << AsString(item.first) << ": " << AsString(item.second);
+      if (index + 1 < val.size()) {
+        ss << ", ";
+      }
+    }
+    ss << "}";
+    return ss.str();
+  }
+
+  template <typename K, typename V>
+  static std::string AsString(const std::map<K, V> &val) noexcept {
+    std::stringstream ss;
+    ss << "{";
+    size_t index = 0;
+    for (auto &item : val) {
+      ss << AsString(item.first) << ": " << AsString(item.second);
+      if (index + 1 < val.size()) {
+        ss << ", ";
+      }
+    }
+    ss << "}";
+    return ss.str();
+  }
+  template <typename K, typename V>
+  static std::string AsString(const std::vector<std::pair<K, V>> &val) noexcept {
+    std::stringstream ss;
+    ss << "{";
+    size_t index = 0;
+    for (auto &item : val) {
+      ss << AsString(item.first) << ": " << AsString(item.second);
+      if (index + 1 < val.size()) {
+        ss << ", ";
+      }
+    }
+    ss << "}";
+    return ss.str();
+  }
+};
 
 class LogStream {
  public:
@@ -74,8 +144,12 @@ class LogStream {
   template <typename K, typename V>
   LogStream &operator<<(const std::unordered_map<K, V> &val) noexcept {
     (*sstream_) << "{";
+    size_t index = 0;
     for (auto &item : val) {
-      (*this) << "{" << item.first << ": " << item.second << "} ";
+      (*this) << item.first << ": " << item.second;
+      if (index + 1 < val.size()) {
+        (*sstream_) << ", ";
+      }
     }
     (*sstream_) << "}";
     return *this;
@@ -84,8 +158,12 @@ class LogStream {
   template <typename K, typename V>
   LogStream &operator<<(const std::map<K, V> &val) noexcept {
     (*sstream_) << "{";
+    size_t index = 0;
     for (auto &item : val) {
-      (*this) << "{" << item.first << ": " << item.second << "} ";
+      (*this) << item.first << ": " << item.second;
+      if (index + 1 < val.size()) {
+        (*sstream_) << ", ";
+      }
     }
     (*sstream_) << "}";
     return *this;

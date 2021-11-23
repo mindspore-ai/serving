@@ -21,6 +21,8 @@
 
 namespace mindspore {
 API_FACTORY_REG(GraphCell::GraphImpl, Ascend910, AscendGraphImpl);
+API_FACTORY_REG(GraphCell::GraphImpl, CPU, AscendGraphImpl);
+API_FACTORY_REG(GraphCell::GraphImpl, GPU, AscendGraphImpl);
 
 AscendGraphImpl::AscendGraphImpl() { graph_imp_stub_ = std::make_shared<GraphImplStubAdd>(); }
 
@@ -32,6 +34,7 @@ std::vector<MSTensor> AscendGraphImpl::GetOutputs() { return graph_imp_stub_->Ge
 
 Status AscendGraphImpl::Load(uint32_t device_id) {
   graph_imp_stub_->SetGraph(graph_);
+  graph_imp_stub_->SetContext(graph_context_);
   return graph_imp_stub_->Load(device_id);
 }
 

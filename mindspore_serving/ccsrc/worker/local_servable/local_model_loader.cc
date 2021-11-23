@@ -15,9 +15,6 @@
  */
 
 #include "worker/local_servable/local_model_loader.h"
-#include <algorithm>
-#include <set>
-#include <map>
 #include <vector>
 #include <string>
 #include "common/tensor.h"
@@ -83,7 +80,7 @@ Status LocalModelLoader::LoadModel(const std::string &servable_directory, const 
   if (signature.servable_type != kServableTypeLocal) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Servable '" << servable_name << "' is not registered as local servable";
   }
-  status = InitDevice(model_meta.local_meta.model_format, {});
+  status = InitDevice(model_meta.local_meta.model_format);
   if (status != SUCCESS) {
     MSI_LOG_ERROR << "Init env failed";
     return status;
@@ -96,10 +93,10 @@ Status LocalModelLoader::LoadModel(const std::string &servable_directory, const 
   return SUCCESS;
 }
 
-Status LocalModelLoader::InitDevice(ModelType model_type, const std::map<std::string, std::string> &other_options) {
+Status LocalModelLoader::InitDevice(ModelType model_type) {
   Status status;
   auto context = ServableContext::Instance();
-  DeviceType device_type = ServableContext::Instance()->GetDeviceType();
+  auto device_type = context->GetDeviceType();
   auto support_device_type = InferenceLoader::Instance().GetSupportDeviceType(device_type, model_type);
   if (support_device_type == kDeviceTypeNotSpecified) {
     return INFER_STATUS_LOG_ERROR(FAILED)
@@ -132,14 +129,16 @@ Status LocalModelLoader::LoadModel(uint64_t version_number, const std::string &d
   if (session == nullptr) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Create MindSpore infer failed";
   }
-  Status status = session->LoadModelFromFile(
-    context->GetDeviceType(), context->GetDeviceId(), model_file_names, local_meta.model_format,
-    common_meta.with_batch_dim, common_meta.without_batch_dim_inputs, local_meta.load_options, dec_key, dec_mode);
+  auto enable_lite = InferenceLoader::Instance().GetEnableLite();
+  Status status = session->LoadModelFromFile(context->GetDeviceType(), context->GetDeviceId(), model_file_names,
+                                             local_meta.model_format, common_meta.with_batch_dim,
+                                             common_meta.without_batch_dim_inputs, model_meta.local_meta.model_context,
+                                             dec_key, dec_mode, local_meta.config_file, enable_lite);
   if (status != SUCCESS) {
     return INFER_STATUS_LOG_ERROR(FAILED)
            << "Load model failed, servable directory: '" << base_spec_.servable_directory << "', servable name: '"
            << base_spec_.servable_name << "', model file: '" << local_meta.model_files << "', version number "
-           << version_number << ", options " << local_meta.load_options
+           << version_number << ",model context: " << local_meta.model_context.AsString()
            << ", load error details: " << status.StatusMessage();
   }
   model_session_ = session;
@@ -147,7 +146,7 @@ Status LocalModelLoader::LoadModel(uint64_t version_number, const std::string &d
 
   MSI_LOG_INFO << "Load model success, servable directory: '" << base_spec_.servable_directory << "', servable name: '"
                << base_spec_.servable_name << "', model file: '" << local_meta.model_files << "', version number "
-               << version_number << ", options " << local_meta.load_options;
+               << version_number << ", context " << local_meta.model_context.AsString();
   return SUCCESS;
 }
 

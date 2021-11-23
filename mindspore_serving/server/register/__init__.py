@@ -16,7 +16,8 @@
 See how to configure servable_config.py file, please refer to
 `Servable Provided Through Model Configuration <https://www.mindspore.cn/serving/docs/zh-CN/master/serving_model.html>`_."""
 
-from .model import declare_model, AclOptions, GpuOptions, Model
+from .model import declare_model, Model, Context, AclOptions, GpuOptions
+from .model import Ascend710DeviceInfo, Ascend310DeviceInfo, CPUDeviceInfo, GPUDeviceInfo
 from .method import register_method, add_stage
 
 from .model import declare_servable
@@ -29,6 +30,11 @@ __all__.extend([
     "Model",
     "AclOptions",
     "GpuOptions",
+    "Ascend310DeviceInfo",
+    "Ascend710DeviceInfo",
+    "CPUDeviceInfo",
+    "GPUDeviceInfo",
+    "Context",
     'register_method',
     'add_stage',
     "declare_servable",

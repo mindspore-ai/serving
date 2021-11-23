@@ -26,6 +26,30 @@ from mindspore_serving.server._servable_common import ServableContextDataBase
 from mindspore_serving._mindspore_serving import Worker_
 
 
+def _get_device_type(target_device_type):
+    """Get device type supported, this will load libmindspore.so or libmindspore-lite.so"""
+    # Get Device type: Ascend310, Ascend710, Ascend910, Gpu, Cpu, set Ascend in ServableStartConfig instead of
+    # Ascend310, Ascend710, Ascend910
+    init_mindspore.set_mindspore_cxx_env()
+    if target_device_type is None:
+        target_device_type = "None"
+    target_device_type = target_device_type.lower()
+    device_type = Worker_.get_device_type(target_device_type)
+    if device_type in ("Ascend910", "Ascend710", "Ascend310"):
+        device_type = "Ascend"
+    return device_type
+
+
+def _all_reuse_device():
+    """Get device type supported, this will load libmindspore.so or libmindspore-lite.so"""
+    # Whether allow reuse device, for Ascend910 return False, other return True
+    init_mindspore.set_mindspore_cxx_env()
+    device_type = Worker_.get_device_type("none")
+    if device_type == "Ascend910":
+        return False
+    return True
+
+
 class ServableStartConfig:
     r"""
     Servable startup configuration.
@@ -42,10 +66,11 @@ class ServableStartConfig:
             Used when device type is Nvidia GPU, Ascend 310/710/910. Default None.
         version_number (int, optional): Servable version number to be loaded. The version number should be a positive
             integer, starting from 1, and 0 means to load the latest version. Default: 0.
-        device_type (str, optional): Currently supports "Ascend", "GPU" and None. Default: None.
+        device_type (str, optional): Currently supports "Ascend", "GPU", "CPU" and None. Default: None.
 
             - "Ascend": the platform expected to be Ascend910 or Ascend310, etc.
             - "GPU": the platform expected to be Nvidia GPU.
+            - "CPU": the platform expected to be CPU.
             - None: the platform is determined by the MindSpore environment.
 
         num_parallel_workers (int, optional): This feature is currently in beta.
@@ -85,19 +110,34 @@ class ServableStartConfig:
         self.servable_directory_ = servable_directory
         self.servable_name_ = servable_name
         self.version_number_ = version_number
+
         if device_ids is None:
             device_ids = []
         device_ids = check_type.check_and_as_int_tuple_list("device_ids", device_ids, 0)
+
+        if device_type is not None:
+            check_type.check_str("device_type", device_type)
+        else:
+            device_type = "None"
+
+        if device_type.lower() != "none":
+            if device_type.lower() not in ("ascend", "gpu", "cpu"):
+                raise RuntimeError(f"Unsupported device type '{device_type}', only support 'Ascend', 'GPU', 'CPU' "
+                                   f"and None, case ignored")
+            if not _get_device_type(device_type):
+                raise RuntimeError(f"The device type '{device_type}' of servable name {servable_name} "
+                                   f"is inconsistent with current running environment, supported device type: "
+                                   f"'None' or '{_get_device_type(None)}'")
+        # else device_type is None
+        # if device_ids is empty, and there are models declared, Cpu target should be support
+        # if device_ids is not empty, and there are no models declared, use no device resources
+        # if device_ids is not empty, and there are models declared, final device_type depend on inference package
         self.device_ids_ = device_ids
         if not device_ids and not num_parallel_workers:
             self.num_parallel_workers_ = 1
         else:
             self.num_parallel_workers_ = num_parallel_workers
-        if device_type is not None:
-            check_type.check_str("device_type", device_type)
-        else:
-            device_type = "None"
-        self.device_type_ = device_type
+        self.device_type_ = device_type.lower()
         self.dec_key_ = dec_key
         self.dec_mode_ = dec_mode
 
@@ -237,44 +277,12 @@ class ServableStartConfigGroup:
         return configs
 
 
-g_device_type = None
-g_all_reuse_device = None
-
-
-def _get_device_type():
-    """Get device type supported, this will load libmindspore.so"""
-    # Get Device type: AscendCL, AscendMS, Gpu, Cpu, set Ascend in ServableStartConfig instead of AscendCL, AscendMS
-    global g_device_type, g_all_reuse_device
-    if g_device_type is not None:
-        return g_device_type, g_all_reuse_device
-
-    init_mindspore.set_mindspore_cxx_env()
-    device_type = Worker_.get_device_type()
-    all_reuse_device = True
-    if device_type == "AscendMS":
-        all_reuse_device = False
-    if device_type in ("AscendMS", "AscendCL"):
-        device_type = "Ascend"
-    g_device_type = device_type
-    g_all_reuse_device = all_reuse_device
-    return g_device_type, g_all_reuse_device
-
-
 def _check_and_merge_config(configs):
     """Merge ServableStartConfig with the same version number"""
     start_config_groups = {}
-
-    device_type = None
     for config in configs:
         if not isinstance(config, ServableStartConfig):
             continue
-        if config.device_type != "None":
-            if device_type is None:
-                device_type, _ = _get_device_type()
-            if config.device_type.lower() != device_type.lower():
-                raise RuntimeError(f"The device type '{config.device_type}' of servable name {config.servable_name} "
-                                   f"is inconsistent with current running environment, supported device type: "
-                                   f"'None' or '{device_type}'")
         if config.servable_name in start_config_groups:
             if config.servable_directory != start_config_groups[config.servable_name].servable_directory:
                 raise RuntimeError(
@@ -307,7 +315,7 @@ def merge_config(configs):
         for device_id in config.device_ids:
             if device_id in device_ids_used:
                 if allow_reuse_device is None:
-                    _, allow_reuse_device = _get_device_type()
+                    allow_reuse_device = _all_reuse_device()
                 if not allow_reuse_device:
                     raise RuntimeError(f"Ascend 910 device id {device_id} is used repeatedly in servable "
                                        f"{config.servable_name}")
@@ -343,22 +351,31 @@ class ServableContextData(ServableContextDataBase):
     def new_worker_process(self):
         """Start worker process to provide servable"""
         python_exe = sys.executable
-        servable_config = self.servable_config
-        device_type = servable_config.device_type
+        config = self.servable_config
+        device_type = config.device_type
         if device_type is None:
             device_type = "None"
         script_dir = os.path.dirname(os.path.abspath(__file__))
         py_script = os.path.join(script_dir, "start_worker.py")
 
         if self.servable_config.dec_key:
-            pipe_file = f"serving_temp_dec_{servable_config.servable_name}_{random.randrange(1000000, 9999999)}"
+            pipe_file = f"serving_temp_dec_{config.servable_name}_device{self.device_id}_" \
+                        f"{random.randrange(1000000, 9999999)}"
             os.mkfifo(pipe_file)
         else:
             pipe_file = 'None'
 
-        arg = f"{python_exe} {py_script} {servable_config.servable_directory} {servable_config.servable_name} " \
-              f"{servable_config.version_number} {device_type} {self.device_id} {self.master_address} {pipe_file} " \
-              f"{self.servable_config.dec_mode} True"
+        arg = f"{python_exe} {py_script} " \
+              f"--servable_directory={config.servable_directory} " \
+              f"--servable_name={config.servable_name} " \
+              f"--version_number={config.version_number} " \
+              f"--device_type={device_type} " \
+              f"--device_id={self.device_id} " \
+              f"--master_address={self.master_address} " \
+              f"--dec_key_pipe_file={pipe_file} " \
+              f"--dec_mode={config.dec_mode} " \
+              f"--listening_master=True"
+
         args = arg.split(" ")
 
         serving_logs_dir = "serving_logs"
@@ -369,7 +386,7 @@ class ServableContextData(ServableContextDataBase):
 
         write_mode = "w" if self.log_new_file else "a"
         self.log_new_file = False
-        log_file_name = f"{serving_logs_dir}/log_{servable_config.servable_name}_device{self.device_id}" \
+        log_file_name = f"{serving_logs_dir}/log_{config.servable_name}_device{self.device_id}" \
                         f"_version{self.version_number}.log"
         with open(log_file_name, write_mode) as fp:
             sub = subprocess.Popen(args=args, shell=False, stdout=fp, stderr=fp)
@@ -382,12 +399,13 @@ class ServableContextData(ServableContextDataBase):
 class ServableExtraContextData(ServableContextDataBase):
     """Used to startup servable process"""
 
-    def __init__(self, servable_config, master_address, index):
+    def __init__(self, servable_config, master_address, index, device_ids_empty):
         super(ServableExtraContextData, self).__init__()
         self.servable_config = servable_config
         self.master_address = master_address
         self.log_new_file = True
         self.index = index
+        self.device_ids_empty = device_ids_empty
 
     @property
     def servable_name(self):
@@ -408,12 +426,32 @@ class ServableExtraContextData(ServableContextDataBase):
     def new_worker_process(self):
         """Start worker process to provide servable"""
         python_exe = sys.executable
-        servable_config = self.servable_config
+        config = self.servable_config
         script_dir = os.path.dirname(os.path.abspath(__file__))
         py_script = os.path.join(script_dir, "start_extra_worker.py")
 
-        arg = f"{python_exe} {py_script} {servable_config.servable_directory} {servable_config.servable_name} " \
-              f"{servable_config.version_number} {self.index} {self.master_address} True"
+        if config.dec_key:
+            pipe_file = f"serving_temp_dec_{config.servable_name}_index{self.index}_" \
+                        f"{random.randrange(1000000, 9999999)}"
+            os.mkfifo(pipe_file)
+        else:
+            pipe_file = 'None'
+
+        device_type = config.device_type
+        if device_type is None:
+            device_type = "None"
+
+        arg = f"{python_exe} {py_script} " \
+              f"--servable_directory={config.servable_directory} " \
+              f"--servable_name={config.servable_name} " \
+              f"--version_number={config.version_number} " \
+              f"--device_type={device_type} " \
+              f"--device_ids_empty={self.device_ids_empty} " \
+              f"--index={self.index} " \
+              f"--master_address={self.master_address} " \
+              f"--dec_key_pipe_file={pipe_file} " \
+              f"--dec_mode={config.dec_mode} " \
+              f"--listening_master=True"
         args = arg.split(" ")
 
         serving_logs_dir = "serving_logs"
@@ -424,8 +462,11 @@ class ServableExtraContextData(ServableContextDataBase):
 
         write_mode = "w" if self.log_new_file else "a"
         self.log_new_file = False
-        log_file_name = f"{serving_logs_dir}/log_{servable_config.servable_name}_extra{self.index}" \
+        log_file_name = f"{serving_logs_dir}/log_{config.servable_name}_extra{self.index}" \
                         f"_version{self.version_number}.log"
         with open(log_file_name, write_mode) as fp:
             sub = subprocess.Popen(args=args, shell=False, stdout=fp, stderr=fp)
+        if self.servable_config.dec_key:
+            with open(pipe_file, "wb") as fp:
+                fp.write(self.servable_config.dec_key)
         return sub
