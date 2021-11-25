@@ -154,9 +154,8 @@ Status Serialization::Load(const std::vector<char> &file, ModelType model_type, 
                            const std::vector<char> &dec_mode) {
   std::stringstream err_msg;
   if (graph == nullptr) {
-    err_msg << "Output args graph is nullptr.";
-    MS_LOG(ERROR) << err_msg.str();
-    return Status(kMEInvalidInput, err_msg.str());
+    MS_LOG(ERROR) << "Output args graph is nullptr.";
+    return Status(kMEInvalidInput, "Output args graph is nullptr.");
   }
 
   std::string file_path;
@@ -207,9 +206,8 @@ Status Serialization::Load(const std::vector<std::vector<char>> &files, ModelTyp
                            std::vector<Graph> *graphs, const Key &dec_key, const std::vector<char> &dec_mode) {
   std::stringstream err_msg;
   if (graphs == nullptr) {
-    err_msg << "Output args graph is nullptr.";
-    MS_LOG(ERROR) << err_msg.str();
-    return Status(kMEInvalidInput, err_msg.str());
+    MS_LOG(ERROR) << "Output args graph is nullptr.";
+    return Status(kMEInvalidInput, "Output args graph is nullptr.");
   }
 
   if (files.size() == 1) {
@@ -276,7 +274,8 @@ Status Serialization::ExportModel(const Model &, ModelType, Buffer *) {
   return kMEFailed;
 }
 
-Status Serialization::ExportModel(const Model &, ModelType, const std::string &, QuantizationType, bool) {
+Status Serialization::ExportModel(const Model &, ModelType, const std::vector<char> &, QuantizationType, bool,
+                                  const std::vector<std::vector<char>> &output_tensor_name) {
   MS_LOG(ERROR) << "Unsupported feature.";
   return kMEFailed;
 }

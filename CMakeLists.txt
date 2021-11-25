@@ -64,11 +64,9 @@ find_package(Threads REQUIRED)
 
 if(ENABLE_TESTCASES)
     add_subdirectory(tests)
-    set(MS_WHL_LIB_PATH ${CMAKE_SOURCE_DIR}/build/package/tests/mindspore/lib/)
-    message(------------MS_WHL_LIB_PATH------------ ${MS_WHL_LIB_PATH})
 endif()
 
-if(MS_WHL_LIB_PATH OR MS_BACKEND)
+if(MS_WHL_LIB_PATH OR MS_BACKEND OR ENABLE_TESTCASES)
     add_subdirectory(mindspore_serving)
     include(cmake/package.cmake)
 endif()
