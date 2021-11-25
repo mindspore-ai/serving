@@ -17,8 +17,8 @@ import os
 import sys
 import subprocess
 from pathlib import Path
-import numpy as np
 from packaging import version
+import numpy as np
 from mindspore_serving import log as logger
 
 

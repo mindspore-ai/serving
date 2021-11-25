@@ -138,8 +138,11 @@ set_property(TARGET _mindspore_serving PROPERTY POSITION_INDEPENDENT_CODE TRUE)
 target_link_options(serving_common PRIVATE -Wl,-init,mindspore_serving_log_init)
 
 # user set path
-
-if(MS_WHL_LIB_PATH)
+if(ENABLE_TESTCASES)
+    include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../tests/ut/stub)
+    include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../tests/ut/stub/include)
+    target_link_libraries(serving_ascend PRIVATE mindspore)
+elseif(MS_WHL_LIB_PATH)
     include_directories(${MS_WHL_LIB_PATH}/../include)
     include_directories(${MS_WHL_LIB_PATH}/../)
     target_link_libraries(serving_ascend PRIVATE ${MS_WHL_LIB_PATH}/libmindspore.so)
