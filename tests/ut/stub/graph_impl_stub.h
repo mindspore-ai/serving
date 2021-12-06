@@ -49,6 +49,7 @@ class GraphImplStubAdd : public GraphCell::GraphImpl {
 
   void Init(const std::vector<int64_t> &add_shape);
   void LoadInner();
+  Status CheckContext();
 };
 
 }  // namespace mindspore

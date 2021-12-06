@@ -45,7 +45,7 @@ class MS_API LocalModelLoader : public DirectModelLoaderBase {
 
   Status LoadModel(const std::string &servable_directory, const std::string &servable_name, uint64_t version_number,
                    const ModelMeta &model_meta, const std::string &dec_key, const std::string &dec_mode);
-  Status InitDevice(ModelType model_type, const std::map<std::string, std::string> &other_options);
+  Status InitDevice(ModelType model_type);
   void Clear() override;
 
   std::string GetModelKey() const { return model_meta_.common_meta.model_key; }

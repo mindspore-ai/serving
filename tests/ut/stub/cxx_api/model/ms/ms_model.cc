@@ -22,6 +22,8 @@
 
 namespace mindspore {
 API_FACTORY_REG(ModelImpl, Ascend910, MsModel);
+API_FACTORY_REG(ModelImpl, CPU, MsModel);
+API_FACTORY_REG(ModelImpl, GPU, MsModel);
 
 static std::string GenerateShapeKey(const std::vector<std::vector<int64_t>> &dims) {
   std::string shape_key;

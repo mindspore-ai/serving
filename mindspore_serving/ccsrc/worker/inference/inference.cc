@@ -21,8 +21,24 @@ namespace mindspore::serving {
 
 namespace {
 constexpr const char *kMindSporeLibName = "libmindspore.so";
+constexpr const char *kMindsporeLiteLibName = "libmindspore-lite.so";
 constexpr const char *kServingAscendLibName = "libserving_ascend.so";
 }  // namespace
+
+void ModelContext::AppendDeviceInfo(const DeviceInfo &device_info) { device_list.emplace_back(device_info); }
+
+std::string ModelContext::AsString() const {
+  std::stringstream ss;
+  ss << "thread num: ";
+  ss << AsStringHelper::AsString(thread_num);
+  ss << ", thread_affinity_list: ";
+  ss << AsStringHelper::AsString(thread_affinity_core_list);
+  ss << ", enable_parallel: ";
+  ss << AsStringHelper::AsString(enable_parallel);
+  ss << ", the device_info list: ";
+  ss << AsStringHelper::AsString(device_list);
+  return ss.str();
+}
 
 InferenceLoader::InferenceLoader() {}
 InferenceLoader::~InferenceLoader() {
@@ -94,26 +110,38 @@ Status InferenceLoader::LoadMindSporeModelWrap() {
     }
     return error;
   };
-  auto ld_lib_path = common::GetEnv("LD_LIBRARY_PATH");
-  MSI_LOG_INFO << "LD_LIBRARY_PATH: " << ld_lib_path;
-  if (!ld_lib_path.empty()) {
-    auto ms_search_path_list = SplitString(ld_lib_path, ":");
-    MSI_LOG_INFO << "Search " << kMindSporeLibName << " directory: " << ms_search_path_list;
-    for (auto &item : ms_search_path_list) {
-      auto lib_path = item + "/" + kMindSporeLibName;
-      if (!common::DirOrFileExist(lib_path)) {
-        continue;
+
+  ms_cxx_lib_handle_ = dlopen(kMindsporeLiteLibName, RTLD_NOW | RTLD_GLOBAL);
+  if (ms_cxx_lib_handle_ == nullptr) {
+    MSI_LOG_WARNING
+      << "dlopen libmindspore_lite.so failed, if you want to use mindspore_lite to do the inference, please append "
+         "libmindspore-lite.so's path to LD_LIBRARY_PATH env or put it in the dynamic_library search path"
+      << ", dlopen error: " << get_dlerror();
+    auto ld_lib_path = common::GetEnv("LD_LIBRARY_PATH");
+    MSI_LOG_INFO << "LD_LIBRARY_PATH: " << ld_lib_path;
+    if (!ld_lib_path.empty()) {
+      auto ms_search_path_list = SplitString(ld_lib_path, ":");
+      MSI_LOG_INFO << "Search " << kMindSporeLibName << " directory: " << ms_search_path_list;
+      for (auto &item : ms_search_path_list) {
+        auto lib_path = item + "/" + kMindSporeLibName;
+        if (!common::DirOrFileExist(lib_path)) {
+          continue;
+        }
+        ms_cxx_lib_handle_ = dlopen(lib_path.c_str(), RTLD_NOW | RTLD_GLOBAL);
+        if (ms_cxx_lib_handle_ == nullptr) {
+          return INFER_STATUS_LOG_ERROR(FAILED) << "dlopen libmindspore.so failed, please check whether the MindSpore "
+                                                   "and Ascend/GPU software package versions match"
+                                                << ", lib path:" << lib_path << ", dlopen error: " << get_dlerror();
+        }
+        enable_lite_ = false;
+        MSI_LOG_INFO << "Load " << kMindSporeLibName << " in " << item << " successful";
+        break;
       }
-      ms_cxx_lib_handle_ = dlopen(lib_path.c_str(), RTLD_NOW | RTLD_GLOBAL);
-      if (ms_cxx_lib_handle_ == nullptr) {
-        return INFER_STATUS_LOG_ERROR(FAILED)
-               << "dlopen failed, please check whether the MindSpore and Ascend/GPU software package versions match"
-               << ", lib path:" << lib_path << ", dlopen error: " << get_dlerror();
-      }
-      MSI_LOG_INFO << "Load " << kMindSporeLibName << " in " << item << " successful";
-      break;
     }
+  } else {
+    enable_lite_ = true;
   }
+
   ms_lib_handle_ = dlopen(kServingAscendLibName, RTLD_NOW | RTLD_GLOBAL);
   if (ms_lib_handle_ == nullptr) {
     return INFER_STATUS_LOG_ERROR(FAILED)
@@ -129,6 +157,8 @@ Status InferenceLoader::LoadMindSporeModelWrap() {
   return SUCCESS;
 }
 
+bool InferenceLoader::GetEnableLite() const { return enable_lite_; }
+
 DeviceType InferenceLoader::GetSupportDeviceType(DeviceType device_type, ModelType model_type) {
   auto mindspore_infer = CreateMindSporeInfer();
   if (mindspore_infer == nullptr) {
@@ -139,14 +169,15 @@ DeviceType InferenceLoader::GetSupportDeviceType(DeviceType device_type, ModelTy
     model_type = kMindIR;
   }
   if (device_type == kDeviceTypeNotSpecified) {
-    auto ascend_list = {kDeviceTypeAscendCL, kDeviceTypeAscendMS, kDeviceTypeGpu};
-    for (auto item : ascend_list) {
+    auto device_list = {kDeviceTypeAscend310, kDeviceTypeAscend710, kDeviceTypeAscend910, kDeviceTypeGpu,
+                        kDeviceTypeCpu};
+    for (auto item : device_list) {
       if (mindspore_infer->CheckModelSupport(item, model_type)) {
         return item;
       }
     }
   } else if (device_type == kDeviceTypeAscend) {
-    auto ascend_list = {kDeviceTypeAscendCL, kDeviceTypeAscendMS};
+    auto ascend_list = {kDeviceTypeAscend310, kDeviceTypeAscend710, kDeviceTypeAscend910};
     for (auto item : ascend_list) {
       if (mindspore_infer->CheckModelSupport(item, model_type)) {
         return item;

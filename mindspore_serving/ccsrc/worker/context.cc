@@ -52,9 +52,8 @@ Status ServableContext::SetDeviceTypeStr(const std::string &device_type) {
   } else if (device_type_lowcase == "none") {
     type = kDeviceTypeNotSpecified;
   } else {
-    return INFER_STATUS_LOG_ERROR(FAILED)
-           << "Unsupported device type '" << device_type
-           << "', only support 'Ascend', 'Davinci'(same with 'Ascend') and None, case ignored";
+    return INFER_STATUS_LOG_ERROR(FAILED) << "Unsupported device type '" << device_type
+                                          << "', only support 'Ascend', 'GPU', 'CPU' and None, case ignored";
   }
   SetDeviceType(type);
   return SUCCESS;

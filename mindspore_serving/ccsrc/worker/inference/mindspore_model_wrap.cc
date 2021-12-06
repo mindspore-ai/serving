@@ -80,8 +80,9 @@ DataType TransTypeId2InferDataType(mindspore::DataType type_id) {
 Status MindSporeModelWrap::LoadModelFromFile(serving::DeviceType device_type, uint32_t device_id,
                                              const std::vector<std::string> &file_names, ModelType model_type,
                                              bool with_batch_dim, const std::vector<int> &without_batch_dim_inputs,
-                                             const std::map<std::string, std::string> &other_options,
-                                             const std::string &dec_key, const std::string &dec_mode) {
+                                             const ModelContext &model_context, const std::string &dec_key,
+                                             const std::string &dec_mode, const std::string &config_file,
+                                             bool enable_lite) {
   char path[PATH_MAX];
   std::string current_path = getcwd(path, PATH_MAX);
   std::string build_dir = current_path + "/models_build_temp/";
@@ -93,8 +94,9 @@ Status MindSporeModelWrap::LoadModelFromFile(serving::DeviceType device_type, ui
     MSI_LOG_WARNING << "Failed to call chdir, target build directory: " << build_dir << ", error no: " << error_no;
   }
 
-  auto status = LoadModelFromFileInner(device_type, device_id, file_names, model_type, with_batch_dim,
-                                       without_batch_dim_inputs, other_options, dec_key, dec_mode);
+  auto status =
+    LoadModelFromFileInner(device_type, device_id, file_names, model_type, with_batch_dim, without_batch_dim_inputs,
+                           model_context, dec_key, dec_mode, config_file, enable_lite);
 
   error_no = chdir(current_path.c_str());
   if (error_no != 0) {
@@ -106,8 +108,9 @@ Status MindSporeModelWrap::LoadModelFromFile(serving::DeviceType device_type, ui
 Status MindSporeModelWrap::LoadModelFromFileInner(serving::DeviceType device_type, uint32_t device_id,
                                                   const std::vector<std::string> &file_names, ModelType model_type,
                                                   bool with_batch_dim, const std::vector<int> &without_batch_dim_inputs,
-                                                  const std::map<std::string, std::string> &other_options,
-                                                  const std::string &dec_key, const std::string &dec_mode) {
+                                                  const ModelContext &model_context, const std::string &dec_key,
+                                                  const std::string &dec_mode, const std::string &config_file,
+                                                  bool enable_lite) {
   auto ms_model_type = GetMsModelType(model_type);
   if (ms_model_type == mindspore::kUnknownType) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Invalid model type " << model_type;
@@ -126,36 +129,63 @@ Status MindSporeModelWrap::LoadModelFromFileInner(serving::DeviceType device_typ
     } else {
       key.len = 0;
     }
-    auto ms_status = mindspore::Serialization::Load(file_names, ms_model_type, &graphs, key, dec_mode);
+
+    mindspore::Status ms_status;
+    if (file_names.size() > 1) {
+      ms_status = mindspore::Serialization::Load(file_names, ms_model_type, &graphs, key, dec_mode);
+    } else {
+      graphs.emplace_back(mindspore::Graph());
+      ms_status = mindspore::Serialization::Load(file_names[0], ms_model_type, &graphs[0], key, dec_mode);
+    }
+
     (void)memset_s(key.key, sizeof(key.key), 0, key.max_key_len);
     if (!ms_status.IsOk()) {
       MSI_LOG_ERROR << "Load model from file failed, model file: " << file_names << ", device_type: '" << device_type
-                    << "', device_id: " << device_id << ", model type: " << model_type << ", options: " << other_options
-                    << ", dec mode: " << dec_mode << ", load error detail: " << ms_status.ToString();
+                    << "', device_id: " << device_id << ", model type: " << model_type
+                    << ", model context: " << model_context.AsString() << ", dec mode: " << dec_mode
+                    << ", load error detail: " << ms_status.ToString();
       return Status(FAILED, ms_status.ToString());
     }
-    if (graphs.size() != file_names.size()) {
+    if (file_names.size() > 1 && graphs.size() != file_names.size()) {
       return INFER_STATUS_LOG_ERROR(FAILED) << "Load model from file failed, generate graphs size " << graphs.size()
                                             << " should equal to " << file_names.size();
     }
-    auto context = TransformModelContext(device_type, device_id, other_options);
+    auto context = TransformModelContext(device_type, device_id, model_context, enable_lite);
     for (size_t i = 0; i < file_names.size(); i++) {
       auto model = std::make_shared<mindspore::Model>();
-      mindspore::Status status = model->Build(mindspore::GraphCell(graphs[i]), context);
+      if (!config_file.empty()) {
+        auto load_status = model->LoadConfig(config_file);
+        if (!load_status.IsOk()) {
+          return INFER_STATUS_LOG_ERROR(FAILED)
+                 << "Load config file: " << config_file << " failed, error details: " << load_status.ToString();
+        }
+      }
+      mindspore::Status status;
+      status = model->Build(mindspore::GraphCell(graphs[i]), context);
       if (!status.IsOk()) {
         MSI_LOG_ERROR << "Load model from file failed, model file: " << file_names[i] << ", device_type: '"
                       << device_type << "', device_id: " << device_id << ", model type: " << model_type
-                      << ", options: " << other_options << ", build error detail: " << status.ToString();
+                      << ", model context: " << model_context.AsString()
+                      << ", build error detail: " << status.ToString();
         return Status(FAILED, status.ToString());
       }
       models.push_back(model);
     }
   } catch (std::runtime_error &ex) {
     MSI_LOG_ERROR << "Load model from file failed, model file: " << file_names << ", device_type: '" << device_type
-                  << "', device_id: " << device_id << ", model type: " << model_type << ", options: " << other_options
-                  << ", build error detail: " << ex.what();
+                  << "', device_id: " << device_id << ", model type: " << model_type
+                  << ", model context: " << model_context.AsString() << ", build error detail: " << ex.what();
     return Status(FAILED, ex.what());
   }
+  return SetApiModelInfo(device_type, device_id, file_names, model_type, with_batch_dim, without_batch_dim_inputs,
+                         model_context, models);
+}
+
+Status MindSporeModelWrap::SetApiModelInfo(serving::DeviceType device_type, uint32_t device_id,
+                                           const std::vector<std::string> &file_names, ModelType model_type,
+                                           bool with_batch_dim, const std::vector<int> &without_batch_dim_inputs,
+                                           const ModelContext &model_context,
+                                           const std::vector<std::shared_ptr<mindspore::Model>> &models) {
   uint64_t last_batch_size = 0;
   common_model_info_.device_type = device_type;
   common_model_info_.device_id = device_id;
@@ -192,12 +222,13 @@ Status MindSporeModelWrap::LoadModelFromFileInner(serving::DeviceType device_typ
     models_.push_back(api_model_info);
   }
   MSI_LOG_INFO << "Load model from file success, model file: " << file_names << ", device_type: '" << device_type
-               << "', device_id: " << device_id << ", model type: " << model_type << ", options: " << other_options;
+               << "', device_id: " << device_id << ", model type: " << model_type
+               << ", model context: " << model_context.AsString();
   return SUCCESS;
 }
 
-std::shared_ptr<DeviceInfoContext> MindSporeModelWrap::TransformAscend310ModelContext(
-  uint32_t device_id, const std::map<std::string, std::string> &options) {
+std::shared_ptr<DeviceInfoContext> MindSporeModelWrap::TransformAscend310ModelContext(uint32_t device_id,
+                                                                                      const DeviceInfo &device_info) {
   auto context_info = std::make_shared<Ascend310DeviceInfo>();
   context_info->SetDeviceID(device_id);
 
@@ -214,60 +245,129 @@ std::shared_ptr<DeviceInfoContext> MindSporeModelWrap::TransformAscend310ModelCo
       MSI_LOG_ERROR << "Set model context output type failed, unknown data type " << val;
     }
   };
-  for (auto &item : options) {
+
+  for (auto &item : device_info) {
     const auto &key = item.first;
     const auto &value = item.second;
-    if (key == "acl_option.insert_op_config_file_path") {
+    if (key == "insert_op_cfg_path") {
       context_info->SetInsertOpConfigPath(value);
-    } else if (key == "acl_option.input_format") {
+    } else if (key == "input_format") {
       context_info->SetInputFormat(value);
-    } else if (key == "acl_option.input_shape") {
+    } else if (key == "input_shape") {
       context_info->SetInputShape(value);
-    } else if (key == "acl_option.output_type") {
+    } else if (key == "output_type") {
       set_output_type(value);
-    } else if (key == "acl_option.precision_mode") {
+    } else if (key == "precision_mode") {
       context_info->SetPrecisionMode(value);
-    } else if (key == "acl_option.op_select_impl_mode") {
+    } else if (key == "op_select_impl_mode") {
       context_info->SetOpSelectImplMode(value);
+    } else if (key == "fusion_switch_config_path") {
+      context_info->SetFusionSwitchConfigPath(value);
+    } else if (key == "buffer_optimize_mode") {
+      context_info->SetBufferOptimizeMode(value);
     }
   }
   return context_info;
 }
 
-std::shared_ptr<DeviceInfoContext> MindSporeModelWrap::TransformAscend910ModelContext(
-  uint32_t device_id, const std::map<std::string, std::string> &options) {
+std::shared_ptr<DeviceInfoContext> MindSporeModelWrap::TransformAscend910ModelContext(uint32_t device_id,
+                                                                                      const DeviceInfo &device_info) {
   auto context_info = std::make_shared<Ascend910DeviceInfo>();
   context_info->SetDeviceID(device_id);
   return context_info;
 }
-std::shared_ptr<DeviceInfoContext> MindSporeModelWrap::TransformNvidiaGPUModelContext(
-  uint32_t device_id, const std::map<std::string, std::string> &options) {
+std::shared_ptr<DeviceInfoContext> MindSporeModelWrap::TransformNvidiaGPUModelContext(uint32_t device_id,
+                                                                                      const DeviceInfo &device_info) {
   auto context_info = std::make_shared<GPUDeviceInfo>();
   context_info->SetDeviceID(device_id);
 
-  for (auto &item : options) {
+  for (auto &item : device_info) {
     const auto &key = item.first;
     const auto &value = item.second;
-    if (key == "gpu_option.precision_mode") {
+    if (key == "precision_mode") {
       context_info->SetPrecisionMode(value);
     }
   }
   return context_info;
 }
 
-std::shared_ptr<Context> MindSporeModelWrap::TransformModelContext(serving::DeviceType device_type, uint32_t device_id,
-                                                                   const std::map<std::string, std::string> &options) {
-  auto context = std::make_shared<mindspore::Context>();
-  std::shared_ptr<mindspore::DeviceInfoContext> context_info = nullptr;
-  if (device_type == kDeviceTypeAscendMS) {
-    context_info = TransformAscend910ModelContext(device_id, options);
-  } else if (device_type == kDeviceTypeAscendCL) {
-    context_info = TransformAscend310ModelContext(device_id, options);
-  } else if (device_type == kDeviceTypeGpu) {
-    context_info = TransformNvidiaGPUModelContext(device_id, options);
+std::shared_ptr<DeviceInfoContext> MindSporeModelWrap::TransformCPUModelContext(const DeviceInfo &device_info) {
+  auto context_info = std::make_shared<CPUDeviceInfo>();
+  for (auto &item : device_info) {
+    const auto &key = item.first;
+    const auto &value = item.second;
+    if (key == "precision_mode") {
+      context_info->SetEnableFP16(value == "fp16");
+    }
   }
+  return context_info;
+}
+
+std::string MindSporeModelWrap::DeviceTypeToString(serving::DeviceType device_type) {
+  switch (device_type) {
+    case kDeviceTypeAscend910:
+      return "ascend910";
+    case kDeviceTypeAscend310:
+      return "ascend310";
+    case kDeviceTypeAscend710:
+      return "ascend710";
+    case kDeviceTypeGpu:
+      return "gpu";
+    case kDeviceTypeCpu:
+      return "cpu";
+    case kDeviceTypeAscend:
+      return "ascend";
+    case kDeviceTypeNotSpecified:
+      return "not_specified";
+  }
+  return "";
+}
+
+DeviceInfo MindSporeModelWrap::GetDeviceInfo(const std::vector<DeviceInfo> &device_list,
+                                             serving::DeviceType device_type) {
+  DeviceInfo device_info;
+  for (auto &item : device_list) {
+    if (item.at("device_type") == DeviceTypeToString(device_type)) {
+      device_info = item;
+      break;
+    }
+  }
+  return device_info;
+}
+
+std::shared_ptr<Context> MindSporeModelWrap::TransformModelContext(serving::DeviceType device_type, uint32_t device_id,
+                                                                   const ModelContext &model_context,
+                                                                   bool enable_lite) {
+  auto context = std::make_shared<mindspore::Context>();
+  context->SetThreadNum(model_context.thread_num);
+  context->SetEnableParallel(model_context.enable_parallel);
+  context->SetThreadAffinity(model_context.thread_affinity_core_list);
+
+  std::shared_ptr<mindspore::DeviceInfoContext> context_info = nullptr;
+
+  auto device_info = GetDeviceInfo(model_context.device_list, device_type);
+  if (device_type == kDeviceTypeAscend910) {
+    context_info = TransformAscend910ModelContext(device_id, {});
+  } else if (device_type == kDeviceTypeAscend310) {
+    context_info = TransformAscend310ModelContext(device_id, device_info);
+  } else if (device_type == kDeviceTypeAscend710) {
+    context_info = TransformAscend310ModelContext(device_id, device_info);
+  } else if (device_type == kDeviceTypeCpu) {
+    context_info = TransformCPUModelContext(device_info);
+  } else if (device_type == kDeviceTypeGpu) {
+    context_info = TransformNvidiaGPUModelContext(device_id, device_info);
+  }
+
+  DeviceInfo cpu_device_info;
+  if (enable_lite && device_type == kDeviceTypeGpu) {
+    cpu_device_info = GetDeviceInfo(model_context.device_list, kDeviceTypeCpu);
+  }
+
   if (context_info != nullptr) {
     context->MutableDeviceInfo().push_back(context_info);
+  }
+  if (!cpu_device_info.empty()) {
+    context->MutableDeviceInfo().push_back(TransformCPUModelContext(cpu_device_info));
   }
   return context;
 }
@@ -454,7 +554,8 @@ Status MindSporeModelWrap::ExecuteModelCommon(size_t request_size, const FuncMak
   }
   std::vector<mindspore::MSTensor> outputs;
   mindspore::Status status;
-  if (common_model_info_.device_type == kDeviceTypeAscendCL) {
+  if (common_model_info_.device_type == kDeviceTypeAscend310 ||
+      common_model_info_.device_type == kDeviceTypeAscend710) {
     status = model->Predict(inputs, &outputs);
   } else {
     std::unique_lock<std::mutex> lock(infer_mutex_);
@@ -514,6 +615,9 @@ mindspore::ModelType MindSporeModelWrap::GetMsModelType(serving::ModelType model
     case kMindIR:
       ms_model_type = mindspore::kMindIR;
       break;
+    case kMindIR_Opt:
+      ms_model_type = mindspore::kMindIR_Opt;
+      break;
     case kAIR:
       ms_model_type = mindspore::kAIR;
       break;
@@ -532,10 +636,13 @@ mindspore::ModelType MindSporeModelWrap::GetMsModelType(serving::ModelType model
 mindspore::DeviceType MindSporeModelWrap::GetMsDeviceType(serving::DeviceType device_type) {
   mindspore::DeviceType ms_device_type = mindspore::DeviceType::kInvalidDeviceType;
   switch (device_type) {
-    case kDeviceTypeAscendMS:
+    case kDeviceTypeAscend910:
       ms_device_type = mindspore::DeviceType::kAscend910;
       break;
-    case kDeviceTypeAscendCL:
+    case kDeviceTypeAscend310:
+      ms_device_type = mindspore::DeviceType::kAscend310;
+      break;
+    case kDeviceTypeAscend710:
       ms_device_type = mindspore::DeviceType::kAscend310;
       break;
     case kDeviceTypeGpu:

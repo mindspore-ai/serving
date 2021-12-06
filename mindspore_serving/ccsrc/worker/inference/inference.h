@@ -29,10 +29,13 @@
 namespace mindspore {
 namespace serving {
 
+using DeviceInfo = std::map<std::string, std::string>;
+
 enum DeviceType {
   kDeviceTypeNotSpecified,
-  kDeviceTypeAscendMS,
-  kDeviceTypeAscendCL,
+  kDeviceTypeAscend910,
+  kDeviceTypeAscend310,
+  kDeviceTypeAscend710,
   kDeviceTypeAscend,
   kDeviceTypeGpu,
   kDeviceTypeCpu,
@@ -43,8 +46,18 @@ enum ModelType : uint32_t {
   kAIR = 1,
   kOM = 2,
   kONNX = 3,
+  kMindIR_Opt = 4,
   // insert new data type here
   kUnknownType = 0xFFFFFFFF
+};
+
+struct MS_API ModelContext {
+  int32_t thread_num{1};
+  std::vector<int> thread_affinity_core_list;
+  bool enable_parallel{false};
+  std::vector<DeviceInfo> device_list;
+  void AppendDeviceInfo(const DeviceInfo &device_info);
+  std::string AsString() const;
 };
 
 struct TensorInfo {
@@ -65,11 +78,14 @@ static inline LogStream &operator<<(LogStream &stream, DeviceType device_type) {
     case kDeviceTypeAscend:
       stream << "Ascend";
       break;
-    case kDeviceTypeAscendMS:
+    case kDeviceTypeAscend910:
       stream << "Ascend910";
       break;
-    case kDeviceTypeAscendCL:
+    case kDeviceTypeAscend310:
       stream << "Ascend310";
+      break;
+    case kDeviceTypeAscend710:
+      stream << "Ascend710";
       break;
     case kDeviceTypeGpu:
       stream << "Gpu";
@@ -101,6 +117,8 @@ static inline LogStream &operator<<(LogStream &stream, ModelType model_type) {
     case kAIR:
       stream << "AIR";
       break;
+    case kMindIR_Opt:
+      stream << "MindIR_Opt";
     default:
       stream << "[model type: " << static_cast<int>(model_type) << "]";
       break;
@@ -114,10 +132,9 @@ class InferenceBase {
   virtual ~InferenceBase() = default;
   virtual Status LoadModelFromFile(DeviceType device_type, uint32_t device_id,
                                    const std::vector<std::string> &file_name, ModelType model_type, bool with_batch_dim,
-                                   const std::vector<int> &without_batch_dim_inputs,
-                                   const std::map<std::string, std::string> &other_options, const std::string &dec_key,
-                                   const std::string &dec_mode) = 0;
-
+                                   const std::vector<int> &without_batch_dim_inputs, const ModelContext &model_context,
+                                   const std::string &dec_key, const std::string &dec_mode,
+                                   const std::string &config_file, bool enable_lite) = 0;
   virtual Status UnloadModel() = 0;
 
   virtual Status ExecuteModel(const RequestBase &request, ReplyBase *reply, bool return_result,
@@ -143,6 +160,7 @@ class MS_API InferenceLoader {
   static InferenceLoader &Instance();
   std::shared_ptr<InferenceBase> CreateMindSporeInfer();
   DeviceType GetSupportDeviceType(DeviceType device_type, ModelType model_type);
+  bool GetEnableLite() const;
 
  private:
   typedef InferenceBase *(*CreateInferHandle)();
@@ -151,6 +169,7 @@ class MS_API InferenceLoader {
   void *gomp_handler_ = nullptr;
   CreateInferHandle ms_create_handle_ = nullptr;
   Status LoadMindSporeModelWrap();
+  bool enable_lite_{false};
 };
 
 }  // namespace serving

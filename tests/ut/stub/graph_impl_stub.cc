@@ -97,6 +97,10 @@ Status GraphImplStubAdd::Run(const std::vector<MSTensor> &inputs, std::vector<MS
 
 Status GraphImplStubAdd::Load(uint32_t device_id) {
   LoadInner();
+  auto status = CheckContext();
+  if (!status.IsOk()) {
+    return status;
+  }
   if (input_count == 0 || output_count == 0) {
     MS_LOG_ERROR << "Invalid input count or output count, input count: " << input_count
                  << ", output count: " << output_count;
@@ -104,6 +108,42 @@ Status GraphImplStubAdd::Load(uint32_t device_id) {
   }
   MS_LOG_INFO << "input count: " << input_count << ", output count: " << output_count;
   Init({2, 2});
+  return kSuccess;
+}
+
+Status GraphImplStubAdd::CheckContext() {
+  auto file_name = graph_->graph_data_->GetFuncGraph()->file_name_;
+  bool enable_lite = false;
+  if (file_name.find("lite") != std::string::npos) {
+    enable_lite = true;
+  }
+  auto device_info_list = graph_context_->MutableDeviceInfo();
+  if (!enable_lite && device_info_list.size() > 1) {
+    return kCoreFailed;
+  }
+  auto beg = file_name.find('@');
+  if (beg == std::string::npos) {
+    return kSuccess;
+  }
+  auto device_beg = file_name.find('_', beg);
+  std::stringstream ss(file_name.substr(device_beg + 1));
+  std::vector<std::string> device_list;
+
+  std::string device_info;
+  while (std::getline(ss, device_info, '_')) {
+    device_list.push_back(device_info);
+  }
+
+  if (device_list.size() != device_info_list.size()) {
+    return kCoreFailed;
+  }
+  std::map<std::string, mindspore::DeviceType> device_type_map{
+    {"cpu", kCPU}, {"gpu", kGPU}, {"ascend910", kAscend910}, {"ascend310", kAscend310}};
+  for (size_t i = 0; i < device_list.size(); ++i) {
+    if (device_type_map[device_list[i]] != device_info_list[i]->GetDeviceType()) {
+      return kCoreFailed;
+    }
+  }
   return kSuccess;
 }
 

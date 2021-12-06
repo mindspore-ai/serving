@@ -26,6 +26,7 @@
 #include "worker/inference/inference.h"
 #include "worker/servable_register.h"
 #include "worker/extra_worker/remote_call_model.h"
+#include "worker/context.h"
 
 namespace mindspore::serving {
 
@@ -42,6 +43,23 @@ void PyWorker::StartServable(const std::string &servable_directory, const std::s
   }
   Status status;
   std::map<std::string, std::shared_ptr<ModelLoaderBase>> models_loader;
+  status =
+    LoadLocalModels(servable_directory, servable_name, version_number, dec_key, dec_mode, signature, &models_loader);
+  if (status != SUCCESS) {
+    MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
+  }
+  status = Worker::GetInstance().StartServable(servable_directory, servable_name, version_number, models_loader,
+                                               master_address, worker_address, true);
+  if (status != SUCCESS) {
+    MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
+  }
+}
+
+Status PyWorker::LoadLocalModels(const std::string &servable_directory, const std::string &servable_name,
+                                 uint32_t version_number, const std::string &dec_key, const std::string &dec_mode,
+                                 const ServableSignature &signature,
+                                 std::map<std::string, std::shared_ptr<ModelLoaderBase>> *models_loader) {
+  Status status;
   for (auto &model_meta : signature.model_metas) {
     auto &model_key = model_meta.common_meta.model_key;
     auto local_models_loader = std::make_shared<LocalModelLoader>();
@@ -49,20 +67,16 @@ void PyWorker::StartServable(const std::string &servable_directory, const std::s
       local_models_loader->LoadModel(servable_directory, servable_name, version_number, model_meta, dec_key, dec_mode);
     if (status != SUCCESS) {
       local_models_loader->Clear();
-      MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
+      return status;
     }
     status = local_models_loader->AfterLoadModel();
     if (status != SUCCESS) {
       local_models_loader->Clear();
-      MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
+      return status;
     }
-    models_loader[model_key] = local_models_loader;
+    models_loader->emplace(model_key, local_models_loader);
   }
-  status = Worker::GetInstance().StartServable(servable_directory, servable_name, version_number, models_loader,
-                                               master_address, worker_address, true);
-  if (status != SUCCESS) {
-    MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
-  }
+  return SUCCESS;
 }
 
 void PyWorker::StartDistributedServable(const std::string &servable_directory, const std::string &servable_name,
@@ -100,7 +114,8 @@ void PyWorker::StartDistributedServable(const std::string &servable_directory, c
 }
 
 void PyWorker::StartExtraServable(const std::string &servable_directory, const std::string &servable_name,
-                                  uint32_t version_number, const std::string &master_address,
+                                  uint32_t version_number, bool device_ids_empty, const std::string &dec_key,
+                                  const std::string &dec_mode, const std::string &master_address,
                                   const std::string &worker_address) {
   if (Worker::GetInstance().IsRunning()) {
     MSI_LOG_EXCEPTION << "A servable has been started, only one servable can run in a process currently.";
@@ -109,16 +124,38 @@ void PyWorker::StartExtraServable(const std::string &servable_directory, const s
   if (signature.servable_name != servable_name) {
     MSI_LOG_EXCEPTION << "Servable '" << servable_name << "' has not been registered";
   }
+  auto own_device = false;
   std::map<std::string, std::shared_ptr<ModelLoaderBase>> model_loaders;
   Status status;
   if (!signature.model_metas.empty()) {
-    status = RemoteCallModel::InitRemote(servable_name, version_number, master_address, &model_loaders);
-    if (status != SUCCESS) {
-      MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
+    // if device_type is None, device_ids is empty, and there are models declared, Cpu target should be support
+    auto target_device_type = ServableContext::Instance()->GetDeviceType();
+    if (target_device_type == kDeviceTypeNotSpecified && device_ids_empty) {
+      auto support_device_type = InferenceLoader::Instance().GetSupportDeviceType(kDeviceTypeCpu, kUnknownType);
+      if (support_device_type == kDeviceTypeNotSpecified) {
+        MSI_LOG_EXCEPTION
+          << "Servable '" << servable_name << "' has models declared by declare_model, but parameter 'device_ids'"
+          << " of ServableStartConfig is not set in Serving startup script when the MindSpore or Lite inference"
+          << " package not support CPU";
+      }
+      target_device_type = kDeviceTypeCpu;
+    }
+    if (target_device_type == kDeviceTypeCpu) {
+      own_device = true;
+      status = LoadLocalModels(servable_directory, servable_name, version_number, dec_key, dec_mode, signature,
+                               &model_loaders);
+      if (status != SUCCESS) {
+        MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
+      }
+    } else {
+      status = RemoteCallModel::InitRemote(servable_name, version_number, master_address, &model_loaders);
+      if (status != SUCCESS) {
+        MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
+      }
     }
   }
   status = Worker::GetInstance().StartServable(servable_directory, servable_name, version_number, model_loaders,
-                                               master_address, worker_address, false);
+                                               master_address, worker_address, own_device);
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
@@ -187,13 +224,24 @@ void PyWorker::StopAndClear() {
   Worker::GetInstance().Clear();
 }
 
-std::string PyWorker::GetDeviceType() {
-  auto device_type = InferenceLoader::Instance().GetSupportDeviceType(kDeviceTypeNotSpecified, kUnknownType);
-  if (device_type == kDeviceTypeAscendMS) {
-    return "AscendMS";
+std::string PyWorker::GetDeviceType(const std::string &target_device_type) {
+  DeviceType target = kDeviceTypeNotSpecified;
+  if (target_device_type == "cpu") {
+    target = kDeviceTypeCpu;
+  } else if (target_device_type == "gpu") {
+    target = kDeviceTypeGpu;
+  } else if (target_device_type == "ascend") {
+    target = kDeviceTypeAscend;
   }
-  if (device_type == kDeviceTypeAscendCL) {
-    return "AscendCL";
+  auto device_type = InferenceLoader::Instance().GetSupportDeviceType(target, kUnknownType);
+  if (device_type == kDeviceTypeAscend910) {
+    return "Ascend910";
+  }
+  if (device_type == kDeviceTypeAscend310) {
+    return "Ascend310";
+  }
+  if (device_type == kDeviceTypeAscend710) {
+    return "Ascend710";
   }
   if (device_type == kDeviceTypeGpu) {
     return "Gpu";
@@ -201,7 +249,7 @@ std::string PyWorker::GetDeviceType() {
   if (device_type == kDeviceTypeCpu) {
     return "Cpu";
   }
-  return std::string();
+  return "";
 }
 
 void PyWorker::NotifyFailed(const std::string &master_address, const std::string &error_msg) {

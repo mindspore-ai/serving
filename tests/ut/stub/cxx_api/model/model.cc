@@ -45,10 +45,6 @@ Status Model::Build(GraphCell graph_cell, const std::shared_ptr<Context> &model_
     return kMCInvalidInput;
   }
   auto &device_info = model_context->MutableDeviceInfo();
-  if (device_info.size() != 1) {
-    MS_LOG(ERROR) << "Invalid model context, only single device info is supported.";
-    return kMCInvalidInput;
-  }
 
   std::string device_target = GetDeviceTypeString(device_info[0]->GetDeviceType());
   impl_ = Factory<ModelImpl>::Instance().Create(device_target);
@@ -150,6 +146,12 @@ Model::Model() : impl_(nullptr) {}
 Model::~Model() {}
 
 bool Model::CheckModelSupport(enum DeviceType device_type, ModelType model_type) {
+  if (device_type == kCPU) {
+    const char *value = ::getenv("SERVING_ENABLE_CPU_DEVICE");
+    if (value == nullptr || std::string(value) != "1") {
+      return false;
+    }
+  }
   std::string device_type_str = GetDeviceTypeString(device_type);
   if (!Factory<ModelImpl>::Instance().CheckModelSupport(device_type_str)) {
     return false;
@@ -159,7 +161,11 @@ bool Model::CheckModelSupport(enum DeviceType device_type, ModelType model_type)
   if (check_model == nullptr) {
     return false;
   }
-
   return check_model->CheckModelSupport(model_type);
+}
+
+Status Model::LoadConfig(const std::vector<char> &config_path) {
+  MS_LOG(ERROR) << "Unsupported Feature.";
+  return kMCFailed;
 }
 }  // namespace mindspore

@@ -13,8 +13,9 @@
 # limitations under the License.
 # ============================================================================
 """Servable declaration interface"""
+import os
 
-from mindspore_serving._mindspore_serving import ModelMeta_, ServableRegister_
+from mindspore_serving._mindspore_serving import ModelMeta_, ServableRegister_, ModelContext_
 
 from mindspore_serving import log as logger
 from mindspore_serving.server.common import check_type, deprecated
@@ -170,7 +171,8 @@ def append_declared_model(model_key):
     return model
 
 
-def declare_model(model_file, model_format, with_batch_dim=True, options=None, without_batch_dim_inputs=None):
+def declare_model(model_file, model_format, with_batch_dim=True, options=None, without_batch_dim_inputs=None,
+                  context=None, config_file=None):
     r"""
     Declare one model when importing servable_config.py of one servable.
 
@@ -180,14 +182,15 @@ def declare_model(model_file, model_format, with_batch_dim=True, options=None, w
 
     Args:
         model_file (Union[str, list[str]]): Model files name.
-        model_format (str): Model format, "OM" or "MindIR", case ignored.
+        model_format (str): Model format, "OM", "MindIR" or "MindIR_Opt" case ignored.
         with_batch_dim (bool, optional): Whether the first shape dim of the inputs and outputs of model is batch dim.
             Default: True.
         options (Union[AclOptions, GpuOptions], optional): Options of model, supports AclOptions or GpuOptions.
             Default: None.
+        context (Context): Context is used to store environment variables during execution. Default: None.
         without_batch_dim_inputs (Union[int, tuple[int], list[int]], optional): Index of inputs that without batch
             dim when with_batch_dim is True. Default: None.
-
+        config_file (str, optional): Config file for model. Default: None.
     Raises:
         RuntimeError: The type or value of the parameters are invalid.
 
@@ -210,44 +213,196 @@ def declare_model(model_file, model_format, with_batch_dim=True, options=None, w
     # init local servable meta info
     check_type.check_str('model_format', model_format)
     model_format = model_format.lower()
-    if model_format not in ("om", "mindir"):
-        raise RuntimeError("model format can only be OM or MindIR")
+    if model_format not in ("om", "mindir", "mindir_opt"):
+        raise RuntimeError("model format can only be OM, MindIR or MindIR_opt")
 
     meta.local_meta.model_file = model_file
     meta.local_meta.set_model_format(model_format)
-    if isinstance(options, dict):
-        for k, w in options.items():
-            check_type.check_str("options key", k)
-            check_type.check_str(k + " value", w)
-    elif isinstance(options, _Options):
-        # pylint: disable=protected-access
-        options = options._as_options_map()
+
+    if context is not None:
+        if not isinstance(context, Context):
+            raise RuntimeError(f"Parameter 'context' should be Context, but gotten {type(context)}")
+        meta.local_meta.model_context = context.model_context
+    elif isinstance(options, (GpuOptions, AclOptions)):
+        logger.warning(
+            "'options' will be deprecated in the future, we recommend using 'context', if these two parameters "
+            "are both set, options will be ignored")
+        meta.local_meta.model_context = options.context.model_context
     elif options is not None:
-        raise RuntimeError(f"Parameter 'options' should be None, dict of <str,str> or AclOptions, but "
+        raise RuntimeError(f"Parameter 'options' should be None, GpuOptions or AclOptions, but "
                            f"gotten {type(options)}")
-    if options:
-        meta.local_meta.options = options
+
+    if config_file is not None:
+        check_type.check_str("config_file", config_file)
+        servable_dir = get_servable_dir()
+        file_abs_path = os.path.join(servable_dir, config_file)
+        meta.local_meta.model_context.config_file = file_abs_path
 
     ServableRegister_.declare_model(meta)
     logger.info(f"Declare model, model_file: {model_file} , model_format: {model_format},  with_batch_dim: "
-                f"{with_batch_dim}, options: {options}, without_batch_dim_inputs: {without_batch_dim_inputs}")
+                f"{with_batch_dim}, options: {options}, without_batch_dim_inputs: {without_batch_dim_inputs}"
+                f", context: {context}, config file: {config_file}")
 
     return append_declared_model(meta.common_meta.model_key)
 
 
-class _Options:
-    """ Abstract base class used to build a Options class. """
+class Context:
+    """Context is used to store environment variables during execution.
+
+    Args:
+        thread_num (int, optional): Set the number of threads at runtime. Default: 1.
+        thread_affinity_core_list (tuple[int], list[int], optional): Set the thread lists to CPU cores. Default: [].
+        enable_parallel (bool, optional): Set the status whether to perform model inference or training in parallel.
+            Default: False.
+    Raises:
+        RuntimeError: type or value of input parameters are invalid.
+    """
 
     def __init__(self, **kwargs):
-        """ Initialize Options"""
+        self.model_context = ModelContext_()
+        val_set_fun = {
+            "thread_num": self._set_thread_num,
+            "thread_affinity_core_list": self._set_thread_affinity_core_list,
+            "enable_parallel": self._set_enable_parallel
+        }
+        for k, v in kwargs.items():
+            if k not in val_set_fun:
+                raise RuntimeError("Set context failed, unsupported option " + k)
+            val_set_fun[k](v)
 
-    def _as_options_map(self):
-        """Transfer Options to dict of str,str"""
+    def append_device_info(self, device_info):
+        """Append one device info to the context
+         Args:
+            device_info (Union[CPUDeviceInfo, GPUDeviceInfo, Ascend310DeviceInfo, Ascend710DeviceInfo]):
+                Device info for one device.
+         Raises:
+            RuntimeError: type or value of input parameters are invalid.
+        """
+        self.model_context.append_device_info(device_info.context_map)
+
+    def _set_thread_num(self, val):
+        check_type.check_int("thread_num", val, 1)
+        self.model_context.thread_num = val
+
+    def _set_thread_affinity_core_list(self, val):
+        val = check_type.check_and_as_int_tuple_list("thread_affinity_core_list", val)
+        self.model_context.thread_affinity_core_list = val
+
+    def _set_enable_parallel(self, val):
+        check_type.check_bool("enable_parallel", val)
+        self.model_context.enable_parallel = val
+
+    def __str__(self):
+        res = f"thread_num: {self.model_context.thread_num}, thread_affinity_core_list: " \
+              f"{self.model_context.thread_affinity_core_list}, enable_parallel: " \
+              f"{self.model_context.enable_parallel}, device_list, {self.model_context.device_list}"
+        return res
 
 
-class AclOptions(_Options):
+class DeviceInfoContext:
+    def __init__(self):
+        """ Initialize context"""
+
+    def _as_context_map(self):
+        """Transfer device info to dict of str,str"""
+
+
+class CPUDeviceInfo(DeviceInfoContext):
     """
-    Helper class to set acl options.
+    Helper class to set cpu device info.
+
+    Args:
+        precision_mode(str, optional): inference operator selection, and the value can be "origin", "fp16".
+            Default: "origin".
+
+    Raises:
+        RuntimeError: Cpu option is invalid, or value is not str.
+
+    Examples:
+        >>> from mindspore_serving.server import register
+        >>> context = register.Context()
+        >>> context.append_device_info(register.CPUDeviceInfo(precision_mode="fp16"))
+        >>> model = register.declare_model(model_file="deeptext.ms", model_format="MindIR_Opt", context=context)
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__()
+        self.precision_mode = "origin"
+        val_set_fun = {"precision_mode": self._set_precision_mode}
+        for k, w in kwargs.items():
+            if k not in val_set_fun:
+                raise RuntimeError("Set cpu option failed, unsupported option " + k)
+            val_set_fun[k](w)
+        self.context_map = self._as_context_map()
+
+    def _set_precision_mode(self, val):
+        check_type.check_str("precision_mode", val)
+        if val not in ("origin", "fp16"):
+            raise RuntimeError(f"Cpu option 'precision_mode' can only be 'origin', 'fp16'. given '{val}'")
+        self.precision_mode = val
+
+    def _as_context_map(self):
+        """Transfer cpu device info to dict of str,str"""
+        context_map = {"precision_mode": str(self.precision_mode), "device_type": "cpu"}
+        return context_map
+
+
+class GPUDeviceInfo(DeviceInfoContext):
+    """
+    Helper class to set gpu device info.
+
+    Args:
+        precision_mode(str, optional): inference operator selection, and the value can be "origin", "fp16".
+            Default: "origin".
+
+    Raises:
+        RuntimeError: Gpu option is invalid, or value is not str.
+
+    Examples:
+        >>> from mindspore_serving.server import register
+        >>> context = register.Context()
+        >>> context.append_device_info(register.GPUDeviceInfo(precision_mode="fp16"))
+        >>> model = register.declare_model(model_file="deeptext.mindir", model_format="MindIR", context=context)
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__()
+        self.precision_mode = "origin"
+        val_set_fun = {"precision_mode": self._set_precision_mode}
+        for k, w in kwargs.items():
+            if k not in val_set_fun:
+                raise RuntimeError("Set gpu option failed, unsupported option " + k)
+            val_set_fun[k](w)
+        self.context_map = self._as_context_map()
+
+    def _set_precision_mode(self, val):
+        """Set option 'precision_mode', which means inference operator selection, and the value can be "origin",
+        "fp16", default "origin".
+
+        Args:
+            val (str): Value of option 'precision_mode'. "origin" inference with model definition.
+            "fp16" enable FP16 operator selection, with FP32 fallback. Default: "origin".
+
+        Raises:
+            RuntimeError: The type of value is not str, or the value is invalid.
+        """
+        check_type.check_str('precision_mode', val)
+        if val not in ("origin", "fp16"):
+            raise RuntimeError(f"Gpu option 'precision_mode' can only be 'origin', 'fp16'. given '{val}'")
+        self.precision_mode = val
+
+    def _as_context_map(self):
+        """Transfer gpu device info to dict of str,str"""
+        context_map = {}
+        if self.precision_mode:
+            context_map["precision_mode"] = self.precision_mode
+        context_map["device_type"] = "gpu"
+        return context_map
+
+
+class _AclDeviceInfo:
+    """
+    Helper class to set Ascend acl device infos.
 
     Args:
         insert_op_cfg_path (str, optional): Path of aipp config file.
@@ -261,30 +416,32 @@ class AclOptions(_Options):
             "must_keep_origin_dtype" or "allow_mix_precision". Default: "force_fp16".
         op_select_impl_mode (str, optional): The operator selection mode, the value can be "high_performance" or
             "high_precision". Default: "high_performance".
-
+        fusion_switch_config_path (str, optional):
+        buffer_optimize_mode (str, optional): The value can be "l1_optimize", "l2_optimize", "off_optimize" or
+            "l1_and_l2_optimize". Default "l2_optimize".
     Raises:
-        RuntimeError: Acl option is invalid, or value is not str.
+        RuntimeError: Acl device info is invalid.
 
-    Examples:
-        >>> from mindspore_serving.server import register
-        >>> options = register.AclOptions(op_select_impl_mode="high_precision", precision_mode="allow_fp32_to_fp16")
-        >>> register.declare_servable(servable_file="deeptext.mindir", model_format="MindIR", options=options)
     """
 
     def __init__(self, **kwargs):
-        super(AclOptions, self).__init__()
         self.insert_op_cfg_path = ""
         self.input_format = ""
         self.input_shape = ""
         self.output_type = ""
         self.precision_mode = ""
         self.op_select_impl_mode = ""
+        self.fusion_switch_config_path = ""
+        self.buffer_optimize_mode = ""
         val_set_fun = {"insert_op_cfg_path": self._set_insert_op_cfg_path,
                        "input_format": self._set_input_format,
                        "input_shape": self._set_input_shape,
                        "output_type": self._set_output_type,
                        "precision_mode": self._set_precision_mode,
-                       "op_select_impl_mode": self._set_op_select_impl_mode}
+                       "op_select_impl_mode": self._set_op_select_impl_mode,
+                       "fusion_switch_config_path": self._set_fusion_switch_config_path,
+                       "buffer_optimize_mode": self._set_buffer_optimize_mode}
+
         for k, w in kwargs.items():
             if k not in val_set_fun:
                 raise RuntimeError("Set acl option failed, unsupported option " + k)
@@ -383,25 +540,162 @@ class AclOptions(_Options):
                                f"'high_precision', actually given '{val}'")
         self.op_select_impl_mode = val
 
-    def _as_options_map(self):
-        """Transfer AclOptions to dict of str,str"""
-        options = {}
+    def _set_fusion_switch_config_path(self, val):
+        check_type.check_str('fusion_switch_config_path', val)
+        self.fusion_switch_config_path = val
+
+    def _set_buffer_optimize_mode(self, val):
+        check_type.check_str('buffer_optimize_mode', val)
+        if val not in ("l1_optimize", "l2_optimize", "off_optimize", "l1_and_l2_optimize"):
+            raise RuntimeError(f"option 'buffer_optimize_mode' can only be 'off_optimize'(default), "
+                               f"'l1_optimize', 'l2_optimize' or 'l1_and_l2_optimize', actually given '{val}'")
+        self.buffer_optimize_mode = val
+
+    def as_context_map_base(self):
+        """Transfer acl device info to dict of str,str"""
+        context_map = {}
         if self.insert_op_cfg_path:
-            options['acl_option.insert_op_config_file_path'] = self.insert_op_cfg_path
+            context_map["insert_op_cfg_path"] = self.insert_op_cfg_path
         if self.input_format:
-            options['acl_option.input_format'] = self.input_format
+            context_map["input_format"] = self.input_format
         if self.input_shape:
-            options['acl_option.input_shape'] = self.input_shape
+            context_map["input_shape"] = self.input_shape
         if self.output_type:
-            options['acl_option.output_type'] = self.output_type
+            context_map["output_type"] = self.output_type
         if self.precision_mode:
-            options['acl_option.precision_mode'] = self.precision_mode
+            context_map["precision_mode"] = self.precision_mode
         if self.op_select_impl_mode:
-            options['acl_option.op_select_impl_mode'] = self.op_select_impl_mode
-        return options
+            context_map["op_select_impl_mode"] = self.op_select_impl_mode
+        if self.buffer_optimize_mode:
+            context_map["buffer_optimize_mode"] = self.buffer_optimize_mode
+        if self.fusion_switch_config_path:
+            context_map["fusion_switch_config_path"] = self.fusion_switch_config_path
+        return context_map
 
 
-class GpuOptions(_Options):
+class Ascend310DeviceInfo(DeviceInfoContext):
+    """
+    Helper class to set Ascend 310 device infos.
+
+    Args:
+        insert_op_cfg_path (str, optional): Path of aipp config file.
+        input_format (str, optional): Manually specify the model input format, the value can be "ND", "NCHW", "NHWC",
+            "CHWN", "NC1HWC0", or "NHWC1C0".
+        input_shape (str, optional): Manually specify the model input shape, such as
+            "input_op_name1: n1,c2,h3,w4;input_op_name2: n4,c3,h2,w1".
+        output_type (str, optional): Manually specify the model output type, the value can be "FP16", "UINT8" or "FP32",
+            Default: "FP32".
+        precision_mode (str, optional): Model precision mode, the value can be "force_fp16"，"allow_fp32_to_fp16"，
+            "must_keep_origin_dtype" or "allow_mix_precision". Default: "force_fp16".
+        op_select_impl_mode (str, optional): The operator selection mode, the value can be "high_performance" or
+            "high_precision". Default: "high_performance".
+        fusion_switch_config_path (str, optional):
+        buffer_optimize_mode (str, optional): The value can be "l1_optimize", "l2_optimize", "off_optimize" or
+            "l1_and_l2_optimize". Default "l2_optimize".
+    Raises:
+        RuntimeError: Ascend 310 device info is invalid.
+
+    Examples:
+        >>> from mindspore_serving.server import register
+        >>> context = register.Context()
+        >>> context.append_device_info(register.Ascend310DeviceInfo(precision_mode="allow_fp32_to_fp16"))
+        >>> model = register.declare_model(model_file="deeptext.mindir", model_format="MindIR", context=context)
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__()
+        self.acl_device_info = _AclDeviceInfo(**kwargs)
+        self.context_map = self._as_context_map()
+
+    def _as_context_map(self):
+        """Transfer ascend310 device info to dict of str,str"""
+        context_map = self.acl_device_info.as_context_map_base()
+        context_map["device_type"] = "ascend310"
+        return context_map
+
+
+class Ascend710DeviceInfo(DeviceInfoContext):
+    """
+    Helper class to set Ascend 710 device infos.
+
+    Args:
+        insert_op_cfg_path (str, optional): Path of aipp config file.
+        input_format (str, optional): Manually specify the model input format, the value can be "ND", "NCHW", "NHWC",
+            "CHWN", "NC1HWC0", or "NHWC1C0".
+        input_shape (str, optional): Manually specify the model input shape, such as
+            "input_op_name1: n1,c2,h3,w4;input_op_name2: n4,c3,h2,w1".
+        output_type (str, optional): Manually specify the model output type, the value can be "FP16", "UINT8" or "FP32",
+            Default: "FP32".
+        precision_mode (str, optional): Model precision mode, the value can be "force_fp16"，"allow_fp32_to_fp16"，
+            "must_keep_origin_dtype" or "allow_mix_precision". Default: "force_fp16".
+        op_select_impl_mode (str, optional): The operator selection mode, the value can be "high_performance" or
+            "high_precision". Default: "high_performance".
+        fusion_switch_config_path (str, optional):
+        buffer_optimize_mode (str, optional): The value can be "l1_optimize", "l2_optimize", "off_optimize" or
+            "l1_and_l2_optimize". Default "l2_optimize".
+    Raises:
+        RuntimeError: Ascend 710 device info is invalid.
+
+    Examples:
+        >>> from mindspore_serving.server import register
+        >>> context = register.Context()
+        >>> context.append_device_info(register.Ascend710DeviceInfo(precision_mode="allow_fp32_to_fp16"))
+        >>> model = register.declare_model(model_file="deeptext.mindir", model_format="MindIR", context=context)
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__()
+        self.acl_device_info = _AclDeviceInfo(**kwargs)
+        self.context_map = self._as_context_map()
+
+    def _as_context_map(self):
+        """Transfer ascend710 device info to dict of str,str"""
+        context_map = self.acl_device_info.as_context_map_base()
+        context_map["device_type"] = "ascend710"
+        return context_map
+
+
+class AclOptions:
+    """
+    Helper class to set acl options.
+
+    Args:
+        insert_op_cfg_path (str, optional): Path of aipp config file.
+        input_format (str, optional): Manually specify the model input format, the value can be "ND", "NCHW", "NHWC",
+            "CHWN", "NC1HWC0", or "NHWC1C0".
+        input_shape (str, optional): Manually specify the model input shape, such as
+            "input_op_name1: n1,c2,h3,w4;input_op_name2: n4,c3,h2,w1".
+        output_type (str, optional): Manually specify the model output type, the value can be "FP16", "UINT8" or "FP32",
+            Default: "FP32".
+        precision_mode (str, optional): Model precision mode, the value can be "force_fp16"，"allow_fp32_to_fp16"，
+            "must_keep_origin_dtype" or "allow_mix_precision". Default: "force_fp16".
+        op_select_impl_mode (str, optional): The operator selection mode, the value can be "high_performance" or
+            "high_precision". Default: "high_performance".
+
+    Raises:
+        RuntimeError: Acl option is invalid, or value is not str.
+
+    Examples:
+        >>> from mindspore_serving.server import register
+        >>> options = register.AclOptions(op_select_impl_mode="high_precision", precision_mode="allow_fp32_to_fp16")
+        >>> register.declare_servable(servable_file="deeptext.mindir", model_format="MindIR", options=options)
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__()
+        self.acl_device_info = _AclDeviceInfo(**kwargs)
+
+        ascend310_context_map = self.acl_device_info.as_context_map_base()
+        ascend310_context_map["device_type"] = "ascend310"
+        ascend710_context_map = ascend310_context_map.copy()
+        ascend710_context_map["device_type"] = "ascend710"
+
+        self.context = Context()
+        self.context.append_device_info(ascend310_context_map)
+        self.context.append_device_info(ascend710_context_map)
+
+
+class GpuOptions:
     """
     Helper class to set gpu options.
 
@@ -426,6 +720,9 @@ class GpuOptions(_Options):
             if k not in val_set_fun:
                 raise RuntimeError("Set gpu option failed, unsupported option " + k)
             val_set_fun[k](w)
+        self.context_map = self._as_context_map()
+        self.context = Context()
+        self.context.append_device_info(self.context_map)
 
     def _set_precision_mode(self, val):
         """Set option 'precision_mode', which means inference operator selection, and the value can be "origin",
@@ -443,8 +740,7 @@ class GpuOptions(_Options):
             raise RuntimeError(f"Gpu Options 'precision_mode' can only be 'origin', 'fp16'. given '{val}'")
         self.precision_mode = val
 
-    def _as_options_map(self):
+    def _as_context_map(self):
         """Transfer GpuOptions to dict of str,str"""
-        options = {}
-        options['gpu_option.precision_mode'] = self.precision_mode
-        return options
+        context_map = {"precision_mode": self.precision_mode, "device_type": "gpu"}
+        return context_map

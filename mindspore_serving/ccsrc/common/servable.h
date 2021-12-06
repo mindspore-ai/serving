@@ -134,8 +134,9 @@ struct CommonModelMeta {
 
 struct MS_API LocalModelMeta {
   std::vector<std::string> model_files;              // file names
-  ModelType model_format = ModelType::kUnknownType;  // OM, MindIR
-  std::map<std::string, std::string> load_options;   // Acl options
+  ModelType model_format = ModelType::kUnknownType;  // OM, MindIR, MindIR_Opt
+  ModelContext model_context;
+  std::string config_file;
   void SetModelFormat(const std::string &format);
 };
 

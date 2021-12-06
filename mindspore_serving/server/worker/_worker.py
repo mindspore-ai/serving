@@ -118,8 +118,7 @@ def _load_servable_config(servable_directory, servable_name):
 
 @stop_on_except
 def start_servable(servable_directory, servable_name, version_number,
-                   device_type, device_id,
-                   master_address, worker_address, dec_key, dec_mode):
+                   device_type, device_id, master_address, worker_address, dec_key, dec_mode):
     r"""
     Start up the servable named 'servable_name' defined in 'servable_directory', and link the worker to the master
     through gRPC master_address and worker_address.
@@ -156,7 +155,8 @@ def start_servable(servable_directory, servable_name, version_number,
 
 
 @stop_on_except
-def start_extra_servable(servable_directory, servable_name, version_number, master_address, worker_address):
+def start_extra_servable(servable_directory, servable_name, version_number, device_type, device_ids_empty,
+                         dec_key, dec_mode, master_address, worker_address):
     r"""
     Start up the servable named 'servable_name' defined in 'servable_directory', and link the worker to the master
     through gRPC master_address and worker_address.
@@ -164,8 +164,15 @@ def start_extra_servable(servable_directory, servable_name, version_number, mast
     check_type.check_str('servable_directory', servable_directory)
     check_type.check_str('servable_name', servable_name)
     check_type.check_int('version_number', version_number, 0)
+    check_type.check_str('device_type', device_type)
+    check_type.check_bool('device_ids_empty', device_ids_empty)
     check_type.check_str('master_address', master_address)
     check_type.check_str('worker_address', worker_address)
+    if dec_key is not None:
+        check_type.check_bytes('dec_key', dec_key)
+    else:
+        dec_key = ''
+    check_type.check_str('dec_mode', dec_mode)
 
     _load_servable_config(servable_directory, servable_name)
     model_names = Worker_.get_declared_model_names()
@@ -179,5 +186,7 @@ def start_extra_servable(servable_directory, servable_name, version_number, mast
     if version_number == 0:
         version_number = 1
 
-    Worker_.start_extra_servable(servable_directory, servable_name, version_number, master_address, worker_address)
+    _set_device_type(device_type)
+    Worker_.start_extra_servable(servable_directory, servable_name, version_number, device_ids_empty,
+                                 dec_key, dec_mode, master_address, worker_address)
     _start_py_task()

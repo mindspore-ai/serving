@@ -248,7 +248,8 @@ def test_start_worker_device_type_value_invalid_failed():
                                                           device_type="InvalidDeviceType"))
         assert False
     except RuntimeError as e:
-        assert "is inconsistent with current running environment, supported device type: 'None' or 'Ascend'" in str(e)
+        assert "Unsupported device type 'InvalidDeviceType', only support 'Ascend', 'GPU', 'CPU' and None, " \
+               "case ignored" in str(e)
 
 
 @serving_test
@@ -865,3 +866,78 @@ def predict(x1, x2):
         assert False
     except RuntimeError as e:
         assert "There is no valid version directory of models" in str(e)
+
+
+@serving_test
+def test_start_servables_enable_cpu_none_device_id_cpu_device_type_success():
+    """
+    Feature: test start servables
+    Description: target cpu, device ids none, device type CPU
+    Expectation: serving server running ok.
+    """
+    os.environ["SERVING_ENABLE_CPU_DEVICE"] = "1"
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    server.start_servables(
+        server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=None, device_type="CPU"))
+    server.start_grpc_server("localhost:5500")
+    # Client
+    x1 = np.array([[1.1, 2.2], [3.3, 4.4]], np.float32)
+    x2 = np.array([[5.5, 6.6], [7.7, 8.8]], np.float32)
+    y = x1 + x2
+    instances = [{"x1": x1, "x2": x2}]
+
+    client = create_client("localhost:5500", base.servable_name, "add_common", version_number=1)
+    result = client.infer(instances)
+    print("result", result)
+    assert (result[0]["y"] == y).all()
+
+
+@serving_test
+def test_start_servables_enable_cpu_none_device_id_none_device_type_none_success():
+    """
+    Feature: test start servables
+    Description: enable cpu, device ids none, device type none
+    Expectation: serving server running ok.
+    """
+    os.environ["SERVING_ENABLE_CPU_DEVICE"] = "1"
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    server.start_servables(
+        server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=None, device_type=None))
+    server.start_grpc_server("localhost:5500")
+    # Client
+    x1 = np.array([[1.1, 2.2], [3.3, 4.4]], np.float32)
+    x2 = np.array([[5.5, 6.6], [7.7, 8.8]], np.float32)
+    y = x1 + x2
+    instances = [{"x1": x1, "x2": x2}]
+
+    client = create_client("localhost:5500", base.servable_name, "add_common", version_number=1)
+    result = client.infer(instances)
+    print("result", result)
+    assert (result[0]["y"] == y).all()
+
+
+@serving_test
+def test_start_servables_enable_cpu_device_type_with_device_id_cpu_device_type_success():
+    """
+    Feature: test start servables
+    Description: target cpu, with device ids, device type CPU
+    Expectation: serving server running ok.
+    """
+    os.environ["SERVING_ENABLE_CPU_DEVICE"] = "1"
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    server.start_servables(
+        server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0, device_type="CPU"))
+    server.start_grpc_server("localhost:5500")
+    # Client
+    x1 = np.array([[1.1, 2.2], [3.3, 4.4]], np.float32)
+    x2 = np.array([[5.5, 6.6], [7.7, 8.8]], np.float32)
+    y = x1 + x2
+    instances = [{"x1": x1, "x2": x2}]
+
+    client = create_client("localhost:5500", base.servable_name, "add_common", version_number=1)
+    result = client.infer(instances)
+    print("result", result)
+    assert (result[0]["y"] == y).all()

@@ -18,8 +18,9 @@
 #define MINDSPORE_SERVING_WORKER_PY_H
 
 #include <string>
-#include <unordered_map>
 #include <vector>
+#include <map>
+#include <memory>
 #include "common/serving_common.h"
 #include "worker/worker.h"
 #include "worker/task_queue.h"
@@ -39,7 +40,8 @@ class MS_API PyWorker {
                                        const std::string &worker_address, uint32_t wait_agents_time_in_seconds);
 
   static void StartExtraServable(const std::string &model_directory, const std::string &model_name,
-                                 uint32_t version_number, const std::string &master_address,
+                                 uint32_t version_number, bool device_ids_empty, const std::string &dec_key,
+                                 const std::string &dec_mode, const std::string &master_address,
                                  const std::string &worker_address);
 
   static std::vector<std::string> GetDeclaredModelNames();
@@ -52,9 +54,15 @@ class MS_API PyWorker {
   static void PushPyTaskResult(const py::tuple &instance_outputs);
   static void PushPyTaskFailed(int count, const std::string &error_msg);
   static void PushPyTaskSystemFailed(const std::string &error_msg);
-  static std::string GetDeviceType();
+  static std::string GetDeviceType(const std::string &target_device_type);
   // for grpc notify failed of worker
   static void NotifyFailed(const std::string &master_address, const std::string &error_msg);
+
+ private:
+  static Status LoadLocalModels(const std::string &servable_directory, const std::string &servable_name,
+                                uint32_t version_number, const std::string &dec_key, const std::string &dec_mode,
+                                const ServableSignature &signature,
+                                std::map<std::string, std::shared_ptr<ModelLoaderBase>> *models_loader);
 };
 
 }  // namespace mindspore::serving
