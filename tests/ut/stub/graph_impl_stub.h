@@ -39,7 +39,7 @@ class GraphImplStubAdd : public GraphCell::GraphImpl {
 
   std::vector<MSTensor> GetInputs() override;
   std::vector<MSTensor> GetOutputs() override;
-
+  bool CheckDeviceSupport(mindspore::DeviceType device_type) override;
  private:
   std::vector<MSTensor> inputs_;
   std::vector<MSTensor> outputs_;

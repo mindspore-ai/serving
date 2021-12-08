@@ -55,7 +55,7 @@ Status WorkerAgent::StartAgent(const AgentStartUpConfig &config, const std::stri
   config_ = config;
   const auto &common_meta = config.common_meta;
   auto enable_lite = InferenceLoader::Instance().GetEnableLite();
-  status = session_->LoadModelFromFile(kDeviceTypeAscend910, config.device_id, config.model_file_names, kMindIR,
+  status = session_->LoadModelFromFile(kDeviceTypeAscend, config.device_id, config.model_file_names, kMindIR,
                                        common_meta.with_batch_dim, common_meta.without_batch_dim_inputs, ModelContext(),
                                        dec_key, dec_mode, {}, enable_lite);
   if (status != SUCCESS) {

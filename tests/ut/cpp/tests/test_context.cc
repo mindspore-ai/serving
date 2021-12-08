@@ -37,9 +37,14 @@ class TestModelContext : public UT::Common {
     model_file = file_path;
     free(dir);
   }
-  virtual void SetUp() {}
+  virtual void SetUp() {
+    setenv("SERVING_ENABLE_CPU_DEVICE", "1", 1);
+    setenv("SERVING_ENABLE_GPU_DEVICE", "1", 1);
+  }
   virtual void TearDown() {
     remove(model_file.c_str());
+    setenv("SERVING_ENABLE_CPU_DEVICE", "0", 1);
+    setenv("SERVING_ENABLE_GPU_DEVICE", "0", 1);
   }
   std::string model_file;
 };
@@ -48,10 +53,10 @@ class TestModelContext : public UT::Common {
 /// Description: ascend910 device with mindspore
 /// Expectation: the context has ascend910 and load success
 TEST_F(TestModelContext, test_ms_set_ascend910) {
-  Init("tensor_add.mindir@ms_ascend910");
+  Init("tensor_add.mindir@ms_ascend");
   ModelContext model_context;
   auto mindspore_wrap = InferenceLoader::Instance().CreateMindSporeInfer();
-  auto status = mindspore_wrap->LoadModelFromFile(serving::DeviceType::kDeviceTypeAscend910, 0, {model_file},
+  auto status = mindspore_wrap->LoadModelFromFile(serving::DeviceType::kDeviceTypeAscend, 0, {model_file},
                                                   serving::kMindIR, false, {}, model_context, {}, {}, {}, false);
   ASSERT_TRUE(status.IsSuccess());
 }

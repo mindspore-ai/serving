@@ -55,6 +55,7 @@ class MS_API PyWorker {
   static void PushPyTaskFailed(int count, const std::string &error_msg);
   static void PushPyTaskSystemFailed(const std::string &error_msg);
   static std::string GetDeviceType(const std::string &target_device_type);
+  static bool SupportReuseDevice();
   // for grpc notify failed of worker
   static void NotifyFailed(const std::string &master_address, const std::string &error_msg);
 

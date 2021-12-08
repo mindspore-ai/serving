@@ -20,9 +20,7 @@
 #include "stub/graph_impl_stub.h"
 
 namespace mindspore {
-API_FACTORY_REG(GraphCell::GraphImpl, Ascend910, AscendGraphImpl);
-API_FACTORY_REG(GraphCell::GraphImpl, CPU, AscendGraphImpl);
-API_FACTORY_REG(GraphCell::GraphImpl, GPU, AscendGraphImpl);
+API_FACTORY_REG(GraphCell::GraphImpl, AscendGraphImpl);
 
 AscendGraphImpl::AscendGraphImpl() { graph_imp_stub_ = std::make_shared<GraphImplStubAdd>(); }
 
@@ -40,6 +38,10 @@ Status AscendGraphImpl::Load(uint32_t device_id) {
 
 Status AscendGraphImpl::Run(const std::vector<MSTensor> &inputs, std::vector<MSTensor> *outputs) {
   return graph_imp_stub_->Run(inputs, outputs);
+}
+
+bool AscendGraphImpl::CheckDeviceSupport(mindspore::DeviceType device_type) {
+  return graph_imp_stub_->CheckDeviceSupport(device_type);
 }
 
 }  // namespace mindspore

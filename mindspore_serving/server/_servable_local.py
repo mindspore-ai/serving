@@ -28,15 +28,12 @@ from mindspore_serving._mindspore_serving import Worker_
 
 def _get_device_type(target_device_type):
     """Get device type supported, this will load libmindspore.so or libmindspore-lite.so"""
-    # Get Device type: Ascend310, Ascend710, Ascend910, Gpu, Cpu, set Ascend in ServableStartConfig instead of
-    # Ascend310, Ascend710, Ascend910
+    # Get Device type: Ascend, Gpu, Cpu
     init_mindspore.set_mindspore_cxx_env()
     if target_device_type is None:
         target_device_type = "None"
     target_device_type = target_device_type.lower()
     device_type = Worker_.get_device_type(target_device_type)
-    if device_type in ("Ascend910", "Ascend710", "Ascend310"):
-        device_type = "Ascend"
     return device_type
 
 
@@ -44,10 +41,7 @@ def _all_reuse_device():
     """Get device type supported, this will load libmindspore.so or libmindspore-lite.so"""
     # Whether allow reuse device, for Ascend910 return False, other return True
     init_mindspore.set_mindspore_cxx_env()
-    device_type = Worker_.get_device_type("none")
-    if device_type == "Ascend910":
-        return False
-    return True
+    return Worker_.support_reuse_device()
 
 
 class ServableStartConfig:
@@ -68,7 +62,7 @@ class ServableStartConfig:
             integer, starting from 1, and 0 means to load the latest version. Default: 0.
         device_type (str, optional): Currently supports "Ascend", "GPU", "CPU" and None. Default: None.
 
-            - "Ascend": the platform expected to be Ascend910 or Ascend310, etc.
+            - "Ascend": the platform expected to be Ascend 310/710/910, etc.
             - "GPU": the platform expected to be Nvidia GPU.
             - "CPU": the platform expected to be CPU.
             - None: the platform is determined by the MindSpore environment.

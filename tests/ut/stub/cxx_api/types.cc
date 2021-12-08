@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include "include/api/types.h"
+#include <fstream>
 #include <numeric>
 #include "securec/include/securec.h"
 #include "utils/utils.h"

@@ -76,6 +76,7 @@ class MindSporeModelWrap : public InferenceBase {
   bool CheckModelSupport(DeviceType device_type, ModelType model_type) const override;
 
   uint64_t GetSubGraphNum() const override;
+  bool SupportReuseDevice() const override;
 
  private:
   ApiCommonModelInfo common_model_info_;
@@ -101,8 +102,7 @@ class MindSporeModelWrap : public InferenceBase {
   std::shared_ptr<Context> TransformModelContext(serving::DeviceType device_type, uint32_t device_id,
                                                  const ModelContext &model_context, bool enable_lite);
 
-  std::shared_ptr<DeviceInfoContext> TransformAscend310ModelContext(uint32_t device_id, const DeviceInfo &device_info);
-  std::shared_ptr<DeviceInfoContext> TransformAscend910ModelContext(uint32_t device_id, const DeviceInfo &device_info);
+  std::shared_ptr<DeviceInfoContext> TransformAscendModelContext(uint32_t device_id, const DeviceInfo &device_info);
   std::shared_ptr<DeviceInfoContext> TransformNvidiaGPUModelContext(uint32_t device_id, const DeviceInfo &device_info);
   std::shared_ptr<DeviceInfoContext> TransformCPUModelContext(const DeviceInfo &device_info);
   DeviceInfo GetDeviceInfo(const std::vector<DeviceInfo> &device_list, serving::DeviceType device_type);

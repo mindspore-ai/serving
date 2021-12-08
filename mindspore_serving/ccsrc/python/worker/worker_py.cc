@@ -234,14 +234,8 @@ std::string PyWorker::GetDeviceType(const std::string &target_device_type) {
     target = kDeviceTypeAscend;
   }
   auto device_type = InferenceLoader::Instance().GetSupportDeviceType(target, kUnknownType);
-  if (device_type == kDeviceTypeAscend910) {
-    return "Ascend910";
-  }
-  if (device_type == kDeviceTypeAscend310) {
-    return "Ascend310";
-  }
-  if (device_type == kDeviceTypeAscend710) {
-    return "Ascend710";
+  if (device_type == kDeviceTypeAscend) {
+    return "Ascend";
   }
   if (device_type == kDeviceTypeGpu) {
     return "Gpu";
@@ -251,6 +245,8 @@ std::string PyWorker::GetDeviceType(const std::string &target_device_type) {
   }
   return "";
 }
+
+bool PyWorker::SupportReuseDevice() { return InferenceLoader::Instance().SupportReuseDevice(); }
 
 void PyWorker::NotifyFailed(const std::string &master_address, const std::string &error_msg) {
   GrpcNotifyMaster::NotifyFailed(master_address, error_msg);

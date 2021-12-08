@@ -182,6 +182,7 @@ void PyRegWorker(pybind11::module *m_ptr) {
     .def_static("push_pytask_failed", &PyWorker::PushPyTaskFailed)
     .def_static("push_pytask_system_failed", &PyWorker::PushPyTaskSystemFailed)
     .def_static("get_device_type", &PyWorker::GetDeviceType)
+    .def_static("support_reuse_device", &PyWorker::SupportReuseDevice)
     .def_static("notify_failed", &PyWorker::NotifyFailed);
 
   py::class_<ServableContext, std::shared_ptr<ServableContext>>(m, "ServableContext_")

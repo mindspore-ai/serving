@@ -23,6 +23,7 @@
 #include <utility>
 #include "include/api/cell.h"
 #include "include/api/graph.h"
+#include "include/api/context.h"
 #include "cxx_api/graph/graph_data.h"
 #include "utils/utils.h"
 
@@ -41,6 +42,8 @@ class GraphCell::GraphImpl {
 
   virtual std::vector<MSTensor> GetInputs() = 0;
   virtual std::vector<MSTensor> GetOutputs() = 0;
+
+  virtual bool CheckDeviceSupport(mindspore::DeviceType device_type) = 0;
 
  protected:
   std::shared_ptr<Graph> graph_;
