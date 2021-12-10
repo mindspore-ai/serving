@@ -30,7 +30,7 @@ def test_model_device_info_set_get_success():
     model_context = context.model_context
     assert model_context.thread_num == 3
     assert set(model_context.thread_affinity_core_list) == {1, 2, 3}
-    assert model_context.enable_parallel
+    assert model_context.enable_parallel == 1
 
     # declare model and start_servable and load model and build model
     gpu_device_info = GPUDeviceInfo(precision_mode="fp16")

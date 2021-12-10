@@ -52,9 +52,9 @@ enum ModelType : uint32_t {
 };
 
 struct MS_API ModelContext {
-  int32_t thread_num{1};
+  int32_t thread_num{-1};  // -1: unspecified
   std::vector<int> thread_affinity_core_list;
-  bool enable_parallel{false};
+  int enable_parallel{-1};  // -1: unspecified, 0: false, 1: true
   std::vector<DeviceInfo> device_list;
   void AppendDeviceInfo(const DeviceInfo &device_info);
   std::string AsString() const;
@@ -119,6 +119,7 @@ static inline LogStream &operator<<(LogStream &stream, ModelType model_type) {
       break;
     case kMindIR_Opt:
       stream << "MindIR_Opt";
+      break;
     default:
       stream << "[model type: " << static_cast<int>(model_type) << "]";
       break;
