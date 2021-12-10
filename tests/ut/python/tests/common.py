@@ -44,7 +44,7 @@ class ServingTestBase:
         self.init_servable_with_servable_config(version_number, servable_config_content, model_file)
 
     def init_servable_with_servable_config(self, version_number, servable_config_content,
-                                           model_file="tensor_add.mindir"):
+                                           model_file="tensor_add.mindir", model_config_file=None):
         if not isinstance(model_file, (tuple, list)):
             model_file = (model_file,)
         self.version_number = version_number
@@ -73,6 +73,11 @@ class ServingTestBase:
             config_file = os.path.join(self.servable_name_path, "servable_config.py")
             with open(config_file, "w") as fp:
                 fp.write(servable_config_content)
+
+        if model_config_file is not None:
+            model_config_file_path = os.path.join(self.servable_name_path, model_config_file)
+            with open(model_config_file_path, "w") as fp:
+                print("model config file", file=fp)
 
     def init_distributed_servable(self, servable_config_content, rank_size, rank_table_content):
         self.version_number = 1

@@ -17,6 +17,7 @@
 #ifndef MINDSPORE_STUB_SERVING_UTILS_H
 #define MINDSPORE_STUB_SERVING_UTILS_H
 
+#include <unistd.h>
 #include <memory>
 #include <atomic>
 #include <string>
@@ -45,6 +46,11 @@ static inline const char *SafeCStr(const std::string &str) {
   cur_index = cur_index & CACHED_STR_MASK;
   STR_HOLDER[cur_index] = str;
   return STR_HOLDER[cur_index].c_str();
+}
+
+static inline bool DirOrFileExist(const std::string &file_path) {
+  int ret = access(file_path.c_str(), 0);
+  return ret != -1;
 }
 
 }  // namespace common
