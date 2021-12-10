@@ -227,7 +227,7 @@ def declare_model(model_file, model_format, with_batch_dim=True, options=None, w
         logger.warning(
             "'options' will be deprecated in the future, we recommend using 'context', if these two parameters "
             "are both set, options will be ignored")
-        meta.local_meta.model_context = options.context.model_context
+        meta.local_meta.model_context = options.model_context
     elif options is not None:
         raise RuntimeError(f"Parameter 'options' should be None, GpuOptions or AclOptions, but "
                            f"gotten {type(options)}")
@@ -236,7 +236,7 @@ def declare_model(model_file, model_format, with_batch_dim=True, options=None, w
         check_type.check_str("config_file", config_file)
         servable_dir = get_servable_dir()
         file_abs_path = os.path.join(servable_dir, config_file)
-        meta.local_meta.model_context.config_file = file_abs_path
+        meta.local_meta.config_file = file_abs_path
 
     ServableRegister_.declare_model(meta)
     logger.info(f"Declare model, model_file: {model_file} , model_format: {model_format},  with_batch_dim: "
@@ -690,9 +690,9 @@ class AclOptions:
         ascend710_context_map = ascend310_context_map.copy()
         ascend710_context_map["device_type"] = "ascend710"
 
-        self.context = Context()
-        self.context.append_device_info(ascend310_context_map)
-        self.context.append_device_info(ascend710_context_map)
+        self.model_context = ModelContext_()
+        self.model_context.append_device_info(ascend310_context_map)
+        self.model_context.append_device_info(ascend710_context_map)
 
 
 class GpuOptions:
@@ -721,8 +721,8 @@ class GpuOptions:
                 raise RuntimeError("Set gpu option failed, unsupported option " + k)
             val_set_fun[k](w)
         self.context_map = self._as_context_map()
-        self.context = Context()
-        self.context.append_device_info(self.context_map)
+        self.model_context = ModelContext_()
+        self.model_context.append_device_info(self.context_map)
 
     def _set_precision_mode(self, val):
         """Set option 'precision_mode', which means inference operator selection, and the value can be "origin",

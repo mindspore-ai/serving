@@ -16,7 +16,7 @@
 
 from common import serving_test
 from mindspore_serving.server.register import Context, GPUDeviceInfo, CPUDeviceInfo
-from mindspore_serving.server.register import Ascend310DeviceInfo, Ascend710DeviceInfo
+from mindspore_serving.server.register import Ascend310DeviceInfo, Ascend710DeviceInfo, GpuOptions, AclOptions
 
 
 @serving_test
@@ -91,3 +91,47 @@ def test_model_device_info_set_get_success():
     assert model_context.device_list[1]["precision_mode"] == "fp16"
     assert model_context.device_list[2]["precision_mode"] == "allow_mix_precision"
     assert model_context.device_list[3]["input_format"] == "NHWC1C0"
+
+
+@serving_test
+def test_model_options_set_get_success():
+    """
+    Feature: Model options
+    Description: Test set and get options
+    Expectation: the values gotten are equal to the values set.
+    """
+    gpu_options = GpuOptions(precision_mode="fp16")
+    gpu_device_list = gpu_options.model_context.device_list
+
+    assert gpu_device_list[0]["device_type"] == "gpu"
+    assert gpu_device_list[0]["precision_mode"] == "fp16"
+
+    acl_options = AclOptions(insert_op_cfg_path="some path of insert_op_cfg_path",
+                             input_format="NHWC1C0",
+                             input_shape="input_op_name1: n1,c2,h3,w4;input_op_name2: n4,c3,h2,w1",
+                             output_type="FP16",
+                             precision_mode="allow_mix_precision",
+                             op_select_impl_mode="high_precision",
+                             fusion_switch_config_path="some path of fusion_switch_config_path",
+                             buffer_optimize_mode="l1_and_l2_optimize")
+    acl_device_list = acl_options.model_context.device_list
+
+    assert acl_device_list[0]["insert_op_cfg_path"] == "some path of insert_op_cfg_path"
+    assert acl_device_list[0]["input_format"] == "NHWC1C0"
+    assert acl_device_list[0]["input_shape"] == "input_op_name1: n1,c2,h3,w4;input_op_name2: n4,c3,h2,w1"
+    assert acl_device_list[0]["output_type"] == "FP16"
+    assert acl_device_list[0]["precision_mode"] == "allow_mix_precision"
+    assert acl_device_list[0]["op_select_impl_mode"] == "high_precision"
+    assert acl_device_list[0]["fusion_switch_config_path"] == "some path of fusion_switch_config_path"
+    assert acl_device_list[0]["buffer_optimize_mode"] == "l1_and_l2_optimize"
+    assert acl_device_list[0]["device_type"] == "ascend310"
+
+    assert acl_device_list[1]["insert_op_cfg_path"] == "some path of insert_op_cfg_path"
+    assert acl_device_list[1]["input_format"] == "NHWC1C0"
+    assert acl_device_list[1]["input_shape"] == "input_op_name1: n1,c2,h3,w4;input_op_name2: n4,c3,h2,w1"
+    assert acl_device_list[1]["output_type"] == "FP16"
+    assert acl_device_list[1]["precision_mode"] == "allow_mix_precision"
+    assert acl_device_list[1]["op_select_impl_mode"] == "high_precision"
+    assert acl_device_list[1]["fusion_switch_config_path"] == "some path of fusion_switch_config_path"
+    assert acl_device_list[1]["buffer_optimize_mode"] == "l1_and_l2_optimize"
+    assert acl_device_list[1]["device_type"] == "ascend710"
