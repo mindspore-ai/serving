@@ -111,14 +111,15 @@ Status InferenceLoader::LoadMindSporeModelWrap() {
     return error;
   };
 
+  auto ld_lib_path = common::GetEnv("LD_LIBRARY_PATH");
+  MSI_LOG_INFO << "LD_LIBRARY_PATH: " << ld_lib_path;
   ms_cxx_lib_handle_ = dlopen(kMindsporeLiteLibName, RTLD_NOW | RTLD_GLOBAL);
   if (ms_cxx_lib_handle_ == nullptr) {
+    std::string load_error = get_dlerror();
     MSI_LOG_WARNING
       << "dlopen libmindspore_lite.so failed, if you want to use mindspore_lite to do the inference, please append "
          "libmindspore-lite.so's path to LD_LIBRARY_PATH env or put it in the dynamic_library search path"
-      << ", dlopen error: " << get_dlerror();
-    auto ld_lib_path = common::GetEnv("LD_LIBRARY_PATH");
-    MSI_LOG_INFO << "LD_LIBRARY_PATH: " << ld_lib_path;
+      << ", dlopen error: " << load_error;
     if (!ld_lib_path.empty()) {
       auto ms_search_path_list = SplitString(ld_lib_path, ":");
       MSI_LOG_INFO << "Search " << kMindSporeLibName << " directory: " << ms_search_path_list;
@@ -137,9 +138,18 @@ Status InferenceLoader::LoadMindSporeModelWrap() {
         MSI_LOG_INFO << "Load " << kMindSporeLibName << " in " << item << " successful";
         break;
       }
+    } else {
+      return INFER_STATUS_LOG_ERROR(FAILED)
+             << "LD_LIBRARY_PATH env is empty, failed to find libmindspore-lite.so, dlopen error: " << load_error;
     }
   } else {
+    MSI_LOG_INFO << "Load " << kMindsporeLiteLibName << " successful";
     enable_lite_ = true;
+  }
+
+  if (ms_cxx_lib_handle_ == nullptr) {
+    return INFER_STATUS_LOG_ERROR(FAILED)
+           << "Failed to load libmindspore.so and libmindspore-lite.so, please check LD_LIBRARY_PATH env";
   }
 
   ms_lib_handle_ = dlopen(kServingAscendLibName, RTLD_NOW | RTLD_GLOBAL);

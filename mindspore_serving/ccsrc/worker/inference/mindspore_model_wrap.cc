@@ -339,9 +339,15 @@ std::shared_ptr<Context> MindSporeModelWrap::TransformModelContext(serving::Devi
                                                                    const ModelContext &model_context,
                                                                    bool enable_lite) {
   auto context = std::make_shared<mindspore::Context>();
-  context->SetThreadNum(model_context.thread_num);
-  context->SetEnableParallel(model_context.enable_parallel);
-  context->SetThreadAffinity(model_context.thread_affinity_core_list);
+  if (model_context.thread_num != -1) {
+    context->SetThreadNum(model_context.thread_num);
+  }
+  if (model_context.enable_parallel != -1) {
+    context->SetEnableParallel(model_context.enable_parallel);
+  }
+  if (!model_context.thread_affinity_core_list.empty()) {
+    context->SetThreadAffinity(model_context.thread_affinity_core_list);
+  }
 
   std::shared_ptr<mindspore::DeviceInfoContext> context_info = nullptr;
 

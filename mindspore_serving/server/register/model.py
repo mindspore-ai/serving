@@ -250,10 +250,9 @@ class Context:
     """Context is used to store environment variables during execution.
 
     Args:
-        thread_num (int, optional): Set the number of threads at runtime. Default: 1.
-        thread_affinity_core_list (tuple[int], list[int], optional): Set the thread lists to CPU cores. Default: [].
+        thread_num (int, optional): Set the number of threads at runtime.
+        thread_affinity_core_list (tuple[int], list[int], optional): Set the thread lists to CPU cores.
         enable_parallel (bool, optional): Set the status whether to perform model inference or training in parallel.
-            Default: False.
     Raises:
         RuntimeError: type or value of input parameters are invalid.
     """
@@ -290,7 +289,10 @@ class Context:
 
     def _set_enable_parallel(self, val):
         check_type.check_bool("enable_parallel", val)
-        self.model_context.enable_parallel = val
+        if val:
+            self.model_context.enable_parallel = 1
+        else:
+            self.model_context.enable_parallel = 0
 
     def __str__(self):
         res = f"thread_num: {self.model_context.thread_num}, thread_affinity_core_list: " \
