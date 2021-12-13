@@ -13,7 +13,6 @@
 # limitations under the License.
 # ============================================================================
 """Servable declaration interface"""
-import os
 
 from mindspore_serving._mindspore_serving import ModelMeta_, ServableRegister_, ModelContext_
 
@@ -234,9 +233,7 @@ def declare_model(model_file, model_format, with_batch_dim=True, options=None, w
 
     if config_file is not None:
         check_type.check_str("config_file", config_file)
-        servable_dir = get_servable_dir()
-        file_abs_path = os.path.join(servable_dir, config_file)
-        meta.local_meta.config_file = file_abs_path
+        meta.local_meta.config_file = config_file
 
     ServableRegister_.declare_model(meta)
     logger.info(f"Declare model, model_file: {model_file} , model_format: {model_format},  with_batch_dim: "

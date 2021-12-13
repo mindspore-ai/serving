@@ -165,7 +165,10 @@ bool Model::CheckModelSupport(enum DeviceType device_type, ModelType model_type)
 }
 
 Status Model::LoadConfig(const std::vector<char> &config_path) {
-  MS_LOG(ERROR) << "Unsupported Feature.";
+  if (common::DirOrFileExist(CharToString(config_path))) {
+    return kSuccess;
+  }
+  MS_LOG(ERROR) << "The config file path: " << CharToString(config_path) << " doesn't exist";
   return kMCFailed;
 }
 }  // namespace mindspore

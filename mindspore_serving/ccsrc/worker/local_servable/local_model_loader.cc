@@ -129,11 +129,15 @@ Status LocalModelLoader::LoadModel(uint64_t version_number, const std::string &d
   if (session == nullptr) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Create MindSpore infer failed";
   }
+  std::string config_file_path;
+  if (!local_meta.config_file.empty()) {
+    config_file_path = base_spec_.servable_directory + "/" + base_spec_.servable_name + "/" + local_meta.config_file;
+  }
   auto enable_lite = InferenceLoader::Instance().GetEnableLite();
   Status status = session->LoadModelFromFile(context->GetDeviceType(), context->GetDeviceId(), model_file_names,
                                              local_meta.model_format, common_meta.with_batch_dim,
                                              common_meta.without_batch_dim_inputs, model_meta.local_meta.model_context,
-                                             dec_key, dec_mode, local_meta.config_file, enable_lite);
+                                             dec_key, dec_mode, config_file_path, enable_lite);
   if (status != SUCCESS) {
     return INFER_STATUS_LOG_ERROR(FAILED)
            << "Load model failed, servable directory: '" << base_spec_.servable_directory << "', servable name: '"
