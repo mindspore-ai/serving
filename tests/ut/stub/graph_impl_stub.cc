@@ -138,7 +138,7 @@ Status GraphImplStubAdd::CheckContext() {
     return kCoreFailed;
   }
   std::map<std::string, mindspore::DeviceType> device_type_map{
-    {"cpu", kCPU}, {"gpu", kGPU}, {"ascend910", kAscend910}, {"ascend310", kAscend310}};
+    {"cpu", kCPU}, {"gpu", kGPU}, {"ascend", kAscend}};
   for (size_t i = 0; i < device_list.size(); ++i) {
     if (device_type_map[device_list[i]] != device_info_list[i]->GetDeviceType()) {
       return kCoreFailed;
@@ -178,5 +178,20 @@ void GraphImplStubAdd::LoadInner() {
 std::vector<MSTensor> GraphImplStubAdd::GetInputs() { return inputs_; }
 
 std::vector<MSTensor> GraphImplStubAdd::GetOutputs() { return outputs_; }
+
+bool GraphImplStubAdd::CheckDeviceSupport(mindspore::DeviceType device_type) {
+  if (device_type == kCPU) {
+    const char *value = ::getenv("SERVING_ENABLE_CPU_DEVICE");
+    if (value == nullptr || std::string(value) != "1") {
+      return false;
+    }
+  } else if (device_type == kGPU) {
+    const char *value = ::getenv("SERVING_ENABLE_GPU_DEVICE");
+    if (value == nullptr || std::string(value) != "1") {
+      return false;
+    }
+  }
+  return true;
+}
 
 }  // namespace mindspore

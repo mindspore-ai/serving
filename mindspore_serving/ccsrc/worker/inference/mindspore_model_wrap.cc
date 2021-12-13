@@ -227,9 +227,9 @@ Status MindSporeModelWrap::SetApiModelInfo(serving::DeviceType device_type, uint
   return SUCCESS;
 }
 
-std::shared_ptr<DeviceInfoContext> MindSporeModelWrap::TransformAscend310ModelContext(uint32_t device_id,
-                                                                                      const DeviceInfo &device_info) {
-  auto context_info = std::make_shared<Ascend310DeviceInfo>();
+std::shared_ptr<DeviceInfoContext> MindSporeModelWrap::TransformAscendModelContext(uint32_t device_id,
+                                                                                   const DeviceInfo &device_info) {
+  auto context_info = std::make_shared<AscendDeviceInfo>();
   context_info->SetDeviceID(device_id);
 
   using ContextStrFun = std::function<void(const std::string &)>;
@@ -270,12 +270,6 @@ std::shared_ptr<DeviceInfoContext> MindSporeModelWrap::TransformAscend310ModelCo
   return context_info;
 }
 
-std::shared_ptr<DeviceInfoContext> MindSporeModelWrap::TransformAscend910ModelContext(uint32_t device_id,
-                                                                                      const DeviceInfo &device_info) {
-  auto context_info = std::make_shared<Ascend910DeviceInfo>();
-  context_info->SetDeviceID(device_id);
-  return context_info;
-}
 std::shared_ptr<DeviceInfoContext> MindSporeModelWrap::TransformNvidiaGPUModelContext(uint32_t device_id,
                                                                                       const DeviceInfo &device_info) {
   auto context_info = std::make_shared<GPUDeviceInfo>();
@@ -305,12 +299,6 @@ std::shared_ptr<DeviceInfoContext> MindSporeModelWrap::TransformCPUModelContext(
 
 std::string MindSporeModelWrap::DeviceTypeToString(serving::DeviceType device_type) {
   switch (device_type) {
-    case kDeviceTypeAscend910:
-      return "ascend910";
-    case kDeviceTypeAscend310:
-      return "ascend310";
-    case kDeviceTypeAscend710:
-      return "ascend710";
     case kDeviceTypeGpu:
       return "gpu";
     case kDeviceTypeCpu:
@@ -352,12 +340,8 @@ std::shared_ptr<Context> MindSporeModelWrap::TransformModelContext(serving::Devi
   std::shared_ptr<mindspore::DeviceInfoContext> context_info = nullptr;
 
   auto device_info = GetDeviceInfo(model_context.device_list, device_type);
-  if (device_type == kDeviceTypeAscend910) {
-    context_info = TransformAscend910ModelContext(device_id, {});
-  } else if (device_type == kDeviceTypeAscend310) {
-    context_info = TransformAscend310ModelContext(device_id, device_info);
-  } else if (device_type == kDeviceTypeAscend710) {
-    context_info = TransformAscend310ModelContext(device_id, device_info);
+  if (device_type == kDeviceTypeAscend) {
+    context_info = TransformAscendModelContext(device_id, device_info);
   } else if (device_type == kDeviceTypeCpu) {
     context_info = TransformCPUModelContext(device_info);
   } else if (device_type == kDeviceTypeGpu) {
@@ -560,10 +544,9 @@ Status MindSporeModelWrap::ExecuteModelCommon(size_t request_size, const FuncMak
   }
   std::vector<mindspore::MSTensor> outputs;
   mindspore::Status status;
-  if (common_model_info_.device_type == kDeviceTypeAscend310 ||
-      common_model_info_.device_type == kDeviceTypeAscend710) {
+  if (SupportReuseDevice()) {
     status = model->Predict(inputs, &outputs);
-  } else {
+  } else {  // vm backend
     std::unique_lock<std::mutex> lock(infer_mutex_);
     status = model->Predict(inputs, &outputs);
   }
@@ -602,6 +585,11 @@ std::vector<serving::TensorInfo> MindSporeModelWrap::GetOutputInfos(uint64_t sub
 ssize_t MindSporeModelWrap::GetBatchSize(uint64_t subgraph) const { return common_model_info_.batch_size; }
 
 uint64_t MindSporeModelWrap::GetSubGraphNum() const { return models_.size(); }
+
+bool MindSporeModelWrap::SupportReuseDevice() const {
+  auto is_device_910 = mindspore::Model::CheckModelSupport(mindspore::kAscend910, mindspore::kMindIR);
+  return !is_device_910;
+}
 
 bool MindSporeModelWrap::CheckModelSupport(DeviceType device_type, ModelType model_type) const {
   auto ms_device_type = GetMsDeviceType(device_type);
@@ -642,14 +630,8 @@ mindspore::ModelType MindSporeModelWrap::GetMsModelType(serving::ModelType model
 mindspore::DeviceType MindSporeModelWrap::GetMsDeviceType(serving::DeviceType device_type) {
   mindspore::DeviceType ms_device_type = mindspore::DeviceType::kInvalidDeviceType;
   switch (device_type) {
-    case kDeviceTypeAscend910:
-      ms_device_type = mindspore::DeviceType::kAscend910;
-      break;
-    case kDeviceTypeAscend310:
-      ms_device_type = mindspore::DeviceType::kAscend310;
-      break;
-    case kDeviceTypeAscend710:
-      ms_device_type = mindspore::DeviceType::kAscend310;
+    case kDeviceTypeAscend:
+      ms_device_type = mindspore::DeviceType::kAscend;
       break;
     case kDeviceTypeGpu:
       ms_device_type = mindspore::DeviceType::kGPU;

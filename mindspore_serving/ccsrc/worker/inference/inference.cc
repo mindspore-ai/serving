@@ -175,29 +175,36 @@ DeviceType InferenceLoader::GetSupportDeviceType(DeviceType device_type, ModelTy
     MSI_LOG_ERROR << "Create MindSpore infer failed";
     return kDeviceTypeNotSpecified;
   }
+  std::vector<ModelType> check_model_types;
   if (model_type == kUnknownType) {
-    model_type = kMindIR;
-  }
-  if (device_type == kDeviceTypeNotSpecified) {
-    auto device_list = {kDeviceTypeAscend310, kDeviceTypeAscend710, kDeviceTypeAscend910, kDeviceTypeGpu,
-                        kDeviceTypeCpu};
-    for (auto item : device_list) {
-      if (mindspore_infer->CheckModelSupport(item, model_type)) {
-        return item;
-      }
-    }
-  } else if (device_type == kDeviceTypeAscend) {
-    auto ascend_list = {kDeviceTypeAscend310, kDeviceTypeAscend710, kDeviceTypeAscend910};
-    for (auto item : ascend_list) {
-      if (mindspore_infer->CheckModelSupport(item, model_type)) {
-        return item;
-      }
-    }
+    check_model_types = {kMindIR, kMindIR_Opt, kOM};
   } else {
-    if (mindspore_infer->CheckModelSupport(device_type, model_type)) {
-      return device_type;
+    check_model_types = {model_type};
+  }
+  for (auto &model_type_item : check_model_types) {
+    if (device_type == kDeviceTypeNotSpecified) {
+      auto device_list = {kDeviceTypeAscend, kDeviceTypeGpu, kDeviceTypeCpu};
+      for (auto item : device_list) {
+        if (mindspore_infer->CheckModelSupport(item, model_type_item)) {
+          return item;
+        }
+      }
+    } else {
+      if (mindspore_infer->CheckModelSupport(device_type, model_type_item)) {
+        return device_type;
+      }
     }
   }
   return kDeviceTypeNotSpecified;
 }
+
+bool InferenceLoader::SupportReuseDevice() {
+  auto mindspore_infer = CreateMindSporeInfer();
+  if (mindspore_infer == nullptr) {
+    MSI_LOG_ERROR << "Create MindSpore infer failed";
+    return false;
+  }
+  return mindspore_infer->SupportReuseDevice();
+}
+
 }  // namespace mindspore::serving

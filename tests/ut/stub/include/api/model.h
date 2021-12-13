@@ -183,7 +183,7 @@ class MS_API Model {
 
   /// \brief Inference model.
   ///
-  /// \param[in] device_type Device type，options are kGPU, kAscend910, etc.
+  /// \param[in] device_type Device type，options are kGPU, kAscend, kAscend910, etc.
   /// \param[in] model_type The type of model file, options are ModelType::kMindIR, ModelType::kOM.
   ///
   /// \return Is supported or not.
@@ -254,9 +254,7 @@ std::vector<MSTensor> Model::GetOutputsByNodeName(const std::string &node_name) 
   return GetOutputsByNodeName(StringToChar(node_name));
 }
 
-Status Model::LoadConfig(const std::string &config_path) {
-  return LoadConfig(StringToChar(config_path));
-}
+Status Model::LoadConfig(const std::string &config_path) { return LoadConfig(StringToChar(config_path)); }
 
 Status Model::UpdateConfig(const std::string &section, const std::pair<std::string, std::string> &config) {
   std::pair<std::vector<char>, std::vector<char>> config_pair = {StringToChar(config.first),

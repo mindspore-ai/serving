@@ -20,19 +20,6 @@
 #include "utils/utils.h"
 
 namespace mindspore {
-namespace {
-std::string GetDeviceTypeString(enum DeviceType type) {
-  static const std::map<enum DeviceType, std::string> kDeviceTypeStrs = {
-    {kCPU, "CPU"}, {kGPU, "GPU"}, {kKirinNPU, "KirinGPU"}, {kAscend910, "Ascend910"}, {kAscend310, "Ascend310"},
-  };
-  auto iter = kDeviceTypeStrs.find(type);
-  if (iter != kDeviceTypeStrs.end()) {
-    return iter->second;
-  }
-
-  return "InvalidDeviceType" + std::to_string(static_cast<int>(type));
-}
-}  // namespace
 Status Model::Build(GraphCell graph_cell, const std::shared_ptr<Context> &model_context,
                     const std::shared_ptr<TrainCfg> &) {
   if (graph_cell.GetGraph() == nullptr) {
@@ -45,8 +32,12 @@ Status Model::Build(GraphCell graph_cell, const std::shared_ptr<Context> &model_
     return kMCInvalidInput;
   }
   auto &device_info = model_context->MutableDeviceInfo();
+  if (device_info.size() < 1) {
+    MS_LOG(ERROR) << "Invalid model context, only single device info is supported.";
+    return kMCInvalidInput;
+  }
 
-  std::string device_target = GetDeviceTypeString(device_info[0]->GetDeviceType());
+  auto device_target = device_info[0]->GetDeviceType();
   impl_ = Factory<ModelImpl>::Instance().Create(device_target);
   if (impl_ == nullptr) {
     MS_LOG(ERROR) << "Create session type " << device_target << " failed";
@@ -146,18 +137,7 @@ Model::Model() : impl_(nullptr) {}
 Model::~Model() {}
 
 bool Model::CheckModelSupport(enum DeviceType device_type, ModelType model_type) {
-  if (device_type == kCPU) {
-    const char *value = ::getenv("SERVING_ENABLE_CPU_DEVICE");
-    if (value == nullptr || std::string(value) != "1") {
-      return false;
-    }
-  }
-  std::string device_type_str = GetDeviceTypeString(device_type);
-  if (!Factory<ModelImpl>::Instance().CheckModelSupport(device_type_str)) {
-    return false;
-  }
-
-  auto check_model = Factory<ModelImpl>::Instance().Create(device_type_str);
+  auto check_model = Factory<ModelImpl>::Instance().Create(device_type);
   if (check_model == nullptr) {
     return false;
   }

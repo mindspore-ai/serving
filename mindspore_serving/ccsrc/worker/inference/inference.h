@@ -33,9 +33,6 @@ using DeviceInfo = std::map<std::string, std::string>;
 
 enum DeviceType {
   kDeviceTypeNotSpecified,
-  kDeviceTypeAscend910,
-  kDeviceTypeAscend310,
-  kDeviceTypeAscend710,
   kDeviceTypeAscend,
   kDeviceTypeGpu,
   kDeviceTypeCpu,
@@ -77,15 +74,6 @@ static inline LogStream &operator<<(LogStream &stream, DeviceType device_type) {
   switch (device_type) {
     case kDeviceTypeAscend:
       stream << "Ascend";
-      break;
-    case kDeviceTypeAscend910:
-      stream << "Ascend910";
-      break;
-    case kDeviceTypeAscend310:
-      stream << "Ascend310";
-      break;
-    case kDeviceTypeAscend710:
-      stream << "Ascend710";
       break;
     case kDeviceTypeGpu:
       stream << "Gpu";
@@ -152,6 +140,7 @@ class InferenceBase {
   virtual bool CheckModelSupport(DeviceType device_type, ModelType model_type) const = 0;
 
   virtual uint64_t GetSubGraphNum() const = 0;
+  virtual bool SupportReuseDevice() const = 0;
 };
 
 class MS_API InferenceLoader {
@@ -161,6 +150,7 @@ class MS_API InferenceLoader {
   static InferenceLoader &Instance();
   std::shared_ptr<InferenceBase> CreateMindSporeInfer();
   DeviceType GetSupportDeviceType(DeviceType device_type, ModelType model_type);
+  bool SupportReuseDevice();
   bool GetEnableLite() const;
 
  private:

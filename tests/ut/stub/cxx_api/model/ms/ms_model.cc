@@ -21,9 +21,8 @@
 #include "cxx_api/factory.h"
 
 namespace mindspore {
-API_FACTORY_REG(ModelImpl, Ascend910, MsModel);
-API_FACTORY_REG(ModelImpl, CPU, MsModel);
-API_FACTORY_REG(ModelImpl, GPU, MsModel);
+// mindspore-serving check current package for version check with ModelImpl factory.
+API_FACTORY_REG(ModelImpl, MsModel);
 
 static std::string GenerateShapeKey(const std::vector<std::vector<int64_t>> &dims) {
   std::string shape_key;
@@ -152,7 +151,22 @@ uint32_t MsModel::GetDeviceID() const {
   return 0;
 }
 
-bool MsModel::CheckModelSupport(enum ModelType model_type) {
+bool MsModel::CheckDeviceSupport(enum DeviceType device_type) {
+  if (device_type == kCPU) {
+    const char *value = ::getenv("SERVING_ENABLE_CPU_DEVICE");
+    if (value == nullptr || std::string(value) != "1") {
+      return false;
+    }
+  } else if (device_type == kGPU) {
+    const char *value = ::getenv("SERVING_ENABLE_GPU_DEVICE");
+    if (value == nullptr || std::string(value) != "1") {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool MsModel::CheckModelSupport(mindspore::ModelType model_type) {
   static const std::set<ModelType> kSupportedModelMap = {kMindIR};
   auto iter = kSupportedModelMap.find(model_type);
   if (iter == kSupportedModelMap.end()) {

@@ -41,7 +41,8 @@ class ModelImpl {
   virtual std::vector<MSTensor> GetInputs() = 0;
   virtual std::vector<MSTensor> GetOutputs() = 0;
 
-  virtual bool CheckModelSupport(enum ModelType model_type) { return false; }
+  virtual bool CheckDeviceSupport(mindspore::DeviceType device_type) = 0;
+  virtual bool CheckModelSupport(enum ModelType model_type) = 0;
 
  protected:
   FuncGraphPtr GetFuncGraph() const {

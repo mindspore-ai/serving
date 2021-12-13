@@ -275,7 +275,7 @@ class GPUEnvChecker():
 
 def check_version_and_env_config(device_type):
     """check version and env config"""
-    if device_type in ("Ascend910", "Ascend310", "Ascend710"):
+    if device_type == "Ascend":
         env_checker = AscendEnvChecker()
         try:
             env_checker.set_env()

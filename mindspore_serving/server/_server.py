@@ -154,7 +154,9 @@ def _start_extra_workers(master_address, servable_configs):
                 sub_process = context_data.new_worker_process()
                 if sub_process.pid in worker_pid_set:
                     raise RuntimeError(
-                        f"Extra worker {sub_process.pid} has exited and its' pid is reused by new extra worker")
+                        f"Maybe the parameter 'num_parallel_workers' is too large, and the number of open files exceeds"
+                        f" the system upper limit. Please check the workers logs in the serving_logs directory for"
+                        f" more details")
                 worker_pid_set.add(sub_process.pid)
                 worker_context = WorkerContext(context_data, master_address, sub_process)
             except RuntimeError as e:
