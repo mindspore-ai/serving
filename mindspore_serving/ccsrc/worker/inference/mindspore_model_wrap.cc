@@ -347,17 +347,15 @@ std::shared_ptr<Context> MindSporeModelWrap::TransformModelContext(serving::Devi
   } else if (device_type == kDeviceTypeGpu) {
     context_info = TransformNvidiaGPUModelContext(device_id, device_info);
   }
-
-  DeviceInfo cpu_device_info;
-  if (enable_lite && device_type == kDeviceTypeGpu) {
-    cpu_device_info = GetDeviceInfo(model_context.device_list, kDeviceTypeCpu);
-  }
-
   if (context_info != nullptr) {
     context->MutableDeviceInfo().push_back(context_info);
   }
-  if (!cpu_device_info.empty()) {
-    context->MutableDeviceInfo().push_back(TransformCPUModelContext(cpu_device_info));
+
+  if (enable_lite && device_type != kDeviceTypeCpu) {
+    auto cpu_device_info = GetDeviceInfo(model_context.device_list, kDeviceTypeCpu);
+    if (!cpu_device_info.empty()) {
+      context->MutableDeviceInfo().push_back(TransformCPUModelContext(cpu_device_info));
+    }
   }
   return context;
 }

@@ -181,7 +181,7 @@ def declare_model(model_file, model_format, with_batch_dim=True, options=None, w
 
     Args:
         model_file (Union[str, list[str]]): Model files name.
-        model_format (str): Model format, "OM", "MindIR" or "MindIR_Opt" case ignored.
+        model_format (str): Model format, "OM", "MindIR" or "MindIR_Opt", case ignored.
         with_batch_dim (bool, optional): Whether the first shape dim of the inputs and outputs of model is batch dim.
             Default: True.
         options (Union[AclOptions, GpuOptions], optional): Options of model, supports AclOptions or GpuOptions.
@@ -213,7 +213,7 @@ def declare_model(model_file, model_format, with_batch_dim=True, options=None, w
     check_type.check_str('model_format', model_format)
     model_format = model_format.lower()
     if model_format not in ("om", "mindir", "mindir_opt"):
-        raise RuntimeError("model format can only be OM, MindIR or MindIR_opt")
+        raise RuntimeError("model format can only be OM, MindIR or MindIR_Opt, case ignored")
 
     meta.local_meta.model_file = model_file
     meta.local_meta.set_model_format(model_format)

@@ -14,6 +14,7 @@
 # ============================================================================
 """Test Model DeviceInfo"""
 
+import os
 import numpy as np
 from common import serving_test, start_serving_server, create_client
 from mindspore_serving.server.register import Context, GPUDeviceInfo, CPUDeviceInfo
@@ -146,7 +147,8 @@ def predict(x1, x2):
     y = register.add_stage(model, x1, x2, outputs_count=1)
     return y
     """
-    base = start_serving_server(servable_content)
+    os.environ["SERVING_ENABLE_GPU_DEVICE"] = "1"
+    base = start_serving_server(servable_content, device_type="GPU")
     # Client
     x1 = np.array([[1.1, 2.2], [3.3, 4.4]], np.float32)
     x2 = np.array([[5.5, 6.6], [7.7, 8.8]], np.float32)
@@ -182,7 +184,8 @@ def predict(x1, x2):
     y = register.add_stage(model, x1, x2, outputs_count=1)
     return y
     """
-    base = start_serving_server(servable_content)
+    os.environ["SERVING_ENABLE_CPU_DEVICE"] = "1"
+    base = start_serving_server(servable_content, device_type="CPU")
     # Client
     x1 = np.array([[1.1, 2.2], [3.3, 4.4]], np.float32)
     x2 = np.array([[5.5, 6.6], [7.7, 8.8]], np.float32)
@@ -218,7 +221,7 @@ def predict(x1, x2):
     y = register.add_stage(model, x1, x2, outputs_count=1)
     return y
     """
-    base = start_serving_server(servable_content)
+    base = start_serving_server(servable_content, device_type="Ascend")
     # Client
     x1 = np.array([[1.1, 2.2], [3.3, 4.4]], np.float32)
     x2 = np.array([[5.5, 6.6], [7.7, 8.8]], np.float32)
