@@ -97,11 +97,16 @@ Status LocalModelLoader::InitDevice(ModelType model_type) {
   Status status;
   auto context = ServableContext::Instance();
   auto device_type = context->GetDeviceType();
+  auto lite_backend = InferenceLoader::Instance().GetEnableLite();
   auto support_device_type = InferenceLoader::Instance().GetSupportDeviceType(device_type, model_type);
-  if (support_device_type == kDeviceTypeNotSpecified) {
+  if (support_device_type == kDeviceTypeNotSpecified || (lite_backend && model_type != kMindIR_Opt)) {
+    std::string inference_package = lite_backend ? "MindSpore Lite" : "MindSpore";
     return INFER_STATUS_LOG_ERROR(FAILED)
            << "Not support device type " << device_type << " and model type " << model_type
-           << ". Ascend 910, Ascend 310 and GPU supports MindIR model, and Ascend 310 supports OM model";
+           << ". Current inference backend: " << inference_package
+           << ". When the inference backend is MindSpore, Ascend 910/710/310 and GPU supports MindIR "
+           << "model, and Ascend 710/310 supports OM model. When the inference backend is MindSpore Lite, "
+           << "Ascend 710/310, GPU and CPU only support MindIR_Opt model converted by Lite converter tool.";
   }
   context->SetDeviceType(support_device_type);
   return SUCCESS;

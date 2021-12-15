@@ -27,9 +27,11 @@ MindSpore Serving是一个轻量级、高性能的服务模块，旨在帮助Min
 
 MindSpore Serving架构：
 
-MindSpore Serving分为客户端、服务器两个部分。在客户端中，用户通过gRPC或RESTful接口向服务器下发推理服务命令。服务器包括主（`Main`）节点和一个或多个工作（`Worker`）节点，主节点管理所有的工作节点及其部署的模型信息，接受客户端的用户请求，并将请求分发给工作节点。每个工作节点部署了一个可服务对象，即`Servable`，这里的`Servable`可以是单个模型，也可以是多个模型的组合，一个`Servable`可以围绕相同的模型通过多种方法来提供不同的服务。客户端不依赖特定硬件平台，服务器支持GPU、Ascend 310和Ascend 910平台，后续会逐步支持CPU场景。  
-
 <img src="docs/architecture.png" alt="MindSpore Architecture" width="600"/>
+
+MindSpore Serving分为客户端、服务器两个部分。在客户端中，用户通过gRPC或RESTful接口向服务器下发推理服务命令。服务器包括主（`Main`）节点和一个或多个工作（`Worker`）节点，主节点管理所有的工作节点及其部署的模型信息，接受客户端的用户请求，并将请求分发给工作节点。每个工作节点部署了一个可服务对象，即`Servable`，这里的`Servable`可以是单个模型，也可以是多个模型的组合，一个`Servable`可以围绕相同的模型通过多种方法来提供不同的服务。
+
+对于服务端，当以[MindSpore](#https://www.mindspore.cn/)作为推理后端时，MindSpore Serving当前支持Ascend 910/710/310和Nvidia GPU环境。当以[MindSpore Lite](#https://www.mindspore.cn/lite)作为推理后端时，MindSpore Serving当前支持Ascend 310、Nvidia GPU和CPU。客户端不依赖特定硬件平台。  
 
 MindSpore Serving提供以下功能：
 
@@ -37,6 +39,7 @@ MindSpore Serving提供以下功能：
 - 支持组装模型的前处理和后处理。
 - 支持batch功能，多实例请求会被拆分组合以满足模型`batch size`的需要。
 - 提供客户端Python简易接口。
+- 支持多模型组合，多模型组合和单模型场景使用相同的一套接口。
 - 支持分布式模型推理功能。
 
 ## 安装
@@ -73,7 +76,7 @@ MindSpore Serving依赖MindSpore训练推理框架，安装完[MindSpore](https:
     ```shell
     # GPU
     sh build.sh -e gpu
-    # Ascend 310 and Ascend 910
+    # Ascend 910/710/310
     sh build.sh -e ascend
     ```
 

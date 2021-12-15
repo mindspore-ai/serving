@@ -190,6 +190,11 @@ bool GraphImplStubAdd::CheckDeviceSupport(mindspore::DeviceType device_type) {
     if (value == nullptr || std::string(value) != "1") {
       return false;
     }
+  } else if (device_type == kAscend || device_type == kAscend310 || device_type == kAscend910) {
+    const char *value = ::getenv("SERVING_ENABLE_GPU_DEVICE");
+    if (value == nullptr || std::string(value) != "1") {
+      return true;
+    }
   }
   return true;
 }

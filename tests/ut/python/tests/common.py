@@ -133,6 +133,7 @@ def serving_test(func):
     def wrap_test(*args, **kwargs):
         try:
             os.environ["SERVING_ENABLE_CPU_DEVICE"] = "0"
+            os.environ["SERVING_ENABLE_GPU_DEVICE"] = "0"
             func(*args, **kwargs)
         except Exception:
             logger.error("Serving test catch exception")
@@ -337,13 +338,14 @@ def float_plus_1(float_val):
 
 
 def start_serving_server(servable_content, model_file="tensor_add.mindir", version_number=1, start_version_number=None,
-                         device_ids=0, num_parallel_workers=0):
+                         device_ids=0, num_parallel_workers=0, device_type=None):
     base = ServingTestBase()
     base.init_servable_with_servable_config(version_number, servable_content, model_file=model_file)
     if start_version_number is None:
         start_version_number = version_number
     server.start_servables(server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=device_ids,
                                                       version_number=start_version_number,
-                                                      num_parallel_workers=num_parallel_workers))
+                                                      num_parallel_workers=num_parallel_workers,
+                                                      device_type=device_type))
     server.start_grpc_server("0.0.0.0:5500")
     return base
