@@ -268,10 +268,13 @@ class Context:
         self.device_types = []
 
     def append_device_info(self, device_info):
-        """Append one device info to the context
+        """Append one user-defined device info to the context
+
          Args:
-            device_info (Union[CPUDeviceInfo, GPUDeviceInfo, AscendDeviceInfo]):
-                Device info for one device.
+            device_info (Union[CPUDeviceInfo, GPUDeviceInfo, AscendDeviceInfo]): User-defined device info for one
+                device, otherwise default values are used. You can customize device info for each device, and the system
+                selects the required device info based on the actual backend device and inference package.
+
          Raises:
             RuntimeError: type or value of input parameters are invalid.
         """
@@ -343,14 +346,14 @@ class CPUDeviceInfo(DeviceInfoContext):
         val_set_fun = {"precision_mode": self._set_precision_mode}
         for k, w in kwargs.items():
             if k not in val_set_fun:
-                raise RuntimeError("Set cpu option failed, unsupported option " + k)
+                raise RuntimeError("Set cpu device info failed, unsupported option " + k)
             val_set_fun[k](w)
         self.context_map = self._as_context_map()
 
     def _set_precision_mode(self, val):
         check_type.check_str("precision_mode", val)
         if val not in ("origin", "fp16"):
-            raise RuntimeError(f"Cpu option 'precision_mode' can only be 'origin', 'fp16'. given '{val}'")
+            raise RuntimeError(f"Cpu device info 'precision_mode' can only be 'origin', 'fp16'. given '{val}'")
         self.precision_mode = val
 
     def _as_context_map(self):
@@ -386,7 +389,7 @@ class GPUDeviceInfo(DeviceInfoContext):
         val_set_fun = {"precision_mode": self._set_precision_mode}
         for k, w in kwargs.items():
             if k not in val_set_fun:
-                raise RuntimeError("Set gpu option failed, unsupported option " + k)
+                raise RuntimeError("Set gpu device info failed, unsupported option " + k)
             val_set_fun[k](w)
         self.context_map = self._as_context_map()
 
@@ -403,7 +406,7 @@ class GPUDeviceInfo(DeviceInfoContext):
         """
         check_type.check_str('precision_mode', val)
         if val not in ("origin", "fp16"):
-            raise RuntimeError(f"Gpu option 'precision_mode' can only be 'origin', 'fp16'. given '{val}'")
+            raise RuntimeError(f"Gpu device info 'precision_mode' can only be 'origin', 'fp16'. given '{val}'")
         self.precision_mode = val
 
     def _as_context_map(self):

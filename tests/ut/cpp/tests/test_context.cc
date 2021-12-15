@@ -65,7 +65,7 @@ TEST_F(TestModelContext, test_ms_set_ascend910) {
 /// Description: gpu device with lite
 /// Expectation: the context has gpu and load success
 TEST_F(TestModelContext, test_lite_set_gpu) {
-  Init("tensor_add.mindir@lite_gpu");
+  Init("tensor_add.mindir@lite_gpu_cpu");
   ModelContext model_context;
   auto mindspore_wrap = InferenceLoader::Instance().CreateMindSporeInfer();
   auto status = mindspore_wrap->LoadModelFromFile(serving::DeviceType::kDeviceTypeGpu, 0, {model_file},

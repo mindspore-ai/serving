@@ -28,16 +28,20 @@ constexpr const char *kServingAscendLibName = "libserving_ascend.so";
 void ModelContext::AppendDeviceInfo(const DeviceInfo &device_info) { device_list.emplace_back(device_info); }
 
 std::string ModelContext::AsString() const {
-  std::stringstream ss;
-  ss << "thread num: ";
-  ss << AsStringHelper::AsString(thread_num);
-  ss << ", thread_affinity_list: ";
-  ss << AsStringHelper::AsString(thread_affinity_core_list);
-  ss << ", enable_parallel: ";
-  ss << AsStringHelper::AsString(enable_parallel);
-  ss << ", the device_info list: ";
-  ss << AsStringHelper::AsString(device_list);
-  return ss.str();
+  std::map<std::string, std::string> output_map;
+  if (thread_num > -1) {
+    output_map["thread num"] = AsStringHelper::AsString(thread_num);
+  }
+  if (!thread_affinity_core_list.empty()) {
+    output_map["thread affinity core list"] = AsStringHelper::AsString(thread_affinity_core_list);
+  }
+  if (enable_parallel > -1) {
+    output_map["enable parallel"] = AsStringHelper::AsString(enable_parallel);
+  }
+  if (!device_list.empty()) {
+    output_map["device infos"] = AsStringHelper::AsString(device_list);
+  }
+  return AsStringHelper::AsString(output_map);
 }
 
 InferenceLoader::InferenceLoader() {}
@@ -116,8 +120,14 @@ Status InferenceLoader::LoadMindSporeModelWrap() {
   ms_cxx_lib_handle_ = dlopen(kMindsporeLiteLibName, RTLD_NOW | RTLD_GLOBAL);
   if (ms_cxx_lib_handle_ == nullptr) {
     std::string load_error = get_dlerror();
+    std::string so_no_exist_error =
+      std::string(kMindsporeLiteLibName) + ": cannot open shared object file: No such file or directory";
+    // libmindspore-lite.so exist but dlopen failed
+    if (load_error.find(so_no_exist_error) == std::string::npos) {
+      return INFER_STATUS_LOG_ERROR(FAILED) << "dlopen libmindspore-lite.so failed, dlopen error: " << load_error;
+    }
     MSI_LOG_WARNING
-      << "dlopen libmindspore_lite.so failed, if you want to use mindspore_lite to do the inference, please append "
+      << "dlopen libmindspore_lite.so failed, if you want to use MindSpore Lite to do the inference, please append "
          "libmindspore-lite.so's path to LD_LIBRARY_PATH env or put it in the dynamic_library search path"
       << ", dlopen error: " << load_error;
     if (!ld_lib_path.empty()) {
@@ -138,9 +148,6 @@ Status InferenceLoader::LoadMindSporeModelWrap() {
         MSI_LOG_INFO << "Load " << kMindSporeLibName << " in " << item << " successful";
         break;
       }
-    } else {
-      return INFER_STATUS_LOG_ERROR(FAILED)
-             << "LD_LIBRARY_PATH env is empty, failed to find libmindspore-lite.so, dlopen error: " << load_error;
     }
   } else {
     MSI_LOG_INFO << "Load " << kMindsporeLiteLibName << " successful";
@@ -149,7 +156,8 @@ Status InferenceLoader::LoadMindSporeModelWrap() {
 
   if (ms_cxx_lib_handle_ == nullptr) {
     return INFER_STATUS_LOG_ERROR(FAILED)
-           << "Failed to load libmindspore.so and libmindspore-lite.so, please check LD_LIBRARY_PATH env";
+           << "Failed to load libmindspore.so and libmindspore-lite.so, please set env LD_LIBRARY_PATH for "
+           << "libmindspore-lite.so or pip install MindSpore whl package for libmindspore.so";
   }
 
   ms_lib_handle_ = dlopen(kServingAscendLibName, RTLD_NOW | RTLD_GLOBAL);

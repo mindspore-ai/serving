@@ -110,6 +110,12 @@ def wait_worker_registered_ready(worker, recv_pipe):
             if isinstance(msg, Exception):
                 raise msg
             break
+
+    if recv_pipe.poll(0.1):
+        msg = recv_pipe.recv()
+        print(f"Receive worker process msg: {msg} {worker.is_alive()}")
+        if isinstance(msg, Exception):
+            raise msg
     assert index < 100
     assert worker.is_alive()
 
@@ -139,6 +145,12 @@ def start_agents(model_file_list, group_config_list, start_port, dec_key=None, d
             if isinstance(msg, Exception):
                 raise msg
             break
+
+    if recv_pipe.poll(0.1):
+        msg = recv_pipe.recv()
+        print(f"Receive agent process msg: {msg} {agent.is_alive()}")
+        if isinstance(msg, Exception):
+            raise msg
     assert index < 100
     assert agent.is_alive()
     return agent
