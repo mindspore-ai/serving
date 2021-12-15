@@ -23,16 +23,20 @@ InferenceLoader::InferenceLoader() {}
 InferenceLoader::~InferenceLoader() {}
 
 std::string ModelContext::AsString() const {
-  std::stringstream ss;
-  ss << "thread num: ";
-  ss << AsStringHelper::AsString(thread_num);
-  ss << ", thread_affinity_list: ";
-  ss << AsStringHelper::AsString(thread_affinity_core_list);
-  ss << ", enable_parallel: ";
-  ss << AsStringHelper::AsString(enable_parallel);
-  ss << ", the device_info list: ";
-  ss << AsStringHelper::AsString(device_list);
-  return ss.str();
+  std::map<std::string, std::string> output_map;
+  if (thread_num > -1) {
+    output_map["thread num"] = AsStringHelper::AsString(thread_num);
+  }
+  if (!thread_affinity_core_list.empty()) {
+    output_map["thread affinity core list"] = AsStringHelper::AsString(thread_affinity_core_list);
+  }
+  if (enable_parallel > -1) {
+    output_map["enable parallel"] = AsStringHelper::AsString(enable_parallel);
+  }
+  if (!device_list.empty()) {
+    output_map["device infos"] = AsStringHelper::AsString(device_list);
+  }
+  return AsStringHelper::AsString(output_map);
 }
 
 InferenceLoader &InferenceLoader::Instance() {

@@ -178,11 +178,6 @@ Status GrpcNotifyMaster::CreateResultShmInstance(const RemoteCallModelContext &m
 Status GrpcNotifyMaster::CallModelInner(const RemoteCallModelContext &model_context,
                                         const std::vector<InstanceData> &request, std::vector<ResultInstance> *reply,
                                         std::vector<SharedMemoryItem> *alloc_shm_request) {
-  grpc::ClientContext context;
-  const int32_t TIME_OUT = 1;
-  std::chrono::system_clock::time_point deadline = std::chrono::system_clock::now() + std::chrono::seconds(TIME_OUT);
-  context.set_deadline(deadline);
-
   proto::PredictRequest proto_request;
   auto servable_spec = proto_request.mutable_servable_spec();
   servable_spec->set_name(ServableRegister::Instance().GetServableSignature().servable_name);
@@ -207,6 +202,7 @@ Status GrpcNotifyMaster::CallModelInner(const RemoteCallModelContext &model_cont
   }
   proto::PredictReply proto_reply;
   MSI_TIME_STAMP_START(CallModel)
+  grpc::ClientContext context;
   grpc::Status grpc_status = stub_->CallModel(&context, proto_request, &proto_reply);
   MSI_TIME_STAMP_END_EXTRA(CallModel, "Request count " + std::to_string(request.size()))
   if (!grpc_status.ok()) {

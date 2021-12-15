@@ -353,9 +353,7 @@ std::shared_ptr<Context> MindSporeModelWrap::TransformModelContext(serving::Devi
 
   if (enable_lite && device_type != kDeviceTypeCpu) {
     auto cpu_device_info = GetDeviceInfo(model_context.device_list, kDeviceTypeCpu);
-    if (!cpu_device_info.empty()) {
-      context->MutableDeviceInfo().push_back(TransformCPUModelContext(cpu_device_info));
-    }
+    context->MutableDeviceInfo().push_back(TransformCPUModelContext(cpu_device_info));
   }
   return context;
 }

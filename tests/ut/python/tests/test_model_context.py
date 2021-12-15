@@ -340,3 +340,61 @@ def predict(x1, x2):
     result = client.infer(instances)
     print("result", result)
     assert (result[0]["y"] == y).all()
+
+
+@serving_test
+def test_model_context_gpu_options_invalid_parameter_failed():
+    """
+    Feature: Model Device info
+    Description: Test set gpu options
+    Expectation: Serving server start failed.
+    """
+    servable_content = r"""
+import numpy as np
+from mindspore_serving.server import register
+from mindspore_serving.server.register import Context, GPUDeviceInfo, CPUDeviceInfo
+from mindspore_serving.server.register import AscendDeviceInfo, GpuOptions, AclOptions
+
+options = GpuOptions(precision_mode="origi")
+model = register.declare_model(model_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=False,
+                               options = options)
+
+@register.register_method(output_names="y")
+def predict(x1, x2):
+    y = register.add_stage(model, x1, x2, outputs_count=1)
+    return y
+    """
+    try:
+        start_serving_server(servable_content)
+        assert False
+    except RuntimeError as e:
+        assert "Gpu device info 'precision_mode' can only be 'origin', 'fp16'" in str(e)
+
+
+@serving_test
+def test_model_context_gpu_options_invalid_parameter2_failed():
+    """
+    Feature: Model Device info
+    Description: Test set gpu options
+    Expectation: Serving server start failed.
+    """
+    servable_content = r"""
+import numpy as np
+from mindspore_serving.server import register
+from mindspore_serving.server.register import Context, GPUDeviceInfo, CPUDeviceInfo
+from mindspore_serving.server.register import AscendDeviceInfo, GpuOptions, AclOptions
+
+options = GpuOptions(precision_xxx_mode="origin")
+model = register.declare_model(model_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=False,
+                               options = options)
+
+@register.register_method(output_names="y")
+def predict(x1, x2):
+    y = register.add_stage(model, x1, x2, outputs_count=1)
+    return y
+    """
+    try:
+        start_serving_server(servable_content)
+        assert False
+    except RuntimeError as e:
+        assert "Set gpu device info failed, unsupported option precision_xxx_mode" in str(e)

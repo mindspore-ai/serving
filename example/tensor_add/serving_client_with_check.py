@@ -24,7 +24,7 @@ def check_result(result, y_data_list):
     """check grpc output result"""
     assert len(result) == len(y_data_list)
     for result_item, y_data in zip(result, y_data_list):
-        assert (result_item["y"] == y_data).all()
+        assert (np.abs(result_item["y"] - y_data) < 0.00001).all()
 
 
 def run_add_common():
