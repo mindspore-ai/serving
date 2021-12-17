@@ -23,16 +23,24 @@
 
 ## Overview
 
-MindSpore Serving is a lightweight and high-performance service module that helps MindSpore developers efficiently deploy online inference services in the production environment. After completing model training on MindSpore, you can export the MindSpore model and use MindSpore Serving to create an inference service for the model.  
+MindSpore Serving is a lightweight and high-performance service module that helps MindSpore developers efficiently
+deploy online inference services in the production environment. After completing model training on MindSpore, you can
+export the MindSpore model and use MindSpore Serving to create an inference service for the model.
 
 MindSpore Serving architecture:
 
 <img src="docs/architecture.png" alt="MindSpore Architecture" width="600"/>
 
-MindSpore Serving includes two parts: `Client` and `Server`. On a `Client` node, you can deliver inference service commands through the gRPC or RESTful API. The `Server` consists of a `Main` node and one or more `Worker` nodes. The `Main` node manages all `Worker` nodes and their model information, accepts user requests from `Client`s, and distributes the requests to `Worker` nodes. `Servable` is deployed on a worker node, indicates a single model or a combination of multiple models and can provide different services in various methods. `
+MindSpore Serving includes two parts: `Client` and `Server`. On a `Client` node, you can deliver inference service
+commands through the gRPC or RESTful API. The `Server` consists of a `Main` node and one or more `Worker` nodes.
+The `Main` node manages all `Worker` nodes and their model information, accepts user requests from `Client`s, and
+distributes the requests to `Worker` nodes. `Servable` is deployed on a worker node, indicates a single model or a
+combination of multiple models and can provide different services in various methods. `
 
-On the server side, when [MindSpore](#https://www.mindspore.cn/) is used as the inference backend,, MindSpore Serving supports the Ascend 910/710/310 and Nvidia GPU environments. When [MindSpore Lite](#https://www.mindspore.cn/lite) is used as the inference backend, MindSpore Serving supports Ascend 310, Nvidia GPU and CPU environments.
-Client` does not depend on specific hardware platforms.
+On the server side, when [MindSpore](#https://www.mindspore.cn/) is used as the inference backend,, MindSpore Serving
+supports the Ascend 910/710/310 and Nvidia GPU environments. When [MindSpore Lite](#https://www.mindspore.cn/lite) is
+used as the inference backend, MindSpore Serving supports Ascend 310, Nvidia GPU and CPU environments. Client` does not
+depend on specific hardware platforms.
 
 MindSpore Serving provides the following functions:
 
@@ -40,75 +48,72 @@ MindSpore Serving provides the following functions:
 - Pre-processing and post-processing of assembled models
 - Batch. Multiple instance requests are split and combined to meet the `batch size` requirement of the model.
 - Simple Python APIs on clients
-- The multi-model combination is supported. The multi-model combination and single-model scenarios use the same set of interfaces.
+- The multi-model combination is supported. The multi-model combination and single-model scenarios use the same set of
+  interfaces.
 - Distributed model inference
 
 ## Installation
 
-MindSpore Serving depends on the MindSpore training and inference framework. Therefore, install [MindSpore](https://gitee.com/mindspore/mindspore/blob/master/README.md#installation) and then MindSpore Serving.
+### Installing MindSpore or MindSpore Lite
+
+MindSpore Serving depends on the MindSpore or MindSpore Lite inference framework. We select one of them as the Serving
+Inference backend:
+
+- MindSpore
+
+  [Install MindSpore](https://gitee.com/mindspore/mindspore/blob/master/README.md#installation)，and configure
+  [environment variables](https://gitee.com/mindspore/docs/blob/master/install/mindspore_ascend_install_source_en.md#configuring-environment-variables).
+
+- MindSpore Lite
+
+  For details about how to compile and install MindSpore Lite, see the [MindSpore Lite Documentation](https://www.mindspore.cn/lite/docs/en/master/index.html).
+  We should configure the environment variable `LD_LIBRARY_PATH` to indicates the installation path of `libmindspore-lite.so`.
 
 ### Installing Serving
 
 Perform the following steps to install Serving:
 
-- If use the pip command, download the .whl package from the [MindSpore Serving page](https://www.mindspore.cn/versions/en) and install it.
+- If use the pip command, download the .whl package from
+  the [MindSpore Serving page](https://www.mindspore.cn/versions/en) and install it.
 
-    ```python
-    pip install mindspore_serving-{version}-cp37-cp37m-linux_{arch}.whl
+    ```shell
+    pip install https://ms-release.obs.cn-north-4.myhuaweicloud.com/{version}/Serving/{arch}/mindspore_serving-{version}-{python_version}-linux_{arch}.whl --trusted-host ms-release.obs.cn-north-4.myhuaweicloud.com -i https://pypi.tuna.tsinghua.edu.cn/simple
     ```
 
     > - `{version}` denotes the version of MindSpore Serving. For example, when you are downloading MindSpore Serving 1.1.0, `{version}` should be 1.1.0.
     > - `{arch}` denotes the system architecture. For example, the Linux system you are using is x86 architecture 64-bit, `{arch}` should be `x86_64`. If the system is ARM architecture 64-bit, then it should be `aarch64`.
+    > - `{python_version}` specifies the python version for which MindSpore Serving is built. If you wish to use Python3.7.5,`{python_version}` should be `cp37-cp37m`. If Python3.9.0 is used, it should be `cp39-cp39`. Please use the same Python environment whereby MindSpore Serving is installed.
 
-- Install Serving using the source code.
-
-    Download the [source code](https://gitee.com/mindspore/serving) and go to the `serving` directory.
-
-    Method 1: Specify the path of the installed or built MindSpore package on which Serving depends and install Serving.
+- Install Serving using the [source code](https://gitee.com/mindspore/serving).
 
     ```shell
-    sh build.sh -p $MINDSPORE_LIB_PATH
+    git clone https://gitee.com/mindspore/serving.git -b master
+    cd serving
+    bash build.sh
     ```
 
-    In the preceding information, `build.sh` is the build script file in the `serving` directory, and `$MINDSPORE_LIB_PATH` is the `lib` directory in the installation path of the MindSpore software package, for example, `softwarepath/mindspore/lib`. This path contains the library files on which MindSpore depends.
+  For the `bash build.sh` above, we can add `-jn`, for example `-j16`, to accelerate compilation. By adding `-S on`
+  option, third-party dependencies can be downloaded from gitee instead of github.
 
-    Method 2: Directly build Serving. The MindSpore package is built together with Serving. You need to configure the [environment variables](https://gitee.com/mindspore/docs/blob/master/install/mindspore_ascend_install_source_en.md#configuring-environment-variables) for MindSpore building.
-
-    ```shell
-    # GPU
-    sh build.sh -e gpu
-    # Ascend 910/710/310
-    sh build.sh -e ascend
-    ```
-
-    In the preceding information, `build.sh` is the build script file in the `serving` directory. After the build is complete, find the .whl installation package of MindSpore in the `serving/third_party/mindspore/build/package/` directory and install it.
-
-    ```python
-    pip install mindspore_ascend-{version}-cp37-cp37m-linux_{arch}.whl
-    ```
-
-    Find the .whl installation package of Serving in the `serving/build/package/` directory and install it.
+  After the build is complete, find the .whl installation package of Serving in the `serving/build/package/` directory
+  and install it.
 
     ```python
     pip install mindspore_serving-{version}-cp37-cp37m-linux_{arch}.whl
     ```
 
-Run the following commands to verify the installation. Import the Python module. If no error is reported, the installation is successful.
+Run the following commands to verify the installation. Import the Python module. If no error is reported, the
+installation is successful.
 
 ```python
 from mindspore_serving import master
 from mindspore_serving import worker
 ```
 
-### Configuring Environment Variables
-
-To run MindSpore Serving, configure the following environment variables:
-
-- MindSpore Serving depends on MindSpore. You need to configure [environment variables](https://gitee.com/mindspore/docs/blob/master/install/mindspore_ascend_install_source_en.md#configuring-environment-variables) to run MindSpore.
-
 ## Quick Start
 
-[MindSpore-based Inference Service Deployment](https://www.mindspore.cn/serving/docs/en/master/serving_example.html) is used to demonstrate how to use MindSpore Serving.
+[MindSpore-based Inference Service Deployment](https://www.mindspore.cn/serving/docs/en/master/serving_example.html) is
+used to demonstrate how to use MindSpore Serving.
 
 ## Documents
 
@@ -116,10 +121,12 @@ To run MindSpore Serving, configure the following environment variables:
 
 - [gRPC-based MindSpore Serving Access](https://www.mindspore.cn/serving/docs/en/master/serving_grpc.html)
 - [RESTful-based MindSpore Serving Access](https://www.mindspore.cn/serving/docs/en/master/serving_restful.html)
-- [Servable Provided Through Model Configuration](https://www.mindspore.cn/serving/docs/en/master/serving_model.html)
+- [Services Provided Through Model Configuration](https://www.mindspore.cn/serving/docs/en/master/serving_model.html)
+- [Services Composed of Multiple Models](https://www.mindspore.cn/serving/docs/en/master/serving_model.html#services-composed-of-multiple-models)
 - [MindSpore Serving-based Distributed Inference Service Deployment](https://www.mindspore.cn/serving/docs/en/master/serving_distributed_example.html)
 
-For more details about the installation guide, tutorials, and APIs, see [MindSpore Python API](https://www.mindspore.cn/serving/api/en/master/index.html).
+For more details about the installation guide, tutorials, and APIs,
+see [MindSpore Python API](https://www.mindspore.cn/serving/api/en/master/index.html).
 
 ## Community
 
@@ -129,7 +136,8 @@ For more details about the installation guide, tutorials, and APIs, see [MindSpo
 
 ### Communication
 
-- [MindSpore Slack](https://join.slack.com/t/mindspore/shared_invite/zt-dgk65rli-3ex4xvS4wHX7UDmsQmfu8w) developer communication platform
+- [MindSpore Slack](https://join.slack.com/t/mindspore/shared_invite/zt-dgk65rli-3ex4xvS4wHX7UDmsQmfu8w) developer
+  communication platform
 
 ## Contributions
 

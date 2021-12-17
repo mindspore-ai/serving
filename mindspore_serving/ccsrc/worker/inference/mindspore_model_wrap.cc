@@ -583,8 +583,14 @@ ssize_t MindSporeModelWrap::GetBatchSize(uint64_t subgraph) const { return commo
 uint64_t MindSporeModelWrap::GetSubGraphNum() const { return models_.size(); }
 
 bool MindSporeModelWrap::SupportReuseDevice() const {
-  auto is_device_910 = mindspore::Model::CheckModelSupport(mindspore::kAscend910, mindspore::kMindIR);
-  return !is_device_910;
+  static bool support_reuse_device = false;
+  static bool value_set = false;
+  if (!value_set) {
+    value_set = true;
+    auto is_device_910 = mindspore::Model::CheckModelSupport(mindspore::kAscend910, mindspore::kMindIR);
+    support_reuse_device = !is_device_910;
+  }
+  return support_reuse_device;
 }
 
 bool MindSporeModelWrap::CheckModelSupport(DeviceType device_type, ModelType model_type) const {

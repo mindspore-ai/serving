@@ -25,11 +25,11 @@
 #include <mutex>
 #include "common/serving_common.h"
 #include "worker/inference/inference.h"
-#include "api/model.h"
-#include "api/types.h"
-#include "api/data_type.h"
-#include "api/serialization.h"
-#include "api/context.h"
+#include "include/api/model.h"
+#include "include/api/types.h"
+#include "include/api/data_type.h"
+#include "include/api/serialization.h"
+#include "include/api/context.h"
 
 namespace mindspore {
 namespace serving {
