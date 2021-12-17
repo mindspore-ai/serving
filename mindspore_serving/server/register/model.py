@@ -189,7 +189,9 @@ def declare_model(model_file, model_format, with_batch_dim=True, options=None, w
         context (Context): Context is used to store environment variables during execution. Default: None.
         without_batch_dim_inputs (Union[int, tuple[int], list[int]], optional): Index of inputs that without batch
             dim when with_batch_dim is True. Default: None.
-        config_file (str, optional): Config file for model. Default: None.
+        config_file (str, optional): Config file for model to set mix precision inference. This file should be located
+            in the same directory of servable_config.py file. Default: None.
+
     Raises:
         RuntimeError: The type or value of the parameters are invalid.
 
@@ -244,12 +246,24 @@ def declare_model(model_file, model_format, with_batch_dim=True, options=None, w
 
 
 class Context:
-    """Context is used to store environment variables during execution.
+    """Context is used to store environment variables during execution. When using mindspore lite and the device type is
+        Ascend or Gpu, the extra CPUDeviceInfo will be used.
 
     Args:
-        thread_num (int, optional): Set the number of threads at runtime.
+        thread_num (int, optional): Set the number of threads at runtime. Only valid when using mindspore lite.
         thread_affinity_core_list (tuple[int], list[int], optional): Set the thread lists to CPU cores.
+            Only valid when using mindspore lite.
         enable_parallel (bool, optional): Set the status whether to perform model inference or training in parallel.
+            Only valid when using mindspore lite.
+
+    Examples:
+            >>> from mindspore_serving.server import register
+            >>> import numpy as np
+            >>> context = register.Context(thread_num=1, thread_affinity_core_list=[1,2], enable_parallel=True)
+            >>> gpu_device_info = register.GPUDeviceInfo(precision_mode="fp16")
+            >>> model = declare_model(model_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=False, \
+            context=context)
+
     Raises:
         RuntimeError: type or value of input parameters are invalid.
     """
