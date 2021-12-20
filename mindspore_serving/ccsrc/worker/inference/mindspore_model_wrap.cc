@@ -280,6 +280,7 @@ std::shared_ptr<DeviceInfoContext> MindSporeModelWrap::TransformNvidiaGPUModelCo
     const auto &value = item.second;
     if (key == "precision_mode") {
       context_info->SetPrecisionMode(value);
+      context_info->SetEnableFP16(value == "fp16");
     }
   }
   return context_info;
