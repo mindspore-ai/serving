@@ -54,61 +54,7 @@ MindSpore Serving provides the following functions:
 
 ## Installation
 
-### Installing MindSpore or MindSpore Lite
-
-MindSpore Serving depends on the MindSpore or MindSpore Lite inference framework. We select one of them as the Serving
-Inference backend:
-
-- MindSpore
-
-  [Install MindSpore](https://gitee.com/mindspore/mindspore/blob/master/README.md#installation)，and configure
-  [environment variables](https://gitee.com/mindspore/docs/blob/master/install/mindspore_ascend_install_source_en.md#configuring-environment-variables).
-
-- MindSpore Lite
-
-  For details about how to compile and install MindSpore Lite, see the [MindSpore Lite Documentation](https://www.mindspore.cn/lite/docs/en/master/index.html).
-  We should configure the environment variable `LD_LIBRARY_PATH` to indicates the installation path of `libmindspore-lite.so`.
-
-### Installing Serving
-
-Perform the following steps to install Serving:
-
-- If use the pip command, download the .whl package from
-  the [MindSpore Serving page](https://www.mindspore.cn/versions/en) and install it.
-
-    ```shell
-    pip install https://ms-release.obs.cn-north-4.myhuaweicloud.com/{version}/Serving/{arch}/mindspore_serving-{version}-{python_version}-linux_{arch}.whl --trusted-host ms-release.obs.cn-north-4.myhuaweicloud.com -i https://pypi.tuna.tsinghua.edu.cn/simple
-    ```
-
-    > - `{version}` denotes the version of MindSpore Serving. For example, when you are downloading MindSpore Serving 1.1.0, `{version}` should be 1.1.0.
-    > - `{arch}` denotes the system architecture. For example, the Linux system you are using is x86 architecture 64-bit, `{arch}` should be `x86_64`. If the system is ARM architecture 64-bit, then it should be `aarch64`.
-    > - `{python_version}` specifies the python version for which MindSpore Serving is built. If you wish to use Python3.7.5,`{python_version}` should be `cp37-cp37m`. If Python3.9.0 is used, it should be `cp39-cp39`. Please use the same Python environment whereby MindSpore Serving is installed.
-
-- Install Serving using the [source code](https://gitee.com/mindspore/serving).
-
-    ```shell
-    git clone https://gitee.com/mindspore/serving.git -b master
-    cd serving
-    bash build.sh
-    ```
-
-  For the `bash build.sh` above, we can add `-jn`, for example `-j16`, to accelerate compilation. By adding `-S on`
-  option, third-party dependencies can be downloaded from gitee instead of github.
-
-  After the build is complete, find the .whl installation package of Serving in the `serving/build/package/` directory
-  and install it.
-
-    ```python
-    pip install mindspore_serving-{version}-cp37-cp37m-linux_{arch}.whl
-    ```
-
-Run the following commands to verify the installation. Import the Python module. If no error is reported, the
-installation is successful.
-
-```python
-from mindspore_serving import master
-from mindspore_serving import worker
-```
+For details about how to install and configure MindSpore Serving, see the [MindSpore Serving installation page](https://www.mindspore.cn/serving/docs/en/master/serving_install.html).
 
 ## Quick Start
 

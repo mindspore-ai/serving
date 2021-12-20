@@ -50,53 +50,7 @@ MindSpore Serving提供以下功能：
 
 ## 安装
 
-### 安装MindSpore或MindSpore Lite
-
-MindSpore Serving依赖MindSpore或MindSpore Lite推理框架，我们选择一个作为Serving推理后端：
-
-- MindSpore
-
-  [安装MindSpore](https://gitee.com/mindspore/mindspore#%E5%AE%89%E8%A3%85)，并按需完成[环境变量配置](https://gitee.com/mindspore/docs/blob/master/install/mindspore_ascend_install_pip.md#%E9%85%8D%E7%BD%AE%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F)。
-
-- MindSpore Lite
-
-  MindSpore Lite编译和安装可以参考[MindSpore Lite文档](https://www.mindspore.cn/lite/docs/zh-CN/master/index.html)，通过环境变量`LD_LIBRARY_PATH`指示`libmindspore-lite.so`的安装路径。
-
-### 安装Serving
-
-安装方式如下：
-
-- 使用pip命令安装，请从[MindSpore Serving下载页面](https://www.mindspore.cn/versions)下载并安装whl包。
-
-    ```shell
-    pip install https://ms-release.obs.cn-north-4.myhuaweicloud.com/{version}/Serving/{arch}/mindspore_serving-{version}-{python_version}-linux_{arch}.whl --trusted-host ms-release.obs.cn-north-4.myhuaweicloud.com -i https://pypi.tuna.tsinghua.edu.cn/simple
-    ```
-
-    > - `{version}`表示MindSpore Serving版本号，例如下载1.1.0版本MindSpore Serving时，`{version}`应写为1.1.0。
-    > - `{arch}`表示系统架构，例如使用的Linux系统是x86架构64位时，`{arch}`应写为`x86_64`。如果系统是ARM架构64位，则写为`aarch64`。
-    > - `{python_version}`表示用户的Python版本，Python版本为3.7.5时，`{python_version}`应写为`cp37-cp37m`。Python版本为3.9.0时，则写为`cp39-cp39`。请和当前安装的MindSpore Serving使用的Python环境保持一致。
-
-- 通过[源码](https://gitee.com/mindspore/serving)编译安装。
-
-    ```shell
-    git clone https://gitee.com/mindspore/serving.git -b master
-    cd serving
-    bash build.sh
-    ```
-
-  对于`bash build.sh`，可通过例如`-jn`选项，例如`-j16`，加速编译；可通过`-S on`选项，从gitee而不是github下载第三方依赖。
-
-  编译完成后，在`build/package/`目录下找到Serving的whl安装包进行安装：
-
-    ```python
-    pip install mindspore_serving-{version}-cp37-cp37m-linux_{arch}.whl
-    ```
-
-执行以下命令，验证安装结果。导入Python模块不报错即安装成功：
-
-```python
-from mindspore_serving import server
-```
+MindSpore Serving安装和配置可以参考[MindSpore Serving安装页面](https://www.mindspore.cn/serving/docs/zh-CN/master/serving_install.html)。
 
 ## 快速入门
 
