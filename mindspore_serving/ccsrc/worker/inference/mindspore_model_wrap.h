@@ -77,6 +77,7 @@ class MindSporeModelWrap : public InferenceBase {
 
   uint64_t GetSubGraphNum() const override;
   bool SupportReuseDevice() const override;
+  bool SupportMultiThreads() const;
 
  private:
   ApiCommonModelInfo common_model_info_;

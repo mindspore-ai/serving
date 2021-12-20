@@ -541,7 +541,7 @@ Status MindSporeModelWrap::ExecuteModelCommon(size_t request_size, const FuncMak
   }
   std::vector<mindspore::MSTensor> outputs;
   mindspore::Status status;
-  if (SupportReuseDevice()) {
+  if (SupportMultiThreads()) {
     status = model->Predict(inputs, &outputs);
   } else {  // vm backend
     std::unique_lock<std::mutex> lock(infer_mutex_);
@@ -592,6 +592,24 @@ bool MindSporeModelWrap::SupportReuseDevice() const {
     support_reuse_device = !is_device_910;
   }
   return support_reuse_device;
+}
+
+bool MindSporeModelWrap::SupportMultiThreads() const {
+  static bool support_multi_thread = false;
+  static bool value_set = false;
+  if (!value_set) {
+    value_set = true;
+    if (InferenceLoader::Instance().GetEnableLite()) {
+      support_multi_thread = true;
+    } else if (mindspore::Model::CheckModelSupport(mindspore::kAscend910, mindspore::kMindIR)) {
+      support_multi_thread = false;
+    } else if (mindspore::Model::CheckModelSupport(mindspore::kGPU, mindspore::kMindIR)) {
+      support_multi_thread = false;
+    } else {
+      support_multi_thread = true;
+    }
+  }
+  return support_multi_thread;
 }
 
 bool MindSporeModelWrap::CheckModelSupport(DeviceType device_type, ModelType model_type) const {
