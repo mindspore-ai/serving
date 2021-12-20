@@ -7,18 +7,19 @@ export BUILD_PATH="${PROJECTPATH}/build/"
 usage()
 {
   echo "Usage:"
+  echo "    bash build.sh [-j[n]] [-d] [-S on|off] "
   echo "    bash build.sh -p {mindspore_shared_lib}] [-j[n]] [-d] [-S on|off] "
-  echo "    bash build.sh -e gpu|ascend|cpu|npu [-V 9.2|10.1|310|910] [-j[n]] [-d] [-S on|off] "
+  echo "    bash build.sh -e gpu|ascend [-V 9.2|10.1|310|910] [-j[n]] [-d] [-S on|off] "
   echo "    bash build.sh -t on [-j[n]] [-d] [-S on|off] "
   echo ""
   echo "Options:"
-  echo "    -p MindSpore lib {mindspore_shared_lib} path."
-  echo "    -e Use cpu, gpu, npu or ascend"
+  echo "    -p {mindspore_shared_lib}, Use header files related to MindSpore(libmindspore.so) or Lite lib(libmindspore-lite.so)"
+  echo "    -e gpu|ascend, build MindSpore gpu or ascend whl package meanwhile"
   echo "    -V Specify the device version, if -e gpu, default CUDA 10.1, if -e ascend, default Ascend 910"
   echo "    -j[n] Set the threads when building (Default: -j8)"
   echo "    -d Debug model"
   echo "    -t Build testcases."
-  echo "    -S Enable enable download cmake compile dependency from gitee , default off"
+  echo "    -S Enable enable download cmake compile dependency from gitee instead of github, default off"
 }
 
 # check value of input is 'on' or 'off'
@@ -44,6 +45,7 @@ checkopts()
   ENABLE_PYTHON="on"
   MS_WHL_LIB_PATH=""
   MS_BACKEND=""
+  MS_BACKEND_HEADER="on"
   MS_VERSION=""
   RUN_TESTCASES="off"
   ENABLE_GITEE="off"
@@ -69,8 +71,9 @@ checkopts()
       p)
         if [[ "$OPTARG"  != "" ]]; then
           MS_WHL_LIB_PATH=$OPTARG
+          MS_BACKEND_HEADER="off"
         else
-          echo "Invalid value ${LOW_OPTARG} for option -e"
+          echo "Invalid value ${LOW_OPTARG} for option -p"
           usage
           exit 1
         fi
@@ -98,6 +101,7 @@ checkopts()
       t)
         echo "user opt: -t"${LOW_OPTARG}
         RUN_TESTCASES="$OPTARG"
+        MS_BACKEND_HEADER="off"
         ;;
       S)
         check_on_off $OPTARG S
@@ -115,7 +119,7 @@ checkopts()
 checkopts "$@"
 echo "---------------- MindSpore Serving: build start ----------------"
 mkdir -pv "${BUILD_PATH}/package/mindspore_serving/lib"
-if [[ "$MS_BACKEND" != "" ]]; then
+if [[ "$MS_BACKEND_HEADER" != "off" ]]; then
   git submodule update --init third_party/mindspore
 fi
 
@@ -139,6 +143,9 @@ build_mindspore_serving()
   fi
   if [[ "$MS_WHL_LIB_PATH" != "" ]]; then
     CMAKE_ARGS="${CMAKE_ARGS} -DMS_WHL_LIB_PATH=${MS_WHL_LIB_PATH}"
+  fi
+  if [[ "$MS_BACKEND_HEADER" != "off" ]]; then
+    CMAKE_ARGS="${CMAKE_ARGS} -DMS_BACKEND_HEADER=${MS_BACKEND_HEADER}"
   fi
   if [[ "$MS_VERSION" != "" ]]; then
     CMAKE_ARGS="${CMAKE_ARGS} -DMS_VERSION=${MS_VERSION}"
