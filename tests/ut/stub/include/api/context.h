@@ -139,21 +139,21 @@ class MS_API DeviceInfoContext : public std::enable_shared_from_this<DeviceInfoC
   /// \brief obtain provider's name
   ///
   /// \return provider's name.
-  std::string GetProvider() const;
+  inline std::string GetProvider() const;
   /// \brief set provider's name.
   ///
   /// \param[in] provider define the provider's name.
 
-  void SetProvider(const std::string &provider);
+  inline void SetProvider(const std::string &provider);
   /// \brief obtain provider's device type.
   ///
   /// \return provider's device type.
 
-  std::string GetProviderDevice() const;
+  inline std::string GetProviderDevice() const;
   /// \brief set provider's device type.
   ///
   /// \param[in] device define the provider's device type.EG: CPU.
-  void SetProviderDevice(const std::string &device);
+  inline void SetProviderDevice(const std::string &device);
 
   /// \brief set memory allocator.
   ///
@@ -166,8 +166,18 @@ class MS_API DeviceInfoContext : public std::enable_shared_from_this<DeviceInfoC
   std::shared_ptr<Allocator> GetAllocator() const;
 
  protected:
+  std::vector<char> GetProviderChar() const;
+  void SetProvider(const std::vector<char> &provider);
+  std::vector<char> GetProviderDeviceChar() const;
+  void SetProviderDevice(const std::vector<char> &device);
+
   std::shared_ptr<Data> data_;
 };
+
+std::string DeviceInfoContext::GetProvider() const { return CharToString(GetProviderChar()); }
+void DeviceInfoContext::SetProvider(const std::string &provider) { SetProvider(StringToChar(provider)); }
+std::string DeviceInfoContext::GetProviderDevice() const { return CharToString(GetProviderDeviceChar()); }
+void DeviceInfoContext::SetProviderDevice(const std::string &device) { SetProviderDevice(StringToChar(device)); }
 
 /// \brief Derived from DeviceInfoContext, The configuration of the model running on the CPU. This option is only valid
 /// for MindSpore Lite.
@@ -258,6 +268,36 @@ class MS_API GPUDeviceInfo : public DeviceInfoContext {
   /// \return Whether enable float16 inference.
   bool GetEnableFP16() const;
 
+  /// \brief Set enables to sharing mem with OpenGL
+  ///
+  /// \param[in] is_enable_sharing_mem_with_gl Enable sharing OpenCL Memory with OpenGL or not.
+  void SetEnableGLTexture(bool is_enable_gl_texture);
+
+  /// \brief Get enables to sharing mem with OpenGL
+  ///
+  /// \return Whether enable sharing mem with OpenGL.
+  bool GetEnableGLTexture() const;
+
+  /// \brief Set current OpenGL context
+  ///
+  /// \param[in] gl_context Current OpenGL context.
+  void SetGLContext(void *gl_context);
+
+  /// \brief Get current OpenGL context
+  ///
+  /// \return the OpenCL context by OpenGL used.
+  void *GetGLContext() const;
+
+  /// \brief Set current OpenGL display
+  ///
+  /// \param[in] gl_display Current OpenGL display.
+  void SetGLDisplay(void *gl_display);
+
+  /// \brief Get current OpenGL display
+  ///
+  /// \return the OpenCL display by OpenGL used.
+  void *GetGLDisplay() const;
+
  private:
   void SetPrecisionMode(const std::vector<char> &precision_mode);
   std::vector<char> GetPrecisionModeChar() const;
@@ -268,7 +308,7 @@ void GPUDeviceInfo::SetPrecisionMode(const std::string &precision_mode) {
 }
 std::string GPUDeviceInfo::GetPrecisionMode() const { return CharToString(GetPrecisionModeChar()); }
 
-/// \brief Derived from DeviceInfoContext, The configuration of the model running on the Ascend310. This option is
+/// \brief Derived from DeviceInfoContext, The configuration of the model running on the Ascend. This option is
 /// invalid for MindSpore Lite.
 class MS_API AscendDeviceInfo : public DeviceInfoContext {
  public:

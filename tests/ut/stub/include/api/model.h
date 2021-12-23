@@ -83,6 +83,14 @@ class MS_API Model {
   Status Predict(const std::vector<MSTensor> &inputs, std::vector<MSTensor> *outputs,
                  const MSKernelCallBack &before = nullptr, const MSKernelCallBack &after = nullptr);
 
+  /// \brief Train model by step.
+  ///
+  /// \param[in] before CallBack before predict.
+  /// \param[in] after CallBack after predict.
+  ///
+  /// \return Status.
+  Status RunStep(const MSKernelCallBack &before = nullptr, const MSKernelCallBack &after = nullptr);
+
   /// \brief Inference model with preprocess in model.
   ///
   /// \param[in] inputs A vector where model inputs are arranged in sequence.
@@ -92,7 +100,7 @@ class MS_API Model {
   /// \param[in] after CallBack after predict.
   ///
   /// \return Status.
-  Status PredictWithPreprocess(const std::vector<MSTensor> &inputs, std::vector<MSTensor> *outputs,
+  Status PredictWithPreprocess(const std::vector<std::vector<MSTensor>> &inputs, std::vector<MSTensor> *outputs,
                                const MSKernelCallBack &before = nullptr, const MSKernelCallBack &after = nullptr);
 
   /// \brief Apply data preprocess if it exits in model.
@@ -101,7 +109,7 @@ class MS_API Model {
   /// \param[out] outputs Which is a pointer to a vector. The model outputs are filled in the container in sequence.
   ///
   /// \return Status.
-  Status Preprocess(const std::vector<MSTensor> &inputs, std::vector<MSTensor> *outputs);
+  Status Preprocess(const std::vector<std::vector<MSTensor>> &inputs, std::vector<MSTensor> *outputs);
 
   /// \brief Check if data preprocess exists in model.
   /// \return true if data preprocess exists.
@@ -143,7 +151,18 @@ class MS_API Model {
   /// \return Status of operation
   Status ApplyGradients(const std::vector<MSTensor> &gradients);
 
-  /// \brief Obtains optimizer params tensors of the model.
+  /// \brief Obtains all weights tensors of the model.
+  ///
+  /// \return The vector that includes all gradient tensors.
+  std::vector<MSTensor> GetFeatureMaps() const;
+
+  /// \brief update weights tensors of the model.
+  ///
+  /// \param[in] inputs A vector new weights.
+  /// \return Status of operation
+  Status UpdateFeatureMaps(const std::vector<MSTensor> &new_weights);
+
+    /// \brief Obtains optimizer params tensors of the model.
   ///
   /// \return The vector that includes all params tensors.
   std::vector<MSTensor> GetOptimizerParams() const;
@@ -181,9 +200,19 @@ class MS_API Model {
   /// \return The vector of output MSTensor.
   inline std::vector<MSTensor> GetOutputsByNodeName(const std::string &node_name);
 
+  /// \brief Bind GLTexture2D object to cl Memory.
+  ///
+  /// \param[in] inputGlTexture The input GLTexture id for Model.
+  /// \param[in] outputGLTexture The output GLTexture id for Model.
+  ///
+  /// \return Status of operation.
+
+  Status BindGLTexture2DMemory(const std::map<std::string, unsigned int> &inputGLTexture,
+                               std::map<std::string, unsigned int> *outputGLTexture);
+
   /// \brief Inference model.
   ///
-  /// \param[in] device_type Device type，options are kGPU, kAscend, kAscend910, etc.
+  /// \param[in] device_type Device type，options are kGPU, kAscend etc.
   /// \param[in] model_type The type of model file, options are ModelType::kMindIR, ModelType::kOM.
   ///
   /// \return Is supported or not.
