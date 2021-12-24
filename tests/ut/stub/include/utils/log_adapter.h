@@ -28,14 +28,11 @@
 #include "utils/visible.h"
 #include "utils/overload.h"
 #include "./securec.h"
-#ifdef USE_GLOG
-#define GLOG_NO_ABBREVIATED_SEVERITIES
-#define google mindspore_private
+
+#define google mindspore_serving_private
 #include "glog/logging.h"
 #undef google
-#else
-#include "toolchain/slog.h"
-#endif
+
 // NOTICE: when relative path of 'log_adapter.h' changed, macro 'LOG_HDR_FILE_REL_PATH' must be changed
 #define LOG_HDR_FILE_REL_PATH "mindspore/core/utils/log_adapter.h"
 

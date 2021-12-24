@@ -42,7 +42,7 @@ install(FILES ${grpc_LIBPATH}/libmindspore_serving_upb.so.15.0.0
 install(FILES ${grpc_LIBPATH}/libmindspore_serving_address_sorting.so.15.0.0
   DESTINATION ${INSTALL_LIB_DIR} RENAME libmindspore_serving_address_sorting.so.15 COMPONENT mindspore_serving)
 
-file(GLOB_RECURSE GLOG_LIB_LIST ${glog_LIBPATH}/libglog*)
+file(GLOB_RECURSE GLOG_LIB_LIST ${glog_LIBPATH}/libmindspore_serving_glog*)
 install(
         FILES ${GLOG_LIB_LIST}
         DESTINATION ${INSTALL_LIB_DIR}

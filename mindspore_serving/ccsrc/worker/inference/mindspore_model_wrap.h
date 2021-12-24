@@ -117,7 +117,7 @@ class MindSporeModelWrap : public InferenceBase {
 class ApiBufferTensorWrap : public TensorBase {
  public:
   ApiBufferTensorWrap();
-  explicit ApiBufferTensorWrap(const mindspore::MSTensor &buffer);
+  ApiBufferTensorWrap(DataType type, std::vector<int64_t> shape, const mindspore::MSTensor &buffer);
   ~ApiBufferTensorWrap() override;
 
   void set_data_type(DataType type) override { type_ = type; }

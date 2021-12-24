@@ -16,6 +16,7 @@
 #include "common/log.h"
 #include <sys/time.h>
 #include <thread>
+#define google mindspore_serving_private
 #include "glog/logging.h"
 #include "common/utils.h"
 
@@ -386,3 +387,4 @@ void mindspore_serving_log_init(void) {
   mindspore::serving::common_log_init();
 }
 }
+#undef google

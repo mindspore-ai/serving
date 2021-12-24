@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#include "glog/logging.h"
 #include "utils/log_adapter.h"
+
+#define google mindspore_serving_private
 
 #ifndef _MSC_VER
 #include <unistd.h>
@@ -30,7 +30,6 @@ namespace mindspore {
 // set default log level to WARNING for all sub modules
 int g_ms_submodule_log_levels[NUM_SUBMODUES] = {INFO};
 
-#ifdef USE_GLOG
 static std::string GetProcName() {
 #if defined(__APPLE__) || defined(__FreeBSD__)
   const std::string appname = getprogname();
@@ -94,32 +93,8 @@ static int GetThresholdLevel(const std::string &threshold) {
     return google::GLOG_WARNING;
   }
 }
-#else
-
-#undef Dlog
-#define Dlog(module_id, level, format, ...)                   \
-  do {                                                        \
-    DlogInner((module_id), (level), (format), ##__VA_ARGS__); \
-  } while (0)
-
-// convert MsLogLevel to corresponding slog level
-static int GetSlogLevel(MsLogLevel level) {
-  switch (level) {
-    case DEBUG:
-      return DLOG_DEBUG;
-    case INFO:
-      return DLOG_INFO;
-    case WARNING:
-      return DLOG_WARN;
-    case ERROR:
-    default:
-      return DLOG_ERROR;
-  }
-}
-#endif
 
 void LogWriter::OutputLog(const std::ostringstream &msg) const {
-#ifdef USE_GLOG
   auto submodule_name = GetSubModuleName(submodule_);
   google::LogMessage("", 0, GetGlogLevel(log_level_)).stream()
 #ifdef _MSC_VER
@@ -130,12 +105,6 @@ void LogWriter::OutputLog(const std::ostringstream &msg) const {
 #endif
     << std::this_thread::get_id() << std::dec << "," << GetProcName() << "):" << GetTimeString() << " "
     << "[" << location_.file_ << ":" << location_.line_ << "] " << location_.func_ << "] " << msg.str() << std::endl;
-#else
-  auto str_msg = msg.str();
-  auto slog_module_id = (submodule_ == SM_MD ? MD : ME);
-  Dlog(static_cast<int>(slog_module_id), GetSlogLevel(log_level_), "[%s:%d] %s] %s", location_.file_, location_.line_,
-       location_.func_, str_msg.c_str());
-#endif
 }
 
 void LogWriter::operator<(const LogStream &stream) const noexcept {
@@ -369,21 +338,7 @@ bool ParseLogLevel(const std::string &str_level, MsLogLevel *ptr_level) {
 }
 
 static MsLogLevel GetGlobalLogLevel() {
-#ifdef USE_GLOG
   return static_cast<MsLogLevel>(FLAGS_v);
-#else
-  constexpr char number_start = '0';
-  int log_level = WARNING;  // set default log level to WARNING
-  auto str_level = GetEnv("GLOG_v");
-  if (str_level.size() == 1) {
-    int ch = str_level.c_str()[0];
-    ch = ch - number_start;  // subtract ASCII code of '0', which is 48
-    if (ch >= DEBUG && ch <= ERROR) {
-      log_level = ch;
-    }
-  }
-  return static_cast<MsLogLevel>(log_level);
-#endif
 }
 
 void InitSubModulesLogLevel() {
@@ -430,7 +385,6 @@ __attribute__((constructor)) void common_log_init(void) {
 #else
 void common_log_init(void) {
 #endif
-#ifdef USE_GLOG
   // Do not use glog predefined log prefix
   FLAGS_log_prefix = false;
   // Write log to files real-time
@@ -476,8 +430,7 @@ void common_log_init(void) {
   // Default GLOG_stderrthreshold level to WARNING
   auto threshold = mindspore::GetEnv("GLOG_stderrthreshold");
   FLAGS_stderrthreshold = mindspore::GetThresholdLevel(threshold);
-
-#endif
   mindspore::InitSubModulesLogLevel();
 }
 }
+#undef google

@@ -94,7 +94,7 @@ link_directories(${CMKAE_BINARY_DIR}/securec/src)
 file(GLOB_RECURSE LIBEVENT_LIB_LIST ${libevent_LIBPATH}/libevent* libevent_LIBPATH}/libevent_pthreads*)
 file(COPY ${LIBEVENT_LIB_LIST} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 # copy glog lib
-file(GLOB_RECURSE GLOG_LIB_LIST ${glog_LIBPATH}/libglog*)
+file(GLOB_RECURSE GLOG_LIB_LIST ${glog_LIBPATH}/libmindspore_serving_glog*)
 file(COPY ${GLOG_LIB_LIST} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 # copy grpc lib
 file(GLOB_RECURSE GPRC_LIB_LIST ${grpc_LIBPATH}/lib*)

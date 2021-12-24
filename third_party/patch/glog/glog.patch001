@@ -38,7 +38,7 @@ diff -Npur glog/CMakeLists.txt glog-patch/CMakeLists.txt
 -if (UNWIND_LIBRARY)
 -  target_link_libraries (glog PUBLIC ${UNWIND_LIBRARY})
 -endif (UNWIND_LIBRARY)
-+
++set_target_properties (glog PROPERTIES OUTPUT_NAME mindspore_serving_glog)
  
  if (HAVE_DBGHELP)
     target_link_libraries (glog PUBLIC dbghelp)

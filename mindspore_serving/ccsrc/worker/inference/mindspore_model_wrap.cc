@@ -508,9 +508,13 @@ Status MindSporeModelWrap::ExecuteModel(const std::vector<TensorBasePtr> &reques
     if (result_tensor.IsDevice()) {
       MSI_LOG_EXCEPTION << "Can not support device type tensor";
     }
-    auto tensor = std::make_shared<ApiBufferTensorWrap>(result_tensor);
-    tensor->set_data_type(data_type);
-    tensor->set_shape(shape);
+    TensorBasePtr tensor = nullptr;
+    // lite backend, output tensor result in all predict
+    if (InferenceLoader::Instance().GetEnableLite()) {
+      tensor = std::make_shared<Tensor>(data_type, shape, result_tensor.Data().get(), result_tensor.DataSize());
+    } else {
+      tensor = std::make_shared<ApiBufferTensorWrap>(data_type, shape, result_tensor);
+    }
     reply->push_back(tensor);
   };
   return ExecuteModelCommon(request.size(), func_in, func_out, return_result, subgraph);
@@ -668,7 +672,8 @@ mindspore::DeviceType MindSporeModelWrap::GetMsDeviceType(serving::DeviceType de
 
 ApiBufferTensorWrap::ApiBufferTensorWrap() = default;
 
-ApiBufferTensorWrap::ApiBufferTensorWrap(const mindspore::MSTensor &tensor) : tensor_(tensor) {}
+ApiBufferTensorWrap::ApiBufferTensorWrap(DataType type, std::vector<int64_t> shape, const mindspore::MSTensor &tensor)
+    : type_(type), shape_(shape), tensor_(tensor) {}
 
 ApiBufferTensorWrap::~ApiBufferTensorWrap() = default;
 }  // namespace serving
