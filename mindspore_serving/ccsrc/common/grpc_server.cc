@@ -25,9 +25,6 @@ Status GrpcServer::Start(std::shared_ptr<grpc::Service> service, const std::stri
   if (in_running_) {
     return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Serving Error: " << server_tag << " server is already running";
   }
-
-  grpc::EnableDefaultHealthCheckService(true);
-  grpc::reflection::InitProtoReflectionServerBuilderPlugin();
   // Set the port is not reuseable
   auto option = grpc::MakeChannelArgumentOption(GRPC_ARG_ALLOW_REUSEPORT, 0);
   grpc::ServerBuilder serverBuilder;

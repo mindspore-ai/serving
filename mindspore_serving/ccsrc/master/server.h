@@ -39,7 +39,7 @@ class MS_API Server {
                             int max_msg_mb_size = gRpcDefaultMsgMBSize, int time_out_second = 100);
   Status StartGrpcMasterServer(const std::string &master_address);
   void Clear();
-
+  bool OnlyModelStage(const std::string &servable_name);
   std::shared_ptr<Dispatcher> GetDispatcher() { return dispatcher_; }
 
   static Server &Instance();

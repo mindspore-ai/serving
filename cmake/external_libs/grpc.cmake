@@ -48,8 +48,8 @@ endif()
 
 mindspore_add_pkg(grpc
         VER 1.36.1
-        LIBS mindspore_serving_grpc++_reflection mindspore_serving_grpc++ mindspore_serving_grpc mindspore_serving_gpr
-        mindspore_serving_upb mindspore_serving_address_sorting
+        LIBS mindspore_serving_grpc++ mindspore_serving_grpc mindspore_serving_gpr mindspore_serving_upb
+        mindspore_serving_address_sorting
         EXE grpc_cpp_plugin
         URL ${REQ_URL}
         MD5 ${MD5}
@@ -76,14 +76,10 @@ mindspore_add_pkg(grpc
 include_directories(${grpc_INC})
 
 add_library(mindspore_serving::grpc++ ALIAS grpc::mindspore_serving_grpc++)
-add_library(mindspore_serving::grpc++_reflection ALIAS grpc::mindspore_serving_grpc++_reflection)
 
 # link other grpc libs
 target_link_libraries(grpc::mindspore_serving_grpc++ INTERFACE grpc::mindspore_serving_grpc grpc::mindspore_serving_gpr
   grpc::mindspore_serving_upb grpc::mindspore_serving_address_sorting)
-target_link_libraries(grpc::mindspore_serving_grpc++_reflection INTERFACE grpc::mindspore_serving_grpc++
-  grpc::mindspore_serving_grpc grpc::mindspore_serving_gpr grpc::mindspore_serving_upb
-  grpc::mindspore_serving_address_sorting)
 
 # modify mindspore macro define
 add_compile_definitions(grpc=mindspore_serving_grpc)

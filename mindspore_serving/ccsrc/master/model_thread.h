@@ -56,7 +56,7 @@ struct Job {
   std::vector<std::shared_ptr<PredictContext>> reply_context_list;
 };
 
-class MS_API ModelThread {
+class ModelThread {
  public:
   ModelThread(const std::string &servable_name, const std::string &method_name, uint64_t version_number,
               uint64_t batch_size, ServableMethodInfo method_info);

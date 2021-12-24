@@ -36,7 +36,7 @@
 namespace mindspore::serving {
 using TimerCallback = std::function<void()>;
 
-class MS_API Timer {
+class Timer {
  public:
   Timer() {}
   ~Timer() {
@@ -75,7 +75,7 @@ class MS_API Timer {
 };
 
 template <class SendStub, class RecvStub>
-class MS_API Watcher {
+class Watcher {
  public:
   explicit Watcher(const std::string host_address) { host_address_ = host_address; }
   ~Watcher() {

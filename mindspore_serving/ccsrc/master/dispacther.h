@@ -33,7 +33,7 @@
 
 namespace mindspore::serving {
 
-class MS_API Dispatcher {
+class Dispatcher {
  public:
   Dispatcher();
   ~Dispatcher();

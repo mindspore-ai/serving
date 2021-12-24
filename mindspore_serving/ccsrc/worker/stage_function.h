@@ -27,7 +27,7 @@
 
 namespace mindspore::serving {
 
-class MS_API CppStageFunctionBase : public std::enable_shared_from_this<CppStageFunctionBase> {
+class CppStageFunctionBase : public std::enable_shared_from_this<CppStageFunctionBase> {
  public:
   CppStageFunctionBase() = default;
   virtual ~CppStageFunctionBase() = default;
@@ -37,7 +37,7 @@ class MS_API CppStageFunctionBase : public std::enable_shared_from_this<CppStage
   virtual size_t GetOutputsCount(const std::string &func_name) const = 0;
 };
 
-class MS_API CppStageFunctionStorage {
+class CppStageFunctionStorage {
  public:
   bool Register(const std::string &func_name, std::shared_ptr<CppStageFunctionBase> function);
   void Unregister(const std::string &func_name);
@@ -50,7 +50,7 @@ class MS_API CppStageFunctionStorage {
   std::unordered_map<std::string, std::shared_ptr<CppStageFunctionBase>> function_map_;
 };
 
-class MS_API CppRegStageFunction {
+class CppRegStageFunction {
  public:
   CppRegStageFunction(const std::string &func_name, std::shared_ptr<CppStageFunctionBase> function);
   ~CppRegStageFunction();
