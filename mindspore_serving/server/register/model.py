@@ -179,6 +179,10 @@ def declare_model(model_file, model_format, with_batch_dim=True, options=None, w
         This interface should take effect when importing servable_config.py by the serving server. Therefore, it's
         recommended that this interface be used globally in servable_config.py.
 
+    .. warning::
+        The parameter 'options' is deprecated from version 1.6.0 and will be removed in a future version, use
+        parameter 'context' instead.
+
     Args:
         model_file (Union[str, list[str]]): Model files name.
         model_format (str): Model format, "OM", "MindIR" or "MindIR_Opt", case ignored.
@@ -260,9 +264,8 @@ class Context:
             >>> from mindspore_serving.server import register
             >>> import numpy as np
             >>> context = register.Context(thread_num=1, thread_affinity_core_list=[1,2], enable_parallel=True)
-            >>> gpu_device_info = register.GPUDeviceInfo(precision_mode="fp16")
-            >>> model = declare_model(model_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=False, \
-            context=context)
+            >>> context.append_device_info(register.GPUDeviceInfo(precision_mode="fp16"))
+            >>> model = declare_model(model_file="tensor_add.mindir", model_format="MindIR", context=context)
 
     Raises:
         RuntimeError: type or value of input parameters are invalid.
@@ -434,7 +437,7 @@ class GPUDeviceInfo(DeviceInfoContext):
 
 class AscendDeviceInfo(DeviceInfoContext):
     """
-    Helper class to set Ascend acl device infos.
+    Helper class to set Ascend device infos.
 
     Args:
         insert_op_cfg_path (str, optional): Path of aipp config file.
@@ -454,6 +457,11 @@ class AscendDeviceInfo(DeviceInfoContext):
     Raises:
         RuntimeError: Acl device info is invalid.
 
+    Examples:
+        >>> from mindspore_serving.server import register
+        >>> context = register.Context()
+        >>> context.append_device_info(register.AscendDeviceInfo(input_format="NCHW"))
+        >>> model = register.declare_model(model_file="deeptext.ms", model_format="MindIR_Opt", context=context)
     """
 
     def __init__(self, **kwargs):
@@ -610,7 +618,11 @@ class AscendDeviceInfo(DeviceInfoContext):
 
 class AclOptions:
     """
-    Helper class to set acl options.
+    Helper class to set Ascend device infos.
+
+    .. warning::
+        'AclOptions' is deprecated from version 1.6.0 and will be removed in a future version, use
+        :class:`mindspore_serving.server.register.AscendDeviceInfo` instead.
 
     Args:
         insert_op_cfg_path (str, optional): Path of aipp config file.
@@ -636,6 +648,8 @@ class AclOptions:
 
     def __init__(self, **kwargs):
         super(AclOptions, self).__init__()
+        logger.warning("'AclOptions' is deprecated from version 1.6.0 and will be removed in a future version, "
+                       "use 'mindspore_serving.server.register.AscendDeviceInfo' instead.")
         device_info = AscendDeviceInfo(**kwargs)
         self.context = Context()
         self.context.append_device_info(device_info)
@@ -644,6 +658,10 @@ class AclOptions:
 class GpuOptions:
     """
     Helper class to set gpu options.
+
+    .. warning::
+        'GpuOptions' is deprecated from version 1.6.0 and will be removed in a future version, use
+        :class:`mindspore_serving.server.register.GPUDeviceInfo` instead.
 
     Args:
         precision_mode(str, optional): inference operator selection, and the value can be "origin", "fp16".
@@ -660,6 +678,8 @@ class GpuOptions:
 
     def __init__(self, **kwargs):
         super(GpuOptions, self).__init__()
+        logger.warning("'GpuOptions' is deprecated from version 1.6.0 and will be removed in a future version, "
+                       "use 'mindspore_serving.server.register.GPUDeviceInfo' instead.")
         device_info = GPUDeviceInfo(**kwargs)
         self.context = Context()
         self.context.append_device_info(device_info)
