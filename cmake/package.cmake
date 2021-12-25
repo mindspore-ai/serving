@@ -19,18 +19,17 @@ set(INSTALL_PY_DIR ".")
 set(INSTALL_BASE_DIR ".")
 set(INSTALL_LIB_DIR "lib")
 
-file(GLOB_RECURSE LIBEVENT_LIB_LIST
-        ${libevent_LIBPATH}/libevent*
-        ${libevent_LIBPATH}/libevent_pthreads*
-        )
-install(
-        FILES ${LIBEVENT_LIB_LIST}
-        DESTINATION ${INSTALL_LIB_DIR}
-        COMPONENT mindspore_serving
-)
+# libevent
+install(FILES ${libevent_LIBPATH}/libevent-2.1.so.7.0.1
+        DESTINATION ${INSTALL_LIB_DIR} RENAME libevent-2.1.so.7 COMPONENT mindspore_serving)
+install(FILES ${libevent_LIBPATH}/libevent_core-2.1.so.7.0.1
+        DESTINATION ${INSTALL_LIB_DIR} RENAME libevent_core-2.1.so.7 COMPONENT mindspore)
+install(FILES ${libevent_LIBPATH}/libevent_openssl-2.1.so.7.0.1
+        DESTINATION ${INSTALL_LIB_DIR} RENAME libevent_openssl-2.1.so.7 COMPONENT mindspore_serving)
+install(FILES ${libevent_LIBPATH}/libevent_pthreads-2.1.so.7.0.1
+        DESTINATION ${INSTALL_LIB_DIR} RENAME libevent_pthreads-2.1.so.7 COMPONENT mindspore_serving)
 
-install(FILES ${grpc_LIBPATH}/libmindspore_serving_grpc++_reflection.so.1.36.1
-  DESTINATION ${INSTALL_LIB_DIR} RENAME libmindspore_serving_grpc++_reflection.so.1 COMPONENT mindspore_serving)
+# grpc
 install(FILES ${grpc_LIBPATH}/libmindspore_serving_grpc++.so.1.36.1
   DESTINATION ${INSTALL_LIB_DIR} RENAME libmindspore_serving_grpc++.so.1 COMPONENT mindspore_serving)
 install(FILES ${grpc_LIBPATH}/libmindspore_serving_grpc.so.15.0.0
@@ -42,12 +41,9 @@ install(FILES ${grpc_LIBPATH}/libmindspore_serving_upb.so.15.0.0
 install(FILES ${grpc_LIBPATH}/libmindspore_serving_address_sorting.so.15.0.0
   DESTINATION ${INSTALL_LIB_DIR} RENAME libmindspore_serving_address_sorting.so.15 COMPONENT mindspore_serving)
 
-file(GLOB_RECURSE GLOG_LIB_LIST ${glog_LIBPATH}/libmindspore_serving_glog*)
-install(
-        FILES ${GLOG_LIB_LIST}
-        DESTINATION ${INSTALL_LIB_DIR}
-        COMPONENT mindspore_serving
-)
+# glog
+install(FILES ${glog_LIBPATH}/libmindspore_serving_glog.so.0.4.0
+        DESTINATION ${INSTALL_LIB_DIR} RENAME libmindspore_serving_glog.so.0 COMPONENT mindspore)
 
 # set python files
 file(GLOB MS_PY_LIST ${CMAKE_SOURCE_DIR}/mindspore_serving/*.py)

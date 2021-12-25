@@ -32,7 +32,7 @@
 
 namespace mindspore::serving {
 
-class MS_API ProtoTensor : public TensorBase {
+class ProtoTensor : public TensorBase {
  public:
   // the other's lifetime must longer than this object
   explicit ProtoTensor(proto::Tensor *other);

@@ -41,7 +41,7 @@ struct PredictModelInfo {
   uint64_t batch_size = 0;
 };
 
-class MS_API PredictThread {
+class PredictThread {
  public:
   PredictThread();
   ~PredictThread();

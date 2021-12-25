@@ -41,7 +41,7 @@ namespace mindspore::serving {
 
 constexpr const uint32_t kDefaultRestfulThreadPoolNum = 3;
 
-class MS_API RestfulServer {
+class RestfulServer {
  public:
   RestfulServer() : thread_pool_(kDefaultRestfulThreadPoolNum) {}
   ~RestfulServer() { Stop(); }

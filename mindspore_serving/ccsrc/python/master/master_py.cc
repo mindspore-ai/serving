@@ -56,7 +56,7 @@ void PyMaster::StopAndClear() {
 }
 
 bool PyMaster::OnlyModelStage(const std::string &servable_name) {
-  return Server::Instance().GetDispatcher()->OnlyModelStage(servable_name);
+  return Server::Instance().OnlyModelStage(servable_name);
 }
 
 }  // namespace mindspore::serving

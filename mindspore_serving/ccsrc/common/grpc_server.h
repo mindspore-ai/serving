@@ -31,7 +31,7 @@ namespace mindspore::serving {
 constexpr int gRpcDefaultMsgMBSize = 100;
 constexpr int gRpcMaxMBMsgSize = 512;  // max 512 MB
 
-class MS_API GrpcServer {
+class GrpcServer {
  public:
   GrpcServer() = default;
   ~GrpcServer() { Stop(); }

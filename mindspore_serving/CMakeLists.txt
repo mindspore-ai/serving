@@ -103,7 +103,7 @@ set_property(TARGET serving_common PROPERTY POSITION_INDEPENDENT_CODE TRUE)
 set_property(TARGET serving_ascend PROPERTY POSITION_INDEPENDENT_CODE TRUE)
 
 target_link_libraries(serving_common PRIVATE PROTO_SRC_LIB)
-target_link_libraries(serving_common PRIVATE mindspore_serving::grpc++_reflection mindspore_serving::grpc++)
+target_link_libraries(serving_common PRIVATE mindspore_serving::grpc++)
 target_link_libraries(serving_common PRIVATE ${_PROTOBUF_LIBPROTOBUF} pthread rt)
 target_link_libraries(serving_common PRIVATE mindspore_serving::event mindspore_serving::event_pthreads)
 target_link_libraries(serving_common PRIVATE mindspore_serving::event_core)

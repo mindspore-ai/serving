@@ -103,7 +103,7 @@ file(COPY ${GPRC_LIB_LIST} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 # for cpp/serving_ut
 set(CPP_UT_SERVING_CORE ${UT_SERVING_COMMON} ${UT_SERVING_ASCEND})
 add_library(cpp_serving_common STATIC ${CPP_UT_SERVING_CORE} ${PROTO_SRC_LIST})
-target_link_libraries(cpp_serving_common PRIVATE mindspore_serving::grpc++_reflection mindspore_serving::grpc++)
+target_link_libraries(cpp_serving_common PRIVATE mindspore_serving::grpc++)
 target_link_libraries(cpp_serving_common PRIVATE ${_PROTOBUF_LIBPROTOBUF} pthread rt)
 target_link_libraries(cpp_serving_common PRIVATE mindspore_serving::event mindspore_serving::event_pthreads)
 target_link_libraries(cpp_serving_common PRIVATE mindspore_serving::event_openssl)
