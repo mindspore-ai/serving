@@ -398,3 +398,62 @@ def predict(x1, x2):
         assert False
     except RuntimeError as e:
         assert "Set gpu device info failed, unsupported option precision_xxx_mode" in str(e)
+
+
+@serving_test
+def test_model_context_gpu_cpu_device_device_ids_none_serving_server_success():
+    """
+    Feature: Model Device info
+    Description: device_ids=None, and support GPU, CPU, running on CPU
+    Expectation: Serving server work well.
+    """
+    servable_content = r"""
+import numpy as np
+from mindspore_serving.server import register
+
+model = register.declare_model(model_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=False)
+
+@register.register_method(output_names="y")
+def predict(x1, x2):
+    y = register.add_stage(model, x1, x2, outputs_count=1)
+    return y
+    """
+    os.environ["SERVING_ENABLE_GPU_DEVICE"] = "1"
+    os.environ["SERVING_ENABLE_CPU_DEVICE"] = "1"
+    base = start_serving_server(servable_content, device_type=None, device_ids=None)
+    # Client
+    x1 = np.array([[1.1, 2.2], [3.3, 4.4]], np.float32)
+    x2 = np.array([[5.5, 6.6], [7.7, 8.8]], np.float32)
+    y = x1 + x2
+    instances = [{"x1": x1, "x2": x2}]
+
+    client = create_client("localhost:5500", base.servable_name, "predict")
+    result = client.infer(instances)
+    print("result", result)
+    assert (result[0]["y"] == y).all()
+
+
+@serving_test
+def test_model_context_only_support_gpu_device_device_ids_none_serving_server_failed():
+    """
+    Feature: Model Device info
+    Description: device_ids=None, and only support GPU, running on CPU failed
+    Expectation: Serving server startup failed.
+    """
+    servable_content = r"""
+import numpy as np
+from mindspore_serving.server import register
+
+model = register.declare_model(model_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=False)
+
+@register.register_method(output_names="y")
+def predict(x1, x2):
+    y = register.add_stage(model, x1, x2, outputs_count=1)
+    return y
+    """
+    os.environ["SERVING_ENABLE_GPU_DEVICE"] = "1"
+    try:
+        start_serving_server(servable_content, device_type=None, device_ids=None)
+    except RuntimeError as e:
+        assert "has models declared by declare_model, but parameter 'device_ids' of ServableStartConfig is not set in" \
+               " Serving startup script when the MindSpore or Lite inference package not support CPU" in str(e)
