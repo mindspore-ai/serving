@@ -95,15 +95,28 @@ clean_pid()
 
 prepare_model()
 {
-  echo "### begin to generate mode for serving matmul distribute test ###"
-  cd export_model
-  bash export_model.sh &> export_model.log
-  if [ $? -ne 0 ]
+  model_path=${CURRPATH}/../model
+  if [ -d $model_path ]
   then
-    cat export_model.log
-    echo "### generate model for serving matmul distribute test failed ###" && exit 1
+    echo "copy model path"
+    cp -r ../model .
+  else
+    echo "### begin to generate mode for serving test ###"
+    cd export_model || exit
+    sh export_model.sh &> model.log
+    echo "### end to generate mode for serving test ###"
+    result=`find ../ -name  model | wc -l`
+    if [ ${result} -ne 1 ]
+    then
+      echo "### begin model generation log ###"
+      cat model.log
+      echo "### end model generation log ###"
+      clean_pid
+      echo "### generate model for serving test failed ###" && exit 1
+    fi
+    cd - || exit
+    cp -r model ../
   fi
-  cd -
 }
 
 start_serving_server()

@@ -68,7 +68,6 @@ prepare_model()
     result=`find ../ -name  model | wc -l`
     if [ ${result} -ne 1 ]
     then
-      cat device0/inference.log0
       cat model.log
       clean_pid
       echo "### generate model for serving test failed ###" && exit 1

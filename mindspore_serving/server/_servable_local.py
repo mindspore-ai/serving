@@ -118,10 +118,16 @@ class ServableStartConfig:
             if device_type.lower() not in ("ascend", "gpu", "cpu"):
                 raise RuntimeError(f"Unsupported device type '{device_type}', only support 'Ascend', 'GPU', 'CPU' "
                                    f"and None, case ignored")
+            default_device = _get_device_type(None)
+            support_cpu = _get_device_type("cpu")
+            if support_cpu and support_cpu != default_device:
+                support_device = f"None, '{default_device}' or '{support_cpu}'"
+            else:
+                support_device = f"None or '{default_device}'"
             if not _get_device_type(device_type):
                 raise RuntimeError(f"The device type '{device_type}' of servable name {servable_name} "
                                    f"is inconsistent with current running environment, supported device type: "
-                                   f"'None' or '{_get_device_type(None)}'")
+                                   f"{support_device}")
         # else device_type is None
         # if device_ids is empty, and there are models declared, Cpu target should be support
         # if device_ids is not empty, and there are no models declared, use no device resources

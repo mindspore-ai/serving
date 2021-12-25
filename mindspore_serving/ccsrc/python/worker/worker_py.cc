@@ -139,6 +139,7 @@ void PyWorker::StartExtraServable(const std::string &servable_directory, const s
           << " package not support CPU";
       }
       target_device_type = kDeviceTypeCpu;
+      ServableContext::Instance()->SetDeviceType(target_device_type);
     }
     if (target_device_type == kDeviceTypeCpu) {
       own_device = true;
