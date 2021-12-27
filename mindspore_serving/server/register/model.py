@@ -313,7 +313,7 @@ class Context:
         self.model_context.thread_num = val
 
     def _set_thread_affinity_core_list(self, val):
-        val = check_type.check_and_as_int_tuple_list("thread_affinity_core_list", val)
+        check_type.check_int_tuple_list("thread_affinity_core_list", val, 0)
         self.model_context.thread_affinity_core_list = val
 
     def _set_enable_parallel(self, val):
