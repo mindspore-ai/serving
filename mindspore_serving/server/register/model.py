@@ -437,7 +437,9 @@ class GPUDeviceInfo(DeviceInfoContext):
 
 class AscendDeviceInfo(DeviceInfoContext):
     """
-    Helper class to set Ascend device infos.
+    Helper class to set Ascend device infos. For more details about the parameters, see
+    `parameters description of ATC tool
+    <https://support.huaweicloud.com/tg-cannApplicationDev330/atlasatc_16_0037.html>`_.
 
     Args:
         insert_op_cfg_path (str, optional): Path of aipp config file.
@@ -451,7 +453,9 @@ class AscendDeviceInfo(DeviceInfoContext):
             "must_keep_origin_dtype" or "allow_mix_precision". Default: "force_fp16".
         op_select_impl_mode (str, optional): The operator selection mode, the value can be "high_performance" or
             "high_precision". Default: "high_performance".
-        fusion_switch_config_path (str, optional):
+        fusion_switch_config_path (str, optional): Configuration file path of the convergence rule, including graph
+             convergence and UB convergence. The system has built-in graph convergence and UB convergence rules, which
+             are enableed by default. You can disable the reuls specified in the file by setting this parameter.
         buffer_optimize_mode (str, optional): The value can be "l1_optimize", "l2_optimize", "off_optimize" or
             "l1_and_l2_optimize". Default "l2_optimize".
     Raises:
