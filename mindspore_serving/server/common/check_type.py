@@ -26,30 +26,29 @@ def check_and_as_tuple_with_str_list(arg_name, strs):
     if not isinstance(strs, (tuple, list)):
         raise RuntimeError(f"Parameter '{arg_name}' should be str or tuple/list of str, but actually {type(strs)}")
 
-    if isinstance(strs, (tuple, list)):
-        str_list = []
-        for item in strs:
-            it_list = []
-            if isinstance(item, list):
-                for inner in item:
-                    if not isinstance(inner, str):
-                        raise RuntimeError(f"The inner of parameter '{arg_name}' should be str, "
-                                           f"but actually {type(inner)}")
-                    if not inner:
-                        raise RuntimeError(f"The inner of parameter '{arg_name}' should not be empty str")
-                    if item in it_list:
-                        raise RuntimeError(f"The inner value '{inner}' in parameter '{arg_name}' "
-                                           f"should not be repeated")
-                    it_list.append(inner)
-            else:
-                if not isinstance(item, str):
-                    raise RuntimeError(f"The item of parameter '{arg_name}' should be str, but actually {type(item)}")
-                if not item:
-                    raise RuntimeError(f"The item of parameter '{arg_name}' should not be empty str")
-                if item in str_list:
-                    raise RuntimeError(f"The item value '{item}' in parameter '{arg_name}' should not be repeated")
-                it_list.append(item)
-            str_list.append(it_list)
+    str_list = []
+    for item in strs:
+        it_list = []
+        if isinstance(item, list):
+            for inner in item:
+                if not isinstance(inner, str):
+                    raise RuntimeError(f"The inner of parameter '{arg_name}' should be str, "
+                                       f"but actually {type(inner)}")
+                if not inner:
+                    raise RuntimeError(f"The inner of parameter '{arg_name}' should not be empty str")
+                if item in it_list:
+                    raise RuntimeError(f"The inner value '{inner}' in parameter '{arg_name}' "
+                                       f"should not be repeated")
+                it_list.append(inner)
+        else:
+            if not isinstance(item, str):
+                raise RuntimeError(f"The item of parameter '{arg_name}' should be str, but actually {type(item)}")
+            if not item:
+                raise RuntimeError(f"The item of parameter '{arg_name}' should not be empty str")
+            if item in str_list:
+                raise RuntimeError(f"The item value '{item}' in parameter '{arg_name}' should not be repeated")
+            it_list.append(item)
+        str_list.append(it_list)
 
     return tuple(str_list)
 
@@ -64,18 +63,17 @@ def check_and_as_str_tuple_list(arg_name, strs):
     if not isinstance(strs, (tuple, list)):
         raise RuntimeError(f"Parameter '{arg_name}' should be str or tuple/list of str, but actually {type(strs)}")
 
-    if isinstance(strs, (tuple, list)):
-        str_list = []
-        for item in strs:
-            if not isinstance(item, str):
-                raise RuntimeError(f"The item of parameter '{arg_name}' should be str, but actually {type(item)}")
-            if not item:
-                raise RuntimeError(f"The item of parameter '{arg_name}' should not be empty str")
-            if item in str_list:
-                raise RuntimeError(f"The item value '{item}' in parameter '{arg_name}' should not be repeated")
-            str_list.append(item)
+    str_list = []
+    for item in strs:
+        if not isinstance(item, str):
+            raise RuntimeError(f"The item of parameter '{arg_name}' should be str, but actually {type(item)}")
+        if not item:
+            raise RuntimeError(f"The item of parameter '{arg_name}' should not be empty str")
+        if item in str_list:
+            raise RuntimeError(f"The item value '{item}' in parameter '{arg_name}' should not be repeated")
+        str_list.append(item)
 
-    return tuple(strs)
+    return tuple(str_list)
 
 
 def check_str(arg_name, str_val):
@@ -127,21 +125,35 @@ def check_ip_port(arg_name, port):
 
 
 def check_and_as_int_tuple_list(arg_name, ints, minimum=None, maximum=None):
-    """Check whether the input parameters are reasonable multiple str inputs,
-    which can be single str, tuple or list of str.
-    finally, return tuple of str"""
+    """Check whether the input parameters are reasonable multiple int inputs,
+    which can be single int, tuple or list of int.
+    finally, return tuple of int"""
     if isinstance(ints, int):
         ints = (ints,)
 
     if not isinstance(ints, (tuple, list)):
         raise RuntimeError(f"Parameter '{arg_name}' should be int or tuple/list of int, but actually {type(ints)}")
 
-    if isinstance(ints, (tuple, list)):
-        int_list = []
-        for item in ints:
-            if item in int_list:
-                raise RuntimeError(f"The item value '{item}' in parameter '{arg_name}' should not be repeated")
-            check_int(arg_name, item, minimum, maximum, True)
-            int_list.append(item)
+    int_list = []
+    for item in ints:
+        if item in int_list:
+            raise RuntimeError(f"The item value '{item}' in parameter '{arg_name}' should not be repeated")
+        check_int(arg_name, item, minimum, maximum, True)
+        int_list.append(item)
 
-    return tuple(ints)
+    return tuple(int_list)
+
+
+def check_int_tuple_list(arg_name, ints, minimum=None, maximum=None):
+    """Check whether the input parameters are reasonable multiple int inputs,
+    which can be single tuple or list of int.
+    finally, return tuple of int"""
+    if not isinstance(ints, (tuple, list)):
+        raise RuntimeError(f"Parameter '{arg_name}' should be tuple/list of int, but actually {type(ints)}")
+
+    int_list = []
+    for item in ints:
+        if item in int_list:
+            raise RuntimeError(f"The item value '{item}' in parameter '{arg_name}' should not be repeated")
+        check_int(arg_name, item, minimum, maximum, True)
+        int_list.append(item)

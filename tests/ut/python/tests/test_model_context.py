@@ -28,6 +28,11 @@ def test_model_context_device_info_set_get_success():
     Description: Test set and get device info
     Expectation: the values gotten are equal to the values set.
     """
+    try:
+        context = Context(thread_affinity_core_list=1)
+        assert False
+    except RuntimeError as e:
+        assert "arameter 'thread_affinity_core_list' should be tuple/list of int, but actually <class 'int'>" in str(e)
     context = Context(thread_num=3, thread_affinity_core_list=[1, 2, 3], enable_parallel=True)
     model_context = context.model_context
     assert model_context.thread_num == 3
