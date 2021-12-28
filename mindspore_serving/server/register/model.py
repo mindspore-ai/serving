@@ -193,8 +193,9 @@ def declare_model(model_file, model_format, with_batch_dim=True, options=None, w
         context (Context): Context is used to store environment variables during execution. Default: None.
         without_batch_dim_inputs (Union[int, tuple[int], list[int]], optional): Index of inputs that without batch
             dim when with_batch_dim is True. Default: None.
-        config_file (str, optional): Config file for model to set mix precision inference. This file should be located
-            in the same directory of servable_config.py file. Default: None.
+        config_file (str, optional): Config file for model to set mix precision inference. The file path can be an
+            absolute path or a relative path to the directory in which servable_config.py resides.
+            Default: None.
 
     Raises:
         RuntimeError: The type or value of the parameters are invalid.
@@ -250,8 +251,9 @@ def declare_model(model_file, model_format, with_batch_dim=True, options=None, w
 
 
 class Context:
-    """Context is used to store environment variables during execution. When using mindspore lite and the device type is
-        Ascend or Gpu, the extra CPUDeviceInfo will be used.
+    """
+    Context is used to store environment variables during execution. When using mindspore lite and the device type is
+    Ascend or Gpu, the extra CPUDeviceInfo will be used.
 
     Args:
         thread_num (int, optional): Set the number of threads at runtime. Only valid when using mindspore lite.

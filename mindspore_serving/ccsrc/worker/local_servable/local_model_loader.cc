@@ -136,7 +136,11 @@ Status LocalModelLoader::LoadModel(uint64_t version_number, const std::string &d
   }
   std::string config_file_path;
   if (!local_meta.config_file.empty()) {
-    config_file_path = base_spec_.servable_directory + "/" + base_spec_.servable_name + "/" + local_meta.config_file;
+    if (local_meta.config_file[0] == '/') {
+      config_file_path = local_meta.config_file;
+    } else {
+      config_file_path = base_spec_.servable_directory + "/" + base_spec_.servable_name + "/" + local_meta.config_file;
+    }
   }
   auto enable_lite = InferenceLoader::Instance().GetEnableLite();
   Status status = session->LoadModelFromFile(context->GetDeviceType(), context->GetDeviceId(), model_file_names,
