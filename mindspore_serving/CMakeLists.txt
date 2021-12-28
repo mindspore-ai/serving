@@ -15,9 +15,10 @@ endif()
 file(GLOB_RECURSE PROTO_FILE_LIST RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} ./proto/*.proto)
 ms_grpc_generate(PROTO_SRC_LIST PROTO_HDR_LIST ${PROTO_FILE_LIST})
 add_library(PROTO_SRC_LIB STATIC ${PROTO_SRC_LIST})
+target_compile_options(PROTO_SRC_LIB PRIVATE "-Wno-array-bounds")
 
 include_directories("${CMAKE_BINARY_DIR}/mindspore_serving" ${CMAKE_BINARY_DIR}) # for proto header file
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}" "ccsrc")
+include_directories("ccsrc")
 
 # serving_common for c++ server and python interface
 file(GLOB_RECURSE SERVING_SRC RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
