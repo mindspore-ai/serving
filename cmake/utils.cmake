@@ -103,27 +103,11 @@ function(__download_pkg_with_git pkg_name pkg_url pkg_git_commit pkg_md5)
 endfunction()
 
 
-function(__find_pkg_then_add_target pkg_name pkg_exe lib_path)
+function(__find_pkg_then_add_target_lib pkg_name lib_path)
 
     unset(${pkg_name}_LIBS)
 
     message("_FIND:${${pkg_name}_BASE_DIR}")
-
-    if(pkg_exe)
-        # find_program：该命令用于查找程序。<VAR>创建名为的缓存条目以存储此命令的结果。
-        # 如果找到程序，则结果存储在变量中，除非清除变量，否则将不会重复搜索。如果什么也没找到，结果将是<VAR>-NOTFOUND。
-        find_program(${pkg_exe}_EXE ${pkg_exe} PATHS ${${pkg_name}_BASE_DIR}/bin NO_DEFAULT_PATH)
-        if(NOT ${pkg_exe}_EXE)
-            return()
-        endif()
-        # add_executable： 使用给定的源文件，为工程引入一个可执行文件。
-        # IMPORTED：一个导入的可执行目标引用了一个位于工程之外的可执行文件。
-        add_executable(${pkg_name}::${pkg_exe} IMPORTED GLOBAL)
-        set_target_properties(${pkg_name}::${pkg_exe} PROPERTIES
-                IMPORTED_LOCATION ${${pkg_exe}_EXE}
-                )
-        message("found ${${pkg_exe}_EXE}")
-    endif()
 
     foreach(_LIB_NAME ${ARGN})
         set(_LIB_SEARCH_NAME ${_LIB_NAME})
@@ -160,6 +144,26 @@ function(__find_pkg_then_add_target pkg_name pkg_exe lib_path)
     endforeach()
 
     set(${pkg_name}_LIBS ${${pkg_name}_LIBS} PARENT_SCOPE)
+endfunction()
+
+
+function(__find_pkg_then_add_target_exe pkg_name lib_path)
+    message("_FIND:${${pkg_name}_BASE_DIR}")
+    foreach(pkg_exe ${ARGN})
+        # find_program：该命令用于查找程序。<VAR>创建名为的缓存条目以存储此命令的结果。
+        # 如果找到程序，则结果存储在变量中，除非清除变量，否则将不会重复搜索。如果什么也没找到，结果将是<VAR>-NOTFOUND。
+        find_program(${pkg_exe}_EXE ${pkg_exe} PATHS ${${pkg_name}_BASE_DIR}/bin NO_DEFAULT_PATH)
+        if(NOT ${pkg_exe}_EXE)
+            return()
+        endif()
+        # add_executable： 使用给定的源文件，为工程引入一个可执行文件。
+        # IMPORTED：一个导入的可执行目标引用了一个位于工程之外的可执行文件。
+        add_executable(${pkg_name}::${pkg_exe} IMPORTED GLOBAL)
+        set_target_properties(${pkg_name}::${pkg_exe} PROPERTIES
+                IMPORTED_LOCATION ${${pkg_exe}_EXE}
+                )
+        message("found ${${pkg_exe}_EXE}")
+    endforeach()
 endfunction()
 
 function(__exec_cmd)
@@ -208,9 +212,9 @@ function(mindspore_add_pkg pkg_name)
 
     message("---------add pkg: " ${pkg_name} "---------")
     set(options)
-    set(oneValueArgs URL MD5 GIT_REPOSITORY GIT_TAG VER EXE DIR HEAD_ONLY CMAKE_PATH RELEASE LIB_PATH CUSTOM_CMAKE)
-    set(multiValueArgs CMAKE_OPTION LIBS PRE_CONFIGURE_COMMAND CONFIGURE_COMMAND BUILD_OPTION INSTALL_INCS INSTALL_LIBS
-            PATCHES SUBMODULES SOURCEMODULES ONLY_MAKE ONLY_MAKE_INCS ONLY_MAKE_LIBS)
+    set(oneValueArgs URL MD5 GIT_REPOSITORY GIT_TAG VER DIR HEAD_ONLY CMAKE_PATH RELEASE LIB_PATH CUSTOM_CMAKE)
+    set(multiValueArgs CMAKE_OPTION LIBS EXE PRE_CONFIGURE_COMMAND CONFIGURE_COMMAND BUILD_OPTION INSTALL_INCS
+            INSTALL_LIBS PATCHES SUBMODULES SOURCEMODULES ONLY_MAKE ONLY_MAKE_INCS ONLY_MAKE_LIBS)
     cmake_parse_arguments(PKG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     if(NOT PKG_LIB_PATH)
@@ -249,7 +253,8 @@ function(mindspore_add_pkg pkg_name)
         add_library(${pkg_name} INTERFACE)
         target_include_directories(${pkg_name} INTERFACE ${${pkg_name}_INC})
         if(${PKG_RELEASE})
-            __find_pkg_then_add_target(${pkg_name} ${PKG_EXE} ${PKG_LIB_PATH} ${PKG_LIBS})
+            __find_pkg_then_add_target_exe(${pkg_name} ${PKG_LIB_PATH} ${PKG_EXE})
+            __find_pkg_then_add_target_lib(${pkg_name} ${PKG_LIB_PATH} ${PKG_LIBS})
         endif()
         return()
     endif()
@@ -258,7 +263,8 @@ function(mindspore_add_pkg pkg_name)
     set(${__FIND_PKG_NAME}_ROOT ${${pkg_name}_BASE_DIR} PARENT_SCOPE)
 
     if(PKG_LIBS)
-        __find_pkg_then_add_target(${pkg_name} ${PKG_EXE} ${PKG_LIB_PATH} ${PKG_LIBS})
+        __find_pkg_then_add_target_exe(${pkg_name} ${PKG_LIB_PATH} ${PKG_EXE})
+        __find_pkg_then_add_target_lib(${pkg_name} ${PKG_LIB_PATH} ${PKG_LIBS})
         if(${pkg_name}_LIBS)
             set(${pkg_name}_INC ${${pkg_name}_BASE_DIR}/include PARENT_SCOPE)
             message("Found libs: ${${pkg_name}_LIBS}")
@@ -407,7 +413,8 @@ function(mindspore_add_pkg pkg_name)
     endif()
 
     if(PKG_LIBS)
-        __find_pkg_then_add_target(${pkg_name} ${PKG_EXE} ${PKG_LIB_PATH} ${PKG_LIBS})
+        __find_pkg_then_add_target_exe(${pkg_name} ${PKG_LIB_PATH} ${PKG_EXE})
+        __find_pkg_then_add_target_lib(${pkg_name} ${PKG_LIB_PATH} ${PKG_LIBS})
         set(${pkg_name}_INC ${${pkg_name}_BASE_DIR}/include PARENT_SCOPE)
         if(NOT ${pkg_name}_LIBS)
             message(FATAL_ERROR "Can not find pkg: ${pkg_name}")

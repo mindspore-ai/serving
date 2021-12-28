@@ -76,8 +76,8 @@ install(
         COMPONENT mindspore_serving
 )
 install(
-        FILES ${CMAKE_SOURCE_DIR}/build/mindspore_serving/mindspore_serving/mindspore_serving/proto/ms_service_pb2.py
-        ${CMAKE_SOURCE_DIR}/build/mindspore_serving/mindspore_serving/mindspore_serving/proto/ms_service_pb2_grpc.py
+        FILES ${CMAKE_BINARY_DIR}/mindspore_serving/proto/ms_service_pb2.py
+        ${CMAKE_BINARY_DIR}/mindspore_serving/proto/ms_service_pb2_grpc.py
         DESTINATION ${INSTALL_PY_DIR}/proto
         COMPONENT mindspore_serving
 )
