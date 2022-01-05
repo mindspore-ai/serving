@@ -28,6 +28,11 @@
 
 namespace mindspore::serving {
 
+const std::vector<std::string> kCiphers = {
+  "ECDHE-RSA-AES128-GCM-SHA256",   "ECDHE-ECDSA-AES128-GCM-SHA256", "ECDHE-RSA-AES256-GCM-SHA384",
+  "ECDHE-ECDSA-AES256-GCM-SHA384", "ECDHE-RSA-CHACHA20-POLY1305",   "ECDHE-PSK-CHACHA20-POLY1305",
+  "ECDHE-ECDSA-AES128-CCM",        "ECDHE-ECDSA-AES256-CCM",        "ECDHE-ECDSA-CHACHA20-POLY1305"};
+
 void RestfulServer::Committer(const std::shared_ptr<RestfulRequest> &restful_request) {
   thread_pool_.commit([restful_request]() { RestfulService::RunRestful(restful_request); });
 }
@@ -78,8 +83,18 @@ Status RestfulServer::CreatHttpsServer(int time_out_second, const SSLConfig &ssl
   }
 
   SSL_CTX *ctx = SSL_CTX_new(SSLv23_method());
-  SSL_CTX_set_options(ctx, SSL_OP_SINGLE_DH_USE | SSL_OP_SINGLE_ECDH_USE | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1);
+  SSL_CTX_set_options(ctx, SSL_OP_SINGLE_DH_USE | SSL_OP_SINGLE_ECDH_USE | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 |
+                             SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1);
+  std::string cipher_list = kCiphers[0];
+  for (size_t index = 1; index < kCiphers.size(); ++index) {
+    cipher_list += ':';
+    cipher_list += kCiphers[index];
+  }
 
+  if (!SSL_CTX_set_cipher_list(ctx, cipher_list.c_str())) {
+    status = INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "SSL use set cipher list failed!";
+    return status;
+  }
   if (ssl_config.verify_client) {
     SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
     if (!ssl_config.custom_ca.empty() &&
