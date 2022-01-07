@@ -18,7 +18,6 @@ import sys
 import subprocess
 from pathlib import Path
 from packaging import version
-import numpy as np
 from mindspore_serving import log as logger
 
 
@@ -184,7 +183,7 @@ class GPUEnvChecker():
             path = os.path.abspath(path.strip() + "/bin/")
             if Path(path).is_dir():
                 path_list.append(path)
-        return np.unique(path_list)
+        return list(set(path_list))
 
     def _get_nvcc_version(self, is_set_env):
         """Get cuda version by nvcc command."""
@@ -260,7 +259,7 @@ class GPUEnvChecker():
             path = path.partition(lib_name)[0]
             if path:
                 path_list.append(os.path.abspath(path.strip() + "../"))
-        return np.unique(path_list)
+        return list(set(path_list))
 
     def _read_version(self, file_path):
         """Get gpu version info in version.txt."""

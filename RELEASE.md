@@ -1,3 +1,138 @@
+# MindSpore Serving 1.6.0
+
+## MindSpore 1.6.0 Release Notes
+
+### Major Features and Improvements
+
+- [STABLE] We can use existing interfaces(`decalre_model` and `add_stage`) that define single-model services to define
+  multi-model composite services.
+- [STABLE] When the number of occupied devices is fixed, additional worker processes(using parameter
+  `num_parallel_workers`) are supported to accelerate Python functions such as preprocessing and postprocessing,
+  improving device utilization.
+- [STABLE] The interface `Model.call` is a stable feature, and can be used to define complex model invocation processes
+  in the Serving server, such as looping and conditional branching.
+- [STABLE] We support MindSpore Lite as the MindSpore Serving inference backend, for more detail see
+  [MindSpore Serving backend](https://www.mindspore.cn/serving/docs/en/master/serving_install.html#installation).
+- [STABLE] The new interfaces `Context`, `CPUDeviceInfo`, `GPUDeviceInfo`, `AscendDeviceInfo` are provided to set
+  user-defined device information. The original interfaces `GpuOptions` and `AclOptions` are deprecated.
+
+### API Change
+
+#### New features
+
+##### Python API
+
+###### Multi-model composite services
+
+We can use existing interfaces(`decalre_model` and `add_stage`) that define single-model services to define
+multi-model composite services. For more detail, see [Services Composed of Multiple Models](https://www.mindspore.cn/serving/docs/en/master/serving_model.html#services-composed-of-multiple-models).
+
+```python
+from mindspore_serving.server import register
+
+add_model = register.declare_model(model_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=False)
+sub_model = register.declare_model(model_file="tensor_sub.mindir", model_format="MindIR", with_batch_dim=False)
+
+@register.register_method(output_names=["y"])
+def add_sub_only_model(x1, x2, x3):  # x1+x2-x3
+    y = register.add_stage(add_model, x1, x2, outputs_count=1)
+    y = register.add_stage(sub_model, y, x3, outputs_count=1)
+    return y
+```
+
+###### Additional worker processes are supported to accelerate Python functions(preprocessing and postprocessing)
+
+Parameter `num_parallel_workers` in class `ServableStartConfig`  is a stable feature. It's can be used to configure the
+total number of workers. The number of workers occupying devices is determined by the length of parameter `device_ids`.
+Additional worker processes use worker processes that occupy devices for model inference.  For more detail, see
+[Multi-process Concurrency](https://www.mindspore.cn/serving/docs/en/master/serving_model.html#multi-process-concurrency).
+
+```python
+class ServableStartConfig:
+    def __init__(self, servable_directory, servable_name, device_ids, version_number=0, device_type=None,
+                 num_parallel_workers=0, dec_key=None, dec_mode='AES-GCM')
+```
+
+Start the serving server that contains the `resnet50` servable. The `resnet50` servable has four worker
+processes(`num_parallel_workers`), one of which occupies the device(`device_ids`).
+
+```python
+import os
+import sys
+from mindspore_serving import server
+
+def start():
+    servable_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
+    # Total 4 worker, one worker occupy device 0, the model inference tasks of other workers are forwarded to the worker
+    # that occupies the device.
+    config = server.ServableStartConfig(servable_directory=servable_dir,
+                                        servable_name="resnet50", device_ids=0,
+                                        num_parallel_workers=4)
+    server.start_servables(config)
+
+    server.start_grpc_server("127.0.0.1:5500")
+    server.start_restful_server("127.0.0.1:1500")
+
+if __name__ == "__main__":
+    start()
+```
+
+###### Model.call interface can be used to define complex model invocation processes
+
+The interface `Model.call` is a stable feature, and can be used to define complex model invocation processes
+in the Serving server, such as looping and conditional branching.
+
+```python
+from mindspore_serving.server import register
+
+import numpy as np
+from .tokenizer import create_tokenizer, padding, END_TOKEN
+
+bert_model = register.declare_model(model_file="bert_poetry.mindir", model_format="MindIR")
+
+def calc_new_token(probas):
+  ...
+  return new_token_id
+
+tokenizer = create_tokenizer()
+
+def generate_sentence(input_sentence):
+  input_token_ids = tokenizer.encode(input_sentence)
+  target_ids = []
+  MAX_LEN = 64
+  while len(input_token_ids) + len(target_ids) < MAX_LEN:
+    input_ids = padding(np.array(input_token_ids + target_ids), length=128)
+    pad_mask = (input_ids != 0).astype(np.float32)
+    probas = bert_model.call(input_ids, pad_mask)  # call bert model to generate token id of new word
+    new_token_id = calc_new_token(probas[len(input_token_ids)])
+    target_ids.append(new_token_id)
+    if new_token_id == END_TOKEN:
+      break
+  output_sentence = tokenizer.decode(input_token_ids + target_ids)
+  return output_sentence
+
+
+@register.register_method(output_names=["output_sentence"])
+def predict(input_sentence):
+  output_sentence = register.add_stage(generate_sentence, input_sentence, outputs_count=1)
+  return output_sentence
+```
+
+#### Deprecations
+
+##### Python API
+
+- The parameter `options` in `register.declare_model` is deprecated from version 1.6.0 and will be removed in a future version, use parameter `context` instead.
+- `AclOptions` and `GpuOptions` are deprecated from version 1.6.0 and will be removed in a future version, use `AscendDeviceInfo` and `GPUDeviceInfo` instead.
+
+### Contributors
+
+Thanks goes to these wonderful people:
+
+qinzheng, xuyongfei, zhangyinxia, zhoufeng.
+
+Contributions of any kind are welcome!
+
 # MindSpore Serving 1.5.0
 
 ## MindSpore 1.5.0 Release Notes
