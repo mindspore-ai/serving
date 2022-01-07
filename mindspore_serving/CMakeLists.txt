@@ -129,7 +129,7 @@ else()
 endif()
 
 include_directories(${PYTHON_INCLUDE_DIRS})
-pybind11_add_module(_mindspore_serving ${PY_SRC_LIST})
+pybind11_add_module(_mindspore_serving NO_EXTRAS ${PY_SRC_LIST})
 target_link_libraries(_mindspore_serving PRIVATE "${PYTHON_LIBRARIES}")
 target_include_directories(_mindspore_serving PRIVATE ${pybind11_INCLUDE_DIRS})
 target_link_libraries(_mindspore_serving PRIVATE serving_common)
