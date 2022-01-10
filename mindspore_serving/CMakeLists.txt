@@ -80,6 +80,7 @@ foreach(proto_file ${PROTO_FILE_LIST})
 endforeach()
 
 add_library(PROTO_SRC_LIB STATIC ${PROTO_SRC_LIST})
+target_compile_options(PROTO_SRC_LIB PRIVATE "-Wno-array-bounds")
 
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/mindspore_serving") # for proto header file
 include_directories("${CMAKE_CURRENT_BINARY_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}" "ccsrc")
@@ -130,6 +131,7 @@ endif()
 
 include_directories(${PYTHON_INCLUDE_DIRS})
 pybind11_add_module(_mindspore_serving NO_EXTRAS ${PY_SRC_LIST})
+set_target_properties(_mindspore_serving PROPERTIES LINK_FLAGS_RELEASE -s)
 target_link_libraries(_mindspore_serving PRIVATE "${PYTHON_LIBRARIES}")
 target_include_directories(_mindspore_serving PRIVATE ${pybind11_INCLUDE_DIRS})
 target_link_libraries(_mindspore_serving PRIVATE serving_common)
