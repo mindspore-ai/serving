@@ -66,7 +66,7 @@ MindSpore Serving安装和配置可以参考[MindSpore Serving安装页面](http
 - [配置多模型组合的服务](https://www.mindspore.cn/serving/docs/zh-CN/master/serving_model.html#id9)
 - [基于MindSpore Serving部署分布式推理服务](https://www.mindspore.cn/serving/docs/zh-CN/master/serving_distributed_example.html)
 
-有关安装指南、教程和API的更多详细信息，请参阅[用户文档](https://www.mindspore.cn/serving/docs/zh-CN/master/index.html)。
+有关安装指南、教程和API的更多详细信息，请参阅[用户文档](https://www.mindspore.cn/serving/docs/zh-CN/master/server.html)。
 
 ## 社区
 
