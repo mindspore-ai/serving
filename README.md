@@ -72,7 +72,7 @@ used to demonstrate how to use MindSpore Serving.
 - [MindSpore Serving-based Distributed Inference Service Deployment](https://www.mindspore.cn/serving/docs/en/master/serving_distributed_example.html)
 
 For more details about the installation guide, tutorials, and APIs,
-see [MindSpore Python API](https://www.mindspore.cn/serving/api/en/master/index.html).
+see [MindSpore Python API](https://www.mindspore.cn/serving/docs/en/master/server.html).
 
 ## Community
 
