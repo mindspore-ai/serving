@@ -60,6 +60,11 @@ def check_mindspore_version(ms_dir):
 
 def set_mindspore_cxx_env():
     """Append MindSpore CXX lib path to LD_LIBRARY_PATH"""
+    global _flag_set_mindspore_cxx_env
+    if _flag_set_mindspore_cxx_env:
+        return
+    _flag_set_mindspore_cxx_env = True
+
     ms_dir = get_mindspore_whl_path()
     if not ms_dir:
         logger.info(f"find mindspore failed, LD_LIBRARY_PATH will not add MindSpore lib path")
@@ -71,17 +76,13 @@ def set_mindspore_cxx_env():
         os.environ['LD_LIBRARY_PATH'] = ld_lib_path + ":" + ms_dir
     else:
         os.environ['LD_LIBRARY_PATH'] = ms_dir
+    check_version_and_try_set_env_lib()  # try set env LD_LIBRARY_PATH
     logger.info(f"Update env LD_LIBRARY_PATH from '{ld_lib_path}' to '{os.getenv('LD_LIBRARY_PATH')}'")
 
 
 def init_mindspore_cxx_env():
     """Init env for load libmindspore.so"""
-    global _flag_set_mindspore_cxx_env
-    if _flag_set_mindspore_cxx_env:
-        return
-    _flag_set_mindspore_cxx_env = True
     set_mindspore_cxx_env()
-    check_version_and_try_set_env_lib()  # try set env LD_LIBRARY_PATH
     device_type = Worker_.get_device_type("none")
     if not device_type:
         logger.warning("Failed to get device type")
