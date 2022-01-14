@@ -53,6 +53,8 @@ class TestModelContext : public UT::Common {
 /// Description: ascend910 device with mindspore
 /// Expectation: the context has ascend910 and load success
 TEST_F(TestModelContext, test_ms_set_ascend910) {
+  setenv("SERVING_ENABLE_CPU_DEVICE", "0", 1);
+  setenv("SERVING_ENABLE_GPU_DEVICE", "0", 1);
   Init("tensor_add.mindir@ms_ascend");
   ModelContext model_context;
   auto mindspore_wrap = InferenceLoader::Instance().CreateMindSporeInfer();

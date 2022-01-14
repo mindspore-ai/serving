@@ -941,3 +941,120 @@ def test_start_servables_enable_cpu_device_type_with_device_id_cpu_device_type_s
     result = client.infer(instances)
     print("result", result)
     assert (result[0]["y"] == y).all()
+
+
+@serving_test
+def test_start_servables_ascend_device_reuse_device_ids_failed():
+    """
+    Feature: test start servables
+    Description: Ascend device, target device type Ascend, reuse device failed
+    Expectation: Serving server startup failed.
+    """
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    shutil.copytree(os.path.join(base.servable_dir, base.servable_name),
+                    os.path.join(base.servable_dir, base.servable_name + "_x"))
+    try:
+        config0 = server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0, device_type="Ascend")
+        config1 = server.ServableStartConfig(base.servable_dir, base.servable_name + "_x", device_ids=0,
+                                             device_type="Ascend")
+        server.start_servables([config0, config1])
+        assert False
+    except RuntimeError as e:
+        assert "Ascend 910 device id 0 is used repeatedly in servable" in str(e)
+
+
+@serving_test
+def test_start_servables_ascend_device_reuse_device_ids_none_device_type_failed():
+    """
+    Feature: test start servables
+    Description: Ascend device, target device type none, reuse device failed
+    Expectation: Serving server startup failed.
+    """
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    shutil.copytree(os.path.join(base.servable_dir, base.servable_name),
+                    os.path.join(base.servable_dir, base.servable_name + "_x"))
+    try:
+        config0 = server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0)
+        config1 = server.ServableStartConfig(base.servable_dir, base.servable_name + "_x", device_ids=0)
+        server.start_servables([config0, config1])
+        assert False
+    except RuntimeError as e:
+        assert "Ascend 910 device id 0 is used repeatedly in servable" in str(e)
+
+
+@serving_test
+def test_start_servables_ascend_device_without_reuse_device_ids_none_device_type_success():
+    """
+    Feature: test start servables
+    Description: Ascend device, target device type Ascend, without reuse device success
+    Expectation: Serving server work well.
+    """
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    shutil.copytree(os.path.join(base.servable_dir, base.servable_name),
+                    os.path.join(base.servable_dir, base.servable_name + "_x"))
+    config0 = server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0, device_type="Ascend")
+    config1 = server.ServableStartConfig(base.servable_dir, base.servable_name + "_x", device_ids=1,
+                                         device_type="Ascend")
+    server.start_servables([config0, config1])
+
+
+@serving_test
+def test_start_servables_gpu_device_reuse_device_ids_success():
+    """
+    Feature: test start servables
+    Description: GPU device, target device type GPU, reuse device success
+    Expectation: Serving server work well.
+    """
+    os.environ["SERVING_ENABLE_GPU_DEVICE"] = "1"
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    shutil.copytree(os.path.join(base.servable_dir, base.servable_name),
+                    os.path.join(base.servable_dir, base.servable_name + "_x"))
+
+    config0 = server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0, device_type="GPU")
+    config1 = server.ServableStartConfig(base.servable_dir, base.servable_name + "_x", device_ids=0, device_type="GPU")
+    server.start_servables([config0, config1])
+
+
+@serving_test
+def test_start_servables_gpu_device_reuse_device_ids_none_device_type_success():
+    """
+    Feature: test start servables
+    Description: GPU device, target device type GPU, reuse device success
+    Expectation: Serving server work well.
+    """
+    os.environ["SERVING_ENABLE_GPU_DEVICE"] = "1"
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    shutil.copytree(os.path.join(base.servable_dir, base.servable_name),
+                    os.path.join(base.servable_dir, base.servable_name + "_x"))
+    config0 = server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0)
+    config1 = server.ServableStartConfig(base.servable_dir, base.servable_name + "_x", device_ids=0)
+    server.start_servables([config0, config1])
+
+
+@serving_test
+def test_start_servables_gpu_device_ascend_device_type_failed():
+    """
+    Feature: test start servables
+    Description: GPU device, target device type Ascend
+    Expectation: Serving server start failed.
+    """
+    os.environ["SERVING_ENABLE_GPU_DEVICE"] = "1"
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    shutil.copytree(os.path.join(base.servable_dir, base.servable_name),
+                    os.path.join(base.servable_dir, base.servable_name + "_x"))
+    try:
+
+        config0 = server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0, device_type="Ascend")
+        config1 = server.ServableStartConfig(base.servable_dir, base.servable_name + "_x", device_ids=1,
+                                             device_type="Ascend")
+        server.start_servables([config0, config1])
+        assert False
+    except RuntimeError as e:
+        assert f"The device type 'ascend' of servable name {base.servable_name} is inconsistent with current " \
+               f"running environment" in str(e)

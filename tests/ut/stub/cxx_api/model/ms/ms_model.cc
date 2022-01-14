@@ -152,18 +152,16 @@ uint32_t MsModel::GetDeviceID() const {
 }
 
 bool MsModel::CheckDeviceSupport(enum DeviceType device_type) {
+  const char *cpu_value = ::getenv("SERVING_ENABLE_CPU_DEVICE");
+  const char *gpu_value = ::getenv("SERVING_ENABLE_GPU_DEVICE");
+  auto enable_cpu = cpu_value && std::string(cpu_value) == "1";
+  auto enable_gpu = gpu_value && std::string(gpu_value) == "1";
   if (device_type == kCPU) {
-    const char *value = ::getenv("SERVING_ENABLE_CPU_DEVICE");
-    if (value == nullptr || std::string(value) != "1") {
-      return false;
-    }
+    return enable_cpu;
   } else if (device_type == kGPU) {
-    const char *value = ::getenv("SERVING_ENABLE_GPU_DEVICE");
-    if (value == nullptr || std::string(value) != "1") {
-      return false;
-    }
+    return enable_gpu;
   }
-  return true;
+  return !enable_cpu && !enable_gpu;
 }
 
 bool MsModel::CheckModelSupport(mindspore::ModelType model_type) {
