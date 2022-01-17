@@ -11,10 +11,10 @@
   improving device utilization.
 - [STABLE] The interface `Model.call` is a stable feature, and can be used to define complex model invocation processes
   in the Serving server, such as looping and conditional branching.
-- [STABLE] We support MindSpore Lite as the MindSpore Serving inference backend, for more detail see
-  [MindSpore Serving backend](https://www.mindspore.cn/serving/docs/en/master/serving_install.html#installation).
 - [STABLE] The new interfaces `Context`, `CPUDeviceInfo`, `GPUDeviceInfo`, `AscendDeviceInfo` are provided to set
   user-defined device information. The original interfaces `GpuOptions` and `AclOptions` are deprecated.
+- [BETA] We support MindSpore Lite as the MindSpore Serving inference backend, for more detail see
+  [MindSpore Serving backend](https://www.mindspore.cn/serving/docs/en/master/serving_install.html#installation).
 
 ### API Change
 

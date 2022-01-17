@@ -23,17 +23,25 @@ from mindspore_serving import log as logger
 from mindspore_serving.server.common import check_type, get_abs_path
 from mindspore_serving.server.worker import init_mindspore, get_newest_version_number
 from mindspore_serving.server._servable_common import ServableContextDataBase
-from mindspore_serving._mindspore_serving import Worker_
 
 
 def _get_device_type(target_device_type):
     """Get device type supported, this will load libmindspore.so or libmindspore-lite.so"""
     # Get Device type: Ascend, Gpu, Cpu
     init_mindspore.set_mindspore_cxx_env()
-    if target_device_type is None:
-        target_device_type = "None"
-    target_device_type = target_device_type.lower()
-    device_type = Worker_.get_device_type(target_device_type)
+    args = f"{sys.executable} -c 'from mindspore_serving._mindspore_serving import Worker_;" \
+           f"device_type=Worker_.get_device_type(\"{target_device_type}\");" \
+           f"print(\"#get_device_type_result=\", device_type, \"#\", sep=\"\")'"
+    process = subprocess.Popen(args=args, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    process.wait()
+    result = process.stdout.read().decode("utf-8")
+    prefix = "#get_device_type_result="
+    index = result.find(prefix)
+    if index < 0:
+        raise RuntimeError(f"Failed to get device type")
+    index += len(prefix)
+    end_index = result.find("#", index)
+    device_type = result[index:end_index]
     return device_type
 
 
@@ -41,7 +49,21 @@ def _all_reuse_device():
     """Get device type supported, this will load libmindspore.so or libmindspore-lite.so"""
     # Whether allow reuse device, for Ascend910 return False, other return True
     init_mindspore.set_mindspore_cxx_env()
-    return Worker_.support_reuse_device()
+    args = f"{sys.executable} -c 'from mindspore_serving._mindspore_serving import Worker_;" \
+           f"reuse_flag=Worker_.support_reuse_device();" \
+           f"print(\"#get_reuse_flag_result=\", reuse_flag, \"#\", sep=\"\")'"
+    process = subprocess.Popen(args=args, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    process.wait()
+    result = process.stdout.read().decode("utf-8")
+    prefix = "#get_reuse_flag_result="
+    index = result.find(prefix)
+    if index < 0:
+        raise RuntimeError(f"Failed to get device type")
+    index += len(prefix)
+    end_index = result.find("#", index)
+    # pylint: disable=simplifiable-if-expression
+    reuse_flag = True if result[index:end_index] == 'True' else False
+    return reuse_flag
 
 
 class ServableStartConfig:
