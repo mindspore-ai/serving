@@ -65,18 +65,23 @@ def set_mindspore_cxx_env():
         return
     _flag_set_mindspore_cxx_env = True
 
+    ld_lib_path = os.getenv('LD_LIBRARY_PATH', "")
+    check_version_and_try_set_env_lib()  # try set env LD_LIBRARY_PATH
+    logger.info(f"Update env LD_LIBRARY_PATH from '{ld_lib_path}' to '{os.getenv('LD_LIBRARY_PATH')}'")
+
+    ld_lib_path = os.getenv('LD_LIBRARY_PATH', "")
     ms_dir = get_mindspore_whl_path()
     if not ms_dir:
         logger.info(f"find mindspore failed, LD_LIBRARY_PATH will not add MindSpore lib path")
         return
     check_mindspore_version(ms_dir)
     ms_dir = os.path.join(ms_dir, "lib")
-    ld_lib_path = os.getenv('LD_LIBRARY_PATH', "")
+
     if ld_lib_path:
-        os.environ['LD_LIBRARY_PATH'] = ld_lib_path + ":" + ms_dir
+        if ms_dir not in ld_lib_path.split(":"):
+            os.environ['LD_LIBRARY_PATH'] = ld_lib_path + ":" + ms_dir
     else:
         os.environ['LD_LIBRARY_PATH'] = ms_dir
-    check_version_and_try_set_env_lib()  # try set env LD_LIBRARY_PATH
     logger.info(f"Update env LD_LIBRARY_PATH from '{ld_lib_path}' to '{os.getenv('LD_LIBRARY_PATH')}'")
 
 
