@@ -21,14 +21,13 @@ import subprocess
 
 from mindspore_serving import log as logger
 from mindspore_serving.server.common import check_type, get_abs_path
-from mindspore_serving.server.worker import init_mindspore, get_newest_version_number
+from mindspore_serving.server.worker import get_newest_version_number
 from mindspore_serving.server._servable_common import ServableContextDataBase
 
 
 def _get_device_type(target_device_type):
     """Get device type supported, this will load libmindspore.so or libmindspore-lite.so"""
     # Get Device type: Ascend, Gpu, Cpu
-    init_mindspore.set_mindspore_cxx_env()
     args = f"{sys.executable} -c 'from mindspore_serving._mindspore_serving import Worker_;" \
            f"device_type=Worker_.get_device_type(\"{target_device_type}\");" \
            f"print(\"#get_device_type_result=\", device_type, \"#\", sep=\"\")'"
@@ -48,7 +47,6 @@ def _get_device_type(target_device_type):
 def _all_reuse_device():
     """Get device type supported, this will load libmindspore.so or libmindspore-lite.so"""
     # Whether allow reuse device, for Ascend910 return False, other return True
-    init_mindspore.set_mindspore_cxx_env()
     args = f"{sys.executable} -c 'from mindspore_serving._mindspore_serving import Worker_;" \
            f"reuse_flag=Worker_.support_reuse_device();" \
            f"print(\"#get_reuse_flag_result=\", reuse_flag, \"#\", sep=\"\")'"
