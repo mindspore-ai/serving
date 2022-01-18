@@ -19,6 +19,7 @@ import threading
 import signal
 
 import mindspore_serving.log as logger
+from mindspore_serving.server.worker.init_mindspore import set_mindspore_cxx_env
 from mindspore_serving.server.master import start_master_server, stop_on_except, stop, at_stop_list, only_model_stage
 from mindspore_serving.server._servable_common import WorkerContext
 from mindspore_serving.server._servable_local import ServableStartConfig, ServableContextData, merge_config
@@ -69,6 +70,7 @@ def start_servables(servable_configs):
                 f"The item of parameter '{servable_configs}' should be ServableStartConfig, but actually "
                 f"{type(config)}")
 
+    set_mindspore_cxx_env()
     # merge ServableStartConfig with same servable name and running version number
     try:
         servable_configs = merge_config(servable_configs)
@@ -99,7 +101,6 @@ def start_servables(servable_configs):
     start_master_server(address=master_address)
 
     signal.signal(signal.SIGCHLD, signal.SIG_IGN)
-
     worker_list = _start_workers_with_devices(master_address, servable_configs)
     has_device_workers = bool(worker_list)
     _listening_workers_when_startup(worker_list)
