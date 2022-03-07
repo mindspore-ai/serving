@@ -93,10 +93,14 @@ Status MindSporeModelWrap::LoadModelFromFile(serving::DeviceType device_type, ui
   if (error_no != 0) {
     MSI_LOG_WARNING << "Failed to call chdir, target build directory: " << build_dir << ", error no: " << error_no;
   }
-
-  auto status =
-    LoadModelFromFileInner(device_type, device_id, file_names, model_type, with_batch_dim, without_batch_dim_inputs,
-                           model_context, dec_key, dec_mode, config_file, enable_lite);
+  Status status;
+  if (enable_lite) {
+    status = LoadLiteModelFromFileInner(device_type, device_id, file_names, model_type, with_batch_dim,
+                                        without_batch_dim_inputs, model_context, config_file);
+  } else {
+    status = LoadModelFromFileInner(device_type, device_id, file_names, model_type, with_batch_dim,
+                                    without_batch_dim_inputs, model_context, dec_key, dec_mode, config_file);
+  }
 
   error_no = chdir(current_path.c_str());
   if (error_no != 0) {
@@ -105,12 +109,55 @@ Status MindSporeModelWrap::LoadModelFromFile(serving::DeviceType device_type, ui
   return status;
 }
 
+Status MindSporeModelWrap::LoadLiteModelFromFileInner(serving::DeviceType device_type, uint32_t device_id,
+                                                      const std::vector<std::string> &file_names, ModelType model_type,
+                                                      bool with_batch_dim,
+                                                      const std::vector<int> &without_batch_dim_inputs,
+                                                      const ModelContext &model_context,
+                                                      const std::string &config_file) {
+  auto ms_model_type = GetMsModelType(model_type);
+  if (ms_model_type == mindspore::kUnknownType) {
+    return INFER_STATUS_LOG_ERROR(FAILED) << "Invalid model type " << model_type;
+  }
+  if (file_names.size() != 1) {
+    return INFER_STATUS_LOG_ERROR(FAILED)
+           << "Load model from file failed, Multi subgraph is not support when the backend is lite, file names: "
+           << file_names;
+  }
+  const auto &file_name = file_names[0];
+  auto model = std::make_shared<mindspore::Model>();
+  try {
+    auto context = TransformModelContext(device_type, device_id, model_context, true);
+    if (!config_file.empty()) {
+      auto load_status = model->LoadConfig(config_file);
+      if (!load_status.IsOk()) {
+        return INFER_STATUS_LOG_ERROR(FAILED)
+               << "Load config file: " << config_file << " failed, error details: " << load_status.ToString();
+      }
+    }
+    auto status = model->Build(file_name, ms_model_type, context);
+    if (!status.IsOk()) {
+      MSI_LOG_ERROR << "Load model from file failed, model file: " << file_name << ", device_type: '" << device_type
+                    << "', device_id: " << device_id << ", model type: " << model_type
+                    << ", model context: " << model_context.AsString() << ", build error detail: " << status.ToString();
+      return Status(FAILED, status.ToString());
+    }
+  } catch (std::runtime_error &ex) {
+    MSI_LOG_ERROR << "Load model from file failed, model file: " << file_name << ", device_type: '" << device_type
+                  << "', device_id: " << device_id << ", model type: " << model_type
+                  << ", model context: " << model_context.AsString() << ", build error detail: " << ex.what();
+    return Status(FAILED, ex.what());
+  }
+
+  return SetApiModelInfo(device_type, device_id, {file_name}, model_type, with_batch_dim, without_batch_dim_inputs,
+                         model_context, {model});
+}
+
 Status MindSporeModelWrap::LoadModelFromFileInner(serving::DeviceType device_type, uint32_t device_id,
                                                   const std::vector<std::string> &file_names, ModelType model_type,
                                                   bool with_batch_dim, const std::vector<int> &without_batch_dim_inputs,
                                                   const ModelContext &model_context, const std::string &dec_key,
-                                                  const std::string &dec_mode, const std::string &config_file,
-                                                  bool enable_lite) {
+                                                  const std::string &dec_mode, const std::string &config_file) {
   auto ms_model_type = GetMsModelType(model_type);
   if (ms_model_type == mindspore::kUnknownType) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Invalid model type " << model_type;
@@ -150,7 +197,7 @@ Status MindSporeModelWrap::LoadModelFromFileInner(serving::DeviceType device_typ
       return INFER_STATUS_LOG_ERROR(FAILED) << "Load model from file failed, generate graphs size " << graphs.size()
                                             << " should equal to " << file_names.size();
     }
-    auto context = TransformModelContext(device_type, device_id, model_context, enable_lite);
+    auto context = TransformModelContext(device_type, device_id, model_context, false);
     for (size_t i = 0; i < file_names.size(); i++) {
       auto model = std::make_shared<mindspore::Model>();
       if (!config_file.empty()) {
