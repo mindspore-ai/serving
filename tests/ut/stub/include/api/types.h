@@ -39,7 +39,7 @@ enum ModelType : uint32_t {
   kAIR = 1,
   kOM = 2,
   kONNX = 3,
-  kMindIR_Opt = 4,
+  kMindIR_Lite = 4,
   // insert new data type here
   kUnknownType = 0xFFFFFFFF
 };
@@ -58,6 +58,8 @@ struct QuantParam {
   int bit_num;
   double scale;
   int32_t zero_point;
+  double min;
+  double max;
 };
 
 class Allocator;
@@ -247,6 +249,12 @@ class MS_API MSTensor {
   mindspore::Format format() const;
 
   /// \brief Set the data for the MSTensor. Only valid for Lite.
+  ///
+  /// \note Deprecated, this interface will be removed in the next iteration
+  ///
+  /// \note A pointer to the data should be created by malloc interface
+  ///
+  /// \note The memory pointed to origin data pointer of MSTensor needs to be managed by the user
   ///
   /// \param[in] A pointer to the data of the MSTensor.
   void SetData(void *data);

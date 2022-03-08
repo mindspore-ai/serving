@@ -43,7 +43,7 @@ enum ModelType : uint32_t {
   kAIR = 1,
   kOM = 2,
   kONNX = 3,
-  kMindIR_Opt = 4,
+  kMindIR_Lite = 4,
   // insert new data type here
   kUnknownType = 0xFFFFFFFF
 };
@@ -105,8 +105,8 @@ static inline LogStream &operator<<(LogStream &stream, ModelType model_type) {
     case kAIR:
       stream << "AIR";
       break;
-    case kMindIR_Opt:
-      stream << "MindIR_Opt";
+    case kMindIR_Lite:
+      stream << "MindIR_Lite";
       break;
     default:
       stream << "[model type: " << static_cast<int>(model_type) << "]";
