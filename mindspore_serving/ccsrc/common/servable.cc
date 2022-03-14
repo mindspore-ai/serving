@@ -26,8 +26,8 @@ void LocalModelMeta::SetModelFormat(const std::string &format) {
     model_format = kOM;
   } else if (format == "mindir") {
     model_format = kMindIR;
-  } else if (format == "mindir_opt") {
-    model_format = kMindIR_Opt;
+  } else if (format == "mindir_opt" || format == "mindir_lite") {
+    model_format = kMindIR_Lite;
   } else {
     MSI_LOG_ERROR << "Invalid model format " << format;
   }

@@ -185,7 +185,7 @@ DeviceType InferenceLoader::GetSupportDeviceType(DeviceType device_type, ModelTy
   }
   std::vector<ModelType> check_model_types;
   if (model_type == kUnknownType) {
-    check_model_types = {kMindIR, kMindIR_Opt, kOM};
+    check_model_types = {kMindIR, kMindIR_Lite, kOM};
   } else {
     check_model_types = {model_type};
   }

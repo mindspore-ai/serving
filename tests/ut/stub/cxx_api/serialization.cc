@@ -165,7 +165,7 @@ Status Serialization::Load(const std::vector<char> &file, ModelType model_type, 
     return status;
   }
 
-  if (model_type == kMindIR || model_type ==  kMindIR_Opt) {
+  if (model_type == kMindIR || model_type ==  kMindIR_Lite) {
     FuncGraphPtr anf_graph;
     if (dec_key.len > dec_key.max_key_len) {
       err_msg << "The key length exceeds maximum length: " << dec_key.max_key_len;
@@ -180,7 +180,7 @@ Status Serialization::Load(const std::vector<char> &file, ModelType model_type, 
         LoadMindIR(file_path, false, dec_key.len == 0 ? nullptr : dec_key.key, dec_key.len, CharToString(dec_mode));
     }
     if (anf_graph == nullptr) {
-      err_msg << "Load model failed. Please check the valid of dec_key and dec_mode";
+      err_msg << "Load model failed.";
       MS_LOG(ERROR) << err_msg.str();
       return Status(kMEInvalidInput, err_msg.str());
     }

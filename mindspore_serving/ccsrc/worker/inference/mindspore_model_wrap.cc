@@ -634,8 +634,8 @@ mindspore::ModelType MindSporeModelWrap::GetMsModelType(serving::ModelType model
     case kMindIR:
       ms_model_type = mindspore::kMindIR;
       break;
-    case kMindIR_Opt:
-      ms_model_type = mindspore::kMindIR_Opt;
+    case kMindIR_Lite:
+      ms_model_type = mindspore::kMindIR_Lite;
       break;
     case kAIR:
       ms_model_type = mindspore::kAIR;
