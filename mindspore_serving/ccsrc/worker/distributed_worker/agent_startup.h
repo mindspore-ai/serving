@@ -24,7 +24,6 @@
 
 namespace mindspore {
 namespace serving {
-
 class MS_API WorkerAgentStartUp {
  public:
   static WorkerAgentStartUp &Instance();

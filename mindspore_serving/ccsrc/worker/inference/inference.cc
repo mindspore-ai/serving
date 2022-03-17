@@ -18,14 +18,13 @@
 #include "glog/logging.h"
 
 namespace mindspore::serving {
-
 namespace {
 constexpr const char *kMindSporeLibName = "libmindspore.so";
 constexpr const char *kMindsporeLiteLibName = "libmindspore-lite.so";
 constexpr const char *kServingAscendLibName = "libserving_ascend.so";
 }  // namespace
 
-void ModelContext::AppendDeviceInfo(const DeviceInfo &device_info) { device_list.emplace_back(device_info); }
+void ModelContext::AppendDeviceInfo(const DeviceInfo &device_info) { (void)device_list.emplace_back(device_info); }
 
 std::string ModelContext::AsString() const {
   std::map<std::string, std::string> output_map;
@@ -47,13 +46,13 @@ std::string ModelContext::AsString() const {
 InferenceLoader::InferenceLoader() {}
 InferenceLoader::~InferenceLoader() {
   if (ms_lib_handle_ != nullptr) {
-    dlclose(ms_lib_handle_);
+    (void)dlclose(ms_lib_handle_);
   }
   if (ms_cxx_lib_handle_ != nullptr) {
-    dlclose(ms_cxx_lib_handle_);
+    (void)dlclose(ms_cxx_lib_handle_);
   }
   if (gomp_handler_ != nullptr) {
-    dlclose(gomp_handler_);
+    (void)dlclose(gomp_handler_);
   }
 }
 
@@ -214,5 +213,4 @@ bool InferenceLoader::SupportReuseDevice() {
   }
   return mindspore_infer->SupportReuseDevice();
 }
-
 }  // namespace mindspore::serving

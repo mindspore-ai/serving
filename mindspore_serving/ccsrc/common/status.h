@@ -24,7 +24,6 @@
 #include "common/log.h"
 
 namespace mindspore::serving {
-
 enum StatusCode {
   SUCCESS = 0,
   FAILED,

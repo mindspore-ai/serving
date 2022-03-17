@@ -23,7 +23,6 @@
 #include "common/serving_common.h"
 
 namespace mindspore::serving {
-
 class MS_API MasterContext {
  public:
   static std::shared_ptr<MasterContext> Instance();

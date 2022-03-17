@@ -36,7 +36,6 @@
 
 namespace mindspore {
 namespace serving {
-
 using PredictOnFinish = std::function<void()>;
 
 using AsyncPredictCallback = std::function<void(Status status)>;

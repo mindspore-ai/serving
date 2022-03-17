@@ -232,17 +232,16 @@ class MS_API LogWriter {
 
 extern int g_ms_serving_log_level MS_API;
 
-#define MSILOG_IF(level, condition)                                                         \
-  static_cast<void>(0),                                                                     \
-    !(condition) ? std::string()                                                            \
-                 : mindspore::serving::LogWriter(SERVING_FILE_NAME, __LINE__, __FUNCTION__, \
-                                                 mindspore::serving::LOG_##level) < mindspore::serving::LogStream()
+#define MSILOG_IF(level, condition)                                                       \
+  !(condition) ? std::string()                                                            \
+               : mindspore::serving::LogWriter(SERVING_FILE_NAME, __LINE__, __FUNCTION__, \
+                                               mindspore::serving::LOG_##level) < mindspore::serving::LogStream()
 
 #define MSILOG_NOIF(level)                                                                                    \
   mindspore::serving::LogWriter(SERVING_FILE_NAME, __LINE__, __FUNCTION__, mindspore::serving::LOG_##level) < \
     mindspore::serving::LogStream()
 
-#define IS_OUTPUT_ON(level) (mindspore::serving::LOG_##level) >= mindspore::serving::g_ms_serving_log_level
+inline bool IS_OUTPUT_ON(enum MsLogLevel level) { return static_cast<int>(level) >= g_ms_serving_log_level; }
 
 #define MSILOG_THROW                                                                                            \
   mindspore::serving::LogWriter(SERVING_FILE_NAME, __LINE__, __FUNCTION__, mindspore::serving::LOG_EXCEPTION) ^ \
@@ -250,10 +249,10 @@ extern int g_ms_serving_log_level MS_API;
 
 #define MSI_LOG(level) MSI_LOG_##level
 
-#define MSI_LOG_DEBUG MSILOG_IF(DEBUG, IS_OUTPUT_ON(DEBUG))
-#define MSI_LOG_INFO MSILOG_IF(INFO, IS_OUTPUT_ON(INFO))
-#define MSI_LOG_WARNING MSILOG_IF(WARNING, IS_OUTPUT_ON(WARNING))
-#define MSI_LOG_ERROR MSILOG_IF(ERROR, IS_OUTPUT_ON(ERROR))
+#define MSI_LOG_DEBUG MSILOG_IF(DEBUG, mindspore::serving::IS_OUTPUT_ON(mindspore::serving::LOG_DEBUG))
+#define MSI_LOG_INFO MSILOG_IF(INFO, mindspore::serving::IS_OUTPUT_ON(mindspore::serving::LOG_INFO))
+#define MSI_LOG_WARNING MSILOG_IF(WARNING, mindspore::serving::IS_OUTPUT_ON(mindspore::serving::LOG_WARNING))
+#define MSI_LOG_ERROR MSILOG_IF(ERROR, mindspore::serving::IS_OUTPUT_ON(mindspore::serving::LOG_ERROR))
 
 #define MSI_LOG_EXCEPTION MSILOG_THROW
 

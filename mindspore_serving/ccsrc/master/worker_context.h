@@ -27,7 +27,6 @@
 #include "master/notify_worker/base_notify.h"
 
 namespace mindspore::serving {
-
 class ServableEndPoint;
 
 enum WorkerStatus {

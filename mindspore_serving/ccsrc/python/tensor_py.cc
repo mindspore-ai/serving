@@ -23,7 +23,6 @@
 #include "mindspore_serving/ccsrc/common/tensor.h"
 
 namespace mindspore::serving {
-
 static std::vector<ssize_t> GetStrides(const std::vector<ssize_t> &shape, ssize_t item_size) {
   std::vector<ssize_t> strides;
   strides.reserve(shape.size());
@@ -45,34 +44,37 @@ DataType NumpyTensor::GetDataType(const py::buffer_info &buf) {
   if (buf.format.size() == 1) {
     char format = buf.format.front();
     if (fp_format.find(format) != fp_format.end()) {
+      constexpr int size_of_fp16 = 2;
+      constexpr int size_of_fp32 = 4;
+      constexpr int size_of_fp64 = 8;
       switch (buf.itemsize) {
-        case 2:
+        case size_of_fp16:
           return kMSI_Float16;
-        case 4:
+        case size_of_fp32:
           return kMSI_Float32;
-        case 8:
+        case size_of_fp64:
           return kMSI_Float64;
       }
     } else if (int_format.find(format) != int_format.end()) {
       switch (buf.itemsize) {
-        case 1:
+        case sizeof(int8_t):
           return kMSI_Int8;
-        case 2:
+        case sizeof(int16_t):
           return kMSI_Int16;
-        case 4:
+        case sizeof(int32_t):
           return kMSI_Int32;
-        case 8:
+        case sizeof(int64_t):
           return kMSI_Int64;
       }
     } else if (uint_format.find(format) != uint_format.end()) {
       switch (buf.itemsize) {
-        case 1:
+        case sizeof(uint8_t):
           return kMSI_Uint8;
-        case 2:
+        case sizeof(uint16_t):
           return kMSI_Uint16;
-        case 4:
+        case sizeof(uint32_t):
           return kMSI_Uint32;
-        case 8:
+        case sizeof(uint64_t):
           return kMSI_Uint64;
       }
     } else if (format == '?') {
@@ -181,7 +183,7 @@ py::object PyTensor::AsPythonData(TensorBasePtr tensor, bool copy) {
       return py::str(reinterpret_cast<const char *>(data), bytes_len);
     }
     std::vector<ssize_t> shape{static_cast<ssize_t>(bytes_len)};
-    std::vector<ssize_t> strides = GetStrides(shape, sizeof(uint8_t));
+    std::vector<ssize_t> strides = GetStrides(shape, static_cast<ssize_t>(sizeof(uint8_t)));
     py::buffer_info info(reinterpret_cast<void *>(const_cast<uint8_t *>(data)), sizeof(uint8_t),
                          py::format_descriptor<uint8_t>::format(), 1, shape, strides);
     if (!copy) {
@@ -193,7 +195,7 @@ py::object PyTensor::AsPythonData(TensorBasePtr tensor, bool copy) {
   } else {
     const auto &tensor_shape = tensor->shape();
     std::vector<ssize_t> shape(tensor_shape.begin(), tensor_shape.end());
-    std::vector<ssize_t> strides = GetStrides(shape, tensor->itemsize());
+    std::vector<ssize_t> strides = GetStrides(shape, static_cast<ssize_t>(tensor->itemsize()));
     py::buffer_info info(reinterpret_cast<void *>(const_cast<uint8_t *>(tensor->data())),
                          static_cast<ssize_t>(tensor->itemsize()), GetPyTypeFormat(tensor->data_type()),
                          static_cast<ssize_t>(tensor_shape.size()), shape, strides);
@@ -249,5 +251,4 @@ InstanceData PyTensor::AsInstanceData(const py::tuple &tuple) {
   }
   return instance_data;
 }
-
 }  // namespace mindspore::serving

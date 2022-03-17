@@ -22,7 +22,6 @@
 
 namespace mindspore {
 namespace serving {
-
 class MS_API BaseNotifyMaster {
  public:
   BaseNotifyMaster() = default;

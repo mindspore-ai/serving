@@ -20,7 +20,6 @@
 
 namespace mindspore {
 namespace serving {
-
 namespace {
 std::string GetProtorWorkerSpecRepr(const proto::WorkerRegSpec &worker_spec) {
   std::stringstream str;
@@ -93,6 +92,5 @@ void MSMasterImpl::PredictAsync(const proto::PredictRequest *request, proto::Pre
                                 const PredictOnFinish &on_finish) {
   dispatcher_->DispatchAsync(*request, reply, on_finish);
 }
-
 }  // namespace serving
 }  // namespace mindspore

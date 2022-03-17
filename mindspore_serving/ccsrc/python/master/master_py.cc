@@ -19,7 +19,6 @@
 #include "master/server.h"
 
 namespace mindspore::serving {
-
 void PyMaster::StartGrpcServer(const std::string &socket_address, const SSLConfig &ssl_config, int max_msg_mb_size) {
   auto status = Server::Instance().StartGrpcServer(socket_address, ssl_config, max_msg_mb_size);
   if (status != SUCCESS) {
@@ -58,5 +57,4 @@ void PyMaster::StopAndClear() {
 bool PyMaster::OnlyModelStage(const std::string &servable_name) {
   return Server::Instance().OnlyModelStage(servable_name);
 }
-
 }  // namespace mindspore::serving

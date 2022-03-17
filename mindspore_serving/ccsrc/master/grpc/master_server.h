@@ -28,7 +28,6 @@
 
 namespace mindspore {
 namespace serving {
-
 template <class Derived>
 class MasterGrpcContext : public GrpcAsyncServiceContext<MSMasterImpl, proto::MSMaster::AsyncService, Derived> {
  public:

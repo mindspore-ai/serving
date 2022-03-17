@@ -16,7 +16,6 @@
 
 #include "common/buffer_tensor.h"
 namespace mindspore::serving {
-
 BufferTensor::BufferTensor(DataType type, const std::vector<int64_t> shape, uint8_t *data, size_t data_len,
                            bool data_readonly) {
   set_shape(shape);
@@ -68,5 +67,4 @@ void BufferTensor::get_bytes_data(size_t index, const uint8_t **data, size_t *by
   *data = data_;
   *bytes_len = data_len_;
 }
-
 }  // namespace mindspore::serving

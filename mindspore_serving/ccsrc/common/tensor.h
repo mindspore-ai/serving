@@ -21,7 +21,6 @@
 #include "common/tensor_base.h"
 
 namespace mindspore::serving {
-
 class MS_API Tensor : public TensorBase {
  public:
   Tensor();

@@ -28,7 +28,6 @@
 
 namespace mindspore {
 namespace serving {
-
 class MS_API Server {
  public:
   Server();

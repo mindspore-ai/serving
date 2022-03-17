@@ -19,7 +19,6 @@
 #include "master/server.h"
 
 namespace mindspore::serving {
-
 // from py
 std::shared_ptr<WorkerContext> WorkerContext::PyInitWorkerContext(std::string servable_name, uint32_t version_number,
                                                                   std::string repr, uint64_t worker_pid) {
@@ -156,5 +155,4 @@ void WorkerContext::PrintStatus() const {
       break;
   }
 }
-
 }  // namespace mindspore::serving

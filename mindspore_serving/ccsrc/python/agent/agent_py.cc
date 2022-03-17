@@ -20,7 +20,6 @@
 #include "worker/distributed_worker/worker_agent.h"
 
 namespace mindspore::serving {
-
 DistributedServableConfig PyAgent::GetAgentsConfigsFromWorker(const std::string &distributed_address) {
   auto status = WorkerAgentStartUp::Instance().GetAgentsConfigsFromWorker(distributed_address);
   if (status != SUCCESS) {
@@ -64,5 +63,4 @@ void PyAgent::StopAndClear() {
 void PyAgent::StartupNotifyExit(const std::string &distributed_address, const std::string &agent_ip) {
   WorkerAgentStartUp::Instance().StartupNotifyExit(distributed_address, agent_ip);
 }
-
 }  // namespace mindspore::serving

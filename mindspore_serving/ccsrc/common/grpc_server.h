@@ -27,7 +27,6 @@
 #include "common/serving_common.h"
 
 namespace mindspore::serving {
-
 constexpr int gRpcDefaultMsgMBSize = 100;
 constexpr int gRpcMaxMBMsgSize = 512;  // max 512 MB
 
@@ -47,7 +46,6 @@ class GrpcServer {
   bool in_running_ = false;
   std::shared_ptr<grpc::Service> service_;
 };
-
 }  // namespace mindspore::serving
 
 #endif  // MINDSPORE_SERVING_GRPC_SERVER_H

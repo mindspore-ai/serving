@@ -21,7 +21,6 @@
 
 namespace mindspore {
 namespace serving {
-
 grpc::Status MSDistributedImpl::AgentRegister(grpc::ServerContext *context, const proto::AgentRegisterRequest *request,
                                               proto::AgentRegisterReply *reply) {
   MSI_EXCEPTION_IF_NULL(request);
@@ -132,6 +131,5 @@ grpc::Status MSDistributedImpl::Pong(grpc::ServerContext *context, const proto::
   watcher_->RecvPong(request->address());
   return grpc::Status::OK;
 }
-
 }  // namespace serving
 }  // namespace mindspore

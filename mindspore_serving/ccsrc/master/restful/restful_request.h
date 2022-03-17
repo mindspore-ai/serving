@@ -26,7 +26,6 @@
 
 namespace mindspore {
 namespace serving {
-
 class DecomposeEvRequest {
  public:
   explicit DecomposeEvRequest(struct evhttp_request *request, int max_msg_size);

@@ -33,7 +33,6 @@
 
 namespace mindspore {
 namespace serving {
-
 // Service Implement
 class MSDistributedImpl {
  public:

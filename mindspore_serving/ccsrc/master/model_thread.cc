@@ -18,7 +18,6 @@
 #include "common/proto_tensor.h"
 
 namespace mindspore::serving {
-
 ModelThread::ModelThread(const std::string &servable_name, const std::string &method_name, uint64_t version_number,
                          uint64_t batch_size, ServableMethodInfo method_info) {
   spec_.servable_name = servable_name;
@@ -109,13 +108,13 @@ Status ModelThread::DelWorker(uint64_t pid) {
       MSI_LOG(INFO) << "pid not existed: " << pid;
       return FAILED;
     }
-    pid_process_.erase(it);
+    (void)pid_process_.erase(it);
     auto worker_it = worker_wait_map_.find(pid);
     if (worker_it == worker_wait_map_.end()) {
       MSI_LOG(INFO) << "pid not existed in worker wait map: " << pid;
       return FAILED;
     }
-    worker_wait_map_.erase(worker_it);
+    (void)worker_wait_map_.erase(worker_it);
     for (auto &job_item : job_) {
       auto job_id = job_item.first;
       auto &task_list = job_item.second.task;
@@ -336,7 +335,7 @@ void ModelThread::OnTasksFinished(const std::shared_ptr<PredictContext> &context
       }
       GrpcTensorHelper::CreatePredictReplyFromInstances(*job_item.request, error_reply, out, job_item.reply);
       job_item.callback();
-      job_.erase(iter2);
+      (void)job_.erase(iter2);
     }
   }
 }
@@ -345,5 +344,4 @@ void ModelThread::Commit(const std::shared_ptr<PredictContext> &context) {
   OnTasksFinished(context);
   SendTasks();
 }
-
 }  // namespace mindspore::serving

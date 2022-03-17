@@ -31,7 +31,6 @@
 
 namespace mindspore {
 namespace serving {
-
 // Service Implement
 class MSAgentImpl final : public proto::MSAgent::Service {
  public:

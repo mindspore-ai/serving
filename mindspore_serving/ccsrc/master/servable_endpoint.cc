@@ -17,7 +17,6 @@
 #include "master/servable_endpoint.h"
 
 namespace mindspore::serving {
-
 ServableEndPoint::ServableEndPoint(const ServableReprInfo &repr) : worker_repr_(repr) {
   version_number_ = worker_repr_.version_number;
 }
@@ -50,7 +49,7 @@ Status ServableEndPoint::RegisterWorker(const ServableRegSpec &servable_spec, st
       }
       auto model_thread = std::make_shared<ModelThread>(servable_spec.servable_name, method.name,
                                                         servable_spec.version_number, servable_spec.batch_size, method);
-      model_thread_list_.emplace(method.name, model_thread);
+      (void)model_thread_list_.emplace(method.name, model_thread);
     }
   }
   worker_contexts_.push_back(worker);
@@ -82,7 +81,7 @@ Status ServableEndPoint::UnregisterWorker(const std::string &worker_address) {
     for (auto &model_thread : model_thread_list_) {
       model_thread.second->DelWorker(worker->GetWorkerPid());
     }
-    worker_contexts_.erase(it);
+    (void)worker_contexts_.erase(it);
     return SUCCESS;
   }
   MSI_LOG_INFO << "Worker has already been unregistered, " << worker_repr_.repr
@@ -94,5 +93,4 @@ void ServableEndPoint::Clear() {
   worker_contexts_.clear();
   model_thread_list_.clear();
 }
-
 }  // namespace mindspore::serving

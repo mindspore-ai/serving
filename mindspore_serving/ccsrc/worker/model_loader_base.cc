@@ -18,7 +18,6 @@
 #include "common/buffer_tensor.h"
 
 namespace mindspore::serving {
-
 Status DirectModelLoaderBase::Predict(const std::vector<InstanceData> &inputs, std::vector<ResultInstance> *outputs,
                                       uint64_t subgraph) {
   MSI_EXCEPTION_IF_NULL(outputs);
@@ -67,7 +66,7 @@ Status DirectModelLoaderBase::PrePredict(const ModelExecutorSubgraphInfo &subgra
         return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Input " << i << " data size " << instances[0][i]->data_size()
                                                     << "does not match size " << data_size << " defined in model";
       }
-      memcpy_s(dst_buffer, data_size, instances[0][i]->data(), data_size);
+      (void)memcpy_s(dst_buffer, data_size, instances[0][i]->data(), data_size);
       continue;
     }
     auto item_size = static_cast<size_t>(data_size / model_batch_size);
@@ -80,10 +79,10 @@ Status DirectModelLoaderBase::PrePredict(const ModelExecutorSubgraphInfo &subgra
                << "Input " << i << " Batch index " << k << " input data size " << instances[k][i]->data_size()
                << "does not match size " << item_size << " defined in model";
       }
-      memcpy_s(dst_buffer + k * item_size, data_size - k * item_size, instances[k][i]->data(), item_size);
+      (void)memcpy_s(dst_buffer + k * item_size, data_size - k * item_size, instances[k][i]->data(), item_size);
     }
     for (uint32_t k = input_batch_size; k < model_batch_size; k++) {
-      memcpy_s(dst_buffer + k * item_size, data_size - k * item_size, instances[0][i]->data(), item_size);
+      (void)memcpy_s(dst_buffer + k * item_size, data_size - k * item_size, instances[0][i]->data(), item_size);
     }
   }
   return SUCCESS;
@@ -150,7 +149,7 @@ void DirectModelLoaderBase::InitModelExecuteInfo() {
         info.size_one_batch = item.size;
       } else {
         info.shape_one_batch = item.shape;
-        info.shape_one_batch.erase(info.shape_one_batch.begin());
+        (void)info.shape_one_batch.erase(info.shape_one_batch.begin());
         // the batch size has been checked in WorkerExecutor
         info.size_one_batch = item.size / model_info_.batch_size;
       }
@@ -167,5 +166,4 @@ void DirectModelLoaderBase::InitModelExecuteInfo() {
     }
   }
 }
-
 }  // namespace mindspore::serving

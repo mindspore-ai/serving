@@ -30,7 +30,6 @@ namespace py = pybind11;
 
 namespace mindspore {
 namespace serving {
-
 Worker &Worker::GetInstance() {
   static Worker instance;
   return instance;
@@ -285,6 +284,5 @@ void Worker::ClearOnSystemFailed(const Status &error_msg) {
   MSI_LOG_INFO << "Clear instances on system failed: " << error_msg.StatusMessage();
   worker_executor_.ClearInstances(error_msg);
 }
-
 }  // namespace serving
 }  // namespace mindspore

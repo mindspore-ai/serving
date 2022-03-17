@@ -31,7 +31,6 @@
 #include "worker/distributed_worker/worker_agent.h"
 
 namespace mindspore::serving {
-
 void PyRegServable(pybind11::module *m_ptr) {
   auto &m = *m_ptr;
   // avoid as numpy object memory copy in PyTensor::AsPythonData
@@ -248,5 +247,4 @@ PYBIND11_MODULE(_mindspore_serving, m) {
     WorkerAgent::Instance().Clear();
   }});
 }
-
 }  // namespace mindspore::serving

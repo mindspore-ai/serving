@@ -30,7 +30,6 @@
 using nlohmann::json;
 namespace mindspore {
 namespace serving {
-
 struct DistributedAgentContext {
   std::vector<WorkerAgentSpec> agent_spec_;
   std::shared_ptr<BaseNotifyAgent> notify_agent_ = nullptr;

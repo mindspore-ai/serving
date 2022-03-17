@@ -20,7 +20,6 @@
 
 namespace mindspore {
 namespace serving {
-
 ServableRegister &ServableRegister::Instance() {
   static ServableRegister storage;
   return storage;
@@ -56,7 +55,7 @@ Status ServableRegister::DeclareModel(ModelMeta model) {
   std::set<std::string> cur_model_files;
   for (auto &model_item : servable_signatures_.model_metas) {
     for (auto &file_item : model_item.local_meta.model_files) {
-      cur_model_files.emplace(file_item);
+      (void)cur_model_files.emplace(file_item);
     }
   }
   for (auto &file : local_meta.model_files) {
@@ -167,13 +166,13 @@ Status ServableRegister::RegisterOneCallModelMethod(const std::string &model_key
 
   std::vector<std::pair<size_t, uint64_t>> model_inputs;
   for (uint64_t i = 0; i < input_count; i++) {
-    method.inputs.emplace_back("x" + std::to_string(i));
-    model_inputs.emplace_back(0, i);  // all method inputs are function inputs
+    (void)method.inputs.emplace_back("x" + std::to_string(i));
+    (void)model_inputs.emplace_back(0, i);  // all method inputs are function inputs
   }
   std::vector<std::pair<size_t, uint64_t>> returns;
   for (uint64_t i = 0; i < output_count; i++) {
-    method.outputs.emplace_back("y" + std::to_string(i));
-    returns.emplace_back(1, i);
+    (void)method.outputs.emplace_back("y" + std::to_string(i));
+    (void)returns.emplace_back(1, i);
   }
   method.AddStageModel(model_key, model_inputs, subgraph);
   method.SetReturn(returns);
@@ -191,7 +190,6 @@ Status ServableRegister::RegisterOneCallModelMethod(const std::string &model_key
 }
 
 Status ServableRegister::CheckModels(const std::map<std::string, std::shared_ptr<ModelLoaderBase>> &models) {
-  Status status;
   auto const &signature = servable_signatures_;
   if (signature.methods.empty()) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "There is no method registered for servable";
@@ -354,7 +352,7 @@ Status ServableRegister::CheckMethods() {
       return INFER_STATUS_LOG_ERROR(FAILED) << "Servable " << servable_signatures_.servable_name << " method '"
                                             << method.method_name << "' has been defined repeatedly";
     }
-    method_set.emplace(method.method_name);
+    (void)method_set.emplace(method.method_name);
     status = CheckOneMethod(method);
     if (status != SUCCESS) {
       return status;
@@ -429,6 +427,5 @@ Status ServableRegister::InitOnModelsLoad(const std::map<std::string, std::share
   }
   return SUCCESS;
 }
-
 }  // namespace serving
 }  // namespace mindspore

@@ -38,7 +38,6 @@
 #include "common/ssl_config.h"
 
 namespace mindspore::serving {
-
 constexpr const uint32_t kDefaultRestfulThreadPoolNum = 3;
 
 class RestfulServer {

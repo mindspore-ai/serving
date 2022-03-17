@@ -30,7 +30,6 @@ using std::unordered_map;
 using std::vector;
 
 namespace mindspore::serving {
-
 const size_t kMaxShapeElementCount = INT32_MAX;
 
 ProtoTensor::ProtoTensor(proto::Tensor *other) : tensor_(other) {}
@@ -739,5 +738,4 @@ serving::LogStream &operator<<(serving::LogStream &stream, proto::DataType data_
   }
   return stream;
 }
-
 }  // namespace mindspore::serving

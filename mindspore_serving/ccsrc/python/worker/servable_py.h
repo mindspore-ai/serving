@@ -28,7 +28,6 @@
 namespace py = pybind11;
 
 namespace mindspore::serving {
-
 class MS_API PyServableRegister {
  public:
   static void RegisterMethod(const MethodSignature &method);

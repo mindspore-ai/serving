@@ -24,7 +24,6 @@
 #include "worker/inference/inference.h"
 
 namespace mindspore::serving {
-
 class MS_API ServableContext {
  public:
   static std::shared_ptr<ServableContext> Instance();

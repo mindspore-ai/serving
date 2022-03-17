@@ -25,7 +25,6 @@
 #include "worker/servable_register.h"
 
 namespace mindspore::serving {
-
 WorkExecutor::WorkExecutor() = default;
 
 WorkExecutor::~WorkExecutor() { Stop(); }
@@ -61,7 +60,7 @@ void WorkExecutor::StageCallback(const std::vector<InstancePtr> &instances,
     auto &instance = instances[i];
     auto &output = outputs[i];
     if (output.error_msg != SUCCESS) {
-      ReplyError(instance, output.error_msg);
+      (void)ReplyError(instance, output.error_msg);
       continue;
     }
     CreateResultInstance(instance, output);
@@ -146,7 +145,6 @@ Status WorkExecutor::Work(const RequestSpec &request_spec, const std::vector<Ins
   InferSession infer_session;
   infer_session.call_back = on_process_done;
 
-  Status status;
   auto const &signature = ServableRegister::Instance().GetServableSignature();
   auto method_def = signature.GetMethodDeclare(request_spec.method_name);
   if (method_def == nullptr) {
@@ -190,7 +188,7 @@ void WorkExecutor::OnReceiveStageInputs(const MethodSignature &method_def, uint6
   auto &stage = stage_it->second;
   CreateInputInstance(stage, instances);
   if (stage_index >= method_def.GetStageMax()) {
-    ReplyRequest(instances);
+    (void)ReplyRequest(instances);
     return;
   }
   if (stage.stage_type == kMethodStageTypePyFunction) {
@@ -211,14 +209,13 @@ void WorkExecutor::OnReceiveStageInputs(const MethodSignature &method_def, uint6
 bool WorkExecutor::ReplyRequest(const std::vector<InstancePtr> &outputs) {
   MSI_TIME_STAMP_START(ReplyRequest)
   for (auto &item : outputs) {
-    ReplyRequest(item);
+    (void)ReplyRequest(item);
   }
   MSI_TIME_STAMP_END(ReplyRequest)
   return true;
 }
 
 bool WorkExecutor::ReplyRequest(const InstancePtr &instance) {
-  Status status;
   instance->error_msg = SUCCESS;
   instance->stage_data_list.clear();
   instance->stage_index = instance->stage_max;
@@ -233,7 +230,7 @@ bool WorkExecutor::ReplyRequest(const InstancePtr &instance) {
   infer_session.reply_count++;
   if (infer_session.reply_count == infer_session.instances.size()) {
     infer_session.call_back(infer_session.instances);
-    infer_session_map_.erase(it);
+    (void)infer_session_map_.erase(it);
   }
   return true;
 }
@@ -254,7 +251,7 @@ bool WorkExecutor::ReplyError(const InstancePtr &instance, const Status &error_m
   infer_session.reply_count++;
   if (infer_session.reply_count == infer_session.instances.size()) {
     infer_session.call_back(infer_session.instances);
-    infer_session_map_.erase(it);
+    (void)infer_session_map_.erase(it);
   }
   return true;
 }
@@ -320,5 +317,4 @@ void WorkExecutor::ClearInstances(const Status &error_msg) {
   }
   infer_session_map_.clear();
 }
-
 }  // namespace mindspore::serving

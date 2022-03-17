@@ -25,7 +25,6 @@
 using nlohmann::json;
 namespace mindspore {
 namespace serving {
-
 size_t Base64Encode(const uint8_t *input, size_t length, uint8_t *output);
 size_t Base64Decode(const uint8_t *target, size_t target_length, uint8_t *origin);
 size_t GetB64TargetSize(size_t origin_len);

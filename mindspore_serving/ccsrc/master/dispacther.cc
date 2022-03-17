@@ -22,7 +22,6 @@
 #include "master/notify_worker/grpc_notify.h"
 
 namespace mindspore::serving {
-
 Dispatcher::Dispatcher() {}
 
 Dispatcher::~Dispatcher() { Clear(); }
@@ -349,5 +348,4 @@ Status Dispatcher::RegisterWorkerContext(std::shared_ptr<WorkerContext> worker_c
   worker_context->OnReady();
   return SUCCESS;
 }
-
 }  // namespace mindspore::serving

@@ -38,7 +38,9 @@ Status CheckAddress(const std::string &address, const std::string &server_tag, s
   }
   try {
     auto port_number = std::stoi(address.substr(position + 1, address.size()));
-    if (port_number < 1 || port_number > 65535) {
+    constexpr int port_min = 1;
+    constexpr int port_max = 65535;
+    if (port_number < port_min || port_number > port_max) {
       status = INFER_STATUS_LOG_ERROR(FAILED) << "Serving Error: The port of the " << server_tag << " address '"
                                               << address << "' is out of legal range [1 ~ 65535]";
       return status;

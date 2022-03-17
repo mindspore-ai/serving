@@ -17,7 +17,6 @@
 #include "master/master_context.h"
 
 namespace mindspore::serving {
-
 std::shared_ptr<MasterContext> MasterContext::Instance() {
   static std::shared_ptr<MasterContext> instance;
   if (instance == nullptr) {
@@ -31,5 +30,4 @@ void MasterContext::SetMaxEnqueuedRequests(uint32_t max_enqueued_requests) {
 }
 
 uint32_t MasterContext::GetMaxEnqueuedRequests() const { return max_enqueued_requests_; }
-
 }  // namespace mindspore::serving

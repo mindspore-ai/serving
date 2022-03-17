@@ -23,7 +23,6 @@
 #include "common/buffer_tensor.h"
 
 namespace mindspore::serving {
-
 serving::PredictThread::PredictThread() {}
 PredictThread::~PredictThread() { Stop(); }
 
@@ -175,5 +174,4 @@ Status PredictThread::CheckPredictInput(uint64_t subgraph, const InstancePtr &in
   }
   return SUCCESS;
 }
-
 }  // namespace mindspore::serving

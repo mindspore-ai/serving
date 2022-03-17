@@ -20,13 +20,12 @@
 #include "common/log.h"
 
 namespace mindspore::serving {
-
 Tensor::Tensor() = default;
 
 Tensor::Tensor(DataType type, std::vector<int64_t> shape, const void *data, size_t data_len) {
   set_data_type(type);
   set_shape(shape);
-  set_data(data, data_len);
+  (void)set_data(data, data_len);
 }
 
 const uint8_t *Tensor::data() const {
@@ -55,7 +54,7 @@ void Tensor::clear_bytes_data() { bytes_.clear(); }
 
 void Tensor::add_bytes_data(const uint8_t *data, size_t bytes_len) {
   std::vector<uint8_t> bytes(bytes_len);
-  memcpy_s(bytes.data(), bytes.size(), data, bytes_len);
+  (void)memcpy_s(bytes.data(), bytes.size(), data, bytes_len);
   bytes_.push_back(std::move(bytes));
 }
 
@@ -71,5 +70,4 @@ void Tensor::get_bytes_data(size_t index, const uint8_t **data, size_t *bytes_le
     *data = bytes_[index].data();
   }
 }
-
 }  // namespace mindspore::serving

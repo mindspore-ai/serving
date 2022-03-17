@@ -32,7 +32,6 @@
 
 namespace mindspore {
 namespace serving {
-
 template <class Derived>
 class DistributedServiceContext
     : public GrpcAsyncServiceContext<MSDistributedImpl, proto::MSDistributedWorker::AsyncService, Derived> {

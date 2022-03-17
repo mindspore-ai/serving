@@ -34,7 +34,6 @@
 
 namespace mindspore {
 namespace serving {
-
 // Service Implement
 class MSServiceImpl {
  public:

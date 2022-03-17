@@ -17,7 +17,6 @@
 #include "worker/context.h"
 
 namespace mindspore::serving {
-
 std::shared_ptr<ServableContext> ServableContext::Instance() {
   static std::shared_ptr<ServableContext> instance;
   if (instance == nullptr) {
@@ -58,5 +57,4 @@ Status ServableContext::SetDeviceTypeStr(const std::string &device_type) {
   SetDeviceType(type);
   return SUCCESS;
 }
-
 }  // namespace mindspore::serving

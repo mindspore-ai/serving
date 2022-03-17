@@ -24,7 +24,6 @@
 
 namespace mindspore {
 namespace serving {
-
 GrpcNotifyDistributeWorker::GrpcNotifyDistributeWorker(const std::string &distributed_address,
                                                        const std::string &agent_address)
     : distributed_address_(distributed_address), agent_address_(agent_address) {
@@ -127,7 +126,7 @@ Status GrpcNotifyDistributeWorker::GetAgentsConfigsFromWorker(const std::string 
       return ParseAgentConfigAcquireReply(reply, config);
     }
     MSI_LOG_INFO << "Grpc message: " << status.error_code() << ", " << status.error_message();
-    std::this_thread::sleep_for(std::chrono::milliseconds(REGISTER_INTERVAL * 1000));
+    std::this_thread::sleep_for(std::chrono::seconds(REGISTER_INTERVAL));
   }
   if (ExitSignalHandle::Instance().HasStopped()) {
     return INFER_STATUS_LOG_WARNING(FAILED) << "Agent exit, stop get Agents configs from Worker";
@@ -169,6 +168,5 @@ Status GrpcNotifyDistributeWorker::ParseAgentConfigAcquireReply(const proto::Age
 
   return SUCCESS;
 }
-
 }  // namespace serving
 }  // namespace mindspore

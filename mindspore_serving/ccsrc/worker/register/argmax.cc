@@ -18,11 +18,10 @@
 #include "mindspore_serving/ccsrc/common/tensor.h"
 
 namespace mindspore::serving {
-
 class ArgmaxStageFunc : public CppStageFunctionBase {
  public:
   template <typename DT>
-  void ArgmaxImp(const void *input, int64_t *output, size_t data_size, size_t elemsize) {
+  void ArgmaxImp(const void *input, size_t *output, size_t data_size, size_t elemsize) {
     auto count = data_size / elemsize;
     auto data = reinterpret_cast<const DT *>(input);
     *output = 0;
@@ -39,10 +38,10 @@ class ArgmaxStageFunc : public CppStageFunctionBase {
     auto x_data = input_x->data();
     auto out_tensor = std::make_shared<Tensor>();
     out_tensor->set_data_type(serving::kMSI_Int64);
-    out_tensor->resize_data(sizeof(int64_t));
+    (void)out_tensor->resize_data(sizeof(size_t));
     out_tensor->set_shape({});
     output->push_back(out_tensor);
-    auto y_data = reinterpret_cast<int64_t *>(out_tensor->mutable_data());
+    auto y_data = reinterpret_cast<size_t *>(out_tensor->mutable_data());
     switch (input_x->data_type()) {
       case kMSI_Float32:
         ArgmaxImp<float>(x_data, y_data, input_x->data_size(), input_x->itemsize());

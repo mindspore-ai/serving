@@ -30,7 +30,6 @@
 #include "worker/task_queue.h"
 
 namespace mindspore::serving {
-
 using WorkCallBack = std::function<void(const std::vector<InstancePtr> &instances)>;
 
 struct InferSession {

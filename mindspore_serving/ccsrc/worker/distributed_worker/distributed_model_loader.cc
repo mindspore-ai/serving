@@ -26,7 +26,6 @@
 
 namespace mindspore {
 namespace serving {
-
 struct DistributedPredictMsg {
   proto::DistributedPredictReply reply;
   std::promise<void> promise = std::promise<void>();
@@ -423,12 +422,13 @@ Status DistributedModelLoader::ParserRankTableWithGroupList(const std::string &r
 Status DistributedModelLoader::ConvertStr2Int(const std::string &rank_table_json_file, const std::string &para_str,
                                               const std::string &para_key, uint32_t *para_int) const {
   uint32_t parsed_value = 0;
+  constexpr uint32_t decimal_times = 10;
   for (auto c : para_str) {
     if (c < '0' || c > '9') {
       return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
              << para_key << "attr is invalid argument in" << rank_table_json_file.c_str();
     }
-    parsed_value = parsed_value * 10 + c - '0';
+    parsed_value = parsed_value * decimal_times + c - '0';
   }
   if (std::to_string(parsed_value) != para_str) {
     return INFER_STATUS_LOG_ERROR(INVALID_INPUTS)
@@ -619,10 +619,6 @@ Status DistributedModelLoader::CheckAgentsInfosAndInitTensorInfos() {
           return status;
         }
         if (agent_spec.batch_size != 0 && agent_spec.batch_size != batch_size_) {
-          if (!agent_spec.output_infos.empty()) {
-            MSI_LOG_WARNING << "Rank " << rank_id << " output 0 shape: " << agent_spec.output_infos[0].shape
-                            << ", batch size " << agent_spec.batch_size << ", subgraph: " << subgraph;
-          }
           return INFER_STATUS_LOG_ERROR(FAILED)
                  << "Expect rank " << rank_id << " batch size  " << agent_spec.batch_size
                  << " equal to 0 or rank 0's batch size " << batch_size_ << ", subgraph: " << subgraph;
@@ -664,7 +660,7 @@ Status DistributedModelLoader::CheckRankConfig() {
       if (item.device_id >= card_count_per_machine) {
         return INFER_STATUS_LOG_ERROR(FAILED) << "Check rank table config failed, device id cannot larger than 8";
       }
-      device_id_list.emplace(item.device_id);
+      (void)device_id_list.emplace(item.device_id);
     }
   } else {
     if (rank_size < card_count_per_machine) {
@@ -704,6 +700,5 @@ void DistributedModelLoader::OnAgentFailed() {
   MSI_LOG_INFO << "Worker agent notify failed";
   SetWaitAgentsPromise(false);
 }
-
 }  // namespace serving
 }  // namespace mindspore

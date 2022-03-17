@@ -20,7 +20,6 @@
 #include <string>
 
 namespace mindspore::serving {
-
 struct SSLConfig {
   std::string certificate;
   std::string private_key;
