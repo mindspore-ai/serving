@@ -22,9 +22,8 @@
 namespace mindspore::serving {
 Tensor::Tensor() = default;
 
-Tensor::Tensor(DataType type, const std::vector<int64_t> &shape, const void *data, size_t data_len) {
-  set_data_type(type);
-  set_shape(shape);
+Tensor::Tensor(DataType type, const std::vector<int64_t> &shape, const void *data, size_t data_len)
+    : type_(type), shape_(shape) {
   (void)set_data(data, data_len);
 }
 

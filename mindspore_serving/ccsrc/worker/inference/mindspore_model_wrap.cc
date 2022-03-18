@@ -353,9 +353,9 @@ std::string MindSporeModelWrap::DeviceTypeToString(serving::DeviceType device_ty
     case kDeviceTypeAscend:
       return "ascend";
     case kDeviceTypeNotSpecified:
+    default:
       return "not_specified";
   }
-  return "";
 }
 
 DeviceInfo MindSporeModelWrap::GetDeviceInfo(const std::vector<DeviceInfo> &device_list,
@@ -417,7 +417,7 @@ Status MindSporeModelWrap::GetModelInfos(ApiModelInfo *api_model_info) {
     if (tensor_info.size == 0) {
       auto &shape = tensor_info.shape;
       int64_t elements_nums = std::accumulate(shape.begin(), shape.end(), 1LL, std::multiplies<int64_t>());
-      if (elements_nums < 0) {
+      if (elements_nums <= 0) {
         MSI_LOG_ERROR << "Invalid tensor shape " << shape;
         return serving::TensorInfo();
       }
@@ -478,6 +478,10 @@ Status MindSporeModelWrap::CalculateBatchSize(ApiModelInfo *api_model_info) {
       return INFER_STATUS_LOG_ERROR(FAILED) << "The shape of model input " << i << " cannot be empty, "
                                             << "when with_batch_dim is true and without_batch_dim_inputs is " << list;
     }
+    if (input.shape[0] <= 0) {
+      return INFER_STATUS_LOG_ERROR(FAILED)
+             << "The shape of model input " << i << " is invalid, shape: " << input.shape;
+    }
     if (cur_batch_size == 0) {
       cur_batch_size = static_cast<uint32_t>(input.shape[0]);
       continue;
@@ -492,8 +496,12 @@ Status MindSporeModelWrap::CalculateBatchSize(ApiModelInfo *api_model_info) {
     if (output.shape.empty()) {
       return INFER_STATUS_LOG_ERROR(FAILED) << "The shape of model output " << i << " cannot be empty";
     }
+    if (output.shape[0] <= 0) {
+      return INFER_STATUS_LOG_ERROR(FAILED)
+             << "The shape of model output " << i << " is invalid, shape: " << output.shape;
+    }
     if (cur_batch_size == 0) {
-      cur_batch_size = output.shape[0];
+      cur_batch_size = static_cast<uint32_t>(output.shape[0]);
       continue;
     }
     if (output.shape[0] != cur_batch_size) {
@@ -509,7 +517,9 @@ Status MindSporeModelWrap::CalculateBatchSize(ApiModelInfo *api_model_info) {
 }
 
 Status MindSporeModelWrap::UnloadModel() {
-  for (auto iter : models_) iter.model = nullptr;
+  for (auto &iter : models_) {
+    iter.model = nullptr;
+  }
   return SUCCESS;
 }
 

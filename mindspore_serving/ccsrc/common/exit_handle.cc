@@ -79,7 +79,7 @@ void ExitSignalHandle::Start() {
 
 void ExitSignalHandle::Stop() { HandleSignal(0); }
 
-bool ExitSignalHandle::HasStopped() { return !is_running_; }
+bool ExitSignalHandle::HasStopped() const { return !is_running_; }
 
 void ExitSignalHandle::HandleSignal(int sig) {
   auto &instance = Instance();

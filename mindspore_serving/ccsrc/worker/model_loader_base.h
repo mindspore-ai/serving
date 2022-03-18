@@ -40,7 +40,7 @@ class ModelLoaderBase {
   virtual void Clear() = 0;
 
   virtual Status Predict(const std::vector<InstanceData> &inputs, std::vector<ResultInstance> *outputs,
-                         uint64_t subgraph = 0) = 0;
+                         uint64_t subgraph) = 0;
   virtual Status AfterLoadModel() = 0;
   virtual bool OwnDevice() const = 0;
 };
@@ -72,9 +72,9 @@ class MS_API DirectModelLoaderBase : public ModelLoaderBase {
   ModelExecutorInfo model_info_;
 
   void InitModelExecuteInfo();
-  Status PrePredict(const ModelExecutorSubgraphInfo &subgraph_info, uint32_t model_batch_size,
+  Status PrePredict(const ModelExecutorSubgraphInfo &subgraph_info, uint64_t model_batch_size,
                     const std::vector<InstanceData> &instances);
-  Status PostPredict(const ModelExecutorSubgraphInfo &subgraph_info, uint32_t model_batch_size,
+  Status PostPredict(const ModelExecutorSubgraphInfo &subgraph_info, uint64_t model_batch_size,
                      const std::vector<InstanceData> &instances, const std::vector<TensorBasePtr> &predict_result,
                      std::vector<ResultInstance> *instance_result);
 };

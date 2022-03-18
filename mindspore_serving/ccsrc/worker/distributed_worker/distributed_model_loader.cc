@@ -71,7 +71,7 @@ Status DistributedModelLoader::PredictInner(const std::vector<TensorBasePtr> &in
     MSI_LOG_EXCEPTION << "agent_spec_map_ size " << agent_spec_map_.size() << " not match rank size " << rank_size;
   }
   auto agent_num_per_stage = rank_size / stage_size;
-  auto result_agent_id = rank_size - 1;  // agent_num_per_stage * (stage_size - 1);
+  auto result_agent_id = rank_size - 1;
 
   auto msg_list = std::make_shared<std::vector<DistributedPredictMsg>>(rank_size);
   request.set_return_result(false);

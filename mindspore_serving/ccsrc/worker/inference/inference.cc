@@ -47,13 +47,17 @@ InferenceLoader::InferenceLoader() {}
 InferenceLoader::~InferenceLoader() {
   if (ms_lib_handle_ != nullptr) {
     (void)dlclose(ms_lib_handle_);
+    ms_lib_handle_ = nullptr;
   }
   if (ms_cxx_lib_handle_ != nullptr) {
     (void)dlclose(ms_cxx_lib_handle_);
+    ms_cxx_lib_handle_ = nullptr;
   }
   if (gomp_handler_ != nullptr) {
     (void)dlclose(gomp_handler_);
+    gomp_handler_ = nullptr;
   }
+  ms_create_handle_ = nullptr;
 }
 
 InferenceLoader &InferenceLoader::Instance() {

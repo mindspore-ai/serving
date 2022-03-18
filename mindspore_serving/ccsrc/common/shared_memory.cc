@@ -55,7 +55,8 @@ Status SharedMemoryAllocator::AddShmMemoryBuffer(SharedMemoryGroup *shm_group) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Invalid item size or item count, item size: " << item_size
                                           << ", item count :" << item_count << ", memory key: " << memory_key;
   }
-  auto align_item_size = (item_size + 7) / 8 * 8;
+  constexpr uint32_t align_size = 8;
+  auto align_item_size = (item_size + align_size - 1) / align_size * align_size;
   auto shm_fd = shm_open(memory_key.c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
   if (shm_fd == -1) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Failed to shm_open " << memory_key << " , errno: " << errno;

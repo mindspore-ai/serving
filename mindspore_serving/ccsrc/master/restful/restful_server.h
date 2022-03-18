@@ -64,7 +64,7 @@ class RestfulServer {
   void RunEvhttp();
 
   std::string socket_address_;
-  int max_msg_size_{};
+  int max_msg_size_ = 0;
   bool in_running_ = false;
 
   struct evhttp *event_http_ = nullptr;

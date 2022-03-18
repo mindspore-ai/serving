@@ -29,7 +29,7 @@
 #include "worker/inference/inference.h"
 
 namespace mindspore::serving {
-class MS_API LocalModelLoader : public DirectModelLoaderBase {
+class MS_API LocalModelLoader final : public DirectModelLoaderBase {
  public:
   LocalModelLoader() = default;
   ~LocalModelLoader() noexcept override;

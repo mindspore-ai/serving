@@ -845,7 +845,6 @@ Status RestfulService::PaserKeyOneInstance(const json &instance_msg, PredictRequ
   return status;
 }
 
-/************************************************************************************/
 // 4.parse reply common func
 Status RestfulService::ParseReplyDetail(const proto::Tensor &tensor, json *const js) {
   Status status(SUCCESS);

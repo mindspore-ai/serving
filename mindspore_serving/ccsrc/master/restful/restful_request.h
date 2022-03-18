@@ -30,7 +30,7 @@ class DecomposeEvRequest {
  public:
   explicit DecomposeEvRequest(struct evhttp_request *request, int max_msg_size);
   ~DecomposeEvRequest() = default;
-  std::string UrlQuery(const std::string &url, const std::string &key);
+  std::string UrlQuery(const std::string &url, const std::string &key) const;
   Status CheckRequestMethodValid();
   Status Decompose();
   Status GetPostMessageToJson();

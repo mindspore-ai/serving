@@ -33,7 +33,7 @@ namespace serving {
 DecomposeEvRequest::DecomposeEvRequest(struct evhttp_request *request, int max_msg_size)
     : event_request_(request), max_msg_size_(max_msg_size) {}
 
-std::string DecomposeEvRequest::UrlQuery(const std::string &url, const std::string &key) {
+std::string DecomposeEvRequest::UrlQuery(const std::string &url, const std::string &key) const {
   std::string::size_type start_pos(0);
   if (key == kUrlKeyEnd) {
     if ((start_pos = url_.find(kUrlKeyEnd)) != std::string::npos) {
@@ -156,6 +156,7 @@ RestfulRequest::RestfulRequest(std::shared_ptr<DecomposeEvRequest> request)
 RestfulRequest::~RestfulRequest() {
   if (replay_buffer_ != nullptr) {
     evbuffer_free(replay_buffer_);
+    replay_buffer_ = nullptr;
   }
 }
 

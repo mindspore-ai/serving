@@ -167,12 +167,12 @@ Status ServableRegister::RegisterOneCallModelMethod(const std::string &model_key
   std::vector<std::pair<size_t, uint64_t>> model_inputs;
   for (uint64_t i = 0; i < input_count; i++) {
     (void)method.inputs.emplace_back("x" + std::to_string(i));
-    (void)model_inputs.emplace_back(0, i);  // all method inputs are function inputs
+    (void)model_inputs.emplace_back(std::make_pair(0, i));  // all method inputs are function inputs
   }
   std::vector<std::pair<size_t, uint64_t>> returns;
   for (uint64_t i = 0; i < output_count; i++) {
     (void)method.outputs.emplace_back("y" + std::to_string(i));
-    (void)returns.emplace_back(1, i);
+    (void)returns.emplace_back(std::make_pair(1, i));
   }
   method.AddStageModel(model_key, model_inputs, subgraph);
   method.SetReturn(returns);

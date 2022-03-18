@@ -46,7 +46,7 @@ class MS_API Tensor : public TensorBase {
   void get_bytes_data(size_t index, const uint8_t **data, size_t *bytes_len) const override;
 
  private:
-  DataType type_;
+  DataType type_ = kMSI_Unknown;
   std::vector<int64_t> shape_;
   std::vector<uint8_t> data_;
   // For kMSI_String and kMSI_Bytes
