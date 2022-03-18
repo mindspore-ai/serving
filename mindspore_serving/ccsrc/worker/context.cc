@@ -18,7 +18,7 @@
 
 namespace mindspore::serving {
 std::shared_ptr<ServableContext> ServableContext::Instance() {
-  static std::shared_ptr<ServableContext> instance;
+  static std::shared_ptr<ServableContext> instance = nullptr;
   if (instance == nullptr) {
     instance = std::make_shared<ServableContext>();
   }

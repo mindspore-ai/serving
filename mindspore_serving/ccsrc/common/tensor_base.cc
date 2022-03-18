@@ -52,7 +52,7 @@ size_t TensorBase::element_cnt() const {
     if (dim <= 0 || TENSOR_MAX_ELEMENT_COUNT / static_cast<size_t>(dim) < element_num) {
       return 0;
     }
-    element_num *= dim;
+    element_num *= static_cast<size_t>(dim);
   }
   return element_num;
 }

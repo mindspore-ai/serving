@@ -31,7 +31,7 @@ namespace mindspore::serving {
 class NumpyTensor : public TensorBase {
  public:
   explicit NumpyTensor(py::buffer_info &&buffer) : buffer_(std::move(buffer)) {}
-  ~NumpyTensor() {
+  ~NumpyTensor() noexcept {
     py::gil_scoped_acquire acquire;
     { buffer_ = py::buffer_info(); }
   }
@@ -42,20 +42,25 @@ class NumpyTensor : public TensorBase {
     return py::array(py::dtype(buffer_), buffer_.shape, buffer_.strides, buffer_.ptr, dummyOwner);
   }
 
-  void set_data_type(DataType type) override {
+  void set_data_type(DataType) override {
     MSI_LOG_EXCEPTION << "NumpyTensor is readyonly, cannot invoke set_data_type";
   }
   DataType data_type() const override { return GetDataType(buffer_); }
 
-  void set_shape(const std::vector<int64_t> &shape) override {
+  void set_shape(const std::vector<int64_t> &) override {
     MSI_LOG_EXCEPTION << "NumpyTensor is readyonly, cannot invoke set_shape";
   }
   std::vector<int64_t> shape() const override { return buffer_.shape; }
 
   const uint8_t *data() const override { return static_cast<const uint8_t *>(buffer_.ptr); }
-  size_t data_size() const override { return buffer_.size * buffer_.itemsize; }
+  size_t data_size() const override {
+    if (buffer_.size <= 0 || buffer_.itemsize <= 0) {
+      return 0;
+    }
+    return static_cast<size_t>(buffer_.size * buffer_.itemsize);
+  }
 
-  bool resize_data(size_t data_len) override {
+  bool resize_data(size_t) override {
     MSI_LOG_EXCEPTION << "NumpyTensor is readyonly, cannot invoke resize_data";
     return false;
   }
@@ -65,12 +70,12 @@ class NumpyTensor : public TensorBase {
   }
 
   void clear_bytes_data() override { MSI_LOG_EXCEPTION << "NumpyTensor is readyonly, cannot invoke clear_bytes_data"; }
-  void add_bytes_data(const uint8_t *data, size_t bytes_len) override {
+  void add_bytes_data(const uint8_t *, size_t) override {
     MSI_LOG_EXCEPTION << "NumpyTensor is readyonly, cannot invoke add_bytes_data";
   }
 
   size_t bytes_data_size() const override { return 0; }
-  void get_bytes_data(size_t index, const uint8_t **data, size_t *bytes_len) const override {
+  void get_bytes_data(size_t, const uint8_t **, size_t *) const override {
     MSI_LOG_EXCEPTION << "NumpyTensor is readyonly, cannot invoke get_bytes_data";
   }
 
@@ -84,7 +89,7 @@ class PyTensor {
  public:
   // For all type, but for BYTES type, there can only be one item in bytes_val.
   // If the tensor data is destroyed when the numpy array is return to python env, the tensor data need to be copied
-  static py::object AsPythonData(TensorBasePtr tensor, bool copy = false);
+  static py::object AsPythonData(const TensorBasePtr &tensor, bool copy = false);
   static TensorBasePtr MakeTensor(const py::array &input);
   static TensorBasePtr MakeTensorNoCopy(const py::array &input);
 

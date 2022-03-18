@@ -951,7 +951,7 @@ Status RestfulService::ParseScalarData(const ProtoTensor &pb_tensor, bool is_byt
       const uint8_t *ptr = nullptr;
       pb_tensor.get_bytes_data(index, &ptr, &length);
       value.resize(length);
-      (void)memcpy_s(value.data(), length, reinterpret_cast<const char *>(ptr), length);
+      (void)memcpy_s(value.data(), length, ptr, length);
       *js = value;
     } else {
       auto str_nums = pb_tensor.bytes_data_size();
@@ -968,7 +968,7 @@ Status RestfulService::ParseScalarData(const ProtoTensor &pb_tensor, bool is_byt
       const uint8_t *ptr = nullptr;
       pb_tensor.get_bytes_data(index, &ptr, &length);
       value.resize(length);
-      (void)memcpy_s(value.data(), length, reinterpret_cast<const char *>(ptr), length);
+      (void)memcpy_s(value.data(), length, ptr, length);
 
       auto target_size = GetB64TargetSize(length);
       std::vector<uint8_t> buffer(target_size, 0);

@@ -52,7 +52,7 @@ class CppStageFunctionStorage {
 class CppRegStageFunction {
  public:
   CppRegStageFunction(const std::string &func_name, std::shared_ptr<CppStageFunctionBase> function);
-  ~CppRegStageFunction();
+  ~CppRegStageFunction() noexcept;
 
  private:
   std::string func_name_;

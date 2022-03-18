@@ -19,7 +19,6 @@
 #include <algorithm>
 
 namespace mindspore::serving::common {
-
 Status CheckAddress(const std::string &address, const std::string &server_tag, std::string *ip, uint16_t *port) {
   Status status;
   auto position = address.find_last_of(':');
@@ -46,7 +45,7 @@ Status CheckAddress(const std::string &address, const std::string &server_tag, s
       return status;
     }
     if (port != nullptr) {
-      *port = port_number;
+      *port = static_cast<uint16_t>(port_number);
     }
   } catch (const std::invalid_argument &) {
     status = INFER_STATUS_LOG_ERROR(FAILED)

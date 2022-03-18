@@ -134,10 +134,10 @@ TensorBasePtr PyTensor::MakeTensor(const py::array &input) {
   std::unique_ptr<char[]> tmp_buf;
   if (!IsCContiguous(input)) {
     Py_buffer pybuf;
-    if (PyObject_GetBuffer(input.ptr(), &pybuf, PyBUF_ANY_CONTIGUOUS)) {
+    if (PyObject_GetBuffer(input.ptr(), &pybuf, PyBUF_ANY_CONTIGUOUS) || pybuf.len < 0) {
       MSI_LOG(EXCEPTION) << "Failed to get buffer from the input!";
     }
-    tmp_buf = std::make_unique<char[]>(pybuf.len);
+    tmp_buf = std::make_unique<char[]>(static_cast<size_t>(pybuf.len));
     if (PyBuffer_ToContiguous(tmp_buf.get(), &pybuf, pybuf.len, 'C')) {
       MSI_LOG(EXCEPTION) << "Can't copy numpy.ndarray to a contiguous buffer.";
     }
@@ -167,7 +167,7 @@ TensorBasePtr PyTensor::MakeTensorNoCopy(const py::array &input) {
   return tensor_data;
 }
 
-py::object PyTensor::AsPythonData(TensorBasePtr tensor, bool copy) {
+py::object PyTensor::AsPythonData(const TensorBasePtr &tensor, bool copy) {
   auto data_numpy = std::dynamic_pointer_cast<NumpyTensor>(tensor);
   if (data_numpy) {
     return data_numpy->py_array();

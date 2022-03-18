@@ -69,35 +69,20 @@ class AsStringHelper {
 
   template <typename K, typename V>
   static std::string AsString(const std::unordered_map<K, V> &val) noexcept {
-    std::stringstream ss;
-    ss << "{";
-    size_t index = 0;
-    for (auto &item : val) {
-      ss << AsString(item.first) << ": " << AsString(item.second);
-      if (index + 1 < val.size()) {
-        ss << ", ";
-      }
-    }
-    ss << "}";
-    return ss.str();
+    return AsStringMap(val);
   }
-
   template <typename K, typename V>
   static std::string AsString(const std::map<K, V> &val) noexcept {
-    std::stringstream ss;
-    ss << "{";
-    size_t index = 0;
-    for (auto &item : val) {
-      ss << AsString(item.first) << ": " << AsString(item.second);
-      if (index + 1 < val.size()) {
-        ss << ", ";
-      }
-    }
-    ss << "}";
-    return ss.str();
+    return AsStringMap(val);
   }
   template <typename K, typename V>
   static std::string AsString(const std::vector<std::pair<K, V>> &val) noexcept {
+    return AsStringMap(val);
+  }
+
+ private:
+  template <typename T>
+  static std::string AsStringMap(const T &val) noexcept {
     std::stringstream ss;
     ss << "{";
     size_t index = 0;
@@ -106,6 +91,7 @@ class AsStringHelper {
       if (index + 1 < val.size()) {
         ss << ", ";
       }
+      index += 1;
     }
     ss << "}";
     return ss.str();
@@ -143,30 +129,12 @@ class LogStream {
 
   template <typename K, typename V>
   LogStream &operator<<(const std::unordered_map<K, V> &val) noexcept {
-    (*sstream_) << "{";
-    size_t index = 0;
-    for (auto &item : val) {
-      (*this) << item.first << ": " << item.second;
-      if (index + 1 < val.size()) {
-        (*sstream_) << ", ";
-      }
-    }
-    (*sstream_) << "}";
-    return *this;
+    return OutputMap(val);
   }
 
   template <typename K, typename V>
   LogStream &operator<<(const std::map<K, V> &val) noexcept {
-    (*sstream_) << "{";
-    size_t index = 0;
-    for (auto &item : val) {
-      (*this) << item.first << ": " << item.second;
-      if (index + 1 < val.size()) {
-        (*sstream_) << ", ";
-      }
-    }
-    (*sstream_) << "}";
-    return *this;
+    return OutputMap(val);
   }
 
   LogStream &operator<<(std::ostream &func(std::ostream &os)) noexcept {
@@ -179,6 +147,20 @@ class LogStream {
 
  private:
   std::shared_ptr<std::stringstream> sstream_;
+  template <typename T>
+  LogStream &OutputMap(const T &val) noexcept {
+    (*sstream_) << "{";
+    size_t index = 0;
+    for (auto &item : val) {
+      (*this) << item.first << ": " << item.second;
+      if (index + 1 < val.size()) {
+        (*sstream_) << ", ";
+      }
+      index += 1;
+    }
+    (*sstream_) << "}";
+    return *this;
+  }
 };
 
 enum MsLogLevel {

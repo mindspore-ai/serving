@@ -32,7 +32,7 @@ namespace mindspore::serving {
 class MS_API LocalModelLoader : public DirectModelLoaderBase {
  public:
   LocalModelLoader() = default;
-  ~LocalModelLoader() override;
+  ~LocalModelLoader() noexcept override;
 
   Status Predict(const std::vector<TensorBasePtr> &input, std::vector<TensorBasePtr> *output,
                  uint64_t subgraph) override;

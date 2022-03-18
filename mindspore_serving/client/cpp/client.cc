@@ -27,7 +27,6 @@
 namespace mindspore {
 namespace serving {
 namespace client {
-
 Status &Status::operator<<(DataType val) {
   std::unordered_map<DataType, std::string> data_type_map = {
     {DT_UINT8, "uint8"},   {DT_UINT16, "uint16"},   {DT_UINT32, "uint32"},   {DT_UINT64, "uint64"},
@@ -255,7 +254,7 @@ Status Tensor::GetStrData(std::string *val) const {
   }
   auto &bytes_data = proto_tensor_->bytes_val();
   if (bytes_data.size() != 1) {
-    return Status(INVALID_INPUTS) << "Bytes value type size can only be 1";
+    return Status(INVALID_INPUTS) << "String value type size can only be 1";
   }
   val->resize(bytes_data[0].size());
   memcpy(val->data(), val->data(), bytes_data[0].size());
@@ -463,7 +462,6 @@ Status Client::SendRequest(const InstancesRequest &request, InstancesReply *repl
   Status result = impl_->Predict(*proto_request, proto_reply);
   return result;
 }
-
 }  // namespace client
 }  // namespace serving
 }  // namespace mindspore

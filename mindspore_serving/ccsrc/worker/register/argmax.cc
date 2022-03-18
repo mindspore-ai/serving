@@ -32,7 +32,7 @@ class ArgmaxStageFunc : public CppStageFunctionBase {
     }
   }
 
-  Status Call(const std::string &func_name, const InstanceData &input, InstanceData *output) override {
+  Status Call(const std::string &, const InstanceData &input, InstanceData *output) override {
     MSI_EXCEPTION_IF_NULL(output);
     auto input_x = input[0];
     auto x_data = input_x->data();
@@ -79,11 +79,10 @@ class ArgmaxStageFunc : public CppStageFunctionBase {
     return SUCCESS;
   }
 
-  size_t GetInputsCount(const std::string &func_name) const override { return 1; }
+  size_t GetInputsCount(const std::string &) const override { return 1; }
 
-  size_t GetOutputsCount(const std::string &func_name) const override { return 1; }
+  size_t GetOutputsCount(const std::string &) const override { return 1; }
 };
 
 REGISTER_STAGE_FUNCTION(ArgmaxStageFunc, "argmax_cpp")
-
 }  // namespace mindspore::serving

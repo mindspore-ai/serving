@@ -67,6 +67,8 @@ class Dispatcher {
   Status DispatchAsyncInner(const proto::PredictRequest &request, proto::PredictReply *reply,
                             const PredictOnFinish &on_finish);
   Status RegisterWorkerContext(std::shared_ptr<WorkerContext> worker_context);
+
+  void UnregisterWorkerContext(WorkerContext *worker_context);
 };
 
 }  // namespace mindspore::serving

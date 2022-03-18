@@ -276,19 +276,18 @@ Status DistributedModelLoader::LoadModel(const std::string &servable_name, const
   return SUCCESS;
 }
 
-std::string RealPath(const char *path) {
+std::string RealPath(const std::string &path) {
   // Return absolute path when path is accessible
   std::string res;
   char resolved_path[PATH_MAX] = {0};
-  if (realpath(path, resolved_path) != nullptr) {
+  if (realpath(path.c_str(), resolved_path) != nullptr) {
     res = resolved_path;
   }
-
   return res;
 }
 
 Status DistributedModelLoader::InitConfigOnStartup(const std::string &rank_table_json_file) {
-  std::string rank_table_json_abs_path = RealPath(rank_table_json_file.c_str());
+  std::string rank_table_json_abs_path = RealPath(rank_table_json_file);
   if (rank_table_json_abs_path.empty()) {
     return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "failed to get realpath of：" << rank_table_json_file.c_str();
   }

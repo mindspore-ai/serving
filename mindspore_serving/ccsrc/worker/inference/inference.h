@@ -107,6 +107,7 @@ static inline LogStream &operator<<(LogStream &stream, ModelType model_type) {
     case kMindIR_Lite:
       stream << "MindIR_Lite";
       break;
+    case kUnknownType:
     default:
       stream << "[model type: " << static_cast<int>(model_type) << "]";
       break;

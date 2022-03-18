@@ -24,7 +24,7 @@ namespace mindspore::serving {
 class MS_API Tensor : public TensorBase {
  public:
   Tensor();
-  Tensor(DataType type, std::vector<int64_t> shape, const void *data, size_t data_len);
+  Tensor(DataType type, const std::vector<int64_t> &shape, const void *data, size_t data_len);
   ~Tensor() = default;
 
   void set_data_type(DataType type) override { type_ = type; }

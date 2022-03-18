@@ -27,7 +27,7 @@
 namespace mindspore::serving {
 WorkExecutor::WorkExecutor() = default;
 
-WorkExecutor::~WorkExecutor() { Stop(); }
+WorkExecutor::~WorkExecutor() noexcept { Stop(); }
 
 Status WorkExecutor::Init(const std::map<std::string, std::shared_ptr<ModelLoaderBase>> &model_loaders) {
   Status status;
@@ -215,8 +215,7 @@ bool WorkExecutor::ReplyRequest(const std::vector<InstancePtr> &outputs) {
   return true;
 }
 
-bool WorkExecutor::ReplyRequest(const InstancePtr &instance) {
-  instance->error_msg = SUCCESS;
+bool WorkExecutor::ReplyCallback(const InstancePtr &instance) {
   instance->stage_data_list.clear();
   instance->stage_index = instance->stage_max;
 
@@ -235,25 +234,15 @@ bool WorkExecutor::ReplyRequest(const InstancePtr &instance) {
   return true;
 }
 
+bool WorkExecutor::ReplyRequest(const InstancePtr &instance) {
+  instance->error_msg = SUCCESS;
+  return ReplyCallback(instance);
+}
+
 bool WorkExecutor::ReplyError(const InstancePtr &instance, const Status &error_msg) {
   instance->error_msg = error_msg;
   instance->data.clear();
-  instance->stage_data_list.clear();
-  instance->stage_index = instance->stage_max;
-
-  std::unique_lock<std::mutex> lock(infer_session_map_mutex_);
-  auto it = infer_session_map_.find(instance->user_id);
-  if (it == infer_session_map_.end()) {
-    MSI_LOG_WARNING << "Cannot find user in session map, user id " << instance->user_id;
-    return false;
-  }
-  auto &infer_session = it->second;
-  infer_session.reply_count++;
-  if (infer_session.reply_count == infer_session.instances.size()) {
-    infer_session.call_back(infer_session.instances);
-    (void)infer_session_map_.erase(it);
-  }
-  return true;
+  return ReplyCallback(instance);
 }
 
 void WorkExecutor::CreateInputInstance(const MethodStage &stage, const std::vector<InstancePtr> &instances) {
@@ -288,7 +277,7 @@ void WorkExecutor::CreateResultInstance(const InstancePtr &instance, const Resul
 }
 
 uint64_t WorkExecutor::GetNextUserId() {
-  static std::atomic<uint64_t> user_id;
+  static std::atomic<uint64_t> user_id = 0;
   return ++user_id;
 }
 

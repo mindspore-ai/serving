@@ -22,7 +22,7 @@
 #include "worker/servable_register.h"
 
 namespace mindspore::serving {
-LocalModelLoader::~LocalModelLoader() { Clear(); }
+LocalModelLoader::~LocalModelLoader() noexcept { Clear(); }
 
 uint64_t LocalModelLoader::GetGraphNum() const {
   if (!model_session_) {
@@ -57,7 +57,11 @@ uint64_t LocalModelLoader::GetBatchSize() const {
   if (!model_session_) {
     MSI_LOG_EXCEPTION << "Model '" << GetModelKey() << "' has not been loaded";
   }
-  return model_session_->GetBatchSize(0);
+  auto batch_size = model_session_->GetBatchSize(0);
+  if (batch_size < 0) {
+    MSI_LOG_EXCEPTION << "Invalid batch size " << batch_size << ", model: '" << GetModelKey() << "'";
+  }
+  return static_cast<uint64_t>(batch_size);
 }
 
 Status LocalModelLoader::LoadModel(const std::string &servable_directory, const std::string &servable_name,

@@ -24,7 +24,7 @@ namespace mindspore::serving {
 class BufferTensor : public TensorBase {
  public:
   // the data's lifetime must longer than this object
-  BufferTensor(DataType type, std::vector<int64_t> shape, uint8_t *data, size_t data_len, bool data_readonly);
+  BufferTensor(DataType type, const std::vector<int64_t> &shape, uint8_t *data, size_t data_len, bool data_readonly);
   ~BufferTensor() = default;
 
   // For all data type
@@ -41,9 +41,7 @@ class BufferTensor : public TensorBase {
 
   // For kMSI_String and kMSI_Bytes
   void clear_bytes_data() override { MSI_LOG_EXCEPTION << "Buffer tensor cannot clear bytes data"; }
-  void add_bytes_data(const uint8_t *data, size_t bytes_len) override {
-    MSI_LOG_EXCEPTION << "Buffer tensor cannot add bytes data";
-  }
+  void add_bytes_data(const uint8_t *, size_t) override { MSI_LOG_EXCEPTION << "Buffer tensor cannot add bytes data"; }
 
   size_t bytes_data_size() const override;
   void get_bytes_data(size_t index, const uint8_t **data, size_t *bytes_len) const override;
@@ -58,8 +56,8 @@ class BufferTensor : public TensorBase {
 
 class BufferTensorWithOwner : public BufferTensor {
  public:
-  BufferTensorWithOwner(TensorBasePtr buffer_tensor_owner, DataType type, std::vector<int64_t> shape, uint8_t *data,
-                        size_t data_len, bool data_readonly)
+  BufferTensorWithOwner(const TensorBasePtr &buffer_tensor_owner, DataType type, const std::vector<int64_t> &shape,
+                        uint8_t *data, size_t data_len, bool data_readonly)
       : BufferTensor(type, shape, data, data_len, data_readonly), buffer_tensor_owner_(buffer_tensor_owner) {}
   ~BufferTensorWithOwner() = default;
 

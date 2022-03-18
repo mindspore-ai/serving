@@ -41,7 +41,7 @@ struct InferSession {
 class WorkExecutor : public std::enable_shared_from_this<WorkExecutor> {
  public:
   WorkExecutor();
-  ~WorkExecutor();
+  ~WorkExecutor() noexcept;
 
   Status Init(const std::map<std::string, std::shared_ptr<ModelLoaderBase>> &model_loaders);
   Status Work(const RequestSpec &request_spec, const std::vector<InstanceData> &inputs,
@@ -67,6 +67,7 @@ class WorkExecutor : public std::enable_shared_from_this<WorkExecutor> {
   std::map<uint64_t, InferSession> infer_session_map_;
   std::mutex infer_session_map_mutex_;
 
+  bool ReplyCallback(const InstancePtr &instance);
   bool ReplyError(const InstancePtr &context, const Status &error_msg);
   bool ReplyRequest(const std::vector<InstancePtr> &outputs);
   bool ReplyRequest(const InstancePtr &outputs);

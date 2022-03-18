@@ -170,7 +170,8 @@ def _start_extra_workers(master_address, servable_configs):
 
 def _send_exit_signal_to_children(worker_list):
     """Send exit signal to all child processes, and terminate all child processes when they are still alive
-    in some seconds later"""
+    in some seconds later.
+    """
     if not worker_list:
         return
     for worker in worker_list:

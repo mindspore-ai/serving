@@ -66,6 +66,5 @@ Status GrpcNotifyAgent::DispatchAsync(const proto::DistributedPredictRequest &re
   distributed_client_->PredictAsync(request, reply, stub_.get(), callback, agent_address_);
   return SUCCESS;
 }  // namespace serving
-
 }  // namespace serving
 }  // namespace mindspore

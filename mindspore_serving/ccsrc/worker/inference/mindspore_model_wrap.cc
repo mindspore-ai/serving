@@ -378,7 +378,7 @@ std::shared_ptr<Context> MindSporeModelWrap::TransformModelContext(serving::Devi
     context->SetThreadNum(model_context.thread_num);
   }
   if (model_context.enable_parallel != -1) {
-    context->SetEnableParallel(model_context.enable_parallel);
+    context->SetEnableParallel(model_context.enable_parallel != 0);
   }
   if (!model_context.thread_affinity_core_list.empty()) {
     context->SetThreadAffinity(model_context.thread_affinity_core_list);
@@ -416,8 +416,12 @@ Status MindSporeModelWrap::GetModelInfos(ApiModelInfo *api_model_info) {
     tensor_info.size = ms_tensor.DataSize();
     if (tensor_info.size == 0) {
       auto &shape = tensor_info.shape;
-      size_t elements_nums = std::accumulate(shape.begin(), shape.end(), 1LL, std::multiplies<size_t>());
-      tensor_info.size = TensorBase::GetTypeSize(tensor_info.data_type) * elements_nums;
+      int64_t elements_nums = std::accumulate(shape.begin(), shape.end(), 1LL, std::multiplies<int64_t>());
+      if (elements_nums < 0) {
+        MSI_LOG_ERROR << "Invalid tensor shape " << shape;
+        return serving::TensorInfo();
+      }
+      tensor_info.size = TensorBase::GetTypeSize(tensor_info.data_type) * static_cast<size_t>(elements_nums);
     }
     return tensor_info;
   };
@@ -475,7 +479,7 @@ Status MindSporeModelWrap::CalculateBatchSize(ApiModelInfo *api_model_info) {
                                             << "when with_batch_dim is true and without_batch_dim_inputs is " << list;
     }
     if (cur_batch_size == 0) {
-      cur_batch_size = input.shape[0];
+      cur_batch_size = static_cast<uint32_t>(input.shape[0]);
       continue;
     }
     if (input.shape[0] != cur_batch_size) {
@@ -629,7 +633,7 @@ std::vector<serving::TensorInfo> MindSporeModelWrap::GetOutputInfos(uint64_t sub
   return models_[subgraph].output_tensor_infos;
 }
 
-ssize_t MindSporeModelWrap::GetBatchSize(uint64_t subgraph) const { return common_model_info_.batch_size; }
+ssize_t MindSporeModelWrap::GetBatchSize(uint64_t) const { return common_model_info_.batch_size; }
 
 uint64_t MindSporeModelWrap::GetSubGraphNum() const { return models_.size(); }
 
@@ -692,6 +696,7 @@ mindspore::ModelType MindSporeModelWrap::GetMsModelType(serving::ModelType model
     case kONNX:
       ms_model_type = mindspore::kONNX;
       break;
+    case kUnknownType:
     default:
       ms_model_type = mindspore::kUnknownType;
   }
@@ -710,6 +715,7 @@ mindspore::DeviceType MindSporeModelWrap::GetMsDeviceType(serving::DeviceType de
     case kDeviceTypeCpu:
       ms_device_type = mindspore::DeviceType::kCPU;
       break;
+    case kDeviceTypeNotSpecified:
     default:
       break;
   }
@@ -718,7 +724,8 @@ mindspore::DeviceType MindSporeModelWrap::GetMsDeviceType(serving::DeviceType de
 
 ApiBufferTensorWrap::ApiBufferTensorWrap() = default;
 
-ApiBufferTensorWrap::ApiBufferTensorWrap(DataType type, std::vector<int64_t> shape, const mindspore::MSTensor &tensor)
+ApiBufferTensorWrap::ApiBufferTensorWrap(DataType type, const std::vector<int64_t> &shape,
+                                         const mindspore::MSTensor &tensor)
     : type_(type), shape_(shape), tensor_(tensor) {}
 
 ApiBufferTensorWrap::~ApiBufferTensorWrap() = default;

@@ -89,6 +89,8 @@ static std::string GetLogLevel(MsLogLevel level) {
       return "INFO";
     case LOG_WARNING:
       return "WARNING";
+    case LOG_EXCEPTION:
+      return "EXCEPTION";
     case LOG_ERROR:
     default:
       return "ERROR";
@@ -104,6 +106,7 @@ static int GetGlogLevel(MsLogLevel level) {
     case LOG_WARNING:
       return google::GLOG_WARNING;
     case LOG_ERROR:
+    case LOG_EXCEPTION:
     default:
       return google::GLOG_ERROR;
   }
