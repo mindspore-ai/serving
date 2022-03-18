@@ -15,6 +15,7 @@
  */
 #include "include/api/model.h"
 #include "include/api/context.h"
+#include "include/api/serialization.h"
 #include "cxx_api/model/model_impl.h"
 #include "cxx_api/factory.h"
 #include "utils/utils.h"
@@ -52,15 +53,25 @@ Status Model::Build(GraphCell graph_cell, const std::shared_ptr<Context> &model_
   return impl_->Build();
 }
 
-Status Model::Build(const std::vector<char> &, ModelType, const std::shared_ptr<Context> &, const Key &,
-                    const std::string &, const std::vector<char> &) {
-  MS_LOG(ERROR) << "Unsupported Feature.";
-  return kMCFailed;
+Status Model::Build(const std::vector<char> &model_path, ModelType model_type,
+                    const std::shared_ptr<Context> &model_context, const Key &dec_key, const std::string &dec_mode,
+                    const std::vector<char> &cropto_lib_path) {
+  mindspore::Graph graph;
+  auto status = mindspore::Serialization::Load(CharToString(model_path), model_type, &graph, dec_key, dec_mode);
+  if (!status.IsOk()) {
+    return status;
+  }
+  return Build(GraphCell(graph), model_context);
 }
 
-Status Model::Build(const std::vector<char> &, ModelType, const std::shared_ptr<Context> &) {
-  MS_LOG(ERROR) << "Unsupported Feature.";
-  return kMCFailed;
+Status Model::Build(const std::vector<char> &model_path, ModelType model_type,
+                    const std::shared_ptr<Context> &model_context) {
+  mindspore::Graph graph;
+  auto status = mindspore::Serialization::Load(CharToString(model_path), model_type, &graph);
+  if (!status.IsOk()) {
+    return status;
+  }
+  return Build(GraphCell(graph), model_context);
 }
 
 Status Model::Resize(const std::vector<MSTensor> &inputs, const std::vector<std::vector<int64_t>> &dims) {

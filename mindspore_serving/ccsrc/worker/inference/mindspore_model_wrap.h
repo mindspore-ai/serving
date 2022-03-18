@@ -94,12 +94,15 @@ class MindSporeModelWrap : public InferenceBase {
                          const std::vector<std::string> &file_names, ModelType model_type, bool with_batch_dim,
                          const std::vector<int> &without_batch_dim_inputs, const ModelContext &model_context,
                          const std::vector<std::shared_ptr<mindspore::Model>> &models);
-
+  Status LoadLiteModelFromFileInner(serving::DeviceType device_type, uint32_t device_id,
+                                    const std::vector<std::string> &file_names, ModelType model_type,
+                                    bool with_batch_dim, const std::vector<int> &without_batch_dim_inputs,
+                                    const ModelContext &model_context, const std::string &config_file);
   Status LoadModelFromFileInner(serving::DeviceType device_type, uint32_t device_id,
                                 const std::vector<std::string> &file_names, ModelType model_type, bool with_batch_dim,
                                 const std::vector<int> &without_batch_dim_inputs, const ModelContext &model_context,
-                                const std::string &dec_key, const std::string &dec_mode, const std::string &config_file,
-                                bool enable_lite = true);
+                                const std::string &dec_key, const std::string &dec_mode,
+                                const std::string &config_file);
   std::shared_ptr<Context> TransformModelContext(serving::DeviceType device_type, uint32_t device_id,
                                                  const ModelContext &model_context, bool enable_lite);
 

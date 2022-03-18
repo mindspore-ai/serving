@@ -28,18 +28,10 @@ __all__ = []
 __all__.extend([
     "declare_model",
     "Model",
-    "AclOptions",
-    "GpuOptions",
     "AscendDeviceInfo",
     "CPUDeviceInfo",
     "GPUDeviceInfo",
     "Context",
     'register_method',
-    'add_stage',
-    "declare_servable",
-    'call_preprocess',
-    'call_preprocess_pipeline',
-    'call_servable',
-    'call_postprocess',
-    'call_postprocess_pipeline'
+    'add_stage'
 ])
