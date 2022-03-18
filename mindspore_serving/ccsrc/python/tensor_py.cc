@@ -119,7 +119,7 @@ static std::string GetPyTypeFormat(DataType data_type) {
 
 static bool IsCContiguous(const py::array &input) {
   auto flags = static_cast<unsigned int>(input.flags());
-  return (flags & pybind11::detail::npy_api::NPY_ARRAY_C_CONTIGUOUS_) != 0;
+  return (flags & static_cast<uint32_t>(pybind11::detail::npy_api::NPY_ARRAY_C_CONTIGUOUS_)) != 0;
 }
 
 TensorBasePtr PyTensor::MakeTensor(const py::array &input) {

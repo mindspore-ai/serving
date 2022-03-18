@@ -18,12 +18,14 @@
 namespace mindspore::serving {
 BufferTensor::BufferTensor(DataType type, const std::vector<int64_t> &shape, uint8_t *data, size_t data_len,
                            bool data_readonly) {
-  set_shape(shape);
-  set_data_type(type);
+  type_ = type;
+  shape_ = shape;
   data_ = data;
   data_len_ = data_len;
   data_readonly_ = data_readonly;
 }
+
+BufferTensor::~BufferTensor() { data_ = nullptr; }
 
 std::vector<int64_t> BufferTensor::shape() const { return shape_; }
 

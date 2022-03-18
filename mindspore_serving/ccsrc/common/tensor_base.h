@@ -23,7 +23,6 @@
 #include <numeric>
 #include <map>
 #include <functional>
-#include <cstring>
 #include "common/log.h"
 #include "common/status.h"
 

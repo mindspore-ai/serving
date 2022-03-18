@@ -47,9 +47,9 @@ Status DirectModelLoaderBase::Predict(const std::vector<InstanceData> &inputs, s
   return SUCCESS;
 }
 
-Status DirectModelLoaderBase::PrePredict(const ModelExecutorSubgraphInfo &subgraph_info, uint32_t model_batch_size,
+Status DirectModelLoaderBase::PrePredict(const ModelExecutorSubgraphInfo &subgraph_info, uint64_t model_batch_size,
                                          const std::vector<InstanceData> &instances) {
-  auto input_batch_size = static_cast<uint32_t>(instances.size());
+  auto input_batch_size = instances.size();
   if (input_batch_size == 0 || input_batch_size > model_batch_size) {
     return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR)
            << "Invalid input batch size " << input_batch_size << ", model batch size " << model_batch_size;
@@ -69,8 +69,8 @@ Status DirectModelLoaderBase::PrePredict(const ModelExecutorSubgraphInfo &subgra
       (void)memcpy_s(dst_buffer, data_size, instances[0][i]->data(), data_size);
       continue;
     }
-    auto item_size = static_cast<size_t>(data_size / model_batch_size);
-    for (uint32_t k = 0; k < input_batch_size; k++) {
+    auto item_size = data_size / model_batch_size;
+    for (size_t k = 0; k < input_batch_size; k++) {
       if (i >= instances[k].size()) {
         return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << " Batch index " << k << " does not have input " << i;
       }
@@ -81,18 +81,18 @@ Status DirectModelLoaderBase::PrePredict(const ModelExecutorSubgraphInfo &subgra
       }
       (void)memcpy_s(dst_buffer + k * item_size, data_size - k * item_size, instances[k][i]->data(), item_size);
     }
-    for (uint32_t k = input_batch_size; k < model_batch_size; k++) {
+    for (size_t k = input_batch_size; k < model_batch_size; k++) {
       (void)memcpy_s(dst_buffer + k * item_size, data_size - k * item_size, instances[0][i]->data(), item_size);
     }
   }
   return SUCCESS;
 }
 
-Status DirectModelLoaderBase::PostPredict(const ModelExecutorSubgraphInfo &subgraph_info, uint32_t model_batch_size,
+Status DirectModelLoaderBase::PostPredict(const ModelExecutorSubgraphInfo &subgraph_info, uint64_t model_batch_size,
                                           const std::vector<InstanceData> &instances,
                                           const std::vector<TensorBasePtr> &predict_result,
                                           std::vector<ResultInstance> *instance_result) {
-  auto input_batch_size = static_cast<uint32_t>(instances.size());
+  auto input_batch_size = instances.size();
   if (input_batch_size == 0 || input_batch_size > model_batch_size) {
     MSI_LOG_ERROR << "Input batch size " << input_batch_size << " invalid, model batch size " << model_batch_size;
     return SYSTEM_ERROR;
@@ -116,7 +116,7 @@ Status DirectModelLoaderBase::PostPredict(const ModelExecutorSubgraphInfo &subgr
     auto shape = output_info.shape_one_batch;
     auto data_type = output_info.tensor_info.data_type;
     auto src_buffer = const_cast<uint8_t *>(item->data());
-    for (uint32_t k = 0; k < input_batch_size; k++) {
+    for (size_t k = 0; k < input_batch_size; k++) {
       auto tensor =
         std::make_shared<BufferTensorWithOwner>(item, data_type, shape, src_buffer + item_size * k, item_size, true);
       results_data[k].data.push_back(tensor);
@@ -161,7 +161,7 @@ void DirectModelLoaderBase::InitModelExecuteInfo() {
       auto tensor = std::make_shared<Tensor>();
       tensor->set_data_type(input_info.data_type);
       tensor->set_shape(input_info.shape);
-      tensor->resize_data(input_info.size);
+      (void)tensor->resize_data(input_info.size);
       subgraph_info.input_buffers.push_back(tensor);
     }
   }

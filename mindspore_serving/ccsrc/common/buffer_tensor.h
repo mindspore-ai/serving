@@ -25,7 +25,7 @@ class BufferTensor : public TensorBase {
  public:
   // the data's lifetime must longer than this object
   BufferTensor(DataType type, const std::vector<int64_t> &shape, uint8_t *data, size_t data_len, bool data_readonly);
-  ~BufferTensor() = default;
+  ~BufferTensor();
 
   // For all data type
   std::vector<int64_t> shape() const override;

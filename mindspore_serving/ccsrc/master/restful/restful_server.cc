@@ -239,7 +239,8 @@ Status RestfulServer::Start(const std::string &socket_address, const SSLConfig &
     return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Serving Error: RESTful server is already running";
   }
   socket_address_ = socket_address;
-  max_msg_size_ = static_cast<int>(max_msg_size * (uint32_t(1) << 20));
+  constexpr int mbytes_to_bytes = static_cast<int>(1u << 20);
+  max_msg_size_ = max_msg_size * mbytes_to_bytes;
 
   if (ssl_config.use_ssl) {
     status = CreatHttpsServer(time_out_second, ssl_config);

@@ -60,14 +60,8 @@ class NumpyTensor : public TensorBase {
     return static_cast<size_t>(buffer_.size * buffer_.itemsize);
   }
 
-  bool resize_data(size_t) override {
-    MSI_LOG_EXCEPTION << "NumpyTensor is readyonly, cannot invoke resize_data";
-    return false;
-  }
-  uint8_t *mutable_data() override {
-    MSI_LOG_EXCEPTION << "NumpyTensor is readyonly, cannot invoke mutable_data";
-    return nullptr;
-  }
+  bool resize_data(size_t) override { MSI_LOG_EXCEPTION << "NumpyTensor is readonly, cannot invoke resize_data"; }
+  uint8_t *mutable_data() override { MSI_LOG_EXCEPTION << "NumpyTensor is readonly, cannot invoke mutable_data"; }
 
   void clear_bytes_data() override { MSI_LOG_EXCEPTION << "NumpyTensor is readyonly, cannot invoke clear_bytes_data"; }
   void add_bytes_data(const uint8_t *, size_t) override {

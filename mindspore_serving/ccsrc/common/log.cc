@@ -15,6 +15,7 @@
  */
 #include "common/log.h"
 #include <sys/time.h>
+#include <securec.h>
 #include <thread>
 #define google mindspore_serving_private
 #include "glog/logging.h"
@@ -24,16 +25,10 @@ namespace mindspore {
 namespace serving {
 int g_ms_serving_log_level = static_cast<int>(LOG_WARNING);
 
-#undef Dlog
-#define Dlog(module_id, level, format, ...)                   \
-  do {                                                        \
-    DlogInner((module_id), (level), (format), ##__VA_ARGS__); \
-  } while (0)
-
 static std::string GetTimeString() {
   constexpr auto BUFLEN = 80;
   char buf[BUFLEN];
-  (void)memset(buf, '\0', BUFLEN);
+  (void)memset_s(buf, BUFLEN, '\0', BUFLEN);
 #if defined(_WIN32) || defined(_WIN64)
   time_t time_seconds = time(0);
   struct tm now_time;
@@ -128,7 +123,7 @@ static int GetThresholdLevel(const std::string &threshold) {
 }
 
 void LogWriter::OutputLog(const std::string &msg_str) const {
-  if (log_level_ < g_ms_serving_log_level) {
+  if (static_cast<int>(log_level_) < g_ms_serving_log_level) {
     return;
   }
   auto submodule_name = "SERVING";
@@ -308,7 +303,7 @@ bool ParseLogLevel(const std::string &str_level, MsLogLevel *ptr_level) {
   if (str_level.size() == 1) {
     int ch = str_level.c_str()[0];
     ch = ch - '0';  // subtract ASCII code of '0', which is 48
-    if (ch >= LOG_DEBUG && ch <= LOG_ERROR) {
+    if (ch >= static_cast<int>(LOG_DEBUG) && ch <= static_cast<int>(LOG_ERROR)) {
       if (ptr_level != nullptr) {
         *ptr_level = static_cast<MsLogLevel>(ch);
       }

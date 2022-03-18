@@ -34,7 +34,7 @@ class MS_API ExitSignalHandle {
   void AgentWait();
   void Start();
   void Stop();
-  bool HasStopped();
+  bool HasStopped() const;
 
  private:
   std::promise<void> master_exit_requested_;

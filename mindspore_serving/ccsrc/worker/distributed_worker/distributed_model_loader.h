@@ -35,7 +35,7 @@ struct DistributedAgentContext {
   std::shared_ptr<BaseNotifyAgent> notify_agent_ = nullptr;
 };
 
-class MS_API DistributedModelLoader : public DirectModelLoaderBase {
+class MS_API DistributedModelLoader final : public DirectModelLoaderBase {
  public:
   DistributedModelLoader() = default;
   ~DistributedModelLoader();
