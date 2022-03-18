@@ -15,7 +15,7 @@
  */
 
 #include <memory>
-#include <nlohmann/json.hpp>
+#include <vector>
 #include "openssl/ssl.h"
 #include "openssl/err.h"
 #include "event2/bufferevent.h"
@@ -27,7 +27,6 @@
 #include "master/restful/http_process.h"
 
 namespace mindspore::serving {
-
 const std::vector<std::string> kCiphers = {
   "ECDHE-RSA-AES128-GCM-SHA256",   "ECDHE-ECDSA-AES128-GCM-SHA256", "ECDHE-RSA-AES256-GCM-SHA384",
   "ECDHE-ECDSA-AES256-GCM-SHA384", "ECDHE-RSA-CHACHA20-POLY1305",   "ECDHE-PSK-CHACHA20-POLY1305",
@@ -276,5 +275,4 @@ void RestfulServer::InitOpenSSL() {
   OpenSSL_add_all_algorithms();
 #endif
 }
-
 }  // namespace mindspore::serving

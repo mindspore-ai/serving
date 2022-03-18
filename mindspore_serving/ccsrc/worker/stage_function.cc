@@ -18,7 +18,6 @@
 #include <utility>
 
 namespace mindspore::serving {
-
 bool CppStageFunctionStorage::Register(const std::string &function_name,
                                        std::shared_ptr<CppStageFunctionBase> function) {
   if (function_map_.find(function_name) != function_map_.end()) {
@@ -34,7 +33,7 @@ void CppStageFunctionStorage::Unregister(const std::string &function_name) {
   if (it == function_map_.end()) {
     return;
   }
-  function_map_.erase(it);
+  (void)function_map_.erase(it);
 }
 
 CppStageFunctionStorage &CppStageFunctionStorage::Instance() {
@@ -105,7 +104,6 @@ std::vector<size_t> PyStageFunctionStorage::GetPyCppFunctionInfo(const std::stri
   if (PyStageFunctionStorage::Instance()->GetPyFunctionInfo(func_name, &inputs_count, &outputs_count)) {
     return {inputs_count, outputs_count};
   }
-  std::vector<size_t> results;
   auto function = CppStageFunctionStorage::Instance().GetFunction(func_name);
   if (!function) {
     return {};
@@ -118,5 +116,4 @@ std::vector<size_t> PyStageFunctionStorage::GetPyCppFunctionInfo(const std::stri
   }
   return {inputs_count, outputs_count};
 }
-
 }  // namespace mindspore::serving

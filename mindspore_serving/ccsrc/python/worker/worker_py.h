@@ -27,7 +27,6 @@
 #include "python/tensor_py.h"
 
 namespace mindspore::serving {
-
 class MS_API PyWorker {
  public:
   static void StartServable(const std::string &model_directory, const std::string &model_name, uint32_t version_number,

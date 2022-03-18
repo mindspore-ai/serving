@@ -25,7 +25,6 @@
 
 namespace mindspore {
 namespace serving {
-
 static std::vector<unsigned char> encode_table = {
   'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V',
   'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r',
@@ -132,6 +131,5 @@ size_t GetTailEqualSize(const std::string &str) {
   }
   return count;
 }
-
 }  // namespace serving
 }  // namespace mindspore

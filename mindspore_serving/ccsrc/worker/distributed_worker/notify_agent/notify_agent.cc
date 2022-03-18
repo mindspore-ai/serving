@@ -24,7 +24,6 @@
 
 namespace mindspore {
 namespace serving {
-
 GrpcNotifyAgent::GrpcNotifyAgent(const std::string &agent_address) {
   agent_address_ = agent_address;
   std::shared_ptr<grpc::Channel> channel = GrpcServer::CreateChannel(agent_address_);

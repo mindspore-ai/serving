@@ -28,7 +28,6 @@
 namespace py = pybind11;
 
 namespace mindspore::serving {
-
 class NumpyTensor : public TensorBase {
  public:
   explicit NumpyTensor(py::buffer_info &&buffer) : buffer_(std::move(buffer)) {}

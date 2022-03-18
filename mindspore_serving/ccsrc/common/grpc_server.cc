@@ -17,24 +17,23 @@
 #include "common/grpc_server.h"
 
 namespace mindspore::serving {
-
 Status GrpcServer::Start(std::shared_ptr<grpc::Service> service, const std::string &server_address, int max_msg_mb_size,
                          const std::string &server_tag) {
   service_ = service;
-  Status status;
   if (in_running_) {
     return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Serving Error: " << server_tag << " server is already running";
   }
   // Set the port is not reuseable
   auto option = grpc::MakeChannelArgumentOption(GRPC_ARG_ALLOW_REUSEPORT, 0);
   grpc::ServerBuilder serverBuilder;
-  serverBuilder.SetOption(std::move(option));
+  (void)serverBuilder.SetOption(std::move(option));
   if (max_msg_mb_size > 0) {
-    serverBuilder.SetMaxSendMessageSize(static_cast<int>(max_msg_mb_size * (1u << 20)));
-    serverBuilder.SetMaxReceiveMessageSize(static_cast<int>(max_msg_mb_size * (1u << 20)));
+    constexpr uint32_t mbytes_to_bytes = 1u << 20;
+    (void)serverBuilder.SetMaxSendMessageSize(static_cast<int>(max_msg_mb_size * mbytes_to_bytes));
+    (void)serverBuilder.SetMaxReceiveMessageSize(static_cast<int>(max_msg_mb_size * mbytes_to_bytes));
   }
-  serverBuilder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
-  serverBuilder.RegisterService(service.get());
+  (void)serverBuilder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
+  (void)serverBuilder.RegisterService(service.get());
   server_ = serverBuilder.BuildAndStart();
 
   if (server_ == nullptr) {
@@ -63,10 +62,10 @@ void GrpcServer::Stop() {
 
 std::shared_ptr<grpc::Channel> GrpcServer::CreateChannel(const std::string &target_str) {
   grpc::ChannelArguments channel_args;
-  channel_args.SetInt(GRPC_ARG_MAX_RECEIVE_MESSAGE_LENGTH, gRpcMaxMBMsgSize * 1024 * 1024);
+  constexpr uint32_t mbytes_to_bytes = 1u << 20;
+  channel_args.SetInt(GRPC_ARG_MAX_RECEIVE_MESSAGE_LENGTH, gRpcMaxMBMsgSize * mbytes_to_bytes);
   std::shared_ptr<grpc::Channel> channel =
     grpc::CreateCustomChannel(target_str, grpc::InsecureChannelCredentials(), channel_args);
   return channel;
 }
-
 }  // namespace mindspore::serving

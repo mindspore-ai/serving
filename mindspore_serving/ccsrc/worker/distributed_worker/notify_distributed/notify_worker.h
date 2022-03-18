@@ -27,7 +27,6 @@
 #include "proto/ms_worker.grpc.pb.h"
 namespace mindspore {
 namespace serving {
-
 class MS_API GrpcNotifyDistributeWorker {
  public:
   GrpcNotifyDistributeWorker(const std::string &distributed_address, const std::string &agent_address);

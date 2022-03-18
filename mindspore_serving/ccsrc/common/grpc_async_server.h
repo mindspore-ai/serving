@@ -29,7 +29,6 @@
 #include "common/utils.h"
 
 namespace mindspore::serving {
-
 class GrpcAsyncServiceContextBase {
  public:
   GrpcAsyncServiceContextBase() = default;
@@ -89,8 +88,9 @@ class GrpcAsyncServer {
 
     grpc::ServerBuilder builder;
     if (max_msg_mb_size > 0) {
-      builder.SetMaxSendMessageSize(static_cast<int>(max_msg_mb_size * (1u << 20)));
-      builder.SetMaxReceiveMessageSize(static_cast<int>(max_msg_mb_size * (1u << 20)));
+      constexpr uint32_t mbytes_to_bytes = 1u << 20;
+      builder.SetMaxSendMessageSize(static_cast<int>(max_msg_mb_size * mbytes_to_bytes));
+      builder.SetMaxReceiveMessageSize(static_cast<int>(max_msg_mb_size * mbytes_to_bytes));
     }
     builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
     int port_tcpip = 0;
@@ -201,7 +201,6 @@ class GrpcAsyncServer {
   bool in_running_ = false;
   std::thread grpc_thread_;
 };
-
 }  // namespace mindspore::serving
 
 #endif  // MINDSPORE_SERVING_GRPC_ASYNC_SERVER_H

@@ -32,7 +32,6 @@
 #include "master/servable_endpoint.h"
 
 namespace mindspore::serving {
-
 class Dispatcher {
  public:
   Dispatcher();

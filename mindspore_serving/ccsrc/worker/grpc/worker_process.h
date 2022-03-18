@@ -33,7 +33,6 @@
 #include "proto/ms_agent.grpc.pb.h"
 namespace mindspore {
 namespace serving {
-
 // Service Implement
 class MSWorkerImpl {
  public:

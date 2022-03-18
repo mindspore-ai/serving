@@ -29,7 +29,6 @@
 
 namespace mindspore {
 namespace serving {
-
 struct SharedMemoryItem {
   std::string memory_key_prefix;
   std::string memory_key;   // for shm_open

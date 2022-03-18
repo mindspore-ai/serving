@@ -21,7 +21,6 @@
 #include "common/serving_common.h"
 
 namespace mindspore::serving {
-
 class BufferTensor : public TensorBase {
  public:
   // the data's lifetime must longer than this object
@@ -67,7 +66,6 @@ class BufferTensorWithOwner : public BufferTensor {
  private:
   TensorBasePtr buffer_tensor_owner_;
 };
-
 }  // namespace mindspore::serving
 
 #endif  // MINDSPORE_SERVING_BUFFER_TENSOR_H

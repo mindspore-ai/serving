@@ -23,7 +23,6 @@
 
 namespace mindspore {
 namespace serving {
-
 WorkerAgent &WorkerAgent::Instance() {
   static WorkerAgent instance;
   return instance;
@@ -118,7 +117,7 @@ class ProtoDistributedPredictRequest : public RequestBase {
  public:
   explicit ProtoDistributedPredictRequest(const proto::DistributedPredictRequest &other) : proto_request_(other) {
     for (int i = 0; i < proto_request_.inputs_size(); i++) {
-      tensor_list_.emplace_back(const_cast<proto::Tensor *>(&proto_request_.inputs(i)));
+      (void)tensor_list_.emplace_back(const_cast<proto::Tensor *>(&proto_request_.inputs(i)));
     }
   }
   ~ProtoDistributedPredictRequest() = default;
@@ -195,6 +194,5 @@ Status WorkerAgent::Run(const proto::DistributedPredictRequest &request, proto::
   }
   return status;
 }
-
 }  // namespace serving
 }  // namespace mindspore

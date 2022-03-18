@@ -25,7 +25,6 @@
 
 namespace mindspore {
 namespace serving {
-
 Status Server::StartGrpcServer(const std::string &socket_address, const SSLConfig &ssl_config, int max_msg_mb_size) {
   if (grpc_async_server_) {
     return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Serving Error: Serving gRPC server is already running";

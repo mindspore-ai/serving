@@ -30,7 +30,6 @@ const char kUrlKeyEnd[] = ":";
 
 namespace mindspore {
 namespace serving {
-
 DecomposeEvRequest::DecomposeEvRequest(struct evhttp_request *request, int max_msg_size)
     : event_request_(request), max_msg_size_(max_msg_size) {}
 
@@ -182,8 +181,8 @@ Status RestfulRequest::RestfulReplay(const std::string &replay) {
     return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "decompose_event_request_->event_request_ is nullptr";
   }
   auto resp_headers = evhttp_request_get_output_headers(request);
-  evhttp_add_header(resp_headers, "Content-Type", "application/json");
-  evbuffer_add(replay_buffer_, replay.data(), replay.size());
+  (void)evhttp_add_header(resp_headers, "Content-Type", "application/json");
+  (void)evbuffer_add(replay_buffer_, replay.data(), replay.size());
   evhttp_send_reply(request, HTTP_OK, "Client", replay_buffer_);
   return SUCCESS;
 }
@@ -199,6 +198,5 @@ void RestfulRequest::ErrorMessage(Status status) {
   }
   (void)RestfulReplay(out_error_str);
 }
-
 }  // namespace serving
 }  // namespace mindspore

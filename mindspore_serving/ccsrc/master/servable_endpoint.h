@@ -28,7 +28,6 @@
 #include "master/model_thread.h"
 
 namespace mindspore::serving {
-
 // visit by dispatcher
 class ServableEndPoint {
  public:

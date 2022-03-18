@@ -20,7 +20,6 @@
 #include "worker/stage_function.h"
 
 namespace mindspore::serving {
-
 TaskQueue::TaskQueue() {}
 
 void TaskQueue::Start(const std::string &que_name, const std::vector<TaskInfo> &task_infos,
@@ -154,9 +153,10 @@ void TaskQueue::PopTask(TaskItem *task_item) {
     } else {
       *task_item = task_handle;
       auto &instances_ret = task_item->instance_list;
-      instances_ret.erase(instances_ret.begin() + batch_size, instances_ret.end());
+      (void)instances_ret.erase(instances_ret.begin() + static_cast<ptrdiff_t>(batch_size), instances_ret.end());
       auto &instances_reserved = task_handle.instance_list;
-      instances_reserved.erase(instances_reserved.begin(), instances_reserved.begin() + batch_size);
+      (void)instances_reserved.erase(instances_reserved.begin(),
+                                     instances_reserved.begin() + static_cast<ptrdiff_t>(batch_size));
     }
     MSI_LOG_DEBUG << que_name_ << " Pop instances count " << task_item->instance_list.size()
                   << ", batch size: " << batch_size;
@@ -242,7 +242,7 @@ void PyTaskQueue::PyPushTaskResult(const std::vector<ResultInstance> &outputs) {
     results.push_back(outputs[i]);
   }
   task_queue_.PushTaskResult(instances, results);
-  instance_list.erase(instance_list.begin(), instance_list.begin() + outputs.size());
+  (void)instance_list.erase(instance_list.begin(), instance_list.begin() + static_cast<ptrdiff_t>(outputs.size()));
 }
 
 CppTaskQueueThreadPool::CppTaskQueueThreadPool() = default;
@@ -282,7 +282,7 @@ void CppTaskQueueThreadPool::Start(const std::string &que_name, const std::vecto
   }
   task_queue_.Start(que_name, task_infos, callback);  // start before ThreadFunc thread pool start
   for (uint32_t i = 0; i < size; ++i) {
-    pool_.emplace_back(ThreadFunc, this);
+    (void)pool_.emplace_back(ThreadFunc, this);
   }
 }
 
@@ -334,5 +334,4 @@ Status CppTaskQueueThreadPool::HandleTask(const TaskItem &task_item) {
   }
   return SUCCESS;
 }
-
 }  // namespace mindspore::serving

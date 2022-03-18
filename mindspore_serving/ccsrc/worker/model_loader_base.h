@@ -28,14 +28,13 @@
 #include "worker/inference/inference.h"
 
 namespace mindspore::serving {
-
 class ModelLoaderBase {
  public:
   ModelLoaderBase() = default;
   virtual ~ModelLoaderBase() = default;
 
-  virtual std::vector<TensorInfo> GetInputInfos(uint64_t subgraph = 0) const = 0;
-  virtual std::vector<TensorInfo> GetOutputInfos(uint64_t subgraph = 0) const = 0;
+  virtual std::vector<TensorInfo> GetInputInfos(uint64_t subgraph) const = 0;
+  virtual std::vector<TensorInfo> GetOutputInfos(uint64_t subgraph) const = 0;
   virtual uint64_t GetBatchSize() const = 0;
   virtual uint64_t GetGraphNum() const = 0;
   virtual void Clear() = 0;
@@ -60,10 +59,10 @@ struct ModelExecutorInfo {
 class MS_API DirectModelLoaderBase : public ModelLoaderBase {
  public:
   virtual Status Predict(const std::vector<TensorBasePtr> &input, std::vector<TensorBasePtr> *output,
-                         uint64_t subgraph = 0) = 0;
+                         uint64_t subgraph) = 0;
 
   Status Predict(const std::vector<InstanceData> &inputs, std::vector<ResultInstance> *outputs,
-                 uint64_t subgraph = 0) override;
+                 uint64_t subgraph) override;
 
   Status AfterLoadModel() override;
   bool OwnDevice() const override { return true; }

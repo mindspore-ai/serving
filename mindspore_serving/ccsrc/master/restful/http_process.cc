@@ -177,7 +177,7 @@ std::vector<int64_t> RestfulService::GetArrayShape(const json &json_array) {
       break;
     }
 
-    json_shape.emplace_back(tmp_json->size());
+    (void)json_shape.emplace_back(tmp_json->size());
     tmp_json = &tmp_json->at(0);
   }
 
@@ -653,7 +653,7 @@ Status RestfulService::GetScalarData(const json &js, size_t index, bool is_bytes
         }
         if (origin_size > 0) {
           auto data = reinterpret_cast<T *>(request_tensor->mutable_data()) + index;
-          memcpy_s(data, origin_size, buffer.data(), buffer.size());
+          (void)memcpy_s(data, origin_size, buffer.data(), buffer.size());
         }
       }
     } else {
@@ -951,7 +951,7 @@ Status RestfulService::ParseScalarData(const ProtoTensor &pb_tensor, bool is_byt
       const uint8_t *ptr = nullptr;
       pb_tensor.get_bytes_data(index, &ptr, &length);
       value.resize(length);
-      memcpy_s(value.data(), length, reinterpret_cast<const char *>(ptr), length);
+      (void)memcpy_s(value.data(), length, reinterpret_cast<const char *>(ptr), length);
       *js = value;
     } else {
       auto str_nums = pb_tensor.bytes_data_size();
@@ -968,7 +968,7 @@ Status RestfulService::ParseScalarData(const ProtoTensor &pb_tensor, bool is_byt
       const uint8_t *ptr = nullptr;
       pb_tensor.get_bytes_data(index, &ptr, &length);
       value.resize(length);
-      memcpy_s(value.data(), length, reinterpret_cast<const char *>(ptr), length);
+      (void)memcpy_s(value.data(), length, reinterpret_cast<const char *>(ptr), length);
 
       auto target_size = GetB64TargetSize(length);
       std::vector<uint8_t> buffer(target_size, 0);
@@ -1096,6 +1096,5 @@ Status RestfulService::ParseInstancesReply(const PredictReply &reply, json *cons
   }
   return status;
 }
-
 }  // namespace serving
 }  // namespace mindspore

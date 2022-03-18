@@ -31,7 +31,6 @@
 #include "worker/model_loader_base.h"
 
 namespace mindspore::serving {
-
 struct PredictSubgraphInfo {
   std::vector<TensorInfo> input_infos;
 };

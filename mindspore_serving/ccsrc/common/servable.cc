@@ -20,7 +20,6 @@
 #include "worker/stage_function.h"
 
 namespace mindspore::serving {
-
 void LocalModelMeta::SetModelFormat(const std::string &format) {
   if (format == "om") {
     model_format = kOM;
@@ -132,5 +131,4 @@ const ModelMeta *ServableSignature::GetModelDeclare(const std::string &model_key
   }
   return &(*item);
 }
-
 }  // namespace mindspore::serving

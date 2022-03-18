@@ -28,7 +28,6 @@
 
 namespace mindspore {
 namespace serving {
-
 template <class Derived>
 class WorkerServiceContext : public GrpcAsyncServiceContext<MSWorkerImpl, proto::MSWorker::AsyncService, Derived> {
  public:

@@ -21,14 +21,12 @@
 #include "common/serving_common.h"
 
 namespace mindspore::serving {
-
 using InstanceData = std::vector<TensorBasePtr>;
 
 struct ResultInstance {
   InstanceData data;
   Status error_msg = SUCCESS;
 };
-
 }  // namespace mindspore::serving
 
 #endif  // MINDSPORE_SERVING_INSTANCE_DATA_H

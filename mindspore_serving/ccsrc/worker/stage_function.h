@@ -26,7 +26,6 @@
 #include "common/instance.h"
 
 namespace mindspore::serving {
-
 class CppStageFunctionBase : public std::enable_shared_from_this<CppStageFunctionBase> {
  public:
   CppStageFunctionBase() = default;

@@ -20,7 +20,6 @@
 
 namespace mindspore {
 namespace serving {
-
 ExitSignalHandle &ExitSignalHandle::Instance() {
   static ExitSignalHandle instance;
   return instance;
@@ -28,8 +27,8 @@ ExitSignalHandle &ExitSignalHandle::Instance() {
 
 void ExitSignalHandle::InitSignalHandle() {
   if (!has_inited_.test_and_set()) {
-    signal(SIGINT, HandleSignal);
-    signal(SIGTERM, HandleSignal);
+    (void)signal(SIGINT, HandleSignal);
+    (void)signal(SIGTERM, HandleSignal);
   }
 }
 
@@ -96,6 +95,5 @@ void ExitSignalHandle::HandleSignalInner(int sig) {
     is_running_ = false;
   }
 }
-
 }  // namespace serving
 }  // namespace mindspore

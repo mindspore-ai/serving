@@ -28,7 +28,6 @@
 
 namespace mindspore {
 namespace serving {
-
 using DeviceInfo = std::map<std::string, std::string>;
 
 enum DeviceType {
@@ -126,16 +125,15 @@ class InferenceBase {
                                    const std::string &config_file, bool enable_lite) = 0;
   virtual Status UnloadModel() = 0;
 
-  virtual Status ExecuteModel(const RequestBase &request, ReplyBase *reply, bool return_result,
-                              uint64_t subgraph = 0) = 0;
+  virtual Status ExecuteModel(const RequestBase &request, ReplyBase *reply, bool return_result, uint64_t subgraph) = 0;
   virtual Status ExecuteModel(const std::vector<TensorBasePtr> &request, std::vector<TensorBasePtr> *reply,
-                              bool return_result, uint64_t subgraph = 0) = 0;
+                              bool return_result, uint64_t subgraph) = 0;
 
-  virtual std::vector<TensorInfo> GetInputInfos(uint64_t subgraph = 0) const = 0;
+  virtual std::vector<TensorInfo> GetInputInfos(uint64_t subgraph) const = 0;
 
-  virtual std::vector<TensorInfo> GetOutputInfos(uint64_t subgraph = 0) const = 0;
+  virtual std::vector<TensorInfo> GetOutputInfos(uint64_t subgraph) const = 0;
 
-  virtual ssize_t GetBatchSize(uint64_t subgraph = 0) const = 0;
+  virtual ssize_t GetBatchSize(uint64_t subgraph) const = 0;
 
   virtual bool CheckModelSupport(DeviceType device_type, ModelType model_type) const = 0;
 

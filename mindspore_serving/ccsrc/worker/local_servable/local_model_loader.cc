@@ -22,7 +22,6 @@
 #include "worker/servable_register.h"
 
 namespace mindspore::serving {
-
 LocalModelLoader::~LocalModelLoader() { Clear(); }
 
 uint64_t LocalModelLoader::GetGraphNum() const {
@@ -58,7 +57,7 @@ uint64_t LocalModelLoader::GetBatchSize() const {
   if (!model_session_) {
     MSI_LOG_EXCEPTION << "Model '" << GetModelKey() << "' has not been loaded";
   }
-  return model_session_->GetBatchSize();
+  return model_session_->GetBatchSize(0);
 }
 
 Status LocalModelLoader::LoadModel(const std::string &servable_directory, const std::string &servable_name,
@@ -94,7 +93,6 @@ Status LocalModelLoader::LoadModel(const std::string &servable_directory, const 
 }
 
 Status LocalModelLoader::InitDevice(ModelType model_type) {
-  Status status;
   auto context = ServableContext::Instance();
   auto device_type = context->GetDeviceType();
   auto lite_backend = InferenceLoader::Instance().GetEnableLite();
@@ -166,10 +164,9 @@ Status LocalModelLoader::LoadModel(uint64_t version_number, const std::string &d
 
 void LocalModelLoader::Clear() {
   if (model_session_ != nullptr) {
-    model_session_->UnloadModel();
+    (void)model_session_->UnloadModel();
     model_session_ = nullptr;
   }
   model_loaded_ = false;
 }
-
 }  // namespace mindspore::serving

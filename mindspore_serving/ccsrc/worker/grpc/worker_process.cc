@@ -45,6 +45,5 @@ void MSWorkerImpl::PredictAsync(const proto::PredictRequest *request, proto::Pre
     on_finish();
   }
 }
-
 }  // namespace serving
 }  // namespace mindspore

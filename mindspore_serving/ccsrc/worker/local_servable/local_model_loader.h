@@ -29,17 +29,16 @@
 #include "worker/inference/inference.h"
 
 namespace mindspore::serving {
-
 class MS_API LocalModelLoader : public DirectModelLoaderBase {
  public:
   LocalModelLoader() = default;
   ~LocalModelLoader() override;
 
   Status Predict(const std::vector<TensorBasePtr> &input, std::vector<TensorBasePtr> *output,
-                 uint64_t subgraph = 0) override;
+                 uint64_t subgraph) override;
 
-  std::vector<TensorInfo> GetInputInfos(uint64_t subgraph = 0) const override;
-  std::vector<TensorInfo> GetOutputInfos(uint64_t subgraph = 0) const override;
+  std::vector<TensorInfo> GetInputInfos(uint64_t subgraph) const override;
+  std::vector<TensorInfo> GetOutputInfos(uint64_t subgraph) const override;
   uint64_t GetBatchSize() const override;
   uint64_t GetGraphNum() const override;
 

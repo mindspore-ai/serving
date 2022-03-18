@@ -23,7 +23,6 @@
 
 namespace mindspore {
 namespace serving {
-
 GrpcNotifyWorker::GrpcNotifyWorker(const std::string &worker_address) {
   worker_address_ = worker_address;
   std::shared_ptr<grpc::Channel> channel = GrpcServer::CreateChannel(worker_address);
@@ -50,6 +49,5 @@ Status GrpcNotifyWorker::DispatchAsync(const proto::PredictRequest &request, pro
   client_->PredictAsync(request, reply, stub_.get(), callback, worker_address_);
   return SUCCESS;
 }
-
 }  // namespace serving
 }  // namespace mindspore

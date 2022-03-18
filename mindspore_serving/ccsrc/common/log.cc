@@ -22,8 +22,7 @@
 
 namespace mindspore {
 namespace serving {
-
-int g_ms_serving_log_level = LOG_WARNING;
+int g_ms_serving_log_level = static_cast<int>(LOG_WARNING);
 
 #undef Dlog
 #define Dlog(module_id, level, format, ...)                   \
@@ -32,32 +31,32 @@ int g_ms_serving_log_level = LOG_WARNING;
   } while (0)
 
 static std::string GetTimeString() {
-#define BUFLEN 80
-  static char buf[BUFLEN];
+  constexpr auto BUFLEN = 80;
+  char buf[BUFLEN];
+  (void)memset(buf, '\0', BUFLEN);
 #if defined(_WIN32) || defined(_WIN64)
   time_t time_seconds = time(0);
   struct tm now_time;
   localtime_s(&now_time, &time_seconds);
-  sprintf_s(buf, BUFLEN, "%d-%d-%d %d:%d:%d", now_time.tm_year + 1900, now_time.tm_mon + 1, now_time.tm_mday,
-            now_time.tm_hour, now_time.tm_min, now_time.tm_sec);
+  constexpr int base_year = 1900;
+  (void)snprintf(buf, BUFLEN, "%d-%d-%d %d:%d:%d", now_time.tm_year + base_year, now_time.tm_mon + 1, now_time.tm_mday,
+                 now_time.tm_hour, now_time.tm_min, now_time.tm_sec);
 #else
   struct timeval cur_time;
   (void)gettimeofday(&cur_time, nullptr);
 
   struct tm now;
+  constexpr size_t time_str_len = 19;
+  constexpr int64_t time_convert_unit = 1000;
   (void)localtime_r(&cur_time.tv_sec, &now);
   (void)strftime(buf, BUFLEN, "%Y-%m-%d-%H:%M:%S", &now);  // format date and time
-  // set micro-second
-  buf[27] = '\0';
-  int idx = 26;
-  auto num = cur_time.tv_usec;
-  for (int i = 5; i >= 0; i--) {
-    buf[idx--] = static_cast<char>(num % 10 + '0');
-    num /= 10;
-    if (i % 3 == 0) {
-      buf[idx--] = '.';
-    }
-  }
+#ifdef __APPLE__
+  constexpr auto fmt_str = ".%03lld.%03lld";
+#else
+  constexpr auto fmt_str = ".%03ld.%03ld";
+#endif
+  (void)snprintf(buf + time_str_len, BUFLEN - time_str_len, fmt_str, cur_time.tv_usec / time_convert_unit,
+                 cur_time.tv_usec % time_convert_unit);
 #endif
   return std::string(buf);
 }
@@ -114,11 +113,11 @@ static int GetGlogLevel(MsLogLevel level) {
 static int GetThresholdLevel(const std::string &threshold) {
   if (threshold.empty()) {
     return google::GLOG_WARNING;
-  } else if (threshold == std::to_string(LOG_DEBUG) || threshold == std::to_string(LOG_INFO)) {
+  } else if (threshold == "DEBUG" || threshold == "INFO") {
     return google::GLOG_INFO;
-  } else if (threshold == std::to_string(LOG_WARNING)) {
+  } else if (threshold == "WARNING") {
     return google::GLOG_WARNING;
-  } else if (threshold == std::to_string(LOG_ERROR)) {
+  } else if (threshold == "ERROR" || threshold == "CRITICAL") {
     return google::GLOG_ERROR;
   } else {
     return google::GLOG_WARNING;
@@ -136,7 +135,7 @@ void LogWriter::OutputLog(const std::string &msg_str) const {
     << "[" << file_ << ":" << line_ << "] " << func_ << "] " << msg_str << std::endl;
 }
 
-static MsLogLevel GetGlobalLogLevel() { return static_cast<MsLogLevel>(FLAGS_v); }
+static int GetGlobalLogLevel() { return FLAGS_v; }
 
 enum class LogConfigToken : size_t {
   INVALID,      // indicate invalid token
@@ -333,7 +332,7 @@ void InitSubModulesLogLevel() {
         MSI_LOG(WARNING) << "Illegal log level value " << cfg.second << " for " << cfg.first << ", ignore it.";
         continue;
       }
-      g_ms_serving_log_level = submodule_log_level;
+      g_ms_serving_log_level = static_cast<int>(submodule_log_level);
     }
   }
 }
@@ -345,7 +344,7 @@ void common_log_init(void) {
   FLAGS_logbufsecs = 0;
   // set default log level to WARNING
   if (common::GetEnv("GLOG_v").empty()) {
-    FLAGS_v = mindspore::serving::LOG_WARNING;
+    FLAGS_v = static_cast<int>(mindspore::serving::LOG_WARNING);
   }
 
   // set default log file mode to 0640
@@ -367,7 +366,6 @@ void common_log_init(void) {
 
   mindspore::serving::InitSubModulesLogLevel();
 }
-
 }  // namespace serving
 }  // namespace mindspore
 

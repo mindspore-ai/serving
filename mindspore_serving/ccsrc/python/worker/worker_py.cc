@@ -29,7 +29,6 @@
 #include "worker/context.h"
 
 namespace mindspore::serving {
-
 void PyWorker::StartServable(const std::string &servable_directory, const std::string &servable_name,
                              uint32_t version_number, const std::string &master_address,
                              const std::string &worker_address, const std::string &dec_key,
@@ -74,7 +73,7 @@ Status PyWorker::LoadLocalModels(const std::string &servable_directory, const st
       local_models_loader->Clear();
       return status;
     }
-    models_loader->emplace(model_key, local_models_loader);
+    (void)models_loader->emplace(model_key, local_models_loader);
   }
   return SUCCESS;
 }
@@ -252,5 +251,4 @@ bool PyWorker::SupportReuseDevice() { return InferenceLoader::Instance().Support
 void PyWorker::NotifyFailed(const std::string &master_address, const std::string &error_msg) {
   GrpcNotifyMaster::NotifyFailed(master_address, error_msg);
 }
-
 }  // namespace mindspore::serving

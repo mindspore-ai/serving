@@ -23,7 +23,6 @@
 
 namespace mindspore {
 namespace serving {
-
 extern "C" {
 MS_API InferenceBase *ServingCreateInfer() {
   auto obj = new MindSporeModelWrap();
@@ -181,7 +180,7 @@ Status MindSporeModelWrap::LoadModelFromFileInner(serving::DeviceType device_typ
     if (file_names.size() > 1) {
       ms_status = mindspore::Serialization::Load(file_names, ms_model_type, &graphs, key, dec_mode);
     } else {
-      graphs.emplace_back(mindspore::Graph());
+      (void)graphs.emplace_back(mindspore::Graph());
       ms_status = mindspore::Serialization::Load(file_names[0], ms_model_type, &graphs[0], key, dec_mode);
     }
 
@@ -530,7 +529,7 @@ Status MindSporeModelWrap::ExecuteModel(const RequestBase &request, serving::Rep
     }
     auto tensor = reply->add();
     MSI_EXCEPTION_IF_NULL(tensor);
-    tensor->set_data(result_tensor.Data().get(), result_tensor.DataSize());
+    (void)tensor->set_data(result_tensor.Data().get(), result_tensor.DataSize());
     tensor->set_data_type(data_type);
     tensor->set_shape(shape);
   };

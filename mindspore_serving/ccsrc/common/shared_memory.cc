@@ -22,7 +22,6 @@
 
 namespace mindspore {
 namespace serving {
-
 SharedMemoryAllocator &SharedMemoryAllocator::Instance() {
   static SharedMemoryAllocator instance;
   return instance;
@@ -63,7 +62,7 @@ Status SharedMemoryAllocator::AddShmMemoryBuffer(SharedMemoryGroup *shm_group) {
   }
 
   uint64_t memory_size = align_item_size * item_count;
-  auto ret = ftruncate(shm_fd, memory_size);
+  auto ret = ftruncate(shm_fd, static_cast<int64_t>(memory_size));
   if (ret == -1) {
     return INFER_STATUS_LOG_ERROR(FAILED)
            << "Failed to ftruncate " << memory_key << ", errno: " << errno << ", memory size: " << memory_size;
@@ -83,7 +82,7 @@ Status SharedMemoryAllocator::AddShmMemoryBuffer(SharedMemoryGroup *shm_group) {
   shm.bytes_size = memory_size;
   uint64_t offset = 0;
   for (uint64_t i = 0; i < item_count; i++) {
-    shm.free_queue.emplace(offset);
+    (void)shm.free_queue.emplace(offset);
     offset += align_item_size;
   }
   shm_group->free_count += item_count;
@@ -135,7 +134,7 @@ Status SharedMemoryAllocator::AllocMemoryItem(const std::string &memory_key_pref
       shm_item->offset = *shm.free_queue.begin();
       shm_item->offset_address = shm.address + shm_item->offset;
       shm_item->size = group.item_size;
-      shm.free_queue.erase(shm_item->offset);
+      (void)shm.free_queue.erase(shm_item->offset);
       group.free_count -= 1;
       return SUCCESS;
     }
@@ -159,7 +158,7 @@ void SharedMemoryAllocator::ReleaseMemoryItem(const SharedMemoryItem &shm_item) 
     MSI_LOG_EXCEPTION << "Shared memory " << shm_item.memory_key
                       << " has already been in free set, offset: " << shm_item.offset;
   }
-  shm_it->second.free_queue.emplace(shm_item.offset);
+  (void)shm_it->second.free_queue.emplace(shm_item.offset);
   it->second.free_count += 1;
 }
 
@@ -215,7 +214,7 @@ Status SharedMemoryManager::Detach(const std::string &memory_key) {
   if (ret == -1) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Failed to munmap, memory key: " << memory_key;
   }
-  attached_shm_list_.erase(it);
+  (void)attached_shm_list_.erase(it);
   return SUCCESS;
 }
 
@@ -246,6 +245,5 @@ Status SharedMemoryManager::Attach(const std::string &memory_key, uint64_t bytes
   attached_shm_list_.push_back(*attach_mem);
   return SUCCESS;
 }
-
 }  // namespace serving
 }  // namespace mindspore

@@ -20,7 +20,6 @@
 
 namespace mindspore {
 namespace serving {
-
 WorkerAgentStartUp &WorkerAgentStartUp::Instance() {
   static WorkerAgentStartUp instance;
   return instance;
@@ -46,6 +45,5 @@ Status WorkerAgentStartUp::NotifyFailed(const std::string &distributed_address) 
 void WorkerAgentStartUp::StartupNotifyExit(const std::string &distributed_address, const std::string &agent_ip) {
   GrpcNotifyDistributeWorker::StartupNotifyExit(distributed_address, agent_ip);
 }
-
 }  // namespace serving
 }  // namespace mindspore

@@ -26,7 +26,6 @@
 
 namespace mindspore {
 namespace serving {
-
 struct OneRankConfig {
   std::string ip;
   uint32_t device_id = 0;

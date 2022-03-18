@@ -29,7 +29,6 @@ namespace py = pybind11;
 
 namespace mindspore {
 namespace serving {
-
 class MS_API PyAgent {
  public:
   static void StartAgent(const AgentStartUpConfig &start_config, const std::string &dec_key,

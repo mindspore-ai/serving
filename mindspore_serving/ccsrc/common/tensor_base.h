@@ -29,7 +29,6 @@
 
 namespace mindspore {
 namespace serving {
-
 enum DataType {
   kMSI_Unknown = 0,
   kMSI_Bool = 1,

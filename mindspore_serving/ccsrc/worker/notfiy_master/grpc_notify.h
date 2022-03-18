@@ -28,7 +28,6 @@
 
 namespace mindspore {
 namespace serving {
-
 class MS_API GrpcNotifyMaster : public BaseNotifyMaster {
  public:
   GrpcNotifyMaster(const std::string &master_address, const std::string &worker_address);

@@ -26,7 +26,6 @@
 
 namespace mindspore {
 namespace serving {
-
 class MS_API BaseNotifyAgent {
  public:
   BaseNotifyAgent() = default;

@@ -22,7 +22,6 @@
 #include "worker/worker.h"
 
 namespace mindspore::serving {
-
 Status RemoteCallModel::InitRemote(const std::string &servable_name, uint32_t version_number,
                                    const std::string &master_address,
                                    std::map<std::string, std::shared_ptr<ModelLoaderBase>> *models) {
@@ -42,7 +41,7 @@ Status RemoteCallModel::InitRemote(const std::string &servable_name, uint32_t ve
     auto &model_name = model_it.first;
     auto &model_info = model_it.second;
     auto model_loader = std::make_shared<RemoteCallModel>();
-    models->emplace(model_name, model_loader);
+    (void)models->emplace(model_name, model_loader);
     status = model_loader->InitModel(model_name, version_number, model_info);
     if (status != SUCCESS) {
       for (auto &item : *models) {
@@ -122,6 +121,7 @@ Status RemoteCallModel::Predict(const std::vector<InstanceData> &inputs, std::ve
 Status RemoteCallModel::InitModelExecuteInfo() {
   auto pid = getpid();
   Status status;
+  constexpr uint32_t cache_times = 3;
   auto &shared_memory = SharedMemoryAllocator::Instance();
   for (auto &subgraph : subgraph_contexts_) {
     for (size_t i = 0; i < subgraph.input_infos.size(); i++) {
@@ -132,7 +132,7 @@ Status RemoteCallModel::InitModelExecuteInfo() {
       }
       auto memory_key = model_key_ + "_subgraph" + std::to_string(subgraph.subgraph) + "_input" + std::to_string(i) +
                         "_pid" + std::to_string(pid);
-      uint64_t init_count = batch_size_ * 3;
+      uint64_t init_count = batch_size_ * cache_times;
       status = shared_memory.NewMemoryBuffer(memory_key, size_one_batch, init_count);
       if (status != SUCCESS) {
         return INFER_STATUS_LOG_ERROR(FAILED)
@@ -148,13 +148,13 @@ Status RemoteCallModel::InitModelExecuteInfo() {
         output_info.size_one_batch = tensor_info.size;
       } else {
         output_info.shape_one_batch = tensor_info.shape;
-        output_info.shape_one_batch.erase(output_info.shape_one_batch.begin());
+        (void)output_info.shape_one_batch.erase(output_info.shape_one_batch.begin());
         // the batch size has been checked in WorkerExecutor
         output_info.size_one_batch = tensor_info.size / batch_size_;
       }
       auto memory_key = model_key_ + "_subgraph" + std::to_string(subgraph.subgraph) + "_output" + std::to_string(i) +
                         "_pid" + std::to_string(pid);
-      uint64_t init_count = batch_size_ * 3;
+      uint64_t init_count = batch_size_ * cache_times;
       status = shared_memory.NewMemoryBuffer(memory_key, output_info.size_one_batch, init_count);
       if (status != SUCCESS) {
         return INFER_STATUS_LOG_ERROR(FAILED)
@@ -166,5 +166,4 @@ Status RemoteCallModel::InitModelExecuteInfo() {
   }
   return SUCCESS;
 }
-
 }  // namespace mindspore::serving

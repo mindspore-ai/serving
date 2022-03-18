@@ -26,7 +26,6 @@
 
 namespace mindspore {
 namespace serving {
-
 class MS_API GrpcNotifyAgent : public BaseNotifyAgent {
  public:
   explicit GrpcNotifyAgent(const std::string &worker_address);

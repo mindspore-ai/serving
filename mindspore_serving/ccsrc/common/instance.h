@@ -24,7 +24,6 @@
 #include "common/instance_data.h"
 
 namespace mindspore::serving {
-
 struct Instance {
   InstanceData data;  // for inputs of function, predict, output
 
@@ -38,7 +37,6 @@ struct Instance {
 };
 
 using InstancePtr = std::shared_ptr<Instance>;
-
 }  // namespace mindspore::serving
 
 #endif  // MINDSPORE_SERVING_INSTANCE_H

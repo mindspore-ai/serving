@@ -32,7 +32,6 @@
 #include "master/worker_context.h"
 
 namespace mindspore::serving {
-
 struct Task {
   const proto::Instance *input = nullptr;
   const proto::Instance *output = nullptr;

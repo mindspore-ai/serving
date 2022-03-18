@@ -31,7 +31,6 @@
 #include "common/instance.h"
 
 namespace mindspore::serving {
-
 struct TaskInfo {
   std::string group_name;  // method name
   std::string task_name;   // function name, model name

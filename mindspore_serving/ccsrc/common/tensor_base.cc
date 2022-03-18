@@ -21,13 +21,12 @@
 #define TENSOR_MAX_ELEMENT_COUNT UINT32_MAX
 
 namespace mindspore::serving {
-
 TensorBase::TensorBase() = default;
 TensorBase::~TensorBase() = default;
 
 bool TensorBase::set_data(const void *data, size_t data_len) {
   if (data_size() != data_len) {
-    resize_data(data_len);
+    (void)resize_data(data_len);
     if (data_len == 0) {
       MSI_LOG_INFO << "set data to data len 0";
       return true;
@@ -41,7 +40,7 @@ bool TensorBase::set_data(const void *data, size_t data_len) {
     MSI_LOG_ERROR << "set data failed, tensor current data size " << data_size() << " not match data len " << data_len;
     return false;
   }
-  memcpy_s(mutable_data(), data_size(), data, data_len);
+  (void)memcpy_s(mutable_data(), data_size(), data, data_len);
   return true;
 }
 
@@ -86,7 +85,7 @@ void TensorBase::assign(const TensorBase &other) {
       add_bytes_data(data, data_len);
     }
   } else {
-    set_data(other.data(), other.data_size());
+    (void)set_data(other.data(), other.data_size());
   }
 }
 
@@ -106,5 +105,4 @@ LogStream &operator<<(LogStream &stream, DataType data_type) {
   }
   return stream;
 }
-
 }  // namespace mindspore::serving

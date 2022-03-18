@@ -23,10 +23,9 @@
 #include <vector>
 
 namespace mindspore::serving {
-
 ThreadPool::ThreadPool(uint32_t size) : is_stoped_(false), idle_thrd_num_(size < 1 ? 1 : size) {
   for (uint32_t i = 0; i < idle_thrd_num_; ++i) {
-    pool_.emplace_back(ThreadFunc, this);
+    (void)pool_.emplace_back(ThreadFunc, this);
   }
 }
 
@@ -64,9 +63,9 @@ void ThreadPool::ThreadFunc(ThreadPool *thread_pool) {
       task = std::move(thread_pool->tasks_.front());
       thread_pool->tasks_.pop();
     }
-    --thread_pool->idle_thrd_num_;
+    thread_pool->idle_thrd_num_ -= 1;
     task();
-    ++thread_pool->idle_thrd_num_;
+    thread_pool->idle_thrd_num_ += 1;
   }
 }
 }  // namespace mindspore::serving

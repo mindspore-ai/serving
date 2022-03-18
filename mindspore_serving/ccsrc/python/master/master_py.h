@@ -29,7 +29,6 @@ namespace py = pybind11;
 
 namespace mindspore {
 namespace serving {
-
 class MS_API PyMaster {
  public:
   static void StartGrpcServer(const std::string &socket_address, const SSLConfig &ssl_config,

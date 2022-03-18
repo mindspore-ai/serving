@@ -31,7 +31,6 @@
 #include "common/shared_memory.h"
 
 namespace mindspore::serving {
-
 class ProtoTensor : public TensorBase {
  public:
   // the other's lifetime must longer than this object
@@ -106,6 +105,5 @@ class MS_API GrpcTensorHelper {
 };
 
 extern MS_API LogStream &operator<<(serving::LogStream &stream, proto::DataType data_type);
-
 }  // namespace mindspore::serving
 #endif  // MINDSPORE_SERVING_PROTO_TENSOR_H_

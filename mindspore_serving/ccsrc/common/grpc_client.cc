@@ -20,6 +20,5 @@ namespace mindspore {
 namespace serving {
 std::unique_ptr<MSPredictClient> client_;
 std::unique_ptr<MSDistributedClient> distributed_client_;
-
 }  // namespace serving
 }  // namespace mindspore

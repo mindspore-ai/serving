@@ -27,7 +27,6 @@
 #include "worker/inference/inference.h"
 
 namespace mindspore::serving {
-
 enum MethodStageType {
   kMethodStageTypeNone = 0,
   kMethodStageTypePyFunction,
@@ -168,7 +167,6 @@ struct WorkerAgentSpec {
   uint32_t batch_size = 0;
   uint64_t subgraph = 0;
 };
-
 }  // namespace mindspore::serving
 
 #endif  // MINDSPORE_SERVING_SERVABLE_H

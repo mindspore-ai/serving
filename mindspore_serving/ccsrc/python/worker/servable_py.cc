@@ -21,7 +21,6 @@
 #include "worker/worker.h"
 
 namespace mindspore::serving {
-
 void PyServableRegister::RegisterMethod(const MethodSignature &method) {
   auto status = ServableRegister::Instance().RegisterMethod(method);
   if (status != SUCCESS) {
@@ -103,5 +102,4 @@ py::tuple PyServableRegister::Run(const std::string &model_key, const py::tuple 
   }
   return outputs;
 }
-
 }  // namespace mindspore::serving

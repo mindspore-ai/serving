@@ -26,7 +26,6 @@
 
 namespace mindspore {
 namespace serving {
-
 GrpcNotifyMaster::GrpcNotifyMaster(const std::string &master_address, const std::string &worker_address)
     : master_address_(master_address), worker_address_(worker_address) {
   auto channel = GrpcServer::CreateChannel(master_address_);
@@ -252,6 +251,5 @@ Status GrpcNotifyMaster::CallModel(const RemoteCallModelContext &model_context,
   }
   return status;
 }
-
 }  // namespace serving
 }  // namespace mindspore

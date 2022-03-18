@@ -23,7 +23,6 @@
 
 namespace mindspore {
 namespace serving {
-
 // Handle Ctrl+C signal. When the master or worker is waiting for the Ctrl+C signal,
 // it can continue to perform subsequent operations, such as cleaning.
 class MS_API ExitSignalHandle {
@@ -48,7 +47,6 @@ class MS_API ExitSignalHandle {
   static void HandleSignal(int sig);
   void HandleSignalInner(int sig);
 };
-
 }  // namespace serving
 }  // namespace mindspore
 

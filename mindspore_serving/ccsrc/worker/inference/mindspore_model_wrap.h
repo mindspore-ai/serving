@@ -33,7 +33,6 @@
 
 namespace mindspore {
 namespace serving {
-
 struct ApiModelInfo {
   std::vector<std::string> input_names;
   std::vector<serving::TensorInfo> input_tensor_infos;
@@ -63,15 +62,15 @@ class MindSporeModelWrap : public InferenceBase {
                            bool enable_lite) override;
 
   Status UnloadModel() override;
-  Status ExecuteModel(const RequestBase &request, ReplyBase *reply, bool return_result, uint64_t subgraph = 0) override;
+  Status ExecuteModel(const RequestBase &request, ReplyBase *reply, bool return_result, uint64_t subgraph) override;
   Status ExecuteModel(const std::vector<TensorBasePtr> &request, std::vector<TensorBasePtr> *reply, bool return_result,
-                      uint64_t subgraph = 0) override;
+                      uint64_t subgraph) override;
 
-  std::vector<serving::TensorInfo> GetInputInfos(uint64_t subgraph = 0) const override;
+  std::vector<serving::TensorInfo> GetInputInfos(uint64_t subgraph) const override;
 
-  std::vector<serving::TensorInfo> GetOutputInfos(uint64_t subgraph = 0) const override;
+  std::vector<serving::TensorInfo> GetOutputInfos(uint64_t subgraph) const override;
 
-  ssize_t GetBatchSize(uint64_t subgraph = 0) const override;
+  ssize_t GetBatchSize(uint64_t subgraph) const override;
 
   bool CheckModelSupport(DeviceType device_type, ModelType model_type) const override;
 
@@ -88,7 +87,7 @@ class MindSporeModelWrap : public InferenceBase {
   using FuncMakeOutTensor =
     std::function<void(const mindspore::MSTensor, DataType data_type, const std::vector<int64_t> &shape)>;
   Status ExecuteModelCommon(size_t request_size, const FuncMakeInBuffer &in_func, const FuncMakeOutTensor &out_func,
-                            bool return_result, uint64_t subgraph = 0);
+                            bool return_result, uint64_t subgraph);
   Status GetModelInfos(ApiModelInfo *model_info);
   Status SetApiModelInfo(serving::DeviceType device_type, uint32_t device_id,
                          const std::vector<std::string> &file_names, ModelType model_type, bool with_batch_dim,

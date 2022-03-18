@@ -23,7 +23,6 @@
 #include "worker/model_loader_base.h"
 
 namespace mindspore::serving {
-
 struct RemoteCallModelContext {
   uint32_t version_number;
   std::string model_name;
