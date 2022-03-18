@@ -37,7 +37,7 @@ void CppStageFunctionStorage::Unregister(const std::string &function_name) {
 }
 
 CppStageFunctionStorage &CppStageFunctionStorage::Instance() {
-  static CppStageFunctionStorage storage;
+  static CppStageFunctionStorage storage = CppStageFunctionStorage();
   return storage;
 }
 
@@ -56,7 +56,7 @@ CppRegStageFunction::CppRegStageFunction(const std::string &function_name,
   register_success_ = CppStageFunctionStorage::Instance().Register(function_name, std::move(function));
 }
 
-CppRegStageFunction::~CppRegStageFunction() {
+CppRegStageFunction::~CppRegStageFunction() noexcept {
   if (register_success_) {
     MSI_LOG_INFO << "Unregister C++ function " << func_name_;
     CppStageFunctionStorage::Instance().Unregister(func_name_);
@@ -67,7 +67,7 @@ PyStageFunctionStorage::PyStageFunctionStorage() = default;
 PyStageFunctionStorage::~PyStageFunctionStorage() = default;
 
 std::shared_ptr<PyStageFunctionStorage> PyStageFunctionStorage::Instance() {
-  static std::shared_ptr<PyStageFunctionStorage> instance;
+  static std::shared_ptr<PyStageFunctionStorage> instance = nullptr;
   if (instance == nullptr) {
     instance = std::make_shared<PyStageFunctionStorage>();
   }

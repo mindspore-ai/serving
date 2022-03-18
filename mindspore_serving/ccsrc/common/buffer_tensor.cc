@@ -16,7 +16,7 @@
 
 #include "common/buffer_tensor.h"
 namespace mindspore::serving {
-BufferTensor::BufferTensor(DataType type, const std::vector<int64_t> shape, uint8_t *data, size_t data_len,
+BufferTensor::BufferTensor(DataType type, const std::vector<int64_t> &shape, uint8_t *data, size_t data_len,
                            bool data_readonly) {
   set_shape(shape);
   set_data_type(type);

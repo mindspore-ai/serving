@@ -21,7 +21,7 @@
 namespace mindspore {
 namespace serving {
 ServableRegister &ServableRegister::Instance() {
-  static ServableRegister storage;
+  static ServableRegister storage = ServableRegister();
   return storage;
 }
 

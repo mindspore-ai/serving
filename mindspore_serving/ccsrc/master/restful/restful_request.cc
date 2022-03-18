@@ -41,7 +41,7 @@ std::string DecomposeEvRequest::UrlQuery(const std::string &url, const std::stri
     }
   }
 
-  int key_size = key.size() + 1;
+  size_t key_size = key.size() + 1;
   std::string::size_type end_pos(0);
   if ((start_pos = url.find(key)) != std::string::npos) {
     end_pos = std::min(url.find(kUrlSplit, start_pos + key_size), url.find(kUrlKeyEnd, start_pos + key_size));
@@ -91,14 +91,12 @@ Status DecomposeEvRequest::GetPostMessageToJson() {
 }
 
 Status DecomposeEvRequest::CheckRequestMethodValid() {
-  Status status(SUCCESS);
-  switch (evhttp_request_get_command(event_request_)) {
-    case EVHTTP_REQ_POST:
-      request_method_ = "POST";
-      return status;
-    default:
-      return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "http message only support POST right now";
+  auto cmd = evhttp_request_get_command(event_request_);
+  if (cmd != EVHTTP_REQ_POST) {
+    return INFER_STATUS_LOG_ERROR(INVALID_INPUTS) << "http message only support POST right now";
   }
+  request_method_ = "POST";
+  return SUCCESS;
 }
 
 Status DecomposeEvRequest::Decompose() {
@@ -187,7 +185,7 @@ Status RestfulRequest::RestfulReplay(const std::string &replay) {
   return SUCCESS;
 }
 
-void RestfulRequest::ErrorMessage(Status status) {
+void RestfulRequest::ErrorMessage(const Status &status) {
   std::string out_error_str;
   try {
     nlohmann::json error_json = {{"error_msg", status.StatusMessage()}};

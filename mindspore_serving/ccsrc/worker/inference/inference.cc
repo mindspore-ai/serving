@@ -57,7 +57,7 @@ InferenceLoader::~InferenceLoader() {
 }
 
 InferenceLoader &InferenceLoader::Instance() {
-  static InferenceLoader inference;
+  static InferenceLoader inference = InferenceLoader();
   return inference;
 }
 

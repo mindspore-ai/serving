@@ -21,7 +21,7 @@
 namespace mindspore {
 namespace serving {
 ExitSignalHandle &ExitSignalHandle::Instance() {
-  static ExitSignalHandle instance;
+  static ExitSignalHandle instance = ExitSignalHandle();
   return instance;
 }
 

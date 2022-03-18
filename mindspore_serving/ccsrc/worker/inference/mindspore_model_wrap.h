@@ -119,7 +119,7 @@ class MindSporeModelWrap : public InferenceBase {
 class ApiBufferTensorWrap : public TensorBase {
  public:
   ApiBufferTensorWrap();
-  ApiBufferTensorWrap(DataType type, std::vector<int64_t> shape, const mindspore::MSTensor &buffer);
+  ApiBufferTensorWrap(DataType type, const std::vector<int64_t> &shape, const mindspore::MSTensor &buffer);
   ~ApiBufferTensorWrap() override;
 
   void set_data_type(DataType type) override { type_ = type; }
@@ -131,16 +131,16 @@ class ApiBufferTensorWrap : public TensorBase {
   const uint8_t *data() const override { return static_cast<const uint8_t *>(tensor_.Data().get()); }
   size_t data_size() const override { return tensor_.DataSize(); }
 
-  bool resize_data(size_t data_len) override { MSI_LOG_EXCEPTION << "ApiBufferTensorWrap not support resize data"; }
+  bool resize_data(size_t) override { MSI_LOG_EXCEPTION << "ApiBufferTensorWrap not support resize data"; }
   uint8_t *mutable_data() override { return static_cast<uint8_t *>(tensor_.MutableData()); }
 
   // For kMSI_String and kMSI_Bytes
   void clear_bytes_data() override { MSI_LOG_EXCEPTION << "Not support for mindspore::Buffer Tensor"; }
-  void add_bytes_data(const uint8_t *data, size_t bytes_len) override {
+  void add_bytes_data(const uint8_t *, size_t) override {
     MSI_LOG_EXCEPTION << "Not support for mindspore::MSTensor Tensor";
   }
   size_t bytes_data_size() const override { MSI_LOG_EXCEPTION << "Not support for mindspore::Buffer Tensor"; }
-  void get_bytes_data(size_t index, const uint8_t **data, size_t *bytes_len) const override {
+  void get_bytes_data(size_t, const uint8_t **, size_t *) const override {
     MSI_LOG_EXCEPTION << "Not support for mindspore::MSTensor Tensor";
   }
 

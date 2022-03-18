@@ -155,7 +155,7 @@ Status Dispatcher::NotifyWorkerExit(const proto::ExitRequest &request, proto::Ex
   return UnregisterServableCommon(request.address());
 }
 
-Status Dispatcher::NotifyWorkerNotAlive(WorkerContext *worker_context) {
+void Dispatcher::UnregisterWorkerContext(WorkerContext *worker_context) {
   MSI_EXCEPTION_IF_NULL(worker_context);
   std::unique_lock<std::shared_mutex> lock(servable_shared_lock_);
   auto worker_spec = worker_context->GetWorkerSpec();
@@ -171,26 +171,18 @@ Status Dispatcher::NotifyWorkerNotAlive(WorkerContext *worker_context) {
   if (endpoint) {
     endpoint->UnregisterWorker(worker_context->GetWorkerAddress());
   }
+}
+
+Status Dispatcher::NotifyWorkerNotAlive(WorkerContext *worker_context) {
+  MSI_EXCEPTION_IF_NULL(worker_context);
+  UnregisterWorkerContext(worker_context);
   worker_context->OnNotAlive();
   return SUCCESS;
 }
 
 Status Dispatcher::NotifyWorkerNotAvailable(WorkerContext *worker_context) {
   MSI_EXCEPTION_IF_NULL(worker_context);
-  std::unique_lock<std::shared_mutex> lock(servable_shared_lock_);
-  auto worker_spec = worker_context->GetWorkerSpec();
-  auto &servable_spec = worker_spec.servable_spec;
-  std::shared_ptr<ServableEndPoint> endpoint = nullptr;
-  for (auto &item : servable_list_) {
-    if (item->GetServableName() == servable_spec.servable_name &&
-        item->GetVersionNumber() == servable_spec.version_number) {
-      endpoint = item;
-      break;
-    }
-  }
-  if (endpoint) {
-    endpoint->UnregisterWorker(worker_context->GetWorkerAddress());
-  }
+  UnregisterWorkerContext(worker_context);
   worker_context->OnNotAvailable();
   return SUCCESS;
 }

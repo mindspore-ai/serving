@@ -23,12 +23,12 @@
 namespace mindspore {
 namespace serving {
 SharedMemoryAllocator &SharedMemoryAllocator::Instance() {
-  static SharedMemoryAllocator instance;
+  static SharedMemoryAllocator instance = SharedMemoryAllocator();
   return instance;
 }
 
 SharedMemoryAllocator::SharedMemoryAllocator() = default;
-SharedMemoryAllocator::~SharedMemoryAllocator() {
+SharedMemoryAllocator::~SharedMemoryAllocator() noexcept {
   std::unique_lock<std::mutex> lock(lock_);
   for (auto &item : memory_map_) {
     auto &group = item.second;
@@ -162,18 +162,18 @@ void SharedMemoryAllocator::ReleaseMemoryItem(const SharedMemoryItem &shm_item) 
   it->second.free_count += 1;
 }
 
-ShmTensor::ShmTensor(DataType type, std::vector<int64_t> shape, const SharedMemoryItem &shm_item)
+ShmTensor::ShmTensor(DataType type, const std::vector<int64_t> &shape, const SharedMemoryItem &shm_item)
     : BufferTensor(type, shape, shm_item.offset_address, shm_item.size, false), shm_info_(shm_item) {}
 
-ShmTensor::~ShmTensor() { SharedMemoryAllocator::Instance().ReleaseMemoryItem(shm_info_); }
+ShmTensor::~ShmTensor() noexcept { SharedMemoryAllocator::Instance().ReleaseMemoryItem(shm_info_); }
 
 SharedMemoryManager &SharedMemoryManager::Instance() {
-  static SharedMemoryManager instance;
+  static SharedMemoryManager instance = SharedMemoryManager();
   return instance;
 }
 
 SharedMemoryManager::SharedMemoryManager() {}
-SharedMemoryManager::~SharedMemoryManager() {
+SharedMemoryManager::~SharedMemoryManager() noexcept {
   std::unique_lock<std::mutex> lock(lock_);
   for (auto &item : attached_shm_list_) {
     auto ret = munmap(item.address, item.bytes_size);

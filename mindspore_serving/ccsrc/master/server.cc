@@ -78,6 +78,5 @@ Server &Server::Instance() {
 bool Server::OnlyModelStage(const std::string &servable_name) { return dispatcher_->OnlyModelStage(servable_name); }
 
 Server::~Server() = default;
-
 }  // namespace serving
 }  // namespace mindspore

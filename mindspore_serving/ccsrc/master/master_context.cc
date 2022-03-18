@@ -18,7 +18,7 @@
 
 namespace mindspore::serving {
 std::shared_ptr<MasterContext> MasterContext::Instance() {
-  static std::shared_ptr<MasterContext> instance;
+  static std::shared_ptr<MasterContext> instance = nullptr;
   if (instance == nullptr) {
     instance = std::make_shared<MasterContext>();
   }

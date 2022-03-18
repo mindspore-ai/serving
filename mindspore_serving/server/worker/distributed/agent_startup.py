@@ -162,7 +162,8 @@ signal_exit = "Exit"
 def _recv_parent(parent_process, index, recv_pipe, handle_stop_signal=True):
     """Receive message from Start up process.
     Return False on Ctrl+C(and worker Stop message) Exit Signal, heartbeat failed, and signal_exit.
-    Return True on receiving signal_success."""
+    Return True on receiving signal_success.
+    """
     try:
         while True:
             while not recv_pipe.poll(0.1):
@@ -276,7 +277,8 @@ def _send_exit_signal_to_children(subprocess_list):
 
 def _send_exit_msg_to_children(send_pipe_list, subprocess_list):
     """Send exit msg to all child processes, and terminate all child processes when they are still alive
-    in some seconds later"""
+    in some seconds later.
+    """
     index = 0
     for send_pipe, process in zip(send_pipe_list, subprocess_list):
         if process.is_alive():

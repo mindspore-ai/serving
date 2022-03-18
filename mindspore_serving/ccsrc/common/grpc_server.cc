@@ -17,8 +17,8 @@
 #include "common/grpc_server.h"
 
 namespace mindspore::serving {
-Status GrpcServer::Start(std::shared_ptr<grpc::Service> service, const std::string &server_address, int max_msg_mb_size,
-                         const std::string &server_tag) {
+Status GrpcServer::Start(const std::shared_ptr<grpc::Service> &service, const std::string &server_address,
+                         int max_msg_mb_size, const std::string &server_tag) {
   service_ = service;
   if (in_running_) {
     return INFER_STATUS_LOG_ERROR(SYSTEM_ERROR) << "Serving Error: " << server_tag << " server is already running";
@@ -28,14 +28,13 @@ Status GrpcServer::Start(std::shared_ptr<grpc::Service> service, const std::stri
   grpc::ServerBuilder serverBuilder;
   (void)serverBuilder.SetOption(std::move(option));
   if (max_msg_mb_size > 0) {
-    constexpr uint32_t mbytes_to_bytes = 1u << 20;
-    (void)serverBuilder.SetMaxSendMessageSize(static_cast<int>(max_msg_mb_size * mbytes_to_bytes));
-    (void)serverBuilder.SetMaxReceiveMessageSize(static_cast<int>(max_msg_mb_size * mbytes_to_bytes));
+    constexpr int mbytes_to_bytes = static_cast<int>(1u << 20);
+    (void)serverBuilder.SetMaxSendMessageSize(max_msg_mb_size * mbytes_to_bytes);
+    (void)serverBuilder.SetMaxReceiveMessageSize(max_msg_mb_size * mbytes_to_bytes);
   }
   (void)serverBuilder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
   (void)serverBuilder.RegisterService(service.get());
   server_ = serverBuilder.BuildAndStart();
-
   if (server_ == nullptr) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Serving Error: " << server_tag
                                           << " server start failed, create server failed, address " << server_address;
@@ -62,7 +61,7 @@ void GrpcServer::Stop() {
 
 std::shared_ptr<grpc::Channel> GrpcServer::CreateChannel(const std::string &target_str) {
   grpc::ChannelArguments channel_args;
-  constexpr uint32_t mbytes_to_bytes = 1u << 20;
+  constexpr int mbytes_to_bytes = static_cast<int>(1u << 20);
   channel_args.SetInt(GRPC_ARG_MAX_RECEIVE_MESSAGE_LENGTH, gRpcMaxMBMsgSize * mbytes_to_bytes);
   std::shared_ptr<grpc::Channel> channel =
     grpc::CreateCustomChannel(target_str, grpc::InsecureChannelCredentials(), channel_args);

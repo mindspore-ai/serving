@@ -57,7 +57,7 @@ class SharedMemoryAllocator {
  public:
   static SharedMemoryAllocator &Instance();
   SharedMemoryAllocator();
-  ~SharedMemoryAllocator();
+  ~SharedMemoryAllocator() noexcept;
   Status NewMemoryBuffer(const std::string &memory_key_prefix, uint64_t item_size, uint64_t init_item_count);
   Status AllocMemoryItem(const std::string &memory_key_prefix, SharedMemoryItem *shm_item);
   void ReleaseMemoryItem(const SharedMemoryItem &shm_item);
@@ -70,8 +70,8 @@ class SharedMemoryAllocator {
 
 class ShmTensor : public BufferTensor {
  public:
-  ShmTensor(DataType type, std::vector<int64_t> shape, const SharedMemoryItem &shm_item);
-  ~ShmTensor();
+  ShmTensor(DataType type, const std::vector<int64_t> &shape, const SharedMemoryItem &shm_item);
+  ~ShmTensor() noexcept;
 
  private:
   SharedMemoryItem shm_info_;
@@ -94,7 +94,7 @@ class SharedMemoryManager {
  public:
   static SharedMemoryManager &Instance();
   SharedMemoryManager();
-  ~SharedMemoryManager();
+  ~SharedMemoryManager() noexcept;
   Status Attach(const std::string &memory_key, uint64_t bytes_size, uint64_t data_offset, uint64_t data_size,
                 SharedMemoryAttachItem *shm_info);
   Status Detach(const std::string &memory_key);

@@ -43,11 +43,11 @@ struct PredictModelInfo {
 class PredictThread {
  public:
   PredictThread();
-  ~PredictThread();
+  ~PredictThread() noexcept;
 
   void PushPredictTask(const MethodStage &stage, const std::vector<InstancePtr> &inputs);
   void Start(const std::string &que_name, const std::shared_ptr<ModelLoaderBase> &model_loader,
-             const ModelMeta &model_meta, TaskCallBack task_callback);
+             const ModelMeta &model_meta, const TaskCallBack &task_callback);
   void Stop();
 
   uint64_t GetBatchSize() const { return executor_info_.batch_size; }

@@ -87,7 +87,8 @@ class _MultiCompatibleRotatingFileHandler(RotatingFileHandler):
 
     def doRollover(self):
         """Override doRollover for multiprocess compatibility
-        and setting permission of Log file"""
+        and setting permission of Log file.
+        """
         if self.stream:
             self.stream.close()
             self.stream = None

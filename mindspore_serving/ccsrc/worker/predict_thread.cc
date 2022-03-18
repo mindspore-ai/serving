@@ -24,7 +24,7 @@
 
 namespace mindspore::serving {
 serving::PredictThread::PredictThread() {}
-PredictThread::~PredictThread() { Stop(); }
+PredictThread::~PredictThread() noexcept { Stop(); }
 
 void PredictThread::PushPredictTask(const MethodStage &stage, const std::vector<InstancePtr> &inputs) {
   // create input for predict, and check
@@ -75,7 +75,7 @@ std::string PredictThread::AsGroupName(const std::string &model_key, uint64_t su
 }
 
 void PredictThread::Start(const std::string &que_name, const std::shared_ptr<ModelLoaderBase> &model_loader,
-                          const ModelMeta &model_meta, TaskCallBack task_callback) {
+                          const ModelMeta &model_meta, const TaskCallBack &task_callback) {
   MSI_EXCEPTION_IF_NULL(model_loader);
   MSI_EXCEPTION_IF_NULL(task_callback);
   model_loader_ = model_loader;

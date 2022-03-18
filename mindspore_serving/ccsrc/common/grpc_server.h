@@ -33,9 +33,9 @@ constexpr int gRpcMaxMBMsgSize = 512;  // max 512 MB
 class GrpcServer {
  public:
   GrpcServer() = default;
-  ~GrpcServer() { Stop(); }
+  ~GrpcServer() noexcept { Stop(); }
 
-  Status Start(std::shared_ptr<grpc::Service> service, const std::string &server_address, int max_msg_size,
+  Status Start(const std::shared_ptr<grpc::Service> &service, const std::string &server_address, int max_msg_size,
                const std::string &server_tag);
   void Stop();
   static std::shared_ptr<grpc::Channel> CreateChannel(const std::string &target_str);

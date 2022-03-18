@@ -18,7 +18,8 @@
 def check_and_as_tuple_with_str_list(arg_name, strs):
     """Check whether the input parameters are reasonable multiple str inputs,
     which can be single str, tuple or list of str, tuple with list of str.
-    finally, return tuple with list of str"""
+    Finally, return tuple with list of str.
+    """
     if isinstance(strs, str):
         strs = (list(strs),)
         return tuple(strs)
@@ -56,7 +57,8 @@ def check_and_as_tuple_with_str_list(arg_name, strs):
 def check_and_as_str_tuple_list(arg_name, strs):
     """Check whether the input parameters are reasonable multiple str inputs,
     which can be single str, tuple or list of str.
-    finally, return tuple of str"""
+    Finally, return tuple of str.
+    """
     if isinstance(strs, str):
         strs = (strs,)
 
@@ -127,7 +129,8 @@ def check_ip_port(arg_name, port):
 def check_and_as_int_tuple_list(arg_name, ints, minimum=None, maximum=None):
     """Check whether the input parameters are reasonable multiple int inputs,
     which can be single int, tuple or list of int.
-    finally, return tuple of int"""
+    Finally, return tuple of int.
+    """
     if isinstance(ints, int):
         ints = (ints,)
 
@@ -147,7 +150,8 @@ def check_and_as_int_tuple_list(arg_name, ints, minimum=None, maximum=None):
 def check_int_tuple_list(arg_name, ints, minimum=None, maximum=None):
     """Check whether the input parameters are reasonable multiple int inputs,
     which can be single tuple or list of int.
-    finally, return tuple of int"""
+    Finally, return tuple of int.
+    """
     if not isinstance(ints, (tuple, list)):
         raise RuntimeError(f"Parameter '{arg_name}' should be tuple/list of int, but actually {type(ints)}")
 
