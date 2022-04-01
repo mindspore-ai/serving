@@ -88,7 +88,7 @@ class ServableStartConfig:
             - None: the platform is determined by the MindSpore environment.
 
         num_parallel_workers (int, optional): This feature is currently in beta.
-            The number of processes processing python tasks, at least the number
+            The number of processes that process python tasks, at least the number
             of device cards used specified by the parameter device_ids. It will be adjusted to the number of device
             cards when it is less than the number of device cards. Default: 0.
         dec_key (bytes, optional): Byte type key used for decryption. The valid length is 16, 24, or 32. Default: None.

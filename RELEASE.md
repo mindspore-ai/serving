@@ -1,3 +1,30 @@
+# MindSpore Serving 1.7.0
+
+## MindSpore 1.7.0 Release Notes
+
+### Major Features and Improvements
+
+- [DEMO] Ascend 710 can be used as the inference device, for more detail see
+  [MindSpore Serving backend](https://www.mindspore.cn/serving/docs/en/master/serving_install.html#installation).
+- [DEMO] Support models of MindIR format when MindSpore Lite is used as the MindSpore Serving inference backend, for more detail see
+  [MindSpore Serving backend](https://www.mindspore.cn/serving/docs/en/master/serving_install.html#installation).
+
+#### Deprecations
+
+##### Python API
+
+- `AclOptions` and `GpuOptions` are removed from version 1.7.0, use `AscendDeviceInfo` and `GPUDeviceInfo` instead.
+- `register.declare_sevable` and `register.call_servable` are removed from version 1.7.0, use `register.declare_model` and `register.add_stage` instead.
+- `register.call_preprocess`, `register.call_preprocess_pipeline`,  `register.call_postprocess` and `register.call_postprocess_pipeline` are removed from version 1.7.0, use `register.add_stage` instead.
+
+### Contributors
+
+Thanks goes to these wonderful people:
+
+qinzheng, xuyongfei, zhangyinxia, zhoufeng.
+
+Contributions of any kind are welcome!
+
 # MindSpore Serving 1.6.0
 
 ## MindSpore 1.6.0 Release Notes
