@@ -70,7 +70,7 @@ start_serving_server()
 
   result=`grep -E 'Serving gRPC server start success, listening on 127.0.0.1:5500' serving_server.log | wc -l`
   count=0
-  while [[ ${result} -eq 0 && ${count} -lt 50 ]]
+  while [[ ${result} -eq 0 && ${count} -lt 150 ]]
   do
     sleep 1
     get_master_count
@@ -89,7 +89,7 @@ start_serving_server()
     result=`grep -E 'Serving gRPC server start success, listening on 127.0.0.1:5500' serving_server.log | wc -l`
   done
 
-  if [ ${count} -eq 50 ]
+  if [ ${count} -eq 150 ]
   then
     clean_pid
     echo "---------------------------------- server server log begin"
