@@ -89,7 +89,7 @@ start_serving_server()
 
   result=`grep -E 'Master server start success, listening on' serving_server.log | wc -l`
   count=0
-  while [[ ${result} -eq 0 && ${count} -lt 100 ]]
+  while [[ ${result} -eq 0 && ${count} -lt 150 ]]
   do
     sleep 1
     get_serving_server_count
@@ -111,7 +111,7 @@ start_serving_server()
     result=`grep -E 'Master server start success, listening on' serving_server.log | wc -l`
   done
 
-  if [ ${count} -eq 100 ]
+  if [ ${count} -eq 150 ]
   then
     clean_pid
 
@@ -140,7 +140,7 @@ start_serving_agent()
 
   result=`grep -E 'Child 0: Receive success' serving_agent.log | wc -l`
   count=0
-  while [[ ${result} -ne 1 && ${count} -lt 100 ]]
+  while [[ ${result} -ne 1 && ${count} -lt 150 ]]
   do
     sleep 1
     get_serving_agent_count
@@ -154,7 +154,7 @@ start_serving_agent()
     result=`grep -E 'Child 0: Receive success' serving_agent.log | wc -l`
   done
 
-  if [ ${count} -eq 100 ]
+  if [ ${count} -eq 150 ]
   then
     clean_pid
     cat serving_agent.log

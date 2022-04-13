@@ -17,6 +17,7 @@
 #include "worker/worker.h"
 #include <unistd.h>
 #include <condition_variable>
+#include <regex>
 #include "pybind11/pybind11.h"
 #include "common/proto_tensor.h"
 #include "common/exit_handle.h"
@@ -259,13 +260,17 @@ void Worker::Clear() {
     distributed_grpc_server_->Stop();
     distributed_grpc_server_ = nullptr;
   }
-
   MSI_LOG_INFO << "End clear worker session";
 }
 
 bool Worker::IsRunning() { return servable_started_; }
 
-Worker::~Worker() { Clear(); }
+Worker::~Worker() {
+  Clear();
+  if (listening_parent_thread_.joinable()) {
+    listening_parent_thread_.join();
+  }
+}
 
 bool Worker::CheckServableRequest(const RequestSpec &request_spec) {
   if (servable_spec_.servable_name != request_spec.servable_name) {
@@ -283,6 +288,102 @@ void Worker::ClearOnSystemFailed(const Status &error_msg) {
   std::shared_lock<std::shared_mutex> lock(worker_shared_lock_);
   MSI_LOG_INFO << "Clear instances on system failed: " << error_msg.StatusMessage();
   worker_executor_.ClearInstances(error_msg);
+}
+
+static std::vector<int> GetAllChildrenPids(int cur_pid) {
+  if (cur_pid <= 0) {
+    return {};
+  }
+  std::string get_all_children_pids = "ps -o pid --no-headers --ppid " + std::to_string(cur_pid);
+  FILE *fp = popen(get_all_children_pids.c_str(), "r");
+  if (fp == nullptr) {
+    return {};
+  }
+  constexpr int max_result_size = 1024;
+  char buf[max_result_size] = {0};
+  std::string cmd_result;
+  while (fgets(buf, max_result_size, fp) != nullptr && cmd_result.size() <= max_result_size) {
+    cmd_result += std::string(buf) + " ";
+  }
+  pclose(fp);
+  if (cmd_result.size() == max_result_size || cmd_result.empty()) {
+    return {};
+  }
+  std::regex pid_reg("[0-9]+");
+  auto match_beg = std::sregex_iterator(cmd_result.begin(), cmd_result.end(), pid_reg);
+  auto match_end = std::sregex_iterator();
+  if (match_beg == match_end) {
+    return {};
+  }
+  std::vector<int> direct_children;
+  for (auto item = match_beg; item != match_end; ++item) {
+    auto pid_str = item->str();
+    auto pid = static_cast<int>(std::strtol(pid_str.c_str(), nullptr, 10));
+    if (pid <= 0) {
+      continue;
+    }
+    std::ifstream stat_fp("/proc/" + std::to_string(pid) + "/stat");
+    if (!stat_fp.is_open()) {
+      continue;
+    }
+    constexpr int cache_size_max = 128;
+    char cache[cache_size_max + 1] = {0};
+    stat_fp.read(cache, cache_size_max);
+    std::string cache_str = cache;
+    auto pos = cache_str.find(") ");
+    if (pos == std::string::npos) {
+      continue;
+    }
+    cache_str = cache_str.substr(pos + strlen(") S "));
+    int child_ppid = static_cast<int>(std::strtol(cache_str.c_str(), nullptr, 10));
+    if (child_ppid != cur_pid) {
+      continue;
+    }
+    direct_children.push_back(pid);
+  }
+  std::vector<int> all_pids = direct_children;
+  for (auto &pid : direct_children) {
+    auto pids = GetAllChildrenPids(pid);
+    all_pids.insert(all_pids.end(), pids.begin(), pids.end());
+  }
+  return all_pids;
+}
+
+void Worker::StartListeningParentExitThread() {
+  auto thread_func = [this]() {
+    MSI_LOG_INFO << "Start listening parent";
+    auto init_parent_pid = getppid();
+    constexpr int sleep_period_in_ms = 100;
+    constexpr int try_kill_children_times = 100;
+    // exit when receive SIGINT SIGTERM, or parent process exit
+    while (true) {
+      if (ExitSignalHandle::Instance().HasStopped()) {
+        MSI_LOG_WARNING << "Worker has received exit message, worker begin to exit";
+        break;
+      }
+      auto cur_parent_pid = getppid();
+      if (init_parent_pid != cur_parent_pid) {
+        MSI_LOG_WARNING << "Worker detect parent pid=" << init_parent_pid << " has exited, worker begin to exit";
+        ExitSignalHandle::Instance().Stop();
+        break;
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(sleep_period_in_ms));
+    }
+    Clear();
+    auto cur_pid = getpid();
+    for (int i = 0; i < try_kill_children_times; i++) {  // 100*100ms=10s
+      auto child_pids = GetAllChildrenPids(cur_pid);
+      if (child_pids.empty() && !continue_listen_children_) {
+        break;
+      }
+      for (auto pid : child_pids) {
+        kill(pid, SIGTERM);
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(sleep_period_in_ms));
+    }
+    MSI_LOG_INFO << "Stop listening parent";
+  };
+  listening_parent_thread_ = std::thread(thread_func);
 }
 }  // namespace serving
 }  // namespace mindspore

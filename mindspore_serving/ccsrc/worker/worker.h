@@ -66,6 +66,11 @@ class MS_API Worker {
   void ClearOnSystemFailed(const Status &error_msg);
   std::shared_ptr<GrpcNotifyMaster> GetGrpcNotifyMaster() { return notify_master_; }
 
+  void SetContinueListenChildren(bool continue_listen_children) {
+    continue_listen_children_ = continue_listen_children;
+  }
+  void StartListeningParentExitThread();
+
  private:
   WorkExecutor worker_executor_;
 
@@ -79,6 +84,8 @@ class MS_API Worker {
   std::shared_ptr<DistributedWorkerGrpcServer> distributed_grpc_server_ = nullptr;
 
   std::shared_mutex worker_shared_lock_;
+  bool continue_listen_children_ = false;
+  std::thread listening_parent_thread_;
 
   Status StartServableInner(const std::string &servable_name, uint32_t version_number,
                             const std::map<std::string, std::shared_ptr<ModelLoaderBase>> &models, bool own_device);
