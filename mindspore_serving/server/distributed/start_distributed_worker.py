@@ -16,31 +16,11 @@
 
 import os
 import sys
-import time
-import threading
-import psutil
 
-import mindspore_serving.log as logger
-from mindspore_serving.server import worker
 from mindspore_serving.server.worker import distributed
 from mindspore_serving.server.common import check_type
 from mindspore_serving._mindspore_serving import ExitSignalHandle_
 from mindspore_serving._mindspore_serving import Worker_
-
-
-def start_listening_parent_thread(servable_name):
-    """listening to parent process status"""
-
-    def worker_listening_parent_thread():
-        parent_process = psutil.Process(os.getppid())
-        while parent_process.is_running() and not ExitSignalHandle_.has_stopped():
-            time.sleep(0.1)
-        logger.warning(f"Distributed worker {servable_name}, detect parent "
-                       f"pid={parent_process.pid} has exited or receive Ctrl+C message, worker begin to exit")
-        worker.stop()
-
-    thread = threading.Thread(target=worker_listening_parent_thread)
-    thread.start()
 
 
 def start_worker(servable_directory, servable_name, version_number, rank_table_json_file,
@@ -58,8 +38,6 @@ def start_worker(servable_directory, servable_name, version_number, rank_table_j
     check_type.check_bool('listening_master', listening_master)
 
     ExitSignalHandle_.start()  # Set flag to running and receive Ctrl+C message
-    if listening_master:
-        start_listening_parent_thread(servable_name)
 
     worker_pid = os.getpid()
     unix_socket_dir = "unix_socket_files"

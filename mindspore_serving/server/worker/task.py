@@ -39,11 +39,11 @@ def has_worker_stopped():
     return ExitSignalHandle_.has_stopped()
 
 
-class PyTaskThread(threading.Thread):
-    """Thread for handling preprocess and postprocess"""
+class PyTaskHandler:
+    """Handling preprocess and postprocess"""
 
     def __init__(self):
-        super(PyTaskThread, self).__init__()
+        super(PyTaskHandler, self).__init__()
 
     def run(self):
         """Run tasks of preprocess and postprocess, switch to other type of process when some instances are handled"""
@@ -90,7 +90,7 @@ class PyTaskThread(threading.Thread):
             except Exception as e:
                 logger.warning(f"{task_name} invoke catch exception: ")
                 logging.exception(e)
-                PyTaskThread.push_failed(instances_size - index, str(e))
+                PyTaskHandler.push_failed(instances_size - index, str(e))
                 return  # return will not terminate thread
 
             try:
@@ -104,12 +104,12 @@ class PyTaskThread(threading.Thread):
                         error_msg = f"The outputs number {len(output)} of one instance returned by function " \
                                     f"'{task_name}' is not equal to the outputs number {task_info['outputs_count']} " \
                                     f" registered in method {task.method_name}"
-                        PyTaskThread.push_system_failed(error_msg)
+                        PyTaskHandler.push_system_failed(error_msg)
                         raise ServingSystemException(error_msg)
                     # convert MindSpore Tensor to numpy
                     output = (item.asnumpy() if callable(getattr(item, "asnumpy", None)) else item for item in output)
                     # raise ServingSystemException when user-defined output is invalid
-                    PyTaskThread.push_result(output)  # push outputs of one instance
+                    PyTaskHandler.push_result(output)  # push outputs of one instance
                     index += 1
 
                 get_result_time = time.time()
@@ -120,17 +120,17 @@ class PyTaskThread(threading.Thread):
             except StopIteration:  # raise by next
                 error_msg = f"The number {index} of instances returned by function '{task_name}' is " \
                             f"not equal to the number {instances_size} of instances provided to this function."
-                PyTaskThread.push_system_failed(error_msg)
+                PyTaskHandler.push_system_failed(error_msg)
                 raise RuntimeError(error_msg)
             except ServingSystemException as e:
                 logger.error(f"{task_name} handling catch exception: {e}")
-                PyTaskThread.push_system_failed(e.msg)
+                PyTaskHandler.push_system_failed(e.msg)
                 raise
             except Exception as e:  # pylint: disable=broad-except
                 # catch exception and try next
                 logger.warning(f"{task_name} get result catch exception: {e}")
                 logging.exception(e)
-                PyTaskThread.push_failed(1, str(e))  # push success results and a failed result
+                PyTaskHandler.push_failed(1, str(e))  # push success results and a failed result
                 index += 1
 
     @staticmethod
@@ -152,23 +152,9 @@ class PyTaskThread(threading.Thread):
             raise ServingSystemException(f"Push py task result cause exception: {e}")
 
 
-py_task_thread = None
-
-
 def _start_py_task():
     """Start python thread for python task"""
     if Worker_.enable_pytask_que():
-        global py_task_thread
-        if py_task_thread is None:
-            py_task_thread = PyTaskThread()
-            py_task_thread.start()
+        PyTaskHandler().run()
     else:
         Worker_.wait_and_clear()
-
-
-def _join_py_task():
-    """Join python thread for python task"""
-    global py_task_thread
-    if py_task_thread is not None:
-        py_task_thread.join()
-        py_task_thread = None

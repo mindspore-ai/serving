@@ -15,48 +15,13 @@
 """Start worker process with single core servable"""
 
 import os
-import time
-import threading
 import signal
 import argparse
-import psutil
 
-import mindspore_serving.log as logger
 from mindspore_serving.server import worker
 from mindspore_serving.server.common import check_type
 from mindspore_serving._mindspore_serving import ExitSignalHandle_
 from mindspore_serving._mindspore_serving import Worker_
-
-_main_thread_exited = False
-
-
-def start_listening_parent_thread(servable_name, index):
-    """listening to parent process status"""
-
-    def worker_listening_parent_thread():
-        parent_process = psutil.Process(os.getppid())
-        while parent_process.is_running() and not ExitSignalHandle_.has_stopped():
-            time.sleep(0.1)
-        logger.warning(f"Worker {servable_name} extra {index}, detect parent "
-                       f"pid={parent_process.pid} has exited or receive Ctrl+C message, worker begin to exit"
-                       f", parent running {parent_process.is_running()}, exit status {ExitSignalHandle_.has_stopped()}")
-        worker.stop()
-        cur_process = psutil.Process(os.getpid())
-        for _ in range(100):  # 100x0.1=10s
-            try:
-                children = cur_process.children(recursive=True)
-                if not children and _main_thread_exited:
-                    logger.info(f"All current children processes have exited")
-                    break
-                for child in children:
-                    os.kill(child.pid, signal.SIGTERM)
-                time.sleep(0.1)
-            # pylint: disable=broad-except
-            except Exception as e:
-                logger.warning(f"Kill children catch exception {e}")
-
-    thread = threading.Thread(target=worker_listening_parent_thread)
-    thread.start()
 
 
 def start_extra_worker(servable_directory, servable_name, version_number, device_type, device_ids_empty,
@@ -74,8 +39,6 @@ def start_extra_worker(servable_directory, servable_name, version_number, device
     check_type.check_bool('listening_master', listening_master)
 
     ExitSignalHandle_.start()  # Set flag to running and receive Ctrl+C message
-    if listening_master:
-        start_listening_parent_thread(servable_name, index)
 
     worker_pid = os.getpid()
     unix_socket_dir = "unix_socket_files"
@@ -133,13 +96,8 @@ def parse_args_and_start():
     dec_mode = args.dec_mode
     # pylint: disable=simplifiable-if-expression
     listening_master = True if args.listening_master.lower() == "true" else False
-
-    try:
-        start_extra_worker(servable_directory, servable_name, version_number, device_type, device_ids_empty,
-                           index, master_address, dec_key, dec_mode, listening_master)
-    finally:
-        global _main_thread_exited
-        _main_thread_exited = True
+    start_extra_worker(servable_directory, servable_name, version_number, device_type, device_ids_empty,
+                       index, master_address, dec_key, dec_mode, listening_master)
 
 
 if __name__ == '__main__':
