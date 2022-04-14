@@ -146,7 +146,7 @@ def call_preprocess_pipeline(preprocess_fun, *args):
     images in `preprocess`, MindSpore Serving provides 'call_preprocess_pipeline' and 'call_postprocess_pipeline'
     to register such preprocessing and postprocessing. For more detail,
     please refer to `Resnet50 model configuration example
-    <https://gitee.com/mindspore/serving/blob/master/example/resnet/resnet50/servable_config.py>`_.
+    <https://gitee.com/mindspore/serving/blob/r1.7/example/resnet/resnet50/servable_config.py>`_.
 
     Args:
         preprocess_fun (function): Python pipeline function for preprocess.
@@ -232,7 +232,7 @@ def call_postprocess_pipeline(postprocess_fun, *args):
     images in `preprocess`, MindSpore Serving provides 'call_preprocess_pipeline' and 'call_postprocess_pipeline'
     to register such preprocessing and postprocessing. For more detail,
     please refer to `Resnet50 model configuration example
-    <https://gitee.com/mindspore/serving/blob/master/example/resnet/resnet50/servable_config.py>`_.
+    <https://gitee.com/mindspore/serving/blob/r1.7/example/resnet/resnet50/servable_config.py>`_.
 
     Args:
         postprocess_fun (function): Python pipeline function for postprocess.
