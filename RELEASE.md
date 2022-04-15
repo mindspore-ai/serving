@@ -1,3 +1,5 @@
+[查看中文](./RELEASE_CN.md)
+
 # MindSpore Serving 1.7.0
 
 ## MindSpore 1.7.0 Release Notes
