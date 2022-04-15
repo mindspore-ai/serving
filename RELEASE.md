@@ -1,23 +1,21 @@
-[查看中文](./RELEASE_CN.md)
+# MindSpore Serving Release Notes
 
-# MindSpore Serving 1.7.0
+- [查看中文](./RELEASE_CN.md)
 
-## MindSpore 1.7.0 Release Notes
+## MindSpore Serving 1.7.0 Release Notes
 
 ### Major Features and Improvements
 
-- [DEMO] Ascend 710 can be used as the inference device, for more detail see
-  [MindSpore Serving backend](https://www.mindspore.cn/serving/docs/en/master/serving_install.html#installation).
-- [DEMO] Support models of MindIR format when MindSpore Lite is used as the MindSpore Serving inference backend, for more detail see
-  [MindSpore Serving backend](https://www.mindspore.cn/serving/docs/en/master/serving_install.html#installation).
+- [DEMO] Ascend 710 can be used as the inference device, for more detail see [MindSpore Serving backend](https://www.mindspore.cn/serving/docs/en/master/serving_install.html#installation).
+- [DEMO] Support models of MindIR format when MindSpore Lite is used as the MindSpore Serving inference backend, for more detail see [MindSpore Serving backend](https://www.mindspore.cn/serving/docs/en/master/serving_install.html#installation).
 
 #### Deprecations
 
 ##### Python API
 
-- `AclOptions` and `GpuOptions` are removed from version 1.7.0, use `AscendDeviceInfo` and `GPUDeviceInfo` instead.
-- `register.declare_sevable` and `register.call_servable` are removed from version 1.7.0, use `register.declare_model` and `register.add_stage` instead.
-- `register.call_preprocess`, `register.call_preprocess_pipeline`,  `register.call_postprocess` and `register.call_postprocess_pipeline` are removed from version 1.7.0, use `register.add_stage` instead.
+- `AclOptions` and `GpuOptions` are removed from version 1.7.0, and use `AscendDeviceInfo` and `GPUDeviceInfo` instead.
+- `register.declare_sevable` and `register.call_servable` are removed from version 1.7.0, and use `register.declare_model` and `register.add_stage` instead.
+- `register.call_preprocess`, `register.call_preprocess_pipeline`, `register.call_postprocess` and `register.call_postprocess_pipeline` are removed from version 1.7.0, and use `register.add_stage` instead.
 
 ### Contributors
 
