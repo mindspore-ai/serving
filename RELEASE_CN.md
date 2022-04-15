@@ -1,8 +1,8 @@
+# MindSpore Serving Relase Notes
+
 [View English](./RELEASE.md)
 
-# MindSpore Serving 1.7.0
-
-## MindSpore 1.7.0 Release Notes
+## MindSpore Serving 1.7.0 Release Notes
 
 ### 主要特性和增强
 

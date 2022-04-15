@@ -1,8 +1,8 @@
+# MindSpore Serving Release Notes
+
 [查看中文](./RELEASE_CN.md)
 
-# MindSpore Serving 1.7.0
-
-## MindSpore 1.7.0 Release Notes
+## MindSpore Serving 1.7.0 Release Notes
 
 ### Major Features and Improvements
 
@@ -25,9 +25,7 @@ qinzheng, xuyongfei, zhangyinxia, zhoufeng.
 
 Contributions of any kind are welcome!
 
-# MindSpore Serving 1.6.0
-
-## MindSpore 1.6.0 Release Notes
+## MindSpore Serving 1.6.0 Release Notes
 
 ### Major Features and Improvements
 
@@ -160,9 +158,7 @@ qinzheng, xuyongfei, zhangyinxia, zhoufeng.
 
 Contributions of any kind are welcome!
 
-# MindSpore Serving 1.5.0
-
-## MindSpore 1.5.0 Release Notes
+## MindSpore Serving 1.5.0 Release Notes
 
 ### Major Features and Improvements
 
@@ -324,9 +320,7 @@ chenweifeng, qinzheng, xuyongfei, zhangyinxia, zhoufeng.
 
 Contributions of any kind are welcome!
 
-# MindSpore Serving 1.3.0
-
-## MindSpore 1.3.0 Release Notes
+## MindSpore Serving 1.3.0 Release Notes
 
 ### Major Features and Improvements
 
@@ -834,15 +828,13 @@ mindspore_serving.worker.distributed.start_distributed_servable
 mindspore_serving.master.start_master_server
 ```
 
-## Contributors
+### Contributors
 
 Thanks goes to these wonderful people:
 
 chenweifeng, qinzheng, xuyongfei, zhangyinxia, zhoufeng.
 
 Contributions of any kind are welcome!
-
-# MindSpore Serving 1.2.0
 
 ## MindSpore Serving 1.2.0 Release Notes
 
@@ -870,7 +862,7 @@ for related API.
 
 ### Bug Fixes
 
-## Contributors
+### Contributors
 
 Thanks goes to these wonderful people:
 
@@ -880,11 +872,11 @@ Contributions of any kind are welcome!
 
 ## MindSpore Serving 1.1.1 Release Notes
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 - Adapts new C++ inference interface for MindSpore version 1.1.1.
 
-## Bug fixes
+### Bug fixes
 
 - [BUGFIX] Fix bug in transforming result of type int16 in python Client.
 - [BUGFIX] Fix bytes type misidentified as str type after python preprocess and postprocess.
