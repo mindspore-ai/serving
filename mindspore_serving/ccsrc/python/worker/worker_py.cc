@@ -36,14 +36,17 @@ void PyWorker::StartServable(const std::string &servable_directory, const std::s
   if (Worker::GetInstance().IsRunning()) {
     MSI_LOG_EXCEPTION << "A servable has been started, only one servable can run in a process currently.";
   }
+  Worker::GetInstance().StartListeningParentExitThread();
   const auto &signature = ServableRegister::Instance().GetServableSignature();
   if (signature.servable_name != servable_name) {
     MSI_LOG_EXCEPTION << "Servable '" << servable_name << "' has not been registered";
   }
   Status status;
   std::map<std::string, std::shared_ptr<ModelLoaderBase>> models_loader;
+  Worker::GetInstance().SetContinueListenChildren(true);
   status =
     LoadLocalModels(servable_directory, servable_name, version_number, dec_key, dec_mode, signature, &models_loader);
+  Worker::GetInstance().SetContinueListenChildren(false);
   if (status != SUCCESS) {
     MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
   }
@@ -85,7 +88,7 @@ void PyWorker::StartDistributedServable(const std::string &servable_directory, c
   if (Worker::GetInstance().IsRunning()) {
     MSI_LOG_EXCEPTION << "A servable has been started, only one servable can run in a process currently.";
   }
-
+  Worker::GetInstance().StartListeningParentExitThread();
   Status status;
   auto model_loader = std::make_shared<DistributedModelLoader>();
   status = Worker::GetInstance().StartDistributedGrpcServer(model_loader, distributed_address);
@@ -123,6 +126,7 @@ void PyWorker::StartExtraServable(const std::string &servable_directory, const s
   if (signature.servable_name != servable_name) {
     MSI_LOG_EXCEPTION << "Servable '" << servable_name << "' has not been registered";
   }
+  Worker::GetInstance().StartListeningParentExitThread();
   auto own_device = false;
   std::map<std::string, std::shared_ptr<ModelLoaderBase>> model_loaders;
   Status status;

@@ -24,7 +24,7 @@ from mindspore_serving.server.worker import init_mindspore
 from mindspore_serving._mindspore_serving import ExitSignalHandle_
 from mindspore_serving._mindspore_serving import Worker_
 from mindspore_serving._mindspore_serving import ServableContext_
-from .task import _start_py_task, _join_py_task
+from .task import _start_py_task
 
 _wait_and_clear_thread = None
 
@@ -80,7 +80,6 @@ def stop():
     """
 
     Worker_.stop_and_clear()
-    _join_py_task()
 
 
 def stop_on_except(func):
