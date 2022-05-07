@@ -16,6 +16,7 @@
 #include "worker/inference/inference.h"
 #include <dlfcn.h>
 #include "glog/logging.h"
+#include "worker/context.h"
 
 namespace mindspore::serving {
 namespace {
@@ -117,22 +118,28 @@ Status InferenceLoader::LoadMindSporeModelWrap() {
     }
     return error;
   };
+  enable_lite_ = ServableContext::Instance()->EnableLite();
 
   auto ld_lib_path = common::GetEnv("LD_LIBRARY_PATH");
-  MSI_LOG_INFO << "LD_LIBRARY_PATH: " << ld_lib_path;
-  ms_cxx_lib_handle_ = dlopen(kMindsporeLiteLibName, RTLD_NOW | RTLD_GLOBAL);
-  if (ms_cxx_lib_handle_ == nullptr) {
-    std::string load_error = get_dlerror();
-    std::string so_no_exist_error =
-      std::string(kMindsporeLiteLibName) + ": cannot open shared object file: No such file or directory";
-    // libmindspore-lite.so exist but dlopen failed
-    if (load_error.find(so_no_exist_error) == std::string::npos) {
-      return INFER_STATUS_LOG_ERROR(FAILED) << "dlopen libmindspore-lite.so failed, dlopen error: " << load_error;
+  MSI_LOG_INFO << "Enable lite: " << enable_lite_ << ", LD_LIBRARY_PATH: " << ld_lib_path;
+  if (enable_lite_) {
+    ms_cxx_lib_handle_ = dlopen(kMindsporeLiteLibName, RTLD_NOW | RTLD_GLOBAL);
+    if (ms_cxx_lib_handle_ == nullptr) {
+      std::string load_error = get_dlerror();
+      std::string so_no_exist_error =
+        std::string(kMindsporeLiteLibName) + ": cannot open shared object file: No such file or directory";
+      // libmindspore-lite.so exist but dlopen failed
+      if (load_error.find(so_no_exist_error) == std::string::npos) {
+        return INFER_STATUS_LOG_ERROR(FAILED) << "dlopen libmindspore-lite.so failed, dlopen error: " << load_error;
+      }
+      return INFER_STATUS_LOG_ERROR(FAILED)
+             << "dlopen libmindspore_lite.so failed, if you want to use MindSpore Lite to do the inference, please "
+                "append "
+                "libmindspore-lite.so's path to LD_LIBRARY_PATH env or put it in the dynamic_library search path"
+             << ", dlopen error: " << load_error;
     }
-    MSI_LOG_WARNING
-      << "dlopen libmindspore_lite.so failed, if you want to use MindSpore Lite to do the inference, please append "
-         "libmindspore-lite.so's path to LD_LIBRARY_PATH env or put it in the dynamic_library search path"
-      << ", dlopen error: " << load_error;
+    MSI_LOG_INFO << "Load " << kMindsporeLiteLibName << " successful";
+  } else {
     if (!ld_lib_path.empty()) {
       auto ms_search_path_list = SplitString(ld_lib_path, ":");
       MSI_LOG_INFO << "Search " << kMindSporeLibName << " directory: " << ms_search_path_list;
@@ -147,22 +154,15 @@ Status InferenceLoader::LoadMindSporeModelWrap() {
                                                    "and Ascend/GPU software package versions match"
                                                 << ", lib path:" << lib_path << ", dlopen error: " << get_dlerror();
         }
-        enable_lite_ = false;
         MSI_LOG_INFO << "Load " << kMindSporeLibName << " in " << item << " successful";
         break;
       }
     }
-  } else {
-    MSI_LOG_INFO << "Load " << kMindsporeLiteLibName << " successful";
-    enable_lite_ = true;
+    if (ms_cxx_lib_handle_ == nullptr) {
+      return INFER_STATUS_LOG_ERROR(FAILED)
+             << "Failed to load libmindspore.so, please pip install MindSpore whl package for libmindspore.so";
+    }
   }
-
-  if (ms_cxx_lib_handle_ == nullptr) {
-    return INFER_STATUS_LOG_ERROR(FAILED)
-           << "Failed to load libmindspore.so and libmindspore-lite.so, please set env LD_LIBRARY_PATH for "
-           << "libmindspore-lite.so or pip install MindSpore whl package for libmindspore.so";
-  }
-
   ms_lib_handle_ = dlopen(kServingAscendLibName, RTLD_NOW | RTLD_GLOBAL);
   if (ms_lib_handle_ == nullptr) {
     return INFER_STATUS_LOG_ERROR(FAILED)

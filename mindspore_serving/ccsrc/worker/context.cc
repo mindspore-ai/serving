@@ -57,4 +57,8 @@ Status ServableContext::SetDeviceTypeStr(const std::string &device_type) {
   SetDeviceType(type);
   return SUCCESS;
 }
+
+void ServableContext::SetEnableLite(bool enable_lite) { enable_lite_ = enable_lite; }
+
+bool ServableContext::EnableLite() const { return enable_lite_; }
 }  // namespace mindspore::serving

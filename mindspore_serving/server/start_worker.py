@@ -25,7 +25,7 @@ from mindspore_serving._mindspore_serving import Worker_
 
 
 def start_worker(servable_directory, servable_name, version_number,
-                 device_type, device_id, master_address, dec_key, dec_mode, listening_master=False):
+                 device_type, device_id, master_address, dec_key, dec_mode, listening_master, enable_lite):
     """Start worker process with single core servable"""
     signal.signal(signal.SIGCHLD, signal.SIG_DFL)  # for ccec compiler
     check_type.check_str('servable_directory', servable_directory)
@@ -36,6 +36,7 @@ def start_worker(servable_directory, servable_name, version_number,
 
     check_type.check_str('master_address', master_address)
     check_type.check_bool('listening_master', listening_master)
+    check_type.check_bool('enable_lite', enable_lite)
 
     ExitSignalHandle_.start()  # Set flag to running and receive Ctrl+C message
 
@@ -54,7 +55,7 @@ def start_worker(servable_directory, servable_name, version_number,
         worker.start_servable(servable_directory=servable_directory, servable_name=servable_name,
                               version_number=version_number, device_type=device_type, device_id=device_id,
                               master_address=master_address, worker_address=worker_address,
-                              dec_key=dec_key, dec_mode=dec_mode)
+                              dec_key=dec_key, dec_mode=dec_mode, enable_lite=enable_lite)
     except Exception as ex:
         Worker_.notify_failed(master_address,
                               f"{{servable name:{servable_name}, device id:{device_id}, <{ex}>}}")
@@ -70,6 +71,7 @@ def parse_args_and_start():
     parser.add_argument('--device_type', type=str, required=True, help="device type")
     parser.add_argument('--device_id', type=str, required=True, help="device id")
     parser.add_argument('--master_address', type=str, required=True, help="master address")
+    parser.add_argument('--enable_lite', type=str, required=True, help="enable lite")
     parser.add_argument('--dec_key_pipe_file', type=str, required=True, help="dec key pipe file")
     parser.add_argument('--dec_mode', type=str, required=True, help="dec mode")
     parser.add_argument('--listening_master', type=str, required=True, help="whether listening master")
@@ -93,8 +95,11 @@ def parse_args_and_start():
     dec_mode = args.dec_mode
     # pylint: disable=simplifiable-if-expression
     listening_master = True if args.listening_master.lower() == "true" else False
+
+    # pylint: disable=simplifiable-if-expression
+    enable_lite = True if args.enable_lite.lower() == "true" else False
     start_worker(servable_directory, servable_name, version_number, device_type, device_id, master_address,
-                 dec_key, dec_mode, listening_master)
+                 dec_key, dec_mode, listening_master, enable_lite)
 
 
 if __name__ == '__main__':

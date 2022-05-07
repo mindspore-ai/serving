@@ -349,12 +349,13 @@ def merge_config(configs):
 class ServableContextData(ServableContextDataBase):
     """Used to startup servable process"""
 
-    def __init__(self, servable_config, device_id, master_address):
+    def __init__(self, servable_config, device_id, master_address, enable_lite):
         super(ServableContextData, self).__init__()
         self.servable_config = servable_config
         self.device_id = device_id
         self.master_address = master_address
         self.log_new_file = True
+        self.enable_lite = enable_lite
 
     @property
     def servable_name(self):
@@ -384,6 +385,7 @@ class ServableContextData(ServableContextDataBase):
             os.mkfifo(pipe_file)
         else:
             pipe_file = 'None'
+        enable_lite_str = "True" if self.enable_lite else "False"
 
         arg = f"{python_exe} {py_script} " \
               f"--servable_directory={config.servable_directory} " \
@@ -392,6 +394,7 @@ class ServableContextData(ServableContextDataBase):
               f"--device_type={device_type} " \
               f"--device_id={self.device_id} " \
               f"--master_address={self.master_address} " \
+              f"--enable_lite={enable_lite_str} " \
               f"--dec_key_pipe_file={pipe_file} " \
               f"--dec_mode={config.dec_mode} " \
               f"--listening_master=True"
@@ -419,13 +422,14 @@ class ServableContextData(ServableContextDataBase):
 class ServableExtraContextData(ServableContextDataBase):
     """Used to startup servable process"""
 
-    def __init__(self, servable_config, master_address, index, device_ids_empty):
+    def __init__(self, servable_config, master_address, index, device_ids_empty, enable_lite):
         super(ServableExtraContextData, self).__init__()
         self.servable_config = servable_config
         self.master_address = master_address
         self.log_new_file = True
         self.index = index
         self.device_ids_empty = device_ids_empty
+        self.enable_lite = enable_lite
 
     @property
     def servable_name(self):
@@ -461,6 +465,7 @@ class ServableExtraContextData(ServableContextDataBase):
         if device_type is None:
             device_type = "None"
 
+        enable_lite_str = "True" if self.enable_lite else "False"
         arg = f"{python_exe} {py_script} " \
               f"--servable_directory={config.servable_directory} " \
               f"--servable_name={config.servable_name} " \
@@ -468,6 +473,7 @@ class ServableExtraContextData(ServableContextDataBase):
               f"--device_type={device_type} " \
               f"--device_ids_empty={self.device_ids_empty} " \
               f"--index={self.index} " \
+              f"--enable_lite={enable_lite_str} " \
               f"--master_address={self.master_address} " \
               f"--dec_key_pipe_file={pipe_file} " \
               f"--dec_mode={config.dec_mode} " \
