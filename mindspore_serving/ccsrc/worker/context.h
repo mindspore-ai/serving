@@ -35,9 +35,13 @@ class MS_API ServableContext {
   void SetDeviceId(uint32_t device_id);
   uint32_t GetDeviceId() const;
 
+  void SetEnableLite(bool enable_lite);
+  bool EnableLite() const;
+
  private:
   DeviceType device_type_ = kDeviceTypeNotSpecified;
   uint32_t device_id_ = 0;
+  bool enable_lite_ = false;
 };
 
 }  // namespace mindspore::serving

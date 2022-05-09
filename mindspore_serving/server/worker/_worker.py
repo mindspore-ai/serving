@@ -29,6 +29,11 @@ from .task import _start_py_task
 _wait_and_clear_thread = None
 
 
+def _set_enable_lite(enable_lite):
+    """Set device id, default 0"""
+    ServableContext_.get_instance().set_enable_lite(enable_lite)
+
+
 def _set_device_id(device_id):
     """Set device id, default 0"""
     ServableContext_.get_instance().set_device_id(device_id)
@@ -117,7 +122,7 @@ def _load_servable_config(servable_directory, servable_name):
 
 @stop_on_except
 def start_servable(servable_directory, servable_name, version_number,
-                   device_type, device_id, master_address, worker_address, dec_key, dec_mode):
+                   device_type, device_id, master_address, worker_address, dec_key, dec_mode, enable_lite):
     r"""
     Start up the servable named 'servable_name' defined in 'servable_directory', and link the worker to the master
     through gRPC master_address and worker_address.
@@ -133,6 +138,8 @@ def start_servable(servable_directory, servable_name, version_number,
     else:
         dec_key = ''
     check_type.check_str('dec_mode', dec_mode)
+    check_type.check_bool('enable_lite', enable_lite)
+    _set_enable_lite(enable_lite)
 
     _load_servable_config(servable_directory, servable_name)
     model_names = Worker_.get_declared_model_names()
@@ -155,7 +162,7 @@ def start_servable(servable_directory, servable_name, version_number,
 
 @stop_on_except
 def start_extra_servable(servable_directory, servable_name, version_number, device_type, device_ids_empty,
-                         dec_key, dec_mode, master_address, worker_address):
+                         dec_key, dec_mode, master_address, worker_address, enable_lite):
     r"""
     Start up the servable named 'servable_name' defined in 'servable_directory', and link the worker to the master
     through gRPC master_address and worker_address.
@@ -172,6 +179,8 @@ def start_extra_servable(servable_directory, servable_name, version_number, devi
     else:
         dec_key = ''
     check_type.check_str('dec_mode', dec_mode)
+    check_type.check_bool('enable_lite', enable_lite)
+    _set_enable_lite(enable_lite)
 
     _load_servable_config(servable_directory, servable_name)
     model_names = Worker_.get_declared_model_names()

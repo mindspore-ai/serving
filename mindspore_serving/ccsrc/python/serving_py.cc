@@ -194,7 +194,8 @@ void PyRegWorker(pybind11::module *m_ptr) {
              MSI_LOG_EXCEPTION << "Raise failed: " << status.StatusMessage();
            }
          })
-    .def("set_device_id", &ServableContext::SetDeviceId);
+    .def("set_device_id", &ServableContext::SetDeviceId)
+    .def("set_enable_lite", &ServableContext::SetEnableLite);
 
   py::class_<MasterContext, std::shared_ptr<MasterContext>>(m, "MasterContext_")
     .def(py::init<>())

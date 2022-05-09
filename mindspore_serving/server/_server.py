@@ -25,11 +25,13 @@ from mindspore_serving.server._servable_common import WorkerContext
 from mindspore_serving.server._servable_local import ServableStartConfig, ServableContextData, merge_config
 from mindspore_serving.server._servable_local import ServableExtraContextData
 from mindspore_serving.server.distributed._servable_distributed import DistributedStartConfig, DistributedContextData
+from mindspore_serving.server.common import check_type
 from mindspore_serving._mindspore_serving import ExitSignalHandle_
+from mindspore_serving._mindspore_serving import ServableContext_
 
 
 @stop_on_except
-def start_servables(servable_configs):
+def start_servables(servable_configs, enable_lite=False):
     r"""
     Start up servables.
 
@@ -44,6 +46,7 @@ def start_servables(servable_configs):
     Args:
         servable_configs (Union[ServableStartConfig, list[ServableStartConfig], tuple[ServableStartConfig]]): The
             startup configs of one or more servables.
+        enable_lite (bool): Whether to use MindSpore Lite inference backend. Default False.
 
     Raises:
         RuntimeError: Failed to start one or more servables. For log of one servable, please refer to subdirectory
@@ -69,6 +72,8 @@ def start_servables(servable_configs):
             raise RuntimeError(
                 f"The item of parameter '{servable_configs}' should be ServableStartConfig, but actually "
                 f"{type(config)}")
+    check_type.check_bool("enable_lite", enable_lite)
+    ServableContext_.get_instance().set_enable_lite(enable_lite)
 
     set_mindspore_cxx_env()
     # merge ServableStartConfig with same servable name and running version number
@@ -101,22 +106,22 @@ def start_servables(servable_configs):
     start_master_server(address=master_address)
 
     signal.signal(signal.SIGCHLD, signal.SIG_IGN)
-    worker_list = _start_workers_with_devices(master_address, servable_configs)
+    worker_list = _start_workers_with_devices(master_address, servable_configs, enable_lite)
     has_device_workers = bool(worker_list)
     _listening_workers_when_startup(worker_list)
-    extra_worker_list = _start_extra_workers(master_address, servable_configs)
+    extra_worker_list = _start_extra_workers(master_address, servable_configs, enable_lite)
     worker_list.extend(extra_worker_list)
     _listening_workers_after_startup(worker_list, has_device_workers)
 
 
-def _start_workers_with_devices(master_address, servable_configs):
+def _start_workers_with_devices(master_address, servable_configs, enable_lite):
     """Start workers that occupy devices"""
     worker_list = []
     for config in servable_configs:
         if isinstance(config, ServableStartConfig):
             for device_id in config.device_ids:
                 try:
-                    context_data = ServableContextData(config, device_id, master_address)
+                    context_data = ServableContextData(config, device_id, master_address, enable_lite)
                     sub_process = context_data.new_worker_process()
                     worker_context = WorkerContext(context_data, master_address, sub_process)
                 except RuntimeError as e:
@@ -135,7 +140,7 @@ def _start_workers_with_devices(master_address, servable_configs):
     return worker_list
 
 
-def _start_extra_workers(master_address, servable_configs):
+def _start_extra_workers(master_address, servable_configs, enable_lite):
     """Start workers that do not occupy devices"""
     worker_list = []
     worker_pid_set = set()
@@ -151,7 +156,8 @@ def _start_extra_workers(master_address, servable_configs):
         extra_worker_count = config.num_parallel_workers - len(config.device_ids)
         for index in range(extra_worker_count):
             try:
-                context_data = ServableExtraContextData(config, master_address, index, not config.device_ids)
+                context_data = ServableExtraContextData(config, master_address, index, not config.device_ids,
+                                                        enable_lite)
                 sub_process = context_data.new_worker_process()
                 if sub_process.pid in worker_pid_set:
                     raise RuntimeError(
