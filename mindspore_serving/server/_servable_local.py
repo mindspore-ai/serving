@@ -77,12 +77,12 @@ class ServableStartConfig:
             named `servable_name`.
         servable_name (str): The servable name.
         device_ids (Union[int, list[int], tuple[int]], optional): The device list the model loads into and runs in.
-            Used when device type is Nvidia GPU, Ascend 310/710/910. Default None.
+            Used when device type is Nvidia GPU, Ascend 310/310P/910. Default None.
         version_number (int, optional): Servable version number to be loaded. The version number should be a positive
             integer, starting from 1, and 0 means to load the latest version. Default: 0.
         device_type (str, optional): Currently supports "Ascend", "GPU", "CPU" and None. Default: None.
 
-            - "Ascend": the platform expected to be Ascend 310/710/910, etc.
+            - "Ascend": the platform expected to be Ascend 310/310P/910, etc.
             - "GPU": the platform expected to be Nvidia GPU.
             - "CPU": the platform expected to be CPU.
             - None: the platform is determined by the MindSpore environment.

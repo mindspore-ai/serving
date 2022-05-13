@@ -106,11 +106,11 @@ def start_grpc_server(address, max_msg_mb_size=100, ssl_config=None):
     Start gRPC server for the communication between serving client and server.
 
     Args:
-        address (str): gRPC server address, the address can be {ip}:{port} or unix:{unix_domain_file_path}.
+        address (str): gRPC server address, the address can be `{ip}:{port}` or `unix:{unix_domain_file_path}`.
 
-            - {ip}:{port} - Internet domain socket address.
-            - unix:{unix_domain_file_path} - Unix domain socket address, which is used to communicate with multiple
-              processes on the same machine. {unix_domain_file_path} can be relative or absolute file path,
+            - `{ip}:{port}` - Internet domain socket address.
+            - `unix:{unix_domain_file_path}` - Unix domain socket address, which is used to communicate with multiple
+              processes on the same machine. `{unix_domain_file_path}` can be relative or absolute file path,
               but the directory where the file is located must already exist.
 
         max_msg_mb_size (int, optional): The maximum acceptable gRPC message size in megabytes(MB), value range
