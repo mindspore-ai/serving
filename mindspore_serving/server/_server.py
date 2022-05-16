@@ -50,7 +50,7 @@ def start_servables(servable_configs, enable_lite=False):
 
     Raises:
         RuntimeError: Failed to start one or more servables. For log of one servable, please refer to subdirectory
-            serving_logs.
+            serving_logs of the directory where the startup script is located.
 
     Examples:
         >>> import os

@@ -252,15 +252,15 @@ def declare_model(model_file, model_format, with_batch_dim=True, options=None, w
 
 class Context:
     """
-    Context is used to store environment variables during execution. When using mindspore lite and the device type is
-    Ascend or Gpu, the extra CPUDeviceInfo will be used.
+    Context is used to customize device configurations. When inference backend is MindSpore Lite and the device type is
+    Ascend or Gpu, the extra `CPUDeviceInfo` will be used.
 
     Args:
         thread_num (int, optional): Set the number of threads at runtime. Only valid when using mindspore lite.
         thread_affinity_core_list (tuple[int], list[int], optional): Set the thread lists to CPU cores.
-            Only valid when using mindspore lite.
+            Only valid when inference backend is MindSpore Lite.
         enable_parallel (bool, optional): Set the status whether to perform model inference or training in parallel.
-            Only valid when using mindspore lite.
+            Only valid when inference backend is MindSpore Lite.
 
     Examples:
             >>> from mindspore_serving.server import register
@@ -292,7 +292,7 @@ class Context:
          Args:
             device_info (Union[CPUDeviceInfo, GPUDeviceInfo, AscendDeviceInfo]): User-defined device info for one
                 device, otherwise default values are used. You can customize device info for each device, and the system
-                selects the required device info based on the actual backend device and inference package.
+                selects the required device info based on the actual backend device and MindSpore inference package.
 
          Raises:
             RuntimeError: type or value of input parameters are invalid.
@@ -346,7 +346,9 @@ class CPUDeviceInfo(DeviceInfoContext):
     Helper class to set cpu device info.
 
     Args:
-        precision_mode(str, optional): inference operator selection, and the value can be "origin", "fp16".
+        precision_mode(str, optional): Option of model precision, and the value can be "origin", "fp16".
+            "origin" indicates that inference is performed with the preciesion defined in the model, and
+            "fp16" indicates that inference is performed based on FP16 precision.
             Default: "origin".
 
     Raises:
@@ -389,7 +391,9 @@ class GPUDeviceInfo(DeviceInfoContext):
     Helper class to set gpu device info.
 
     Args:
-        precision_mode(str, optional): inference operator selection, and the value can be "origin", "fp16".
+        precision_mode(str, optional): Option of model precision, and the value can be "origin", "fp16".
+            "origin" indicates that inference is performed with the preciesion defined in the model, and
+            "fp16" indicates that inference is performed based on FP16 precision.
             Default: "origin".
 
     Raises:
