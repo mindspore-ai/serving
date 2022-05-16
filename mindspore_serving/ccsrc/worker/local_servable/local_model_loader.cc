@@ -104,9 +104,9 @@ Status LocalModelLoader::InitDevice(ModelType model_type) {
     return INFER_STATUS_LOG_ERROR(FAILED)
            << "Not support device type " << device_type << " and model type " << model_type
            << ". Current inference backend: " << inference_package
-           << ". When the inference backend is MindSpore, Ascend 910/710/310 and GPU supports MindIR "
-           << "model, and Ascend 710/310 supports OM model. When the inference backend is MindSpore Lite, "
-           << "Ascend 710/310, GPU and CPU only support MindIR_Opt model converted by Lite converter tool.";
+           << ". When the inference backend is MindSpore, Ascend 910/310P/310 and GPU supports MindIR "
+           << "model, and Ascend 310P/310 supports OM model. When the inference backend is MindSpore Lite, "
+           << "Ascend 310P/310, GPU and CPU only support MindIR_Opt model converted by Lite converter tool.";
   }
   context->SetDeviceType(support_device_type);
   return SUCCESS;
