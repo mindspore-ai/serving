@@ -6,7 +6,7 @@
 
 ### Major Features and Improvements
 
-- [DEMO] Ascend 710 can be used as the inference device, for more detail see [MindSpore Serving backend](https://www.mindspore.cn/serving/docs/en/master/serving_install.html#installation).
+- [DEMO] Ascend 310P can be used as the inference device, for more detail see [MindSpore Serving backend](https://www.mindspore.cn/serving/docs/en/master/serving_install.html#installation).
 - [DEMO] Support models of MindIR format when MindSpore Lite is used as the MindSpore Serving inference backend, for more detail see [MindSpore Serving backend](https://www.mindspore.cn/serving/docs/en/master/serving_install.html#installation).
 
 #### Deprecations

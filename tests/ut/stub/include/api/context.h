@@ -460,7 +460,7 @@ class MS_API AscendDeviceInfo : public DeviceInfoContext {
 
 using Ascend310DeviceInfo = AscendDeviceInfo;
 using Ascend910DeviceInfo = AscendDeviceInfo;
-using Ascend710DeviceInfo = AscendDeviceInfo;
+using Ascend310PDeviceInfo = AscendDeviceInfo;
 
 void AscendDeviceInfo::SetInsertOpConfigPath(const std::string &cfg_path) {
   SetInsertOpConfigPath(StringToChar(cfg_path));

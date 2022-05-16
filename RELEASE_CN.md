@@ -6,7 +6,7 @@
 
 ### 主要特性和增强
 
-- [DEMO] Ascend 710可以作为MindSpore Serving的硬件后端，详情可参考[MindSpore Serving后端](https://www.mindspore.cn/serving/docs/zh-CN/master/serving_install.html#installation)。
+- [DEMO] Ascend 310P可以作为MindSpore Serving的硬件后端，详情可参考[MindSpore Serving后端](https://www.mindspore.cn/serving/docs/zh-CN/master/serving_install.html#installation)。
 - [DEMO] MindSpore Lite作为MindSpore Serving推理后端时，支持MindIR模型格式，详情可参考[MindSpore Serving后端](https://www.mindspore.cn/serving/docs/zh-CN/master/serving_install.html#installation)。
 
 #### 不建议使用
