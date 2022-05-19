@@ -16,12 +16,12 @@
 
     .. py:method:: append_device_info(device_info)
 
-         用于添加一个用户自定义的设备配置。
+       用于添加一个用户自定义的设备配置。
 
-         **参数：**
+       **参数：**
 
-        - **device_info** (Union[CPUDeviceInfo, GPUDeviceInfo, AscendDeviceInfo]) - 用户自定义设备配置，用户不指定设备配置时将使用默认值。可以为每个可能的设备自定义设备配置，系统根据实际的后端设备和推理包选择所需的设备信息。
+       - **device_info** (Union[CPUDeviceInfo, GPUDeviceInfo, AscendDeviceInfo]) - 用户自定义设备配置，用户不指定设备配置时将使用默认值。可以为每个可能的设备自定义设备配置，系统根据实际的后端设备和推理包选择所需的设备信息。
 
-         **异常：**
+       **异常：**
 
-        - **RuntimeError** - 输入参数的类型或值无效。
+       - **RuntimeError** - 输入参数的类型或值无效。
