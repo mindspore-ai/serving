@@ -13,10 +13,10 @@
     - **version_number** (int, optional) - 要加载的服务的版本号。版本号应为正整数，从1开始，0表示加载最新版本。默认值：0。
     - **device_type** (str, optional) - 目前支持"Ascend"、"GPU"、"CPU"和None。默认值：None。
 
-        - "Ascend"：目标设备为Ascend 310/310P/910等。
-        - "GPU"：目标设备为Nvidia GPU。
-        - "CPU"：目标设备为CPU。
-        - None：系统根据实际的后端设备和MindSpor推理包决定目标设备，推荐使用默认值None。
+      - "Ascend"：目标设备为Ascend 310/310P/910等。
+      - "GPU"：目标设备为Nvidia GPU。
+      - "CPU"：目标设备为CPU。
+      - None：系统根据实际的后端设备和MindSpor推理包决定目标设备，推荐使用默认值None。
 
     - **num_parallel_workers** (int, optional) - 处理Python任务的进程数，用于提高预处理、后处理等Python任务的处理能力。值小于 `device_ids` 的长度时，处理Python任务的进程数为 `device_ids` 的长度。默认值：0。
     - **dec_key** (bytes, optional) - 用于解密的字节类型密钥。有效长度为16、24或32。默认值：None。

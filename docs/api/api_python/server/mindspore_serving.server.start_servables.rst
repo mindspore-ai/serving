@@ -15,7 +15,7 @@
     **参数：**
 
     - **servable_configs** (Union[ServableStartConfig, list[ServableStartConfig], tuple[ServableStartConfig]]) - 一个或多个服务的启动配置。
-    - **enable_lite** (bool) - 是否使用MindSpore Lite推理后端。 默认False。
+    - **enable_lite** (bool) - 是否使用MindSpore Lite推理后端。 默认值：False。
 
     **异常：**
 
