@@ -1,5 +1,5 @@
 ﻿
-.. py:class:: SSLConfig(certificate, private_key, custom_ca=None, verify_client=False)
+.. py:class:: mindspore_serving.server.SSLConfig(certificate, private_key, custom_ca=None, verify_client=False)
 
     Serving服务器中，gRPC或RESTful服务器SSL的参数配置。
 
