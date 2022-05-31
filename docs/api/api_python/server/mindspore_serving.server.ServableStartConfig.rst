@@ -1,5 +1,5 @@
 ﻿
-.. py:class:: ServableStartConfig(servable_directory, servable_name, device_ids=None, version_number=0, device_type=None, num_parallel_workers=0, dec_key=None, dec_mode='AES-GCM')
+.. py:class:: mindspore_serving.server.ServableStartConfig(servable_directory, servable_name, device_ids=None, version_number=0, device_type=None, num_parallel_workers=0, dec_key=None, dec_mode='AES-GCM')
 
     启动一个服务的配置。详情请查看
     `基于MindSpore Serving部署推理服务 <https://www.mindspore.cn/serving/docs/zh-CN/master/serving_example.html>`_ 和
