@@ -475,7 +475,9 @@ def startup_agents(distributed_address, model_files, group_config_files=None,
                    agent_start_port=7000, agent_ip=None, rank_start=None,
                    dec_key=None, dec_mode='AES-GCM'):
     r"""
-    Start up all needed agents on current machine.
+    Start all required worker agents on the current machine. These worker agent processes are responsible for inference
+    tasks on the local machine. For details, please refer to
+    `MindSpore Serving-based Distributed Inference Service Deployment <https://www.mindspore.cn/serving/docs/en/master/serving_distributed_example.html>`_.
 
     Args:
         distributed_address (str): The distributed worker address the agents linked to.

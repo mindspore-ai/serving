@@ -22,7 +22,8 @@ from mindspore_serving._mindspore_serving import ModelMeta_, ServableRegister_
 
 
 def declare_servable(rank_size, stage_size, with_batch_dim=True, without_batch_dim_inputs=None):
-    """declare distributed servable in servable_config.py.
+    """declare distributed servable in servable_config.py. For details, please refer to
+    `MindSpore Serving-based Distributed Inference Service Deployment <https://www.mindspore.cn/serving/docs/en/master/serving_distributed_example.html>`_.
 
     Args:
         rank_size (int): Te rank size of the distributed model.
