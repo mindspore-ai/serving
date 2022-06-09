@@ -33,15 +33,20 @@ from mindspore_serving._mindspore_serving import ServableContext_
 @stop_on_except
 def start_servables(servable_configs, enable_lite=False):
     r"""
-    Start up servables.
+    Used to start one or more servables on the serving server. One model can be combined with preprocessing and
+    postprocessing to provide a servable, and multiple models can also be combined to provide a servable.
 
-    It can be used to start multiple different servables. One servable can be deployed on multiple chips,
-    and each chip runs a servable copy.
+    This interface can be used to start multiple different servables. One servable can be deployed on multiple devices,
+    and each device runs a servable copy.
 
-    On Ascend 910 hardware platform, each copy of each servable owns one chip. Different servables or different versions
-    of the same servable need to be deployed on different chips.
-    On Ascend 310 and GPU hardware platform, one chip can be shared by multi servables, and different servables or
-    different versions of the same servable can be deployed on the same chip to realize chip reuse.
+    On Ascend 910 hardware platform, each copy of each servable owns one device. Different servables or different
+    versions of the same servable need to be deployed on different devices.
+    On Ascend 310 and GPU hardware platform, one device can be shared by multi servables, and different servables or
+    different versions of the same servable can be deployed on the same chip to realize device reuse.
+
+    For details about how to configure models to provide servables, please refer to
+    `MindSpore-based Inference Service Deployment <https://www.mindspore.cn/serving/docs/en/master/serving_example.html>`_ and
+    `Servable Provided Through Model Configuration <https://www.mindspore.cn/serving/docs/en/master/serving_model.html>`_.
 
     Args:
         servable_configs (Union[ServableStartConfig, list[ServableStartConfig], tuple[ServableStartConfig]]): The

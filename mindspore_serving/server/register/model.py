@@ -65,9 +65,6 @@ class Model:
     def call(self, *args, subgraph=0):
         r"""Invoke the model inference interface based on instances.
 
-        Note:
-            This is a beta interface and may not function stably.
-
         Args:
             subgraph (int, optional): Subgraph index, used when there are multiply sub-graphs in one model.
             args : tuple/list of instances, or inputs of one instance.
@@ -201,7 +198,7 @@ def declare_model(model_file, model_format, with_batch_dim=True, options=None, w
         RuntimeError: The type or value of the parameters are invalid.
 
     Return:
-        Model, identification of this model.
+        Model, identification of this model, can be used for `Model.call` or as the inputs of `add_stage`.
     """
 
     check_type.check_bool('with_batch_dim', with_batch_dim)

@@ -302,8 +302,9 @@ def call_servable(*args):
 
 
 def add_stage(stage, *args, outputs_count, batch_size=None, tag=None):
-    r"""Used in the functions wrapped by register_method, define a stage that call a function/model and indicates the
-    input data used by the function/model.
+    r"""In the `servable_config.py` file of one servable, we use `register_method` to wrap a Python function to define
+    a `method` of the servable, and `add_stage` is used to define a stage of this `method`, which can be a Python
+    function or a model.
 
     Note:
         The length of 'args' should be equal to the inputs number of function or model.
