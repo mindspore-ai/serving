@@ -27,20 +27,22 @@ def declare_servable(rank_size, stage_size, with_batch_dim=True, without_batch_d
     `MindSpore Serving-based Distributed Inference Service Deployment <https://www.mindspore.cn/serving/docs/en/master/serving_distributed_example.html>`_.
 
     Args:
-        rank_size (int): Te rank size of the distributed model.
+        rank_size (int): The rank size of the distributed model.
         stage_size (int): The stage size of the distributed model.
         with_batch_dim (bool, optional): Whether the first shape dim of the inputs and outputs of model is batch.
             Default: True.
         without_batch_dim_inputs (Union[int, tuple[int], list[int]], optional): Index of inputs that without batch dim
             when with_batch_dim is True. Default: None.
-        enable_pipeline_infer (bool, optional): Whether enable pipeline inference of distributed servable. This property
-            depends on servable itself, you can set this flag to true if it supports to improve performance.
+        enable_pipeline_infer (bool, optional): Whether to enable pipeline parallel inference. Pipeline parallelism can
+            effectively improve inference performance. For details, see
+            `Pipeline Parallelism <https://www.mindspore.cn/docs/en/master/design/pipeline_parallel.html>`_.
+            Default: False.
+
+    Return:
+        Model, identification of this model, can be used for `Model.call` or as the inputs of `add_stage`.
 
     Raises:
         RuntimeError: The type or value of the parameters are invalid.
-
-    Return:
-        Model, identification of this model, used as input of add_stage.
 
     Examples:
         >>> from mindspore_serving.server import distributed

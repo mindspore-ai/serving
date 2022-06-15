@@ -9,7 +9,7 @@
     - **servable_name** (str) - 服务名称。
     - **version_number** (int, optional) - 要加载的服务版本号。版本号应为正整数，从1开始。默认值：1。
     - **rank_table_json_file** (str) - rank table json文件名。
-    - **distributed_address** (str, optional) - Worker代理（Agent）连接的分布式Worker服务器地址。默认值："0.0.0.0:6200"。
+    - **distributed_address** (str, optional) - Worker代理（Agent）连接的分布式Worker服务器地址。默认值： `"0.0.0.0:6200"` 。
     - **wait_agents_time_in_seconds** (int, optional) - 等待所有Worker代理就绪的最长时间（以秒为单位），0表示无限时间。默认值：0。
 
     **异常：**

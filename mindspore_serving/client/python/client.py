@@ -184,7 +184,7 @@ class Client:
         servable_name (str): The name of servable supplied by Serving.
         method_name (str): The name of method supplied by servable.
         version_number (int, optional): The version number of servable, 0 means the maximum version number in all
-            running -versions. Default: 0.
+            running versions. Default: 0.
         ssl_config (mindspore_serving.client.SSLConfig, optional): The server's ssl_config, if None, disabled ssl.
             Default: None.
 
@@ -284,7 +284,8 @@ class Client:
 
         Args:
             instances (map, tuple of map): Instance or tuple of instances, every instance item is the inputs map.
-                The map key is the input name, and the value is the input value.
+                The map key is the input name, and the value is the input value, the type of value can be python int,
+                float, bool, str, bytes, numpy number, or numpy array object.
 
         Raises:
             RuntimeError: The type or value of the parameters is invalid, or other errors happened.

@@ -52,8 +52,8 @@ def declare_servable(servable_file, model_format, with_batch_dim=True, options=N
 
 
 class Model:
-    """Indicate a model. User should not construct Model object directly, it's need to returned from declare_model
-    or declare_servable
+    """Indicate a model. User should not construct Model object directly, it's need to be returned from `declare_model`
+    or `declare_servable`
 
     Args:
         model_key (str): Model key identifies the model.
@@ -69,11 +69,11 @@ class Model:
             subgraph (int, optional): Subgraph index, used when there are multiply sub-graphs in one model.
             args : tuple/list of instances, or inputs of one instance.
 
-        Raises:
-            RuntimeError: Inputs are invalid.
-
         Return:
             Tuple of instances when input parameter 'args' is tuple/list, or outputs of one instance.
+
+        Raises:
+            RuntimeError: Inputs are invalid.
 
         Examples:
             >>> import numpy as np
@@ -187,18 +187,20 @@ def declare_model(model_file, model_format, with_batch_dim=True, options=None, w
             Default: True.
         options (Union[AclOptions, GpuOptions], optional): Options of model, supports AclOptions or GpuOptions.
             Default: None.
-        context (Context): Context is used to store environment variables during execution. Default: None.
+        context (Context): Context is used to store environment variables during execution. If the value is None,
+            Serving uses the default device context based on the deployed device. Default: None.
         without_batch_dim_inputs (Union[int, tuple[int], list[int]], optional): Index of inputs that without batch
-            dim when with_batch_dim is True. Default: None.
+            dim when with_batch_dim is True. For example, if the shape of input 0 does not include the batch dimension,
+            `without_batch_dim_inputs` can be set to `(0,)`. Default: None.
         config_file (str, optional): Config file for model to set mix precision inference. The file path can be an
             absolute path or a relative path to the directory in which servable_config.py resides.
             Default: None.
 
-    Raises:
-        RuntimeError: The type or value of the parameters are invalid.
-
     Return:
         Model, identification of this model, can be used for `Model.call` or as the inputs of `add_stage`.
+
+    Raises:
+        RuntimeError: The type or value of the parameters are invalid.
     """
 
     check_type.check_bool('with_batch_dim', with_batch_dim)
@@ -249,8 +251,9 @@ def declare_model(model_file, model_format, with_batch_dim=True, options=None, w
 
 class Context:
     """
-    Context is used to customize device configurations. When inference backend is MindSpore Lite and the device type is
-    Ascend or Gpu, the extra `CPUDeviceInfo` will be used.
+    Context is used to customize device configurations. If Context is not specified, MindSpore Serving uses the default
+    device configurations. When inference backend is MindSpore Lite and the device type is Ascend or Gpu, the extra
+    `CPUDeviceInfo` will be used.
 
     Args:
         thread_num (int, optional): Set the number of threads at runtime. Only valid when using mindspore lite.
@@ -259,15 +262,15 @@ class Context:
         enable_parallel (bool, optional): Set the status whether to perform model inference or training in parallel.
             Only valid when inference backend is MindSpore Lite.
 
+    Raises:
+        RuntimeError: type or value of input parameters are invalid.
+
     Examples:
             >>> from mindspore_serving.server import register
             >>> import numpy as np
             >>> context = register.Context(thread_num=1, thread_affinity_core_list=[1,2], enable_parallel=True)
             >>> context.append_device_info(register.GPUDeviceInfo(precision_mode="fp16"))
             >>> model = declare_model(model_file="tensor_add.mindir", model_format="MindIR", context=context)
-
-    Raises:
-        RuntimeError: type or value of input parameters are invalid.
     """
 
     def __init__(self, **kwargs):
@@ -458,11 +461,11 @@ class AscendDeviceInfo(DeviceInfoContext):
             "high_precision". Default: "high_performance".
         fusion_switch_config_path (str, optional): Configuration file path of the convergence rule, including graph
              convergence and UB convergence. The system has built-in graph convergence and UB convergence rules, which
-             are enableed by default. You can disable the reuls specified in the file by setting this parameter.
+             are enableed by default. You can disable the rules specified in the file by setting this parameter.
         buffer_optimize_mode (str, optional): The value can be "l1_optimize", "l2_optimize", "off_optimize" or
             "l1_and_l2_optimize". Default "l2_optimize".
     Raises:
-        RuntimeError: Acl device info is invalid.
+        RuntimeError: Ascend device info is invalid.
 
     Examples:
         >>> from mindspore_serving.server import register

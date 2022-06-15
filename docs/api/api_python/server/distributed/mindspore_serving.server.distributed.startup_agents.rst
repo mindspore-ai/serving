@@ -13,7 +13,7 @@
     - **agent_ip** (str, optional) - 本地Worker代理ip，如果为无，则代理ip将从rank table文件中获取。参数 `agent_ip` 和参数 `rank_start` 必须同时有值，或者同时是None。默认值：None。
     - **rank_start** (int, optional) - 此计算机的起始rank id，如果为None，则将从rank table文件中获取rank id。参数 `agent_ip` 和参数 `rank_start` 必须同时有值，或者同时是None。默认值：None。
     - **dec_key** (bytes, optional) - 用于解密的密钥，类型为字节。有效长度为16、24或32。默认值：None。
-    - **dec_mode** (str, optional) - 指定解密模式，在设置了 `dec_key` 时生效。值可为：'AES-GCM'或'AES-CBC'。默认值：'AES-GCM'。
+    - **dec_mode** (str, optional) - 指定解密模式，在设置了 `dec_key` 时生效。值可为： `'AES-GCM'` 或 `'AES-CBC'` 。默认值： `'AES-GCM'` 。
 
     **异常：**
 
