@@ -22,6 +22,7 @@
 #include <string>
 #include <map>
 #include <memory>
+#include <shared_mutex>
 #include <nlohmann/json.hpp>
 #include "mindspore_serving/ccsrc/worker/model_loader_base.h"
 #include "worker/distributed_worker/common.h"
@@ -71,7 +72,8 @@ class MS_API DistributedModelLoader final : public DirectModelLoaderBase {
   std::string model_key_;
   std::atomic_bool model_loaded_ = false;
   uint64_t graph_num_ = 0;
-  std::mutex mutex_;
+  std::shared_mutex rw_mutex_;
+  std::mutex wait_mutex_;
   std::map<uint32_t, DistributedAgentContext> agent_spec_map_;
   std::string rank_table_json_file_;
 

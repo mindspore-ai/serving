@@ -21,6 +21,7 @@
 #include "worker/task_queue.h"
 #include "worker/stage_function.h"
 #include "common/buffer_tensor.h"
+#include "distributed_worker/distributed_model_loader.h"
 
 namespace mindspore::serving {
 serving::PredictThread::PredictThread() {}
@@ -61,11 +62,13 @@ void PredictThread::Predict() {
 
 void PredictThread::Stop() {
   task_que_.Stop();
-  if (predict_thread_.joinable()) {
-    try {
-      predict_thread_.join();
-    } catch (const std::system_error &) {
-    } catch (...) {
+  for (auto &predict_thread : predict_threads_) {
+    if (predict_thread.joinable()) {
+      try {
+        predict_thread.join();
+      } catch (const std::system_error &) {
+      } catch (...) {
+      }
     }
   }
 }
@@ -105,7 +108,12 @@ void PredictThread::Start(const std::string &que_name, const std::shared_ptr<Mod
     task_infos.push_back(info);
   }
   task_que_.Start(que_name, task_infos, task_callback);  // start before predict_thread_ start
-  predict_thread_ = std::thread(ThreadFunc, this);
+  bool support_pipeline_infer = model_meta.distributed_meta.enable_pipeline_infer &&
+                                (std::dynamic_pointer_cast<DistributedModelLoader>(model_loader) != nullptr);
+  size_t thread_num = support_pipeline_infer ? model_meta.distributed_meta.stage_size : 1;
+  for (size_t i = 0; i < thread_num; i++) {
+    predict_threads_.emplace_back(ThreadFunc, this);
+  }
 }
 
 void PredictThread::PredictHandle(const TaskInfo &task_info, const std::vector<InstancePtr> &instances) {

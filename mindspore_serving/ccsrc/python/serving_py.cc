@@ -85,7 +85,8 @@ void PyRegServable(pybind11::module *m_ptr) {
   py::class_<DistributedModelMeta>(m, "DistributedModelMeta_")
     .def(py::init<>())
     .def_readwrite("rank_size", &DistributedModelMeta::rank_size)
-    .def_readwrite("stage_size", &DistributedModelMeta::stage_size);
+    .def_readwrite("stage_size", &DistributedModelMeta::stage_size)
+    .def_readwrite("enable_pipeline_infer", &DistributedModelMeta::enable_pipeline_infer);
 
   py::class_<ModelMeta>(m, "ModelMeta_")
     .def(py::init<>())

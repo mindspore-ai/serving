@@ -54,7 +54,7 @@ class PredictThread {
 
  private:
   TaskQueue task_que_;
-  std::thread predict_thread_;
+  std::vector<std::thread> predict_threads_;
   ModelMeta model_meta_;
   std::shared_ptr<ModelLoaderBase> model_loader_ = nullptr;
   PredictModelInfo executor_info_;
