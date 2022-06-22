@@ -39,7 +39,14 @@ uint64_t DistributedModelLoader::GetGraphNum() const { return graph_num_; }
 
 Status DistributedModelLoader::Predict(const std::vector<TensorBasePtr> &input, std::vector<TensorBasePtr> *output,
                                        uint64_t subgraph) {
-  auto status = PredictInner(input, output, subgraph);
+  Status status(SUCCESS);
+  if (config_.distributed_meta.enable_pipeline_infer) {
+    std::shared_lock<std::shared_mutex> lock{rw_mutex_};
+    status = PredictInner(input, output, subgraph);
+  } else {
+    std::unique_lock<std::shared_mutex> lock{rw_mutex_};
+    status = PredictInner(input, output, subgraph);
+  }
   if (status != SUCCESS) {
     MSI_LOG_ERROR << "Predict error happened, now exit distributed servable";
     Worker::GetInstance().StopServable();
@@ -50,7 +57,6 @@ Status DistributedModelLoader::Predict(const std::vector<TensorBasePtr> &input, 
 Status DistributedModelLoader::PredictInner(const std::vector<TensorBasePtr> &input, std::vector<TensorBasePtr> *output,
                                             uint64_t subgraph) {
   MSI_EXCEPTION_IF_NULL(output);
-  std::unique_lock<std::mutex> lock{mutex_};
   if (!model_loaded_) {
     MSI_LOG_EXCEPTION << "Model has not been loaded";
   }
@@ -77,6 +83,7 @@ Status DistributedModelLoader::PredictInner(const std::vector<TensorBasePtr> &in
   request.set_return_result(false);
   empty_request.set_return_result(false);
 
+  std::unique_lock<std::mutex> wait_lock(wait_mutex_);
   for (size_t i = 0; i < rank_size; ++i) {
     AsyncPredictCallback callback = [msg_list, i](const Status &status) {
       msg_list->at(i).status = status;
@@ -94,6 +101,7 @@ Status DistributedModelLoader::PredictInner(const std::vector<TensorBasePtr> &in
       agent_spec_map_[i].notify_agent_->DispatchAsync(empty_request, &msg_list->at(i).reply, callback);
     }
   }
+  wait_lock.unlock();
 
   for (size_t rank_id = 0; rank_id < msg_list->size(); ++rank_id) {
     auto &predict_msg = msg_list->at(rank_id);
@@ -180,7 +188,7 @@ void DistributedModelLoader::SetWaitAgentsPromise(bool flag) {
 }
 
 Status DistributedModelLoader::RegisterAgent(const std::vector<WorkerAgentSpec> &agent_specs) {
-  std::unique_lock<std::mutex> lock{mutex_};
+  std::unique_lock<std::shared_mutex> lock{rw_mutex_};
   if (registered_end_flag_) {
     return INFER_STATUS_LOG_ERROR(FAILED) << "Distributed servable has ended up registration";
   }
@@ -210,7 +218,7 @@ Status DistributedModelLoader::RegisterAgent(const std::vector<WorkerAgentSpec> 
 }
 
 void DistributedModelLoader::Clear() {
-  std::unique_lock<std::mutex> lock{mutex_};
+  std::unique_lock<std::shared_mutex> lock{rw_mutex_};
   for (auto &agent : agent_spec_map_) {
     agent.second.notify_agent_->Exit();
   }
@@ -220,7 +228,7 @@ void DistributedModelLoader::Clear() {
 }
 
 Status DistributedModelLoader::OnAgentExit() {
-  std::unique_lock<std::mutex> lock{mutex_};
+  std::unique_lock<std::shared_mutex> lock{rw_mutex_};
   MSI_LOG_INFO << "Worker agent notify exit";
   SetWaitAgentsPromise(false);
   model_loaded_ = false;
@@ -591,7 +599,7 @@ Status DistributedModelLoader::CheckAgentsInfosAndInitTensorInfos() {
         if (all_stage_has_input_) {
           return INFER_STATUS_LOG_ERROR(FAILED)
                  << "Expect stage 0(other stages have empty inputs) or all stages have same inputs, detect rank "
-                 << i - 1 << " input count is " << agent_spec.input_infos.size() << ", but rank " << i
+                 << (i - 1) << " input count is " << agent_spec.input_infos.size() << ", but rank " << i
                  << " input count is 0, subgraph: " << subgraph;
         }
         continue;
@@ -666,12 +674,6 @@ Status DistributedModelLoader::CheckRankConfig() {
       return INFER_STATUS_LOG_ERROR(FAILED)
              << "Rank size " << rank_size << "must >= card count " << card_count_per_machine
              << " of one machine when stage size " << stage_size << " > 1";
-    }
-    if (parallel_count % card_count_per_machine != 0) {
-      return INFER_STATUS_LOG_ERROR(FAILED)
-             << "Parallel count(rank size/stage size) " << parallel_count << " in one stage must be N * "
-             << card_count_per_machine << "(card count of one machine) when rank size >= 8, rank size: " << rank_size
-             << ", stage size: " << stage_size;
     }
     for (size_t i = 0; i < rank_size; i += card_count_per_machine) {
       const auto &first_item = config_.rank_list[i];

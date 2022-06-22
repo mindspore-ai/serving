@@ -21,7 +21,8 @@ from mindspore_serving.server.register.model import append_declared_model
 from mindspore_serving._mindspore_serving import ModelMeta_, ServableRegister_
 
 
-def declare_servable(rank_size, stage_size, with_batch_dim=True, without_batch_dim_inputs=None):
+def declare_servable(rank_size, stage_size, with_batch_dim=True, without_batch_dim_inputs=None,
+                     enable_pipeline_infer=False):
     """declare distributed servable in servable_config.py. For details, please refer to
     `MindSpore Serving-based Distributed Inference Service Deployment <https://www.mindspore.cn/serving/docs/en/master/serving_distributed_example.html>`_.
 
@@ -32,6 +33,8 @@ def declare_servable(rank_size, stage_size, with_batch_dim=True, without_batch_d
             Default: True.
         without_batch_dim_inputs (Union[int, tuple[int], list[int]], optional): Index of inputs that without batch dim
             when with_batch_dim is True. Default: None.
+        enable_pipeline_infer (bool): Whether enable pipeline inference of distributed servable. This property
+            depends on servable itself, you can set this flag to true if it supports to improve performance.
 
     Raises:
         RuntimeError: The type or value of the parameters are invalid.
@@ -44,6 +47,7 @@ def declare_servable(rank_size, stage_size, with_batch_dim=True, without_batch_d
         >>> model = distributed.declare_servable(rank_size=8, stage_size=1)
     """
     check_type.check_bool('with_batch_dim', with_batch_dim)
+    check_type.check_bool('enable_pipeline_infer', enable_pipeline_infer)
 
     meta = ModelMeta_()
     meta.common_meta.servable_name = get_servable_dir()
@@ -59,8 +63,10 @@ def declare_servable(rank_size, stage_size, with_batch_dim=True, without_batch_d
     check_type.check_int("stage_size", stage_size, 1)
     meta.distributed_meta.rank_size = rank_size
     meta.distributed_meta.stage_size = stage_size
+    meta.distributed_meta.enable_pipeline_infer = enable_pipeline_infer
     ServableRegister_.declare_distributed_model(meta)
     logger.info(f"Declare distributed servable, servable name: {meta.common_meta.model_key} "
                 f", rank_size: {rank_size} , stage_size: {stage_size},  with_batch_dim: {with_batch_dim} "
-                f", without_batch_dim_inputs: {without_batch_dim_inputs}")
+                f", without_batch_dim_inputs: {without_batch_dim_inputs} "
+                f", enable_pipeline_infer: {enable_pipeline_infer}")
     return append_declared_model(meta.common_meta.model_key)

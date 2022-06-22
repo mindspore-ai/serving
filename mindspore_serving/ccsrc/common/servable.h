@@ -142,6 +142,7 @@ struct MS_API LocalModelMeta {
 struct DistributedModelMeta {
   size_t rank_size = 0;
   size_t stage_size = 0;
+  bool enable_pipeline_infer = false;
 };
 
 struct MS_API ModelMeta {
