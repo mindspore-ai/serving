@@ -33,7 +33,7 @@ def declare_servable(rank_size, stage_size, with_batch_dim=True, without_batch_d
             Default: True.
         without_batch_dim_inputs (Union[int, tuple[int], list[int]], optional): Index of inputs that without batch dim
             when with_batch_dim is True. Default: None.
-        enable_pipeline_infer (bool): Whether enable pipeline inference of distributed servable. This property
+        enable_pipeline_infer (bool, optional): Whether enable pipeline inference of distributed servable. This property
             depends on servable itself, you can set this flag to true if it supports to improve performance.
 
     Raises:

@@ -587,9 +587,12 @@ Status DistributedModelLoader::CheckAgentsInfosAndInitTensorInfos() {
       auto &agent_spec = agent_spec_map_[i].agent_spec_[subgraph];
       status = CompareTensorInfos(agent_spec.input_infos, input_infos);
       if (status != SUCCESS) {
-        status = INFER_STATUS_LOG_ERROR(FAILED)
-                 << "Rank " << i << " input infos not match rank 0, subgraph: " << subgraph
-                 << ", details: " << status.StatusMessage();
+        status =
+          INFER_STATUS_LOG_ERROR(FAILED)
+          << "Rank " << i << " input infos not match rank 0, subgraph: " << subgraph
+          << ", you can check if the actual stage size of the distributed model matches the stage size declared in "
+             "servable_config.py, details: "
+          << status.StatusMessage();
         return status;
       }
     }
