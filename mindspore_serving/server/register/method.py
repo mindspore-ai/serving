@@ -310,8 +310,8 @@ def add_stage(stage, *args, outputs_count, batch_size=None, tag=None):
         The length of 'args' should be equal to the inputs number of function or model.
 
     Args:
-        stage (Union(function, Model)): User-defined python function or Model object return by declare_model.
-        outputs_count (int): outputs count of stage
+        stage (Union(function, Model)): User-defined python function or `Model` object return by declare_model.
+        outputs_count (int): Outputs count of the user-defined python function or model.
         batch_size (int, optional): This parameter is valid only when stage is a function and the function
             can process multi instances at a time. default None.
 
@@ -489,17 +489,18 @@ def _get_method_def_stage_meta(method_def_func):
 
 
 def register_method(output_names):
-    """Define a method of the servable when importing servable_config.py of one servable. MindSpore Serving supports a
-    service consisting of multiple python functions and multiple models.
+    """Define a method of the servable when importing servable_config.py of one servable. One servable can include one
+    or more methods, and eache method provides different services base on models. A client needs to specify the
+    servable name and method name when accessing one service. MindSpore Serving supports a service consisting of
+    multiple python functions and multiple models.
 
     Note:
         This interface should take effect when importing servable_config.py by the serving server. Therefore, it's
         recommended that this interface be used globally in servable_config.py.
 
-    A method is an interface for clients to access the servable, and the servable can include one or more methods.
-    This interface will defines the signatures and pipeline of the method.
+    This interface will define the signatures and pipeline of the method.
 
-    The signatures includes the method name, input and outputs names of the method. When accessing a service, the client
+    The signatures include the method name, input and outputs names of the method. When accessing a service, the client
     needs to specify the servable name, the method name, and provide one or more inference instances. Each instance
     specifies the input data by the input names and obtains the output data by the outputs names.
 

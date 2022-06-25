@@ -1,8 +1,7 @@
 ﻿
 .. py:function:: mindspore_serving.server.register.add_stage(stage, *args, outputs_count, batch_size=None, tag=None)
 
-    在服务的 `servable_config.py` 中，通过 `register_method` 装饰（wrap）Python函数定义服务的一个方法（method），
-    本接口用于定义这个方法中的一个运行步骤（stage），可以是一个Python函数或者模型。
+    在服务的 `servable_config.py` 中，通过 `register_method` 装饰（wrap）Python函数定义服务的一个方法（method），本接口用于定义这个方法中的一个运行步骤（stage），可以是一个Python函数或者模型。
 
     .. note:: 入参 `args` 的长度应等于函数或模型的输入个数。
 

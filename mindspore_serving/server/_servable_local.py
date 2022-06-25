@@ -80,15 +80,15 @@ class ServableStartConfig:
             Used when device type is Nvidia GPU, Ascend 310/310P/910. Default None.
         version_number (int, optional): Servable version number to be loaded. The version number should be a positive
             integer, starting from 1, and 0 means to load the latest version. Default: 0.
-        device_type (str, optional): Currently supports "Ascend", "GPU", "CPU" and None. Default: None.
+        device_type (str, optional): Target device type for model deployment. Currently supports "Ascend", "GPU", "CPU"
+            and None. Default: None.
 
             - "Ascend": the platform expected to be Ascend 310/310P/910, etc.
             - "GPU": the platform expected to be Nvidia GPU.
             - "CPU": the platform expected to be CPU.
             - None: the platform is determined by the MindSpore environment.
 
-        num_parallel_workers (int, optional): This feature is currently in beta.
-            The number of processes that process python tasks, at least the number
+        num_parallel_workers (int, optional): The number of processes that process python tasks, at least the number
             of device cards used specified by the parameter device_ids. It will be adjusted to the number of device
             cards when it is less than the number of device cards. Default: 0.
         dec_key (bytes, optional): Byte type key used for decryption. The valid length is 16, 24, or 32. Default: None.

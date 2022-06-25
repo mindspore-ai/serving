@@ -490,7 +490,7 @@ def startup_agents(distributed_address, model_files, group_config_files=None,
         agent_ip (str, optional): The local agent ip, if it's None, the agent ip will be obtained from rank table file.
             Default None. Parameter agent_ip and parameter rank_start must have values at the same time,
             or both None at the same time. Default: None.
-        rank_start (int, optional): The starting rank id of this machine, if it's None, the rank ip will be obtained
+        rank_start (int, optional): The starting rank id of this machine, if it's None, the rank id will be obtained
             from rank table file. Default None. Parameter agent_ip and parameter rank_start must have values at the same
             time, or both None at the same time. Default: None.
         dec_key (bytes, optional): Byte type key used for decryption. The valid length is 16, 24, or 32. Default: None.
