@@ -35,7 +35,7 @@ def declare_servable(rank_size, stage_size, with_batch_dim=True, without_batch_d
             when with_batch_dim is True. Default: None.
         enable_pipeline_infer (bool, optional): Whether to enable pipeline parallel inference. Pipeline parallelism can
             effectively improve inference performance. For details, see
-            `Pipeline Parallelism <https://www.mindspore.cn/docs/en/master/design/pipeline_parallel.html>`_.
+            `Pipeline Parallelism <https://www.mindspore.cn/tutorials/experts/en/master/parallel/pipeline_parallel.html>`_.
             Default: False.
 
     Return:
