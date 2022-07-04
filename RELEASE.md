@@ -2,6 +2,20 @@
 
 [查看中文](./RELEASE_CN.md)
 
+## MindSpore Serving 1.8.0 Release Notes
+
+### Major Features and Improvements
+
+- [STABLE] When deploying a large-scale model with parallel pipelines, Serving supports parallel pipeline processing of multiple inference instances.
+
+### Contributors
+
+Thanks goes to these wonderful people:
+
+qinzheng, xuyongfei, zhangyinxia, zhoufeng.
+
+Contributions of any kind are welcome!
+
 ## MindSpore Serving 1.7.0 Release Notes
 
 ### Major Features and Improvements

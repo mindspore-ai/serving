@@ -29,7 +29,7 @@ def start_servable(servable_directory, servable_name, rank_table_json_file, vers
 
         servable_name (str): The servable name.
         version_number (int, optional): Servable version number to be loaded. The version number should be a positive
-            integer, starting from 1, and 0 means to load the latest version. Default: 1.
+            integer, starting from 1. Default: 1.
         rank_table_json_file (str): The rank table json file name.
         distributed_address (str, optional): The distributed worker address the worker agents linked to.
             Default: "0.0.0.0:6200".

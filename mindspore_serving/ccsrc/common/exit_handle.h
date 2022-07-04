@@ -43,6 +43,7 @@ class MS_API ExitSignalHandle {
   std::atomic_flag has_exited_ = true;
   std::atomic_flag has_inited_ = ATOMIC_FLAG_INIT;
   std::atomic_bool is_running_ = false;
+  int exit_signal_ = 0;
 
   static void HandleSignal(int sig);
   void HandleSignalInner(int sig);
