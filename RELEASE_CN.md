@@ -2,6 +2,20 @@
 
 [View English](./RELEASE.md)
 
+## MindSpore Serving 1.8.0 Release Notes
+
+### 主要特性和增强
+
+- [STABLE] Serving部署流水线并行的大模型时，支持流水线并行处理多个推理实例。
+
+### 贡献者
+
+感谢以下人员做出的贡献:
+
+qinzheng, xuyongfei, zhangyinxia, zhoufeng.
+
+欢迎以任何形式对项目提供贡献！
+
 ## MindSpore Serving 1.7.0 Release Notes
 
 ### 主要特性和增强
