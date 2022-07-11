@@ -19,16 +19,6 @@ set(INSTALL_PY_DIR ".")
 set(INSTALL_BASE_DIR ".")
 set(INSTALL_LIB_DIR "lib")
 
-# libevent
-install(FILES ${libevent_LIBPATH}/libevent-2.1.so.7.0.1
-        DESTINATION ${INSTALL_LIB_DIR} RENAME libevent-2.1.so.7 COMPONENT mindspore_serving)
-install(FILES ${libevent_LIBPATH}/libevent_core-2.1.so.7.0.1
-        DESTINATION ${INSTALL_LIB_DIR} RENAME libevent_core-2.1.so.7 COMPONENT mindspore)
-install(FILES ${libevent_LIBPATH}/libevent_openssl-2.1.so.7.0.1
-        DESTINATION ${INSTALL_LIB_DIR} RENAME libevent_openssl-2.1.so.7 COMPONENT mindspore_serving)
-install(FILES ${libevent_LIBPATH}/libevent_pthreads-2.1.so.7.0.1
-        DESTINATION ${INSTALL_LIB_DIR} RENAME libevent_pthreads-2.1.so.7 COMPONENT mindspore_serving)
-
 # grpc
 install(FILES ${grpc_LIBPATH}/libmindspore_serving_grpc++.so.1.36.1
   DESTINATION ${INSTALL_LIB_DIR} RENAME libmindspore_serving_grpc++.so.1 COMPONENT mindspore_serving)
