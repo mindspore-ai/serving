@@ -41,6 +41,7 @@ void ExitSignalHandle::MasterWait() {
   }
   auto exit_future = master_exit_requested_.get_future();
   exit_future.wait();
+  MSI_LOG_WARNING << "Receive exit signal " << exit_signal_;
 }
 
 // waiting ctrl+c or stop message to exit,
@@ -52,6 +53,7 @@ void ExitSignalHandle::WorkerWait() {
   }
   auto exit_future = worker_exit_requested_.get_future();
   exit_future.wait();
+  MSI_LOG_WARNING << "Receive exit signal " << exit_signal_;
 }
 
 // waiting ctrl+c or stop message to exit,
@@ -63,6 +65,7 @@ void ExitSignalHandle::AgentWait() {
   }
   auto exit_future = agent_exit_requested_.get_future();
   exit_future.wait();
+  MSI_LOG_WARNING << "Receive exit signal " << exit_signal_;
 }
 
 void ExitSignalHandle::Start() {
@@ -88,7 +91,7 @@ void ExitSignalHandle::HandleSignal(int sig) {
 
 void ExitSignalHandle::HandleSignalInner(int sig) {
   if (!has_exited_.test_and_set()) {
-    MSI_LOG_WARNING << "Receive exit signal " << sig;
+    exit_signal_ = sig;
     master_exit_requested_.set_value();
     worker_exit_requested_.set_value();
     agent_exit_requested_.set_value();
