@@ -24,7 +24,8 @@ from mindspore_serving._mindspore_serving import ModelMeta_, ServableRegister_
 def declare_servable(rank_size, stage_size, with_batch_dim=True, without_batch_dim_inputs=None,
                      enable_pipeline_infer=False):
     """declare distributed servable in servable_config.py. For details, please refer to
-    `MindSpore Serving-based Distributed Inference Service Deployment <https://www.mindspore.cn/serving/docs/en/master/serving_distributed_example.html>`_.
+    `MindSpore Serving-based Distributed Inference Service Deployment
+    <https://www.mindspore.cn/serving/docs/en/r1.8/serving_distributed_example.html>`_.
 
     Args:
         rank_size (int): The rank size of the distributed model.
@@ -35,7 +36,8 @@ def declare_servable(rank_size, stage_size, with_batch_dim=True, without_batch_d
             when with_batch_dim is True. Default: None.
         enable_pipeline_infer (bool, optional): Whether to enable pipeline parallel inference. Pipeline parallelism can
             effectively improve inference performance. For details, see
-            `Pipeline Parallelism <https://www.mindspore.cn/tutorials/experts/en/master/parallel/pipeline_parallel.html>`_.
+            `Pipeline Parallelism
+            <https://www.mindspore.cn/tutorials/experts/en/r1.8/parallel/pipeline_parallel.html>`_.
             Default: False.
 
     Return:
