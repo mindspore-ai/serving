@@ -6,7 +6,7 @@
 
 ### Major Features and Improvements
 
-- [STABLE] When deploying a large-scale model with parallel pipelines, Serving supports parallel pipeline processing of multiple inference instances.
+- [STABLE] When deploying a large-scale model with parallel pipeline, Serving supports parallel pipeline processing of multiple inference instances.
 
 ### Contributors
 

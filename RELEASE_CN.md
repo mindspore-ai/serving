@@ -10,7 +10,7 @@
 
 ### 贡献者
 
-感谢以下人员做出的贡献:
+感谢以下人员做出的贡献：
 
 qinzheng, xuyongfei, zhangyinxia, zhoufeng.
 
