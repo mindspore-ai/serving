@@ -50,23 +50,23 @@ MindSpore Serving提供以下功能：
 
 ## 安装
 
-MindSpore Serving安装和配置可以参考[MindSpore Serving安装页面](https://www.mindspore.cn/serving/docs/zh-CN/master/serving_install.html)。
+MindSpore Serving安装和配置可以参考[MindSpore Serving安装页面](https://www.mindspore.cn/serving/docs/zh-CN/r1.8/serving_install.html)。
 
 ## 快速入门
 
-以一个简单的[Add网络示例](https://www.mindspore.cn/serving/docs/zh-CN/master/serving_example.html)，演示MindSpore Serving如何使用。
+以一个简单的[Add网络示例](https://www.mindspore.cn/serving/docs/zh-CN/r1.8/serving_example.html)，演示MindSpore Serving如何使用。
 
 ## 文档
 
 ### 开发者教程
 
-- [基于gRPC接口访问MindSpore Serving服务](https://www.mindspore.cn/serving/docs/zh-CN/master/serving_grpc.html)
-- [基于RESTful接口访问MindSpore Serving服务](https://www.mindspore.cn/serving/docs/zh-CN/master/serving_restful.html)
-- [配置模型提供服务](https://www.mindspore.cn/serving/docs/zh-CN/master/serving_model.html)
-- [配置多模型组合的服务](https://www.mindspore.cn/serving/docs/zh-CN/master/serving_model.html#id9)
-- [基于MindSpore Serving部署分布式推理服务](https://www.mindspore.cn/serving/docs/zh-CN/master/serving_distributed_example.html)
+- [基于gRPC接口访问MindSpore Serving服务](https://www.mindspore.cn/serving/docs/zh-CN/r1.8/serving_grpc.html)
+- [基于RESTful接口访问MindSpore Serving服务](https://www.mindspore.cn/serving/docs/zh-CN/r1.8/serving_restful.html)
+- [配置模型提供服务](https://www.mindspore.cn/serving/docs/zh-CN/r1.8/serving_model.html)
+- [配置多模型组合的服务](https://www.mindspore.cn/serving/docs/zh-CN/r1.8/serving_model.html#id9)
+- [基于MindSpore Serving部署分布式推理服务](https://www.mindspore.cn/serving/docs/zh-CN/r1.8/serving_distributed_example.html)
 
-有关安装指南、教程和API的更多详细信息，请参阅[用户文档](https://www.mindspore.cn/serving/docs/zh-CN/master/server.html)。
+有关安装指南、教程和API的更多详细信息，请参阅[用户文档](https://www.mindspore.cn/serving/docs/zh-CN/r1.8/server.html)。
 
 ## 社区
 
