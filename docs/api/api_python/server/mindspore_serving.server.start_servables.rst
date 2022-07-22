@@ -11,11 +11,9 @@
     `基于MindSpore Serving部署推理服务 <https://www.mindspore.cn/serving/docs/zh-CN/master/serving_example.html>`_ 和
     `通过配置模型提供Servable <https://www.mindspore.cn/serving/docs/zh-CN/master/serving_model.html>`_ 。
 
-    **参数：**
+    参数：
+        - **servable_configs** (Union[ServableStartConfig, list[ServableStartConfig], tuple[ServableStartConfig]]) - 一个或多个服务的启动配置。
+        - **enable_lite** (bool) - 是否使用MindSpore Lite推理后端。 默认值：False。
 
-    - **servable_configs** (Union[ServableStartConfig, list[ServableStartConfig], tuple[ServableStartConfig]]) - 一个或多个服务的启动配置。
-    - **enable_lite** (bool) - 是否使用MindSpore Lite推理后端。 默认值：False。
-
-    **异常：**
-
-    - **RuntimeError** - 启动一个或多个服务失败。相关日志可查看本Serving服务器启动脚本所在目录的子目录serving_logs。
+    异常：
+        - **RuntimeError** - 启动一个或多个服务失败。相关日志可查看本Serving服务器启动脚本所在目录的子目录serving_logs。
