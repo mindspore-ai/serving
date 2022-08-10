@@ -1058,3 +1058,20 @@ def test_start_servables_gpu_device_ascend_device_type_failed():
     except RuntimeError as e:
         assert f"The device type 'ascend' of servable name {base.servable_name} is inconsistent with current " \
                f"running environment" in str(e)
+
+
+@serving_test
+def test_start_servable_number_of_worker_invalid_failed():
+    """
+    Feature: test start servables
+    Description: num_parallel_workers not in range[0,64]
+    Expectation: failed to serving server.
+    """
+    base = ServingTestBase()
+    base.init_servable(1, "add_servable_config.py")
+    try:
+        server.start_servables(
+            server.ServableStartConfig(base.servable_dir, base.servable_name, device_ids=0, num_parallel_workers=65))
+        assert False
+    except RuntimeError as e:
+        assert "Parameter 'num_parallel_workers' should be in range [0,64]" in str(e)

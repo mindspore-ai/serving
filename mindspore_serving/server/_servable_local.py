@@ -90,7 +90,7 @@ class ServableStartConfig:
 
         num_parallel_workers (int, optional): The number of processes that process python tasks, at least the number
             of device cards used specified by the parameter device_ids. It will be adjusted to the number of device
-            cards when it is less than the number of device cards. Default: 0.
+            cards when it is less than the number of device cards. The value should be in range [0,64]. Default: 0.
         dec_key (bytes, optional): Byte type key used for decryption. The valid length is 16, 24, or 32. Default: None.
         dec_mode (str, optional): Specifies the decryption mode, take effect when dec_key is set.
             Option: 'AES-GCM' or 'AES-CBC'. Default: 'AES-GCM'.
@@ -109,7 +109,7 @@ class ServableStartConfig:
 
         check_type.check_str("servable_name", servable_name)
         check_type.check_int("version_number", version_number, 0)
-        check_type.check_int("num_parallel_workers", num_parallel_workers, 0)
+        check_type.check_int("num_parallel_workers", num_parallel_workers, 0, 64)
         if dec_key is not None:
             if not isinstance(dec_key, bytes):
                 raise RuntimeError(f"Parameter 'dec_key' should be bytes, but actually {type(dec_key)}")
