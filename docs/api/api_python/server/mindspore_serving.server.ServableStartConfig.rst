@@ -17,9 +17,10 @@
           - "CPU"：目标设备为CPU。
           - None：系统根据实际的后端设备和MindSpor推理包决定目标设备，推荐使用默认值None。
 
-        - **num_parallel_workers** (int, optional) - 处理Python任务的进程数，用于提高预处理、后处理等Python任务的处理能力。值小于 `device_ids` 的长度时，处理Python任务的进程数为 `device_ids` 的长度。默认值：0。
+        - **num_parallel_workers** (int, optional) - 处理Python任务的进程数，用于提高预处理、后处理等Python任务的处理能力。值小于 `device_ids` 的长度时，处理Python任务的进程数为 `device_ids` 的长度。值的范围为[0,64]。默认值：0。
         - **dec_key** (bytes, optional) - 用于解密的字节类型密钥。有效长度为16、24或32。默认值：None。
         - **dec_mode** (str, optional) - 指定解密模式，设置 `dec_key` 时生效。值可为： `'AES-GCM'` 或 `'AES-CBC'` 。默认值： `'AES-GCM'` 。
 
     异常：
         - **RuntimeError** - 参数的类型或值无效。
+
