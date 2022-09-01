@@ -2,7 +2,7 @@
 .. py:class:: mindspore_serving.server.register.AscendDeviceInfo(**kwargs)
 
     用于设置Ascend设备配置。有关参数的更多详细信息，请查看
-    `ATC参数概览 <https://support.huaweicloud.com/tg-cannApplicationDev330/atlasatc_16_0037.html>`_ 。
+    `ATC参数概览 <https://support.huaweicloud.com/atctool-cann504alpha1infer/atlasatc_16_0041.html>`_ 。
 
     **参数：**
 

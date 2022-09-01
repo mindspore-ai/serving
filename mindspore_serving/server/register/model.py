@@ -445,7 +445,7 @@ class AscendDeviceInfo(DeviceInfoContext):
     """
     Helper class to set Ascend device infos. For more details about the parameters, see
     `parameters description of ATC tool
-    <https://support.huaweicloud.com/tg-cannApplicationDev330/atlasatc_16_0037.html>`_.
+    <https://support.huaweicloud.com/atctool-cann504alpha1infer/atlasatc_16_0041.html>`_.
 
     Args:
         insert_op_cfg_path (str, optional): Path of aipp config file.
