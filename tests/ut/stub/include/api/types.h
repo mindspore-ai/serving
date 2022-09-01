@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright 2020-2022 Huawei Technologies Co., Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,14 +24,7 @@
 #include "include/api/data_type.h"
 #include "include/api/dual_abi_helper.h"
 #include "include/api/format.h"
-
-#ifndef MS_API
-#ifdef _WIN32
-#define MS_API __declspec(dllexport)
-#else
-#define MS_API __attribute__((visibility("default")))
-#endif
-#endif
+#include "include/api/visible.h"
 
 namespace mindspore {
 enum ModelType : uint32_t {
@@ -88,10 +81,11 @@ class MS_API MSTensor {
   /// \param[in] shape The shape of the MSTensor.
   /// \param[in] data The data pointer that points to allocated memory.
   /// \param[in] data_len The length of the memory, in bytes.
+  /// \param[in] own_data Whether the data memory should be freed in MSTensor destruction.
   ///
   /// \return A pointer of MSTensor.
   static inline MSTensor *CreateRefTensor(const std::string &name, DataType type, const std::vector<int64_t> &shape,
-                                          const void *data, size_t data_len) noexcept;
+                                          const void *data, size_t data_len, bool own_data = true) noexcept;
 
   /// \brief Creates a MSTensor object, whose device data can be directly accessed by Model, must be used in pairs with
   /// DestroyTensorPtr.
@@ -103,8 +97,8 @@ class MS_API MSTensor {
   /// \param[in] data_len The length of the memory, in bytes.
   ///
   /// \return A pointer of MSTensor.
-  static inline MSTensor *CreateDevTensor(const std::string &name, DataType type, const std::vector<int64_t> &shape,
-                                          const void *data, size_t data_len) noexcept;
+  static inline MSTensor CreateDeviceTensor(const std::string &name, DataType type, const std::vector<int64_t> &shape,
+                                            void *data, size_t data_len) noexcept;
 
   /// \brief Creates a MSTensor object from local file, must be used in pairs with DestroyTensorPtr.
   ///
@@ -132,7 +126,7 @@ class MS_API MSTensor {
   /// \return A vector container containing several strings.
   static inline std::vector<std::string> TensorToStrings(const MSTensor &tensor);
 
-  /// \brief Destroy an object created by Clone, StringsToTensor, CreateRefTensor, CreateDevTensor or CreateTensor. Do
+  /// \brief Destroy an object created by Clone, StringsToTensor, CreateRefTensor or CreateTensor. Do
   /// not use it to destroy MSTensor from other sources.
   ///
   /// \param[in] tensor A MSTensor object.
@@ -140,6 +134,7 @@ class MS_API MSTensor {
 
   MSTensor();
   explicit MSTensor(const std::shared_ptr<Impl> &impl);
+  // if malloc data, user need to free after constructing MSTensor, else memory leak.
   inline MSTensor(const std::string &name, DataType type, const std::vector<int64_t> &shape, const void *data,
                   size_t data_len);
   explicit MSTensor(std::nullptr_t);
@@ -213,24 +208,31 @@ class MS_API MSTensor {
   /// \return The boolean value that indicates whether the MSTensor equals tensor.
   bool operator==(const MSTensor &tensor) const;
 
+  /// \brief Get the boolean value that indicates whether the MSTensor not equals tensor.
+  ///
+  /// \param[in] another MSTensor.
+  ///
+  /// \return The boolean value that indicates whether the MSTensor not equals tensor.
+  bool operator!=(const MSTensor &tensor) const;
+
   /// \brief Set the shape of for the MSTensor. Only valid for Lite.
   ///
-  /// \param[in] Shape of the MSTensor, a vector of int64_t.
+  /// \param[in] shape Shape of the MSTensor, a vector of int64_t.
   void SetShape(const std::vector<int64_t> &shape);
 
   /// \brief Set the data type for the MSTensor. Only valid for Lite.
   ///
-  /// \param[in] The data type of the MSTensor.
+  /// \param[in] data_type The data type of the MSTensor.
   void SetDataType(enum DataType data_type);
 
   /// \brief Set the name for the MSTensor. Only valid for Lite.
   ///
-  /// \param[in] The name of the MSTensor.
+  /// \param[in] name The name of the MSTensor.
   inline void SetTensorName(const std::string &name);
 
   /// \brief Set the Allocator for the MSTensor. Only valid for Lite.
   ///
-  /// \param[in] A pointer to Allocator.
+  /// \param[in] allocator A pointer to Allocator.
   void SetAllocator(std::shared_ptr<Allocator> allocator);
 
   /// \brief Obtain the Allocator of the MSTensor. Only valid for Lite.
@@ -240,7 +242,7 @@ class MS_API MSTensor {
 
   /// \brief Set the format for the MSTensor. Only valid for Lite.
   ///
-  /// \param[in] The format of the MSTensor.
+  /// \param[in] format The format of the MSTensor.
   void SetFormat(mindspore::Format format);
 
   /// \brief Obtain the format of the MSTensor. Only valid for Lite.
@@ -256,8 +258,21 @@ class MS_API MSTensor {
   ///
   /// \note The memory pointed to origin data pointer of MSTensor needs to be managed by the user
   ///
-  /// \param[in] A pointer to the data of the MSTensor.
-  void SetData(void *data);
+  /// \param[in] data A pointer to the data of the MSTensor.
+  /// \param[in] own_data Whether the data memory should be freed in MSTensor destruction.
+  void SetData(void *data, bool own_data = true);
+
+  /// \brief Set the device data address for the MSTensor. Only valid for Lite.
+  ///
+  /// \note The memory pointed to origin data pointer of MSTensor needs to be managed by the user
+  ///
+  /// \param[in] data A pointer to the device data of the MSTensor.
+  void SetDeviceData(void *data);
+
+  /// \brief Get the device data address of the MSTensor set by SetDeviceData. Only valid for Lite.
+  ///
+  /// \return A pointer to the device data of the MSTensor.
+  void *GetDeviceData();
 
   /// \brief Get the quantization parameters of the MSTensor. Only valid for Lite.
   ///
@@ -266,7 +281,7 @@ class MS_API MSTensor {
 
   /// \brief Set the quantization parameters for the MSTensor. Only valid for Lite.
   ///
-  /// \param[in] The quantization parameters of the MSTensor.
+  /// \param[in] quant_params The quantization parameters of the MSTensor.
   void SetQuantParams(std::vector<QuantParam> quant_params);
 
   const std::shared_ptr<Impl> impl() const { return impl_; }
@@ -276,9 +291,9 @@ class MS_API MSTensor {
   static MSTensor *CreateTensor(const std::vector<char> &name, enum DataType type, const std::vector<int64_t> &shape,
                                 const void *data, size_t data_len) noexcept;
   static MSTensor *CreateRefTensor(const std::vector<char> &name, enum DataType type, const std::vector<int64_t> &shape,
-                                   const void *data, size_t data_len) noexcept;
-  static MSTensor *CreateDevTensor(const std::vector<char> &name, enum DataType type, const std::vector<int64_t> &shape,
-                                   const void *data, size_t data_len) noexcept;
+                                   const void *data, size_t data_len, bool own_data) noexcept;
+  static MSTensor CreateDeviceTensor(const std::vector<char> &name, enum DataType type,
+                                     const std::vector<int64_t> &shape, void *data, size_t data_len) noexcept;
   static MSTensor *CreateTensorFromFile(const std::vector<char> &file, enum DataType type,
                                         const std::vector<int64_t> &shape) noexcept;
   static MSTensor *CharStringsToTensor(const std::vector<char> &name, const std::vector<std::vector<char>> &str);
@@ -319,13 +334,13 @@ MSTensor *MSTensor::CreateTensor(const std::string &name, enum DataType type, co
 }
 
 MSTensor *MSTensor::CreateRefTensor(const std::string &name, enum DataType type, const std::vector<int64_t> &shape,
-                                    const void *data, size_t data_len) noexcept {
-  return CreateRefTensor(StringToChar(name), type, shape, data, data_len);
+                                    const void *data, size_t data_len, bool own_data) noexcept {
+  return CreateRefTensor(StringToChar(name), type, shape, data, data_len, own_data);
 }
 
-MSTensor *MSTensor::CreateDevTensor(const std::string &name, enum DataType type, const std::vector<int64_t> &shape,
-                                    const void *data, size_t data_len) noexcept {
-  return CreateDevTensor(StringToChar(name), type, shape, data, data_len);
+MSTensor MSTensor::CreateDeviceTensor(const std::string &name, enum DataType type, const std::vector<int64_t> &shape,
+                                      void *data, size_t data_len) noexcept {
+  return CreateDeviceTensor(StringToChar(name), type, shape, data, data_len);
 }
 
 MSTensor *MSTensor::CreateTensorFromFile(const std::string &file, enum DataType type,
@@ -347,12 +362,12 @@ MSTensor::MSTensor(const std::string &name, enum DataType type, const std::vecto
 
 std::string MSTensor::Name() const { return CharToString(CharName()); }
 
-void MSTensor::SetTensorName(const std::string &name) { return SetTensorName(StringToChar(name)); }
+void MSTensor::SetTensorName(const std::string &name) { SetTensorName(StringToChar(name)); }
 
 using Key = struct Key {
   const size_t max_key_len = 32;
-  size_t len;
-  unsigned char key[32];
+  size_t len = 0;
+  unsigned char key[32] = {0};
   Key() : len(0) {}
   explicit Key(const char *dec_key, size_t key_len);
 };
@@ -363,11 +378,13 @@ constexpr char kDecModeAesGcm[] = "AES-GCM";
 struct MSCallBackParam {
   std::string node_name; /**< node name argument */
   std::string node_type; /**< node type argument */
+  double execute_time;   /**< gpu execute time */
 };
 
 /// \brief KernelCallBack defined the function pointer for callBack.
-using MSKernelCallBack = std::function<bool(const std::vector<MSTensor> &inputs, const std::vector<MSTensor> &outputs,
-                                            const MSCallBackParam &opInfo)>;
+using MSKernelCallBack =
+  std::function<bool(const std::vector<MSTensor> & /* inputs */, const std::vector<MSTensor> & /* outputs */,
+                     const MSCallBackParam &opInfo)>;
 
 std::vector<char> CharVersion();
 inline std::string Version() { return CharToString(CharVersion()); }

@@ -153,7 +153,8 @@ MSTensor *MSTensor::CreateTensor(const std::vector<char> &name, enum DataType ty
 }
 
 MSTensor *MSTensor::CreateRefTensor(const std::vector<char> &name, enum DataType type,
-                                    const std::vector<int64_t> &shape, const void *data, size_t data_len) noexcept {
+                                    const std::vector<int64_t> &shape, const void *data, size_t data_len,
+                                    bool) noexcept {
   std::string name_str = CharToString(name);
   try {
     std::shared_ptr<Impl> impl = std::make_shared<TensorReferenceImpl>(name_str, type, shape, data, data_len, false);
@@ -168,19 +169,18 @@ MSTensor *MSTensor::CreateRefTensor(const std::vector<char> &name, enum DataType
   }
 }
 
-MSTensor *MSTensor::CreateDevTensor(const std::vector<char> &name, enum DataType type,
-                                    const std::vector<int64_t> &shape, const void *data, size_t data_len) noexcept {
+MSTensor MSTensor::CreateDeviceTensor(const std::vector<char> &name, enum DataType type,
+                                      const std::vector<int64_t> &shape, void *data, size_t data_len) noexcept {
   std::string name_str = CharToString(name);
   try {
     std::shared_ptr<Impl> impl = std::make_shared<TensorReferenceImpl>(name_str, type, shape, data, data_len, true);
-    MSTensor *ret = new MSTensor(impl);
-    return ret;
+    return MSTensor(impl);
   } catch (const std::bad_alloc &) {
     MS_LOG(ERROR) << "Malloc memory failed.";
-    return nullptr;
+    return MSTensor(nullptr);
   } catch (...) {
     MS_LOG(ERROR) << "Unknown error occurred.";
-    return nullptr;
+    return MSTensor(nullptr);
   }
 }
 
@@ -374,7 +374,7 @@ void MSTensor::SetFormat(mindspore::Format) { MS_LOG_EXCEPTION << "Invalid imple
 
 mindspore::Format MSTensor::format() const { MS_LOG_EXCEPTION << "Invalid implement."; }
 
-void MSTensor::SetData(void *) { MS_LOG_EXCEPTION << "Invalid implement."; }
+void MSTensor::SetData(void *, bool) { MS_LOG_EXCEPTION << "Invalid implement."; }
 
 std::vector<QuantParam> MSTensor::QuantParams() const { MS_LOG_EXCEPTION << "Invalid implement."; }
 
