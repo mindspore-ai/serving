@@ -443,9 +443,7 @@ class GPUDeviceInfo(DeviceInfoContext):
 
 class AscendDeviceInfo(DeviceInfoContext):
     """
-    Helper class to set Ascend device infos. For more details about the parameters, see
-    `parameters description of ATC tool
-    <https://support.huaweicloud.com/atctool-cann504alpha1infer/atlasatc_16_0041.html>`_.
+    Helper class to set Ascend device infos.
 
     Args:
         insert_op_cfg_path (str, optional): Path of aipp config file.
