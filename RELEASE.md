@@ -20,8 +20,8 @@ Contributions of any kind are welcome!
 
 ### Major Features and Improvements
 
-- [DEMO] Ascend 310P can be used as the inference device, for more detail see [MindSpore Serving backend](https://www.mindspore.cn/serving/docs/en/master/serving_install.html#installation).
-- [DEMO] Support models of MindIR format when MindSpore Lite is used as the MindSpore Serving inference backend, for more detail see [MindSpore Serving backend](https://www.mindspore.cn/serving/docs/en/master/serving_install.html#installation).
+- [DEMO] Ascend 310P can be used as the inference device, for more detail see [MindSpore Serving backend](https://www.mindspore.cn/serving/docs/en/r1.9/serving_install.html#installation).
+- [DEMO] Support models of MindIR format when MindSpore Lite is used as the MindSpore Serving inference backend, for more detail see [MindSpore Serving backend](https://www.mindspore.cn/serving/docs/en/r1.9/serving_install.html#installation).
 
 #### Deprecations
 
@@ -53,7 +53,7 @@ Contributions of any kind are welcome!
 - [STABLE] The new interfaces `Context`, `CPUDeviceInfo`, `GPUDeviceInfo`, `AscendDeviceInfo` are provided to set
   user-defined device information. The original interfaces `GpuOptions` and `AclOptions` are deprecated.
 - [BETA] We support MindSpore Lite as the MindSpore Serving inference backend, for more detail see
-  [MindSpore Serving backend](https://www.mindspore.cn/serving/docs/en/master/serving_install.html#installation).
+  [MindSpore Serving backend](https://www.mindspore.cn/serving/docs/en/r1.9/serving_install.html#installation).
 
 ### API Change
 
@@ -64,7 +64,7 @@ Contributions of any kind are welcome!
 ###### Multi-model composite services
 
 We can use existing interfaces(`decalre_model` and `add_stage`) that define single-model services to define
-multi-model composite services. For more detail, see [Services Composed of Multiple Models](https://www.mindspore.cn/serving/docs/en/master/serving_model.html#services-composed-of-multiple-models).
+multi-model composite services. For more detail, see [Services Composed of Multiple Models](https://www.mindspore.cn/serving/docs/en/r1.9/serving_model.html#services-composed-of-multiple-models).
 
 ```python
 from mindspore_serving.server import register
@@ -84,7 +84,7 @@ def add_sub_only_model(x1, x2, x3):  # x1+x2-x3
 Parameter `num_parallel_workers` in class `ServableStartConfig`  is a stable feature. It's can be used to configure the
 total number of workers. The number of workers occupying devices is determined by the length of parameter `device_ids`.
 Additional worker processes use worker processes that occupy devices for model inference.  For more detail, see
-[Multi-process Concurrency](https://www.mindspore.cn/serving/docs/en/master/serving_model.html#multi-process-concurrency).
+[Multi-process Concurrency](https://www.mindspore.cn/serving/docs/en/r1.9/serving_model.html#multi-process-concurrency).
 
 ```python
 class ServableStartConfig:
@@ -867,7 +867,7 @@ Contributions of any kind are welcome!
 ##### Python API
 
 Support deployment of distributed model, refer
-to [distributed inference tutorial](https://www.mindspore.cn/serving/docs/en/master/serving_distributed_example.html)
+to [distributed inference tutorial](https://www.mindspore.cn/serving/docs/en/r1.9/serving_distributed_example.html)
 for related API.
 
 #### Deprecations

@@ -14,7 +14,8 @@
 # ============================================================================
 """Servable register interface, used in servable_config.py of one servable.
 See how to configure servable_config.py file, please refer to
-`Servable Provided Through Model Configuration <https://www.mindspore.cn/serving/docs/zh-CN/master/serving_model.html>`_."""
+`Servable Provided Through Model Configuration <https://\
+www.mindspore.cn/serving/docs/zh-CN/r1.9/serving_model.html>`_."""
 
 from .model import declare_model, Model, Context, AclOptions, GpuOptions
 from .model import AscendDeviceInfo, CPUDeviceInfo, GPUDeviceInfo
