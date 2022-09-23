@@ -8,8 +8,8 @@
     在Ascend 910硬件平台上，每个服务的每个副本都独占一个设备。不同的服务或同一服务的不同版本需要部署在不同的设备上。在Ascend 310/310P和GPU硬件平台上，一个设备可以被多个服务共享，不同服务或同一服务的不同版本可以部署在同一设备上，实现设备复用。
 
     如何配置模型提供服务请查看
-    `基于MindSpore Serving部署推理服务 <https://www.mindspore.cn/serving/docs/zh-CN/master/serving_example.html>`_ 和
-    `通过配置模型提供Servable <https://www.mindspore.cn/serving/docs/zh-CN/master/serving_model.html>`_ 。
+    `基于MindSpore Serving部署推理服务 <https://www.mindspore.cn/serving/docs/zh-CN/r1.9/serving_example.html>`_ 和
+    `通过配置模型提供Servable <https://www.mindspore.cn/serving/docs/zh-CN/r1.9/serving_model.html>`_ 。
 
     参数：
         - **servable_configs** (Union[ServableStartConfig, list[ServableStartConfig], tuple[ServableStartConfig]]) - 一个或多个服务的启动配置。

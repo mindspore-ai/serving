@@ -69,8 +69,9 @@ class ServableStartConfig:
     Servable startup configuration.
 
     For more detail, please refer to
-    `MindSpore-based Inference Service Deployment <https://www.mindspore.cn/serving/docs/zh-CN/master/serving_example.html>`_ and
-    `Servable Provided Through Model Configuration <https://www.mindspore.cn/serving/docs/zh-CN/master/serving_model.html>`_.
+    `MindSpore-based Inference Service Deployment <https://www.mindspore.cn/serving/docs/zh-CN/r1.9/\
+    serving_example.html>`_ and `Servable Provided Through Model Configuration <https://\
+    www.mindspore.cn/serving/docs/zh-CN/r1.9/serving_model.html>`_.
 
     Args:
         servable_directory (str): The directory where the servable is located in. There expects to has a directory

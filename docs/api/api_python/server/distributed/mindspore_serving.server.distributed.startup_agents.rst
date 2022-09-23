@@ -2,7 +2,7 @@
 .. py:function:: mindspore_serving.server.distributed.startup_agents(distributed_address, model_files, group_config_files=None, agent_start_port=7000, agent_ip=None, rank_start=None, dec_key=None, dec_mode='AES-GCM')
 
     在当前计算机上启动所有所需的Worker代理（Agent），这组Worker代理进程将负责本机器设备上的推理任务，详细可参考
-    `基于MindSpore Serving部署分布式推理服务 <https://www.mindspore.cn/serving/docs/zh-CN/master/serving_distributed_example.html>`_ 。
+    `基于MindSpore Serving部署分布式推理服务 <https://www.mindspore.cn/serving/docs/zh-CN/r1.9/serving_distributed_example.html>`_ 。
 
     参数：
         - **distributed_address** (str) - Worker代理连接分布式Worker服务器地址。
