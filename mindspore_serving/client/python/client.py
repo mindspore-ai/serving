@@ -248,8 +248,9 @@ class Client:
         Used to create requests, access serving service, and parse and return results.
 
         Args:
-            instances (map, tuple of map): Instance or tuple of instances, every instance item is the inputs map.
-                The map key is the input name, and the value is the input value, the type of value can be python int,
+            instances (Union[dict, tuple[dict]]): Instance or tuple of instances,
+                every instance item is the inputs dict. The key is the input name,
+                and the value is the input value, the type of value can be python int,
                 float, bool, str, bytes, numpy number, or numpy array object.
 
         Raises:
@@ -283,9 +284,10 @@ class Client:
         Used to create requests, async access serving.
 
         Args:
-            instances (map, tuple of map): Instance or tuple of instances, every instance item is the inputs map.
-                The map key is the input name, and the value is the input value, the type of value can be python int,
-                float, bool, str, bytes, numpy number, or numpy array object.
+            instances (Union[dict, tuple[dict]]): Instance or tuple of instances, every instance item
+                is the inputs dict. The key is the input name, and the value is the input value, the
+                type of value can be python int, float, bool, str, bytes, numpy number,
+                or numpy array object.
 
         Raises:
             RuntimeError: The type or value of the parameters is invalid, or other errors happened.
