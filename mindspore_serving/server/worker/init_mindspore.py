@@ -53,9 +53,12 @@ def check_mindspore_version(ms_dir):
     except FileNotFoundError:
         logger.warning(f"Get MindSpore version failed")
         return
-    if __version__ != ms_version:
+    serving_versions = __version__.split(".")
+    ms_versions = ms_version.split(".")
+    if serving_versions[:2] != ms_versions[:2]:
         logger.warning(f"MindSpore version {ms_version} and MindSpore Serving version {__version__} are expected "
                        f"to be consistent. If not, there may be compatibility problems.")
+        return
 
 
 def set_mindspore_cxx_env():
