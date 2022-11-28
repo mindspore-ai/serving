@@ -14,7 +14,7 @@
 # ============================================================================
 """Init MindSpore Cxx"""
 import os
-import importlib
+import importlib.util
 
 from mindspore_serving import log as logger
 from mindspore_serving._mindspore_serving import Worker_
