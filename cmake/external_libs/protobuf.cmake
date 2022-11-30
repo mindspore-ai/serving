@@ -38,7 +38,8 @@ mindspore_add_pkg(protobuf
         MD5 ${MD5}
         CMAKE_PATH cmake/
         CMAKE_OPTION -Dprotobuf_BUILD_TESTS=OFF -Dprotobuf_BUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release
-        PATCHES ${PROTOBUF_PATCH_ROOT}/CVE-2021-22570.patch)
+        PATCHES ${PROTOBUF_PATCH_ROOT}/CVE-2021-22570.patch
+        PATCHES ${PROTOBUF_PATCH_ROOT}/CVE-2022-1941.patch)
 
 include_directories(${protobuf_INC})
 add_library(mindspore_serving::protobuf ALIAS protobuf::protobuf)
