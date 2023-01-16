@@ -25,11 +25,11 @@ from mindspore_serving.server.worker import get_newest_version_number
 from mindspore_serving.server._servable_common import ServableContextDataBase
 
 
-def _get_device_type(target_device_type):
+def _get_device_type(target_device_type, enable_lite):
     """Get device type supported, this will load libmindspore.so or libmindspore-lite.so"""
     # Get Device type: Ascend, Gpu, Cpu
     args = f"{sys.executable} -c 'from mindspore_serving._mindspore_serving import Worker_;" \
-           f"device_type=Worker_.get_device_type(\"{target_device_type}\");" \
+           f"device_type=Worker_.get_device_type(\"{target_device_type}\", {enable_lite});" \
            f"print(\"#get_device_type_result=\", device_type, \"#\", sep=\"\")'"
     process = subprocess.Popen(args=args, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     process.wait()
@@ -138,16 +138,6 @@ class ServableStartConfig:
             if device_type.lower() not in ("ascend", "gpu", "cpu"):
                 raise RuntimeError(f"Unsupported device type '{device_type}', only support 'Ascend', 'GPU', 'CPU' "
                                    f"and None, case ignored")
-            default_device = _get_device_type(None)
-            support_cpu = _get_device_type("cpu")
-            if support_cpu and support_cpu != default_device:
-                support_device = f"None, '{default_device}' or '{support_cpu}'"
-            else:
-                support_device = f"None or '{default_device}'"
-            if not _get_device_type(device_type):
-                raise RuntimeError(f"The device type '{device_type}' of servable name {servable_name} "
-                                   f"is inconsistent with current running environment, supported device type: "
-                                   f"{support_device}")
         # else device_type is None
         # if device_ids is empty, and there are models declared, Cpu target should be support
         # if device_ids is not empty, and there are no models declared, use no device resources
@@ -192,6 +182,24 @@ class ServableStartConfig:
     @property
     def num_parallel_workers(self):
         return self.num_parallel_workers_
+
+    def check_device_type(self, enable_lite):
+        """Check whether the device type is valid"""
+        device_type = self.device_type_
+        if device_type.lower() != "none":
+            if device_type.lower() not in ("ascend", "gpu", "cpu"):
+                raise RuntimeError(f"Unsupported device type '{device_type}', only support 'Ascend', 'GPU', 'CPU' "
+                                   f"and None, case ignored")
+            default_device = _get_device_type(None, enable_lite)
+            support_cpu = _get_device_type("cpu", enable_lite)
+            if support_cpu and support_cpu != default_device:
+                support_device = f"None, '{default_device}' or '{support_cpu}'"
+            else:
+                support_device = f"None or '{default_device}'"
+            if not _get_device_type(device_type, enable_lite):
+                raise RuntimeError(f"The device type '{device_type}' of servable name {self.servable_name} "
+                                   f"is inconsistent with current running environment, supported device type: "
+                                   f"{support_device}")
 
 
 class DeployConfig:

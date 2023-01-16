@@ -41,8 +41,8 @@ def start_servables(servable_configs, enable_lite=False):
 
     On Ascend 910 hardware platform, each copy of each servable owns one device. Different servables or different
     versions of the same servable need to be deployed on different devices.
-    On Ascend 310/310P and GPU hardware platform, one device can be shared by multi servables, and different servables or
-    different versions of the same servable can be deployed on the same chip to realize device reuse.
+    On Ascend 310/310P and GPU hardware platform, one device can be shared by multi servables, and different servables
+    or different versions of the same servable can be deployed on the same chip to realize device reuse.
 
     For details about how to configure models to provide servables, please refer to
     `MindSpore-based Inference Service Deployment <https://www.mindspore.cn/serving/docs/en/master/serving_example.html>`_ and
@@ -72,12 +72,14 @@ def start_servables(servable_configs, enable_lite=False):
     if not isinstance(servable_configs, (tuple, list)):
         raise RuntimeError(f"Parameter '{servable_configs}' should be ServableStartConfig, list or tuple of "
                            f"ServableStartConfig, but actually {type(servable_configs)}")
+    check_type.check_bool("enable_lite", enable_lite)
     for config in servable_configs:
         if not isinstance(config, (ServableStartConfig, DistributedStartConfig)):
             raise RuntimeError(
                 f"The item of parameter '{servable_configs}' should be ServableStartConfig, but actually "
                 f"{type(config)}")
-    check_type.check_bool("enable_lite", enable_lite)
+        if isinstance(config, ServableStartConfig):
+            config.check_device_type(enable_lite)
     ServableContext_.get_instance().set_enable_lite(enable_lite)
 
     set_mindspore_cxx_env()
