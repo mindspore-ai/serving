@@ -144,7 +144,7 @@ def start_servable(servable_directory, servable_name, version_number,
     _load_servable_config(servable_directory, servable_name)
     model_names = Worker_.get_declared_model_names()
     if model_names:
-        init_mindspore.init_mindspore_cxx_env()
+        init_mindspore.init_mindspore_cxx_env(enable_lite)
         newest_version_number = get_newest_version_number(servable_directory, servable_name)
         if not newest_version_number:
             raise RuntimeError(
@@ -185,7 +185,7 @@ def start_extra_servable(servable_directory, servable_name, version_number, devi
     _load_servable_config(servable_directory, servable_name)
     model_names = Worker_.get_declared_model_names()
     if model_names:
-        init_mindspore.init_mindspore_cxx_env()
+        init_mindspore.init_mindspore_cxx_env(enable_lite)
         newest_version_number = get_newest_version_number(servable_directory, servable_name)
         if not newest_version_number:
             raise RuntimeError(

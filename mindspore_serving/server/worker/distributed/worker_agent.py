@@ -38,7 +38,7 @@ def start_worker_agent(start_config, dec_key, dec_mode):
 
     ExitSignalHandle_.start()  # Set flag to running and receive Ctrl+C message
 
-    init_mindspore.init_mindspore_cxx_env()
+    init_mindspore.init_mindspore_cxx_env(False)
     os.environ["RANK_ID"] = str(start_config.rank_id)
     os.environ["DEVICE_ID"] = str(start_config.device_id)
     os.environ["MS_ENABLE_HCCL"] = "1"

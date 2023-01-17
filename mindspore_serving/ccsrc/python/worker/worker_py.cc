@@ -228,7 +228,7 @@ void PyWorker::StopAndClear() {
   Worker::GetInstance().Clear();
 }
 
-std::string PyWorker::GetDeviceType(const std::string &target_device_type) {
+std::string PyWorker::GetDeviceType(const std::string &target_device_type, bool enable_lite) {
   DeviceType target = kDeviceTypeNotSpecified;
   if (target_device_type == "cpu") {
     target = kDeviceTypeCpu;
@@ -237,6 +237,7 @@ std::string PyWorker::GetDeviceType(const std::string &target_device_type) {
   } else if (target_device_type == "ascend") {
     target = kDeviceTypeAscend;
   }
+  ServableContext::Instance()->SetEnableLite(enable_lite);
   auto device_type = InferenceLoader::Instance().GetSupportDeviceType(target, kUnknownType);
   if (device_type == kDeviceTypeAscend) {
     return "Ascend";

@@ -88,10 +88,10 @@ def set_mindspore_cxx_env():
     logger.info(f"Update env LD_LIBRARY_PATH from '{ld_lib_path}' to '{os.getenv('LD_LIBRARY_PATH')}'")
 
 
-def init_mindspore_cxx_env():
+def init_mindspore_cxx_env(enable_lite):
     """Init env for load libmindspore.so"""
     set_mindspore_cxx_env()
-    device_type = Worker_.get_device_type("none")
+    device_type = Worker_.get_device_type("none", enable_lite)
     if not device_type:
         logger.warning("Failed to get device type")
         return
