@@ -7,6 +7,7 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 else()
     set(grpc_CXXFLAGS "-fstack-protector-all -Wno-maybe-uninitialized -Wno-unused-parameter -D_FORTIFY_SOURCE=2 -O2 \
         -Dgrpc=mindspore_serving_grpc -Dgrpc_impl=mindspore_serving_grpc_impl -Dgrpc_core=mindspore_serving_grpc_core")
+    set(grpc_CFLAGS "-fstack-protector-all -D_FORTIFY_SOURCE=2 -O2")
     if(NOT ENABLE_GLIBCXX)
         set(grpc_CXXFLAGS "${grpc_CXXFLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
     endif()
@@ -43,10 +44,10 @@ endif()
 
 if(ENABLE_GITEE)
     set(REQ_URL "https://gitee.com/mirrors/grpc/repository/archive/v1.36.1.tar.gz")
-    set(MD5 "71252ebcd8e9e32a818a907dfd4b63cc")
+    set(SHA256 "17a3ac19345a6aeda01b2baba5400e1136b02b44770dbdfe8581255a091aaf87")
 else()
     set(REQ_URL "https://github.com/grpc/grpc/archive/v1.36.1.tar.gz")
-    set(MD5 "90c93203e95e89af5f46738588217057")
+    set(SHA256 "adf51558bf3d057a65651880c9814e09e77b61573eb950c2be1142a624d58e69")
 endif()
 
 mindspore_add_pkg(grpc
@@ -55,7 +56,7 @@ mindspore_add_pkg(grpc
         mindspore_serving_address_sorting
         EXE grpc_cpp_plugin grpc_python_plugin
         URL ${REQ_URL}
-        MD5 ${MD5}
+        SHA256 ${SHA256}
         PATCHES ${CMAKE_SOURCE_DIR}/third_party/patch/grpc/grpc.patch001
         CMAKE_OPTION -DCMAKE_BUILD_TYPE:STRING=Release
         -DBUILD_SHARED_LIBS=ON

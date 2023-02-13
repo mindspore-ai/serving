@@ -57,7 +57,7 @@ if(LOCAL_LIBS_SERVER)
     endif()
 endif()
 
-function(__download_pkg pkg_name pkg_url pkg_md5)
+function(__download_pkg pkg_name pkg_url pkg_sha256)
 
     if(LOCAL_LIBS_SERVER)
         get_filename_component(_URL_FILE_NAME ${pkg_url} NAME)
@@ -67,7 +67,7 @@ function(__download_pkg pkg_name pkg_url pkg_md5)
     FetchContent_Declare(  # 获取项目。可以是一个URL也可以是一个Git仓库。
             ${pkg_name}
             URL ${pkg_url}
-            URL_HASH MD5=${pkg_md5}
+            URL_HASH SHA256=${pkg_sha256}
             )
     FetchContent_GetProperties(${pkg_name}) # 获取我们需要的变量MyName_*。
     message("download: ${${pkg_name}_SOURCE_DIR} , ${pkg_name} , ${pkg_url}")
@@ -78,14 +78,14 @@ function(__download_pkg pkg_name pkg_url pkg_md5)
 
 endfunction()
 
-function(__download_pkg_with_git pkg_name pkg_url pkg_git_commit pkg_md5)
+function(__download_pkg_with_git pkg_name pkg_url pkg_git_commit pkg_sha256)
 
     if(LOCAL_LIBS_SERVER)
         set(pkg_url "http://${LOCAL_LIBS_SERVER}:8081/libs/${pkg_name}/${pkg_git_commit}")
         FetchContent_Declare(
                 ${pkg_name}
                 URL ${pkg_url}
-                URL_HASH MD5=${pkg_md5}
+                URL_HASH SHA256=${pkg_sha256}
         )
     else()
         FetchContent_Declare(
@@ -184,22 +184,22 @@ endfunction()
 function(__check_patches pkg_patches)
     # check patches
     if(PKG_PATCHES)
-        file(TOUCH ${_MS_LIB_CACHE}/${pkg_name}_patch.md5)
-        file(READ ${_MS_LIB_CACHE}/${pkg_name}_patch.md5 ${pkg_name}_PATCHES_MD5)
+        file(TOUCH ${_MS_LIB_CACHE}/${pkg_name}_patch.sha256)
+        file(READ ${_MS_LIB_CACHE}/${pkg_name}_patch.sha256 ${pkg_name}_PATCHES_SHA256)
 
-        message("patches md5:${${pkg_name}_PATCHES_MD5}")
+        message("patches sha256:${${pkg_name}_PATCHES_SHA256}")
 
-        set(${pkg_name}_PATCHES_NEW_MD5)
+        set(${pkg_name}_PATCHES_NEW_SHA256)
         foreach(_PATCH ${PKG_PATCHES})
-            file(MD5 ${_PATCH} _PF_MD5)
-            set(${pkg_name}_PATCHES_NEW_MD5 "${${pkg_name}_PATCHES_NEW_MD5},${_PF_MD5}")
+            file(SHA256 ${_PATCH} _PF_SHA256)
+            set(${pkg_name}_PATCHES_NEW_SHA256 "${${pkg_name}_PATCHES_NEW_SHA256},${_PF_SHA256}")
         endforeach()
 
-        if(NOT ${pkg_name}_PATCHES_MD5 STREQUAL ${pkg_name}_PATCHES_NEW_MD5)
+        if(NOT ${pkg_name}_PATCHES_SHA256 STREQUAL ${pkg_name}_PATCHES_NEW_SHA256)
             set(${pkg_name}_PATCHES ${PKG_PATCHES})
             file(REMOVE_RECURSE "${_MS_LIB_CACHE}/${pkg_name}-subbuild")
-            file(WRITE ${_MS_LIB_CACHE}/${pkg_name}_patch.md5 ${${pkg_name}_PATCHES_NEW_MD5})
-            message("patches changed : ${${pkg_name}_PATCHES_NEW_MD5}")
+            file(WRITE ${_MS_LIB_CACHE}/${pkg_name}_patch.sha256 ${${pkg_name}_PATCHES_NEW_SHA256})
+            message("patches changed : ${${pkg_name}_PATCHES_NEW_SHA256}")
         endif()
     endif()
 endfunction()
@@ -212,7 +212,7 @@ function(mindspore_add_pkg pkg_name)
 
     message("---------add pkg: " ${pkg_name} "---------")
     set(options)
-    set(oneValueArgs URL MD5 GIT_REPOSITORY GIT_TAG VER DIR HEAD_ONLY CMAKE_PATH RELEASE LIB_PATH CUSTOM_CMAKE)
+    set(oneValueArgs URL SHA256 GIT_REPOSITORY GIT_TAG VER DIR HEAD_ONLY CMAKE_PATH RELEASE LIB_PATH CUSTOM_CMAKE)
     set(multiValueArgs CMAKE_OPTION LIBS EXE PRE_CONFIGURE_COMMAND CONFIGURE_COMMAND BUILD_OPTION INSTALL_INCS
             INSTALL_LIBS PATCHES SUBMODULES SOURCEMODULES ONLY_MAKE ONLY_MAKE_INCS ONLY_MAKE_LIBS)
     cmake_parse_arguments(PKG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -231,8 +231,8 @@ function(mindspore_add_pkg pkg_name)
 
     set(${pkg_name}_PATCHES_HASH)
     foreach(_PATCH ${PKG_PATCHES})
-        file(MD5 ${_PATCH} _PF_MD5)
-        set(${pkg_name}_PATCHES_HASH "${${pkg_name}_PATCHES_HASH},${_PF_MD5}")
+        file(SHA256 ${_PATCH} _PF_SHA256)
+        set(${pkg_name}_PATCHES_HASH "${${pkg_name}_PATCHES_HASH},${_PF_SHA256}")
     endforeach()
 
     # check options
@@ -241,7 +241,7 @@ function(mindspore_add_pkg pkg_name)
             ${ARGN} - ${${pkg_name}_USE_STATIC_LIBS}- ${${pkg_name}_PATCHES_HASH}
             ${${pkg_name}_CXXFLAGS}--${${pkg_name}_CFLAGS}--${${pkg_name}_LDFLAGS}")
     string(REPLACE ";" "-" ${pkg_name}_CONFIG_TXT ${${pkg_name}_CONFIG_TXT})
-    string(MD5 ${pkg_name}_CONFIG_HASH ${${pkg_name}_CONFIG_TXT})
+    string(SHA256 ${pkg_name}_CONFIG_HASH ${${pkg_name}_CONFIG_TXT})
 
     message("${pkg_name} config hash: ${${pkg_name}_CONFIG_HASH}")
 
@@ -281,9 +281,9 @@ function(mindspore_add_pkg pkg_name)
 
     if(NOT PKG_DIR)
         if(PKG_GIT_REPOSITORY)
-            __download_pkg_with_git(${pkg_name} ${PKG_GIT_REPOSITORY} ${PKG_GIT_TAG} ${PKG_MD5})
+            __download_pkg_with_git(${pkg_name} ${PKG_GIT_REPOSITORY} ${PKG_GIT_TAG} ${PKG_SHA256})
         else()
-            __download_pkg(${pkg_name} ${PKG_URL} ${PKG_MD5})
+            __download_pkg(${pkg_name} ${PKG_URL} ${PKG_SHA256})
         endif()
         foreach(_SUBMODULE_FILE ${PKG_SUBMODULES})
             STRING(REGEX REPLACE "(.+)_(.+)" "\\1" _SUBMODEPATH ${_SUBMODULE_FILE})
