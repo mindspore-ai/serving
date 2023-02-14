@@ -79,7 +79,8 @@ def start_servables(servable_configs, enable_lite=False):
                 f"The item of parameter '{servable_configs}' should be ServableStartConfig, but actually "
                 f"{type(config)}")
         if isinstance(config, ServableStartConfig):
-            config.check_device_type(enable_lite)
+            # pylint: disable=protected-access
+            config._check_device_type(enable_lite)
     ServableContext_.get_instance().set_enable_lite(enable_lite)
 
     set_mindspore_cxx_env()

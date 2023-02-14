@@ -183,7 +183,7 @@ class ServableStartConfig:
     def num_parallel_workers(self):
         return self.num_parallel_workers_
 
-    def check_device_type(self, enable_lite):
+    def _check_device_type(self, enable_lite):
         """Check whether the device type is valid"""
         device_type = self.device_type_
         if device_type.lower() != "none":
