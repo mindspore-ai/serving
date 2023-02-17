@@ -18,7 +18,15 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux" OR APPLE)
             CONFIGURE_COMMAND ./config no-zlib no-shared
             PATCHES ${OPENSSL_PATCH_ROOT}/CVE-2021-3711.patch
             PATCHES ${OPENSSL_PATCH_ROOT}/CVE-2021-3712.patch
+            PATCHES ${OPENSSL_PATCH_ROOT}/CVE-2021-4160.patch
             PATCHES ${OPENSSL_PATCH_ROOT}/CVE-2022-0778.patch
+            PATCHES ${OPENSSL_PATCH_ROOT}/CVE-2022-1292.patch
+            PATCHES ${OPENSSL_PATCH_ROOT}/CVE-2022-2068.patch
+            PATCHES ${OPENSSL_PATCH_ROOT}/CVE-2022-2097.patch
+            PATCHES ${OPENSSL_PATCH_ROOT}/CVE-2022-4304.patch
+            PATCHES ${OPENSSL_PATCH_ROOT}/CVE-2022-4450.patch
+            PATCHES ${OPENSSL_PATCH_ROOT}/CVE-2023-0215.patch
+            PATCHES ${OPENSSL_PATCH_ROOT}/CVE-2023-0286.patch
             )
     include_directories(${openssl_INC})
     add_library(mindspore_serving::ssl ALIAS openssl::ssl)
