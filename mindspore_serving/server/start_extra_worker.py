@@ -85,8 +85,8 @@ def start_extra_worker(servable_directory, servable_name, version_number, device
         pass
     worker_address = f"unix:{unix_socket_dir}/serving_worker_{servable_name}_version{version_number}_extra{index}" \
                      f"_{worker_pid}"
-    if len(worker_address) > 107:  # maximum unix domain socket address length
-        worker_address = worker_address[:50] + "___" + worker_address[-50:]
+    if len(worker_address) > 90:  # limit maximum unix domain socket address length
+        worker_address = worker_address[:40] + "___" + worker_address[-40:]
     try:
         worker.start_extra_servable(servable_directory=servable_directory, servable_name=servable_name,
                                     version_number=version_number, device_type=device_type,
