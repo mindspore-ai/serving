@@ -26,8 +26,8 @@ if __name__ == '__main__':
         ckpt_file = "resnet50_ascend_v111_cifar10_offical_cv_bs32_acc92.ckpt"
         if not os.path.exists(ckpt_file):
             print("downloading resnet50 cifar10 checkpoint---------------------------------")
-            os.system("wget https://download.mindspore.cn/model_zoo/r1.1/"
-                      "resnet50_ascend_v111_cifar10_offical_cv_bs32_acc92/" + ckpt_file)
+            os.system(f"wget https://download.mindspore.cn/model_zoo/r1.1/"
+                      f"resnet50_ascend_v111_cifar10_offical_cv_bs32_acc92/{ckpt_file} --no-check-certificate")
             print("end downloading resnet50 cifar10 checkpoint---------------------------------")
     export_resnet('resnet50_cifar10', ckpt_file, 'resnet50_1b_cifar10')
 
