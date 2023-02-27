@@ -223,8 +223,12 @@ Status MindSporeModelWrap::LoadModelFromFileInner(serving::DeviceType device_typ
                   << ", model context: " << model_context.AsString() << ", build error detail: " << ex.what();
     return Status(FAILED, ex.what());
   }
-  return SetApiModelInfo(device_type, device_id, file_names, model_type, with_batch_dim, without_batch_dim_inputs,
-                         model_context, models);
+  auto ret = SetApiModelInfo(device_type, device_id, file_names, model_type, with_batch_dim, without_batch_dim_inputs,
+                             model_context, models);
+  if (ret != SUCCESS) {
+    return ret;
+  }
+  return BuildOnPredict();
 }
 
 Status MindSporeModelWrap::SetApiModelInfo(serving::DeviceType device_type, uint32_t device_id,
@@ -270,6 +274,27 @@ Status MindSporeModelWrap::SetApiModelInfo(serving::DeviceType device_type, uint
   MSI_LOG_INFO << "Load model from file success, model file: " << file_names << ", device_type: '" << device_type
                << "', device_id: " << device_id << ", model type: " << model_type
                << ", model context: " << model_context.AsString();
+  return SUCCESS;
+}
+
+Status MindSporeModelWrap::BuildOnPredict() {
+  for (size_t i = 0; i < models_.size(); i++) {
+    auto &inputs_info = models_[i].input_tensor_infos;
+    std::vector<TensorBasePtr> request;
+    for (auto &info : inputs_info) {
+      auto tensor = std::make_shared<Tensor>();
+      tensor->set_data_type(info.data_type);
+      tensor->set_shape(info.shape);
+      tensor->resize_data(info.size);
+      request.push_back(tensor);
+    }
+    std::vector<TensorBasePtr> reply;
+    auto ret = ExecuteModel(request, &reply, false, i);
+    if (ret != SUCCESS) {
+      MSI_LOG_ERROR << "Failed to execute model when warmup, subgraph " << i;
+      return ret;
+    }
+  }
   return SUCCESS;
 }
 
