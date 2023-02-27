@@ -23,7 +23,7 @@ from mindspore.communication import init
 
 def test_inference():
     """distributed inference after distributed training"""
-    context.set_context(mode=context.GRAPH_MODE)
+    context.set_context(mode=context.GRAPH_MODE, device_target="Ascend")
     init(backend_name="hccl")
     context.set_auto_parallel_context(full_batch=True, parallel_mode="semi_auto_parallel",
                                       device_num=8, group_ckpt_save_file="./group_config.pb")
