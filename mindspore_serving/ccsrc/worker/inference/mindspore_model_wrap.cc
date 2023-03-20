@@ -558,7 +558,7 @@ Status MindSporeModelWrap::ExecuteModel(const RequestBase &request, serving::Rep
     }
     return mindspore::MSTensor::CreateRefTensor(name, TransInferDataType2ApiTypeId(input_tensor->data_type()),
                                                 input_tensor->shape(), const_cast<uint8_t *>(input_tensor->data()),
-                                                input_tensor->data_size());
+                                                input_tensor->data_size(), false);
   };
 
   FuncMakeOutTensor func_out = [&reply](const mindspore::MSTensor &result_tensor, DataType data_type,
@@ -586,7 +586,7 @@ Status MindSporeModelWrap::ExecuteModel(const std::vector<TensorBasePtr> &reques
     auto &input_tensor = request[index];
     return mindspore::MSTensor::CreateRefTensor(name, TransInferDataType2ApiTypeId(input_tensor->data_type()),
                                                 input_tensor->shape(), const_cast<uint8_t *>(input_tensor->data()),
-                                                input_tensor->data_size());
+                                                input_tensor->data_size(), false);
   };
   FuncMakeOutTensor func_out = [&reply](const mindspore::MSTensor &result_tensor, DataType data_type,
                                         const std::vector<int64_t> &shape) {
