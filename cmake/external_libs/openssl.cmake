@@ -27,6 +27,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux" OR APPLE)
             PATCHES ${OPENSSL_PATCH_ROOT}/CVE-2022-4450.patch
             PATCHES ${OPENSSL_PATCH_ROOT}/CVE-2023-0215.patch
             PATCHES ${OPENSSL_PATCH_ROOT}/CVE-2023-0286.patch
+            PATCHES ${OPENSSL_PATCH_ROOT}/CVE-2023-0464.patch
             )
     include_directories(${openssl_INC})
     add_library(mindspore_serving::ssl ALIAS openssl::ssl)
