@@ -45,8 +45,10 @@ def start_servables(servable_configs, enable_lite=False):
     or different versions of the same servable can be deployed on the same chip to realize device reuse.
 
     For details about how to configure models to provide servables, please refer to
-    `MindSpore-based Inference Service Deployment <https://www.mindspore.cn/serving/docs/en/master/serving_example.html>`_ and
-    `Servable Provided Through Model Configuration <https://www.mindspore.cn/serving/docs/en/master/serving_model.html>`_.
+    `MindSpore-based Inference Service Deployment
+    <https://www.mindspore.cn/serving/docs/en/r2.0/serving_example.html>`_ and
+    `Servable Provided Through Model Configuration
+    <https://www.mindspore.cn/serving/docs/en/r2.0/serving_model.html>`_.
 
     Args:
         servable_configs (Union[ServableStartConfig, list[ServableStartConfig], tuple[ServableStartConfig]]): The

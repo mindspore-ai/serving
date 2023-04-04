@@ -477,7 +477,8 @@ def startup_agents(distributed_address, model_files, group_config_files=None,
     r"""
     Start all required worker agents on the current machine. These worker agent processes are responsible for inference
     tasks on the local machine. For details, please refer to
-    `MindSpore Serving-based Distributed Inference Service Deployment <https://www.mindspore.cn/serving/docs/en/master/serving_distributed_example.html>`_.
+    `MindSpore Serving-based Distributed Inference Service Deployment
+    <https://www.mindspore.cn/serving/docs/en/r2.0/serving_distributed_example.html>`_.
 
     Args:
         distributed_address (str): The distributed worker address the agents linked to.
