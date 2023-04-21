@@ -26,7 +26,7 @@ def set_max_enqueued_requests(max_enqueued_requests):
     Set the maximum number of requests waiting to be processed.
 
     Args:
-        max_enqueued_requests (int): The maximum acceptable infer message size in number, default 10000,
+        max_enqueued_requests (int): The maximum acceptable infer message size in number, default ``10000``,
             Max infer number should be a positive integer.
 
     Raises:
