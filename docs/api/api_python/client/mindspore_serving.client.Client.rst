@@ -9,8 +9,8 @@
         - **address** (str) - Serving服务器gRPC接口地址。
         - **servable_name** (str) - Serving服务器提供的服务的名称。
         - **method_name** (str) - 服务中方法的名称。
-        - **version_number** (int, optional) - 服务的版本号，0表示指定所有正在运行的一个或多个版本的服务中最大的版本号。默认值：0。
-        - **ssl_config** (mindspore_serving.client.SSLConfig, optional) - SSL配置，如果None，则禁用SSL。默认值：None。
+        - **version_number** (int, optional) - 服务的版本号，``0`` 表示指定所有正在运行的一个或多个版本的服务中最大的版本号。默认值：``0``。
+        - **ssl_config** (mindspore_serving.client.SSLConfig, optional) - SSL配置，如果 ``None``，则禁用SSL。默认值：``None``。
 
     异常：
         - **RuntimeError** - 参数的类型或值无效，或发生其他错误。

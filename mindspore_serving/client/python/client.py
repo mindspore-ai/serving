@@ -145,12 +145,12 @@ class SSLConfig:
     The client's ssl_config encapsulates grpc's ssl channel credentials for SSL-enabled connections.
 
     Args:
-        certificate (str, optional): File holding the PEM-encoded certificate chain as a byte string to use or None if
-            no certificate chain should be used. Default: None.
-        private_key (str, optional): File holding the PEM-encoded private key as a byte string, or None if no private
-            key should be used. Default: None.
-        custom_ca (str, optional): File holding the PEM-encoded root certificates as a byte string, or None to retrieve
-            them from a default location chosen by gRPC runtime. Default: None.
+        certificate (str, optional): File holding the PEM-encoded certificate chain as a byte string to use or
+            ``None`` if no certificate chain should be used. Default: ``None``.
+        private_key (str, optional): File holding the PEM-encoded private key as a byte string, or ``None``
+            if no private key should be used. Default: ``None``.
+        custom_ca (str, optional): File holding the PEM-encoded root certificates as a byte string, or ``None``
+            to retrieve them from a default location chosen by gRPC runtime. Default: ``None``.
 
     Raises:
         RuntimeError: The type or value of the parameters is invalid.
@@ -183,10 +183,10 @@ class Client:
         address (str): Serving address.
         servable_name (str): The name of servable supplied by Serving.
         method_name (str): The name of method supplied by servable.
-        version_number (int, optional): The version number of servable, 0 means the maximum version number in all
-            running versions. Default: 0.
-        ssl_config (mindspore_serving.client.SSLConfig, optional): The server's ssl_config, if None, disabled ssl.
-            Default: None.
+        version_number (int, optional): The version number of servable, ``0`` means the maximum version number in all
+            running versions. Default: ``0``.
+        ssl_config (mindspore_serving.client.SSLConfig, optional): The server's ssl_config, if ``None``, disabled ssl.
+            Default: ``None``.
 
     Raises:
         RuntimeError: The type or value of the parameters are invalid, or other errors happened.

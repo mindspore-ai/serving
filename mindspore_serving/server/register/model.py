@@ -34,13 +34,13 @@ def declare_servable(servable_file, model_format, with_batch_dim=True, options=N
 
     Args:
         servable_file (Union[str, list[str]]): Model files name.
-        model_format (str): Model format, "OM" or "MindIR", case ignored.
+        model_format (str): Model format, ``"OM"`` or ``"MindIR"``, case ignored.
         with_batch_dim (bool, optional): Whether the first shape dim of the inputs and outputs of model is batch dim.
-            Default: True.
+            Default: ``True``.
         options (Union[AclOptions, GpuOptions], optional): Options of model, supports AclOptions or GpuOptions.
-            Default: None.
+            Default: ``None``.
         without_batch_dim_inputs (Union[int, tuple[int], list[int]], optional): Index of inputs that without batch
-            dim when with_batch_dim is True. Default: None.
+            dim when `with_batch_dim` is ``True``. Default: ``None``.
 
     Raises:
         RuntimeError: The type or value of the parameters are invalid.
@@ -66,8 +66,9 @@ class Model:
         r"""Invoke the model inference interface based on instances.
 
         Args:
-            subgraph (int, optional): Subgraph index, used when there are multiply sub-graphs in one model.
             args : tuple/list of instances, or inputs of one instance.
+            subgraph (int, optional): Subgraph index, used when there are multiply sub-graphs in one model.
+                Default: ``0``.
 
         Return:
             Tuple of instances when input parameter 'args' is tuple/list, or outputs of one instance.
@@ -182,19 +183,19 @@ def declare_model(model_file, model_format, with_batch_dim=True, options=None, w
 
     Args:
         model_file (Union[str, list[str]]): Model files name.
-        model_format (str): Model format, "OM", "MindIR" or "MindIR_Lite", case ignored.
+        model_format (str): Model format, ``"OM"``, ``"MindIR"`` or ``"MindIR_Lite"``, case ignored.
         with_batch_dim (bool, optional): Whether the first shape dim of the inputs and outputs of model is batch dim.
-            Default: True.
+            Default: ``True``.
         options (Union[AclOptions, GpuOptions], optional): Options of model, supports AclOptions or GpuOptions.
-            Default: None.
-        context (Context): Context is used to store environment variables during execution. If the value is None,
-            Serving uses the default device context based on the deployed device. Default: None.
+            Default: ``None``.
+        context (Context): Context is used to store environment variables during execution. If the value is ``None``,
+            Serving uses the default device context based on the deployed device. Default: ``None``.
         without_batch_dim_inputs (Union[int, tuple[int], list[int]], optional): Index of inputs that without batch
-            dim when with_batch_dim is True. For example, if the shape of input 0 does not include the batch dimension,
-            `without_batch_dim_inputs` can be set to `(0,)`. Default: None.
+            dim when `with_batch_dim` is ``True``. For example, if the shape of input 0 does not include the
+            batch dimension, `without_batch_dim_inputs` can be set to `(0,)`. Default: ``None``.
         config_file (str, optional): Config file for model to set mix precision inference. The file path can be an
             absolute path or a relative path to the directory in which servable_config.py resides.
-            Default: None.
+            Default: ``None``.
 
     Return:
         Model, identification of this model, can be used for `Model.call` or as the inputs of `add_stage`.
@@ -346,10 +347,10 @@ class CPUDeviceInfo(DeviceInfoContext):
     Helper class to set cpu device info.
 
     Args:
-        precision_mode(str, optional): Option of model precision, and the value can be "origin", "fp16".
-            "origin" indicates that inference is performed with the preciesion defined in the model, and
-            "fp16" indicates that inference is performed based on FP16 precision.
-            Default: "origin".
+        precision_mode(str, optional): Option of model precision, and the value can be ``"origin"``, ``"fp16"``.
+            ``"origin"`` indicates that inference is performed with the preciesion defined in the model, and
+            ``"fp16"`` indicates that inference is performed based on FP16 precision.
+            Default: ``"origin"``.
 
     Raises:
         RuntimeError: Cpu option is invalid, or value is not str.
@@ -391,10 +392,10 @@ class GPUDeviceInfo(DeviceInfoContext):
     Helper class to set gpu device info.
 
     Args:
-        precision_mode(str, optional): Option of model precision, and the value can be "origin", "fp16".
-            "origin" indicates that inference is performed with the preciesion defined in the model, and
-            "fp16" indicates that inference is performed based on FP16 precision.
-            Default: "origin".
+        precision_mode(str, optional): Option of model precision, and the value can be ``"origin"``, ``"fp16"``.
+            ``"origin"`` indicates that inference is performed with the preciesion defined in the model, and
+            ``"fp16"`` indicates that inference is performed based on FP16 precision.
+            Default: ``"origin"``.
 
     Raises:
         RuntimeError: Gpu option is invalid, or value is not str.
@@ -447,21 +448,22 @@ class AscendDeviceInfo(DeviceInfoContext):
 
     Args:
         insert_op_cfg_path (str, optional): Path of aipp config file.
-        input_format (str, optional): Manually specify the model input format, the value can be "ND", "NCHW", "NHWC",
-            "CHWN", "NC1HWC0", or "NHWC1C0".
+        input_format (str, optional): Manually specify the model input format, the value can be ``"ND"``, ``"NCHW"``,
+            ``"NHWC"``, ``"CHWN"``, ``"NC1HWC0"``, or ``"NHWC1C0"``.
         input_shape (str, optional): Manually specify the model input shape, such as
-            "input_op_name1: n1,c2,h3,w4;input_op_name2: n4,c3,h2,w1".
-        output_type (str, optional): Manually specify the model output type, the value can be "FP16", "UINT8" or "FP32",
-            Default: "FP32".
-        precision_mode (str, optional): Model precision mode, the value can be "force_fp16"，"allow_fp32_to_fp16"，
-            "must_keep_origin_dtype" or "allow_mix_precision". Default: "force_fp16".
-        op_select_impl_mode (str, optional): The operator selection mode, the value can be "high_performance" or
-            "high_precision". Default: "high_performance".
+            ``"input_op_name1: n1,c2,h3,w4;input_op_name2: n4,c3,h2,w1"``.
+        output_type (str, optional): Manually specify the model output type, the value can be ``"FP16"``, ``"UINT8"``
+            or ``"FP32"``. Default: ``"FP32"``.
+        precision_mode (str, optional): Model precision mode, the value can be ``"force_fp16"``,
+            ``"allow_fp32_to_fp16"``, ``"must_keep_origin_dtype"`` or ``"allow_mix_precision"``.
+            Default: ``"force_fp16"``.
+        op_select_impl_mode (str, optional): The operator selection mode, the value can be ``"high_performance"`` or
+            ``"high_precision"``. Default: ``"high_performance"``.
         fusion_switch_config_path (str, optional): Configuration file path of the convergence rule, including graph
              convergence and UB convergence. The system has built-in graph convergence and UB convergence rules, which
              are enableed by default. You can disable the rules specified in the file by setting this parameter.
-        buffer_optimize_mode (str, optional): The value can be "l1_optimize", "l2_optimize", "off_optimize" or
-            "l1_and_l2_optimize". Default "l2_optimize".
+        buffer_optimize_mode (str, optional): The value can be ``"l1_optimize"``, ``"l2_optimize"``,
+            ``"off_optimize"`` or ``"l1_and_l2_optimize"``. Default: ``"l2_optimize"``.
     Raises:
         RuntimeError: Ascend device info is invalid.
 
@@ -634,16 +636,17 @@ class AclOptions:
 
     Args:
         insert_op_cfg_path (str, optional): Path of aipp config file.
-        input_format (str, optional): Manually specify the model input format, the value can be "ND", "NCHW", "NHWC",
-            "CHWN", "NC1HWC0", or "NHWC1C0".
+        input_format (str, optional): Manually specify the model input format, the value can be ``"ND"``, ``"NCHW"``,
+            ``"NHWC"``, ``"CHWN"``, ``"NC1HWC0"``, or ``"NHWC1C0"``.
         input_shape (str, optional): Manually specify the model input shape, such as
-            "input_op_name1: n1,c2,h3,w4;input_op_name2: n4,c3,h2,w1".
-        output_type (str, optional): Manually specify the model output type, the value can be "FP16", "UINT8" or "FP32",
-            Default: "FP32".
-        precision_mode (str, optional): Model precision mode, the value can be "force_fp16"，"allow_fp32_to_fp16"，
-            "must_keep_origin_dtype" or "allow_mix_precision". Default: "force_fp16".
-        op_select_impl_mode (str, optional): The operator selection mode, the value can be "high_performance" or
-            "high_precision". Default: "high_performance".
+            ``"input_op_name1: n1,c2,h3,w4;input_op_name2: n4,c3,h2,w1"``.
+        output_type (str, optional): Manually specify the model output type, the value can be ``"FP16"``, ``"UINT8"`` or
+            ``"FP32"``. Default: ``"FP32"``.
+        precision_mode (str, optional): Model precision mode, the value can be ``"force_fp16"``,
+            ``"allow_fp32_to_fp16"``, ``"must_keep_origin_dtype"`` or ``"allow_mix_precision"``.
+            Default: ``"force_fp16"``.
+        op_select_impl_mode (str, optional): The operator selection mode, the value can be ``"high_performance"`` or
+            ``"high_precision"``. Default: ``"high_performance"``.
 
     Raises:
         RuntimeError: Acl option is invalid, or value is not str.
@@ -672,8 +675,8 @@ class GpuOptions:
         :class:`mindspore_serving.server.register.GPUDeviceInfo` instead.
 
     Args:
-        precision_mode(str, optional): inference operator selection, and the value can be "origin", "fp16".
-            Default: "origin".
+        precision_mode(str, optional): inference operator selection, and the value can be ``"origin"``, ``"fp16"``.
+            Default: ``"origin"``.
 
     Raises:
         RuntimeError: Gpu option is invalid, or value is not str.

@@ -30,13 +30,13 @@ def declare_servable(rank_size, stage_size, with_batch_dim=True, without_batch_d
         rank_size (int): The rank size of the distributed model.
         stage_size (int): The stage size of the distributed model.
         with_batch_dim (bool, optional): Whether the first shape dim of the inputs and outputs of model is batch.
-            Default: True.
+            Default: ``True``.
         without_batch_dim_inputs (Union[int, tuple[int], list[int]], optional): Index of inputs that without batch dim
-            when with_batch_dim is True. Default: None.
+            when `with_batch_dim` is ``True``. Default: ``None``.
         enable_pipeline_infer (bool, optional): Whether to enable pipeline parallel inference. Pipeline parallelism can
             effectively improve inference performance. For details, see
             `Pipeline Parallelism <https://www.mindspore.cn/tutorials/experts/en/master/parallel/pipeline_parallel.html>`_.
-            Default: False.
+            Default: ``False``.
 
     Return:
         Model, identification of this model, can be used for `Model.call` or as the inputs of `add_stage`.

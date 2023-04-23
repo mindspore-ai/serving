@@ -313,17 +313,17 @@ def add_stage(stage, *args, outputs_count, batch_size=None, tag=None):
         stage (Union(function, Model)): User-defined python function or `Model` object return by declare_model.
         outputs_count (int): Outputs count of the user-defined python function or model.
         batch_size (int, optional): This parameter is valid only when stage is a function and the function
-            can process multi instances at a time. default None.
+            can process multi instances at a time. default ``None``.
 
-            - None, The input of the function will be the inputs of one instance.
-            - 0, The input of the function will be tuple object of instances, and the maximum number
+            - ``None``, The input of the function will be the inputs of one instance.
+            - ``0``, The input of the function will be tuple object of instances, and the maximum number
               of the instances is determined by the server based on the batch size of models.
             - int value >= 1, The input of the function will be tuple object of instances, and the maximum number
               of the instances is the value specified by 'batch_size'.
 
         args: Stage inputs placeholders, which come from the inputs of the function wrapped by register_method or the
             outputs of add_stage. The length of 'args' should equal to the input number of the function or model.
-        tag (str, optional): Customized flag of the stage, such as "Preprocess", default None.
+        tag (str, optional): Customized flag of the stage, such as ``"Preprocess"``, default ``None``.
 
     Raises:
         RuntimeError: The type or value of the parameters are invalid, or other error happened.
