@@ -1,1 +1,2 @@
-mindspore: 'mindspore/mindspore/version/202305/20230529/master_20230529190058_b863d1fdcd15c8358b17db6999a402a1f09c1d25/'
+mindspore:
+  'mindspore/mindspore/version/202306/20230614/master_20230614075836_471e38e28f46a000e53d06fc709537e93ded2227/'
