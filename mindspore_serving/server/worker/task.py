@@ -14,9 +14,9 @@
 # ============================================================================
 """Python run preprocess and postprocess in python"""
 
-import threading
 import time
 import logging
+import numpy as np
 from mindspore_serving._mindspore_serving import Worker_
 from mindspore_serving._mindspore_serving import ExitSignalHandle_
 from mindspore_serving.server.register.stage_function import stage_function_storage
@@ -41,9 +41,6 @@ def has_worker_stopped():
 
 class PyTaskHandler:
     """Handling preprocess and postprocess"""
-
-    def __init__(self):
-        super(PyTaskHandler, self).__init__()
 
     def run(self):
         """Run tasks of preprocess and postprocess, switch to other type of process when some instances are handled"""
@@ -106,10 +103,16 @@ class PyTaskHandler:
                                     f" registered in method {task.method_name}"
                         PyTaskHandler.push_system_failed(error_msg)
                         raise ServingSystemException(error_msg)
-                    # convert MindSpore Tensor to numpy
-                    output = (item.asnumpy() if callable(getattr(item, "asnumpy", None)) else item for item in output)
+                    instance_result = []
+                    for item in output:
+                        # convert MindSpore Tensor to numpy
+                        if callable(getattr(item, "asnumpy", None)):
+                            item = item.asnumpy()
+                        if isinstance(item, np.ndarray) and (not item.flags['FORC']):
+                            item = np.ascontiguousarray(item)
+                        instance_result.append(item)
                     # raise ServingSystemException when user-defined output is invalid
-                    PyTaskHandler.push_result(output)  # push outputs of one instance
+                    PyTaskHandler.push_result(instance_result)  # push outputs of one instance
                     index += 1
 
                 get_result_time = time.time()
