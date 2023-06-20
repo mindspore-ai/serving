@@ -1357,3 +1357,39 @@ def add_common(x1, x2):
     result = client.infer(instances)
     print(result)
     assert len(result) == instance_count
+
+
+@serving_test
+def test_stage_function_push_no_forc_array():
+    """
+    Feature: test servable_config.py stage
+    Description: Preprocess return numpy array not C_CONTIGUOUS
+    Expectation: Serving server work well.
+    """
+    servable_content = r"""
+import numpy as np
+from mindspore_serving.server import register
+model = register.declare_model(model_file="tensor_add.mindir", model_format="MindIR", with_batch_dim=True)
+
+def preprocess(x1):
+    x1 = x1.reshape(3,4)
+    x1 = x1[1:3,2:3]
+    return x1
+    
+@register.register_method(output_names=["y"])
+def add_common(x1, x2):
+    x1 = register.add_stage(preprocess, x1, outputs_count=1, tag="Preprocess")
+    y = register.add_stage(model, x1, x2, outputs_count=1)
+    return y
+"""
+    base = start_serving_server(servable_content)
+    instances = []
+    x1 = np.arange(12).astype(np.float32)
+    x2 = np.asarray([[5.5], [7.7]]).astype(np.float32)
+    instances.append({"x1": x1, "x2": x2})
+
+    client = create_client("localhost:5500", base.servable_name, "add_common")
+    result = client.infer(instances)
+    print(result)
+    assert len(result) == 1
+    assert "y" in result[0]
