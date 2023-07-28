@@ -1,5 +1,5 @@
 ﻿
-.. py:class:: mindspore_serving.server.register.CPUDeviceInfo(\*\*kwargs)
+.. py:class:: mindspore_serving.server.register.CPUDeviceInfo(**kwargs)
 
     用于CPU设备配置。
 

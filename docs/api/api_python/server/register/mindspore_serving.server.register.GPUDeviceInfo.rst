@@ -1,5 +1,5 @@
 ﻿
-.. py:class:: mindspore_serving.server.register.GPUDeviceInfo(\*\*kwargs)
+.. py:class:: mindspore_serving.server.register.GPUDeviceInfo(**kwargs)
 
     用于GPU设备配置。
 
