@@ -1,5 +1,5 @@
 ﻿
-.. py:class:: mindspore_serving.server.register.Context(\*\*kwargs)
+.. py:class:: mindspore_serving.server.register.Context(**kwargs)
 
     Context用于自定义设备配置，如果不指定Context，MindSpore Serving将使用默认设备配置。当使用推理后端为MindSpore Lite，且目标设备为Ascend或Nvidia GPU时，模型部分算子可能运行在CPU设备上，将额外配置 `CPUDeviceInfo` 。
 

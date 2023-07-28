@@ -1,5 +1,5 @@
 ﻿
-.. py:class:: mindspore_serving.server.register.AscendDeviceInfo(\*\*kwargs)
+.. py:class:: mindspore_serving.server.register.AscendDeviceInfo(**kwargs)
 
     用于设置Ascend设备配置。
 
