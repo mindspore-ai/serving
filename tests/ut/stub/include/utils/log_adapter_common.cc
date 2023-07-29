@@ -17,6 +17,8 @@
 #include <sys/time.h>
 #endif
 #include <string>
+#include <iomanip>
+#include <sstream>
 #include "utils/log_adapter.h"
 
 namespace mindspore {
@@ -58,29 +60,31 @@ const std::string GetSubModuleName(SubModuleId module_id) {
   return sub_module_names[static_cast<size_t>(module_id % NUM_SUBMODUES)];
 }
 
-// export GetTimeString for all sub modules
 std::string GetTimeString() {
-#define BUFLEN 80
-  char buf[BUFLEN];
-  (void)memset(buf, '\0', BUFLEN);
 #if defined(_WIN32) || defined(_WIN64)
   time_t time_seconds = time(0);
   struct tm now_time;
   localtime_s(&now_time, &time_seconds);
-  (void)snprintf(buf, BUFLEN, "%d-%d-%d %d:%d:%d", now_time.tm_year + 1900, now_time.tm_mon + 1, now_time.tm_mday,
-                 now_time.tm_hour, now_time.tm_min, now_time.tm_sec);
+  constexpr int base_year = 1900;
+  std::stringstream ss;
+  ss << now_time.tm_year + base_year << "-" << now_time.tm_mon + 1 << "-" << now_time.tm_mday << " " << now_time.tm_hour
+     << ":" << now_time.tm_min << ":" << now_time.tm_sec;
+  return ss.str();
 #else
+  constexpr auto BUFLEN = 80;
+  char buf[BUFLEN] = {'\0'};
   struct timeval cur_time;
   (void)gettimeofday(&cur_time, nullptr);
 
   struct tm now;
-  constexpr size_t time_str_len = 19;
+  constexpr int width = 3;
   constexpr int64_t time_convert_unit = 1000;
   (void)localtime_r(&cur_time.tv_sec, &now);
   (void)strftime(buf, BUFLEN, "%Y-%m-%d-%H:%M:%S", &now);  // format date and time
-  (void)snprintf(buf + time_str_len, BUFLEN - time_str_len, ".%03ld.%03ld", cur_time.tv_usec / time_convert_unit,
-                 cur_time.tv_usec % time_convert_unit);
+  std::stringstream ss;
+  ss << "." << std::setfill('0') << std::setw(width) << cur_time.tv_usec / time_convert_unit << "." << std::setfill('0')
+     << std::setw(width) << cur_time.tv_usec % time_convert_unit;
+  return std::string(buf) + ss.str();
 #endif
-  return std::string(buf);
 }
 }  // namespace mindspore
