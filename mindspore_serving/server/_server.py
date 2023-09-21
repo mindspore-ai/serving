@@ -41,7 +41,7 @@ def start_servables(servable_configs, enable_lite=False):
 
     On Ascend 910 hardware platform, each copy of each servable owns one device. Different servables or different
     versions of the same servable need to be deployed on different devices.
-    On Ascend 310/310P and GPU hardware platform, one device can be shared by multi servables, and different servables
+    On Ascend 310P and GPU hardware platform, one device can be shared by multi servables, and different servables
     or different versions of the same servable can be deployed on the same chip to realize device reuse.
 
     For details about how to configure models to provide servables, please refer to

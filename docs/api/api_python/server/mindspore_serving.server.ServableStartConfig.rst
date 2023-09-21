@@ -8,11 +8,11 @@
     参数：
         - **servable_directory** (str) - 服务所在的目录。预期有一个名为 `servable_name` 的目录。
         - **servable_name** (str) - 服务名称。
-        - **device_ids** (Union[int, list[int], tuple[int]], 可选) - 模型部署和运行的设备列表，列表中的每个会设备将部署和运行一个服务副本。当设备类型为Nvidia GPU、Ascend 310/310P/910时使用。默认值：``None``。
+        - **device_ids** (Union[int, list[int], tuple[int]], 可选) - 模型部署和运行的设备列表，列表中的每个会设备将部署和运行一个服务副本。当设备类型为Nvidia GPU、Ascend 310P/910时使用。默认值：``None``。
         - **version_number** (int, 可选) - 要加载的服务的版本号。版本号应为正整数，从1开始，``0`` 表示加载最新版本。默认值：``0``。
         - **device_type** (str, 可选) - 模型部署的目标设备类型，目前支持 ``"Ascend"``、``"GPU"``、``"CPU"`` 和 ``None``。默认值：``None``。
 
-          - ``"Ascend"``：目标设备为Ascend 310/310P/910等。
+          - ``"Ascend"``：目标设备为Ascend 310P/910等。
           - ``"GPU"``：目标设备为Nvidia GPU。
           - ``"CPU"``：目标设备为CPU。
           - ``None``：系统根据实际的后端设备和MindSpor推理包决定目标设备，推荐使用默认值 ``None``。
