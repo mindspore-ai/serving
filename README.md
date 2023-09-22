@@ -38,8 +38,8 @@ distributes the requests to `Worker` nodes. `Servable` is deployed on a worker n
 combination of multiple models and can provide different services in various methods. `
 
 On the server side, when [MindSpore](#https://www.mindspore.cn/) is used as the inference backend,, MindSpore Serving
-supports the Ascend 910/310P and Nvidia GPU environments. When [MindSpore Lite](#https://www.mindspore.cn/lite) is
-used as the inference backend, MindSpore Serving supports Ascend 310P, Nvidia GPU and CPU environments. Client` does
+supports the Ascend 910 and Nvidia GPU environments. When [MindSpore Lite](#https://www.mindspore.cn/lite) is
+used as the inference backend, MindSpore Serving supports Ascend 310/310P, Nvidia GPU and CPU environments. Client` does
 not depend on specific hardware platforms.
 
 MindSpore Serving provides the following functions:
