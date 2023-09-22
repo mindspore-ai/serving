@@ -9,7 +9,7 @@
 
     参数：
         - **model_file** (Union[str, list[str]]) - 模型文件名。
-        - **model_format** (str) - 模型格式， ``"OM"`` 、 ``"MindIR"`` 或 ``"MindIR_Lite"`` ，忽略大小写。
+        - **model_format** (str) - 模型格式， ``"MindIR"`` 或 ``"MindIR_Lite"`` ，忽略大小写。
         - **with_batch_dim** (bool, 可选) - 模型输入和输出的shape第一个维度是否是batch维度。默认值：``True``。
         - **options** (Union[AclOptions, GpuOptions], 可选) - 模型的选项，支持 ``AclOptions`` 或 ``GpuOptions`` 。默认值：``None``。
         - **context** (Context) - 用于配置设备环境的上下文信息，值为 ``None`` 时，Serving将依据部署的设备设置默认的设备上下文。默认值：``None``。

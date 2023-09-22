@@ -35,8 +35,8 @@ MindSpore Serving分为客户端、服务器两个部分。在客户端中，用
 一个可服务对象，即`Servable`，这里的`Servable`可以是单个模型，也可以是多个模型的组合，一个`Servable`可以围绕相同的模型通过多种方法来提供
 不同的服务。
 
-对于服务端，当以[MindSpore](#https://www.mindspore.cn/)作为推理后端时，MindSpore Serving当前支持Ascend 910/310P和Nvidia
-GPU环境。当以[MindSpore Lite](#https://www.mindspore.cn/lite)作为推理后端时，MindSpore Serving当前支持Ascend 310P、Nvidia
+对于服务端，当以[MindSpore](#https://www.mindspore.cn/)作为推理后端时，MindSpore Serving当前支持Ascend 910和Nvidia
+GPU环境。当以[MindSpore Lite](#https://www.mindspore.cn/lite)作为推理后端时，MindSpore Serving当前支持Ascend 310/310P、Nvidia
 GPU和CPU。客户端不依赖特定硬件平台。
 
 MindSpore Serving提供以下功能：
