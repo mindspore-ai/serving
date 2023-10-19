@@ -2,6 +2,21 @@
 
 [查看中文](./RELEASE_CN.md)
 
+## MindSpore Serving 2.0.2 Release Notes
+
+### Major Features and Improvements
+
+- Released based on MindSpore 2.2.0.
+- Fix third-party OpenSSL vulnerabilities: CVE-2023-3446 and CVE-2023-4807.
+
+### Contributors
+
+Thanks goes to these wonderful people:
+
+qinzheng, xuyongfei, zhangyinxia, zhoufeng.
+
+Contributions of any kind are welcome!
+
 ## MindSpore Serving 2.0.0 Release Notes
 
 ### Major Features and Improvements
