@@ -2,6 +2,21 @@
 
 [View English](./RELEASE.md)
 
+## MindSpore Serving 2.0.2 Release Notes
+
+### 主要特性和增强
+
+- 配套MindSpore 2.2.0版本接口。
+- 修复第三方库OpenSSL漏洞CVE-2023-3446、CVE-2023-4807。
+
+### 贡献者
+
+感谢以下人员做出的贡献:
+
+qinzheng, xuyongfei, zhangyinxia, zhoufeng.
+
+欢迎以任何形式对项目提供贡献！
+
 ## MindSpore Serving 2.0.0 Release Notes
 
 ### 主要特性和增强
