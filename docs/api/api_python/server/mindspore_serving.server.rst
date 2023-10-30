@@ -1,3 +1,0 @@
-MindSpore Serving是一个轻量级、高性能的服务模块，旨在帮助MindSpore开发者在生产环境中高效部署在线推理服务。
-
-用户可通过MindSpore Serving server API启动服务，启动gRPC和RESTful（HTTP）服务器。其中一个服务一般可由一个模型或者一组模型组合提供。客户端通过gRPC和RESTful（HTTP）服务器发送推理任务，接收推理结果。

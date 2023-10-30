@@ -1,6 +1,0 @@
-if (CMAKE_SYSTEM_NAME MATCHES "Windows")
-    list(APPEND SECUREC_SRCS "memset_s.c")
-else()
-    aux_source_directory(. SECUREC_SRCS)
-endif()
-add_library(securec STATIC ${SECUREC_SRCS})
