@@ -1,3 +1,0 @@
-[submodule "third_party/mindspore"]
-	path = third_party/mindspore
-	url = https://gitee.com/mindspore/mindspore.git
