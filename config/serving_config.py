@@ -93,9 +93,9 @@ def llama_inputs_for_warmup(seq_length, batch_size, full_model):
     current_index = np.array([1] * batch_size, dtype=np.int32)
 
     if full_model:
-        init_reset = np.array([False] * batch_size, dtype=np.bool)
+        init_reset = np.array([False] * batch_size, dtype=np.bool_)
     else:
-        init_reset = np.array([True] * batch_size, dtype=np.bool)
+        init_reset = np.array([True] * batch_size, dtype=np.bool_)
 
     batch_valid_length = np.array([1] * batch_size, dtype=np.int64)
 
@@ -113,9 +113,9 @@ def internlm_inputs_for_warmup(seq_length, batch_size, full_model):
     current_index = np.array([1] * batch_size, dtype=np.int32)
 
     if full_model:
-        init_reset = np.array([False] * batch_size, dtype=np.bool)
+        init_reset = np.array([False] * batch_size, dtype=np.bool_)
     else:
-        init_reset = np.array([True] * batch_size, dtype=np.bool)
+        init_reset = np.array([True] * batch_size, dtype=np.bool_)
     batch_valid_length = np.array([1] * batch_size, dtype=np.int32)
 
     if Baseconfig['batching_strategy'] == 'continuous':
