@@ -12,7 +12,7 @@ from config.serving_config import Baseconfig, AgentConfig
 from typing import List
 import socket
 from concurrent.futures import ThreadPoolExecutor, wait
-import shared_memory
+from multiprocessing import shared_memory
 import asyncio
 
 

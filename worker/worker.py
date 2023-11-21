@@ -7,7 +7,7 @@ import numpy as np
 from .model_init_multimodel import DisModel
 from utils.entry import EntryMetaData
 from config.serving_config import Baseconfig, ExtraInput, ModelName
-import shared_memory
+from multiprocessing import shared_memory
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 

@@ -19,7 +19,7 @@ import numpy
 from sub_process.sub_process import listen_agents_after_startup
 from concurrent.futures import ThreadPoolExecutor, as_completed, wait
 
-import shared_memory
+from multiprocessing import shared_memory
 import logging
 import time
 from config.serving_config import Baseconfig, AgentConfig, AgentIP, get_warmup_inputs
@@ -329,7 +329,7 @@ class WorkAgent:
             shape_parms = shape_list[gen_parms_id]
             gen_parms = np.ndarray((shape_parms), dtype=np.float16, buffer=gen_parms_shm.buf)
 
-            do_sample_list = gen_parms[:, 0].astype(np.bool)
+            do_sample_list = gen_parms[:, 0].astype(np.bool_)
             top_p_list = gen_parms[:, 1]
             top_k_list = gen_parms[:, 2].astype(np.int32)
             temperature_list = gen_parms[:, 3]
@@ -348,7 +348,7 @@ class WorkAgent:
             )
 
             self.decode_params_map[decode_params.decode_index] = decode_params
-            init_reset = np.array([decode_params.init_reset], dtype=np.bool)
+            init_reset = np.array([decode_params.init_reset], dtype=np.bool_)
             decode_index_np = np.array([decode_params.decode_index], dtype=np.int64)
             self.shape_list = shape_list
 
@@ -395,7 +395,7 @@ class WorkAgent:
                 valid_length = np.array(valid_length, dtype=np.int64)
             else:
                 valid_length = np.array(valid_length, dtype=np.int32)
-            init_reset = np.array(init_reset, dtype=np.bool)
+            init_reset = np.array(init_reset, dtype=np.bool_)
             decode_index_np = np.array(decode_index, dtype=np.int64)
             input_ids = input_ids.reshape((-1, 1))
 
