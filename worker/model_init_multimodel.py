@@ -261,8 +261,6 @@ class DisModel:
         self.model_name = None
 
     def init(self, agent_ports, agent_ip, model_name, shm_names: List[str] = None):
-        msg_bytes_size = 1024 * 1024 * 1024  # 512MB
-
         print(f"agent_ports is {agent_ports}")
         for port in agent_ports:
             print("port ip is {}".format(port))

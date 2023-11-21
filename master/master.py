@@ -114,7 +114,6 @@ class Master:
             str_outputs = self._detokenizer(outputs)
 
         self._counter_of_token += len(outputs)
-
         logging.info("current total token numbers is {}".format(self._counter_of_token))
         self.scheduler.upate_entries_after_one_step(outputs, end_token, index_list)
 
@@ -247,6 +246,7 @@ class AsyncMaster(Master):
         for index, item in enumerate(entry_metadata_list):
             if item.is_prompt:
                 input_entry_metadata_list = [item]
+                # optimize prefill multi-batch later
                 index_list = [index]
                 if item.entry_data.status == EntryStatus.INPUT_OUTOFRANGE:
                     return self._postprocess([111], entry_metadata_list=entry_metadata_list, index_list=index_list,

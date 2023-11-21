@@ -25,25 +25,27 @@ from easydict import EasyDict
 from utils.register import import_all_modules_for_register
 
 
-device = 4
+device = 6
 
 
 import_all_modules_for_register()
 
 SERVER_APP_HOST = 'localhost'
 
-SERVER_APP_PORT = 19285
+SERVER_APP_PORT = 9811
 
 prefill_model_path = [
     "/path/to/prefill_graph.mindir"
 ]
+
 decode_model_path = [
     "/path/to/inc_graph.mindir"
 ]
+
 argmax_model = ["/path/to/argmax.mindir"]
 topk_model = ["/path/to/topk.mindir"]
 ctx_path = '/path/to/prompt_config.ini'
-inc_path = '/path/to/decoder_config.ini'
+inc_path = '/path/to/decode_config.ini'
 post_model_ini = '/path/to/post_model.ini'
 tokenizer_path = '/path/to/tokenizer.model'
 
@@ -78,7 +80,7 @@ AgentConfig = EasyDict({
     'decode_model': decode_model_path,
     'argmax_model': argmax_model,
     'topk_model': topk_model,
-    'AgentPorts': [6877, 6878],
+    'AgentPorts': [9820, 9821],
     'device_start': device
 })
 
@@ -114,7 +116,6 @@ def internlm_inputs_for_warmup(seq_length, batch_size, full_model):
         init_reset = np.array([False] * batch_size, dtype=np.bool)
     else:
         init_reset = np.array([True] * batch_size, dtype=np.bool)
-
     batch_valid_length = np.array([1] * batch_size, dtype=np.int32)
 
     if Baseconfig['batching_strategy'] == 'continuous':

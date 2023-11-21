@@ -58,7 +58,7 @@ def run_mindspore():
     topk_topp_ = temperature_TopK()
     argmax_ = ArgmaxPost()
     # inputs_np = Tensor(np.random.rand(bs, vocab_size).astype(np.float16), mstype.float16)
-    input_ids_dyn = Tensor(shape=[None, None, None], dtype=mstype.float32)
+    input_ids_dyn = Tensor(shape=[None, None, None], dtype=mstype.float16)
     temperature_ = Tensor(shape=[None, ], dtype=mstype.float32)
 
     # temperature_ = Tensor(np.tile(np.array([0.7], np.float16), (bs,)), mstype.float16)
