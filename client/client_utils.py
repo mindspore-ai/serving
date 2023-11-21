@@ -11,8 +11,7 @@ class Parameters(BaseModel):
     top_p: Optional[float] = None
     max_new_tokens: Optional[int] = None
     return_full_text: bool = True
-
-
+    return_protocol = "sse"
 
 class ClientRequest(BaseModel):
     # Prompt

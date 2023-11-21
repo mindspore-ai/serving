@@ -25,14 +25,14 @@ from shutil import copyfile
 from typing import Any, Dict, List, Optional
 
 import sentencepiece as spm
-
+from utils.register import registers
 
 __all__ = ['LlamaTokenizer']
-
 VOCAB_FILES_NAMES = {"vocab_file": "tokenizer.model"}
 
 
-class LlamaTokenizer():
+@registers.TOKENIZER.register()
+class LlamaTokenizer:
     r"""
     Tokenize the input string and convert them into the ids. The tokenizer use the sentence piece internally.
     Tokenizer of llama will default add bos at the beginning of tokens and add eos token on the tail of tokens.

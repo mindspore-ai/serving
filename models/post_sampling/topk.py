@@ -1,7 +1,7 @@
 
 import numpy as np
 
-from config.serving_config import TOPP_NUM
+# from config.serving_config import TOPP_NUM
 
 
 def topk(x, top_k, axis=-1, largest=True, sort=True):
