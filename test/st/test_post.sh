@@ -1,0 +1,4 @@
+curl 127.0.0.1:19280/models/llama2     -X POST     -d '{"inputs":"what is Monetary Policy?","parameters":{"max_new_tokens":30, "do_sample":"True", "top_p":0.7, "top_k":1, "return_full_text":"True"}, "stream":"True"}' -H 'Content-Type: application/json' &
+curl 127.0.0.1:19280/models/llama2     -X POST     -d '{"inputs":"what is Monetary Policy?","parameters":{"max_new_tokens":30, "do_sample":"False", "return_full_text":"True"}, "stream":"True"}' -H 'Content-Type: application/json' &
+
+curl 127.0.0.1:19280/models/llama2     -X POST     -d '{"inputs":"what is Monetary Policy?","parameters":{"max_new_tokens":30, "do_sample":"False", "return_full_text":"True"}, "stream":"True"}' -H 'Content-Type: application/json' &

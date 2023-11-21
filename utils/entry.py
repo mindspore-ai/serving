@@ -47,7 +47,7 @@ class EntryData:
     def __init__(self,
                  prompt_tokens: List[int],
                  max_token_len: int = 300,
-                 do_sample: bool = True,
+                 do_sample: bool = False,
                  tok_k: int = 1,
                  top_p: float = 1.0,
                  temperature: float = 1.0,

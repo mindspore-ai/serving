@@ -215,7 +215,6 @@ class Schedule:
                 dyn_index = queue_len - left_free_num + self.max_valid_index + 1
         else:
             dyn_index = self.max_valid_index + 1 + queue_len - self.count_of_invalid_sample
-        logging.info("dyn_index is {}".format(dyn_index))
         bs_after_changing = self.batch_size
         if dyn_index <= 0:
             # 默认值
@@ -230,6 +229,7 @@ class Schedule:
         if af_batch != bf_batch:
             logging.info(('----bs changed from  {} '.format(bf_batch)))
             logging.info(('----bs changed to  {} '.format(af_batch)))
+            logging.info(('----dyn_index to  {} max_valid_index {}'.format(dyn_index, self.max_valid_index)))
         if bf_batch >= af_batch:
             self.running_request_list = self.running_request_list[:af_batch]
         else:
@@ -302,21 +302,22 @@ class Schedule:
 
     def upate_entries_after_one_step(self, outputs: List[int], eos_id: int, index_list: List[int] = None):
         """update status after ever iteration"""
-        for index, token in enumerate(outputs):
-            # update new token to result list
-            self.running_request_list[index].get_entry_data().updata_output_tokens(token)
-            # is prompt
-            if index_list is not None:
-                index = index_list[index]
+        # optimize prefill multi-batch later
+        if index_list is not None:
+            for index in index_list:
+                self.running_request_list[index].get_entry_data().updata_output_tokens(outputs[0])
                 self.running_request_list[index].is_prompt = False
                 # invalid prompt
                 if self.running_request_list[index].get_entry_data().get_status() == EntryStatus.PADDING_INVAILED:
-                    continue
+                    return
                 # valid prompt
                 else:
-                    self._finished_request(index, token, eos_id)
-            # is decode
-            else:
+                    self._finished_request(index, outputs[0], eos_id)
+        # decode
+        else:
+            for index, token in enumerate(outputs):
+                # update new token to result list
+                self.running_request_list[index].get_entry_data().updata_output_tokens(token)
                 self._finished_request(index, token, eos_id)
 
     def abort_entry(self,

@@ -121,6 +121,8 @@ class DecodeParams:
 """
 work_agent.proto实现, 供worker调用
 """
+
+
 class WorkAgent:
     def __init__(self, args):
         device_id = args.device_id
@@ -136,7 +138,8 @@ class WorkAgent:
         self.index = args.index
         print(f'model0_path is {model0_path}')
         print(f'model1_path is {model1_path}')
-        self.prefill, self.decode = load_model(model0_path, model1_path, config_file, config_inc_file, rank_id, device_id)
+        self.prefill, self.decode = load_model(model0_path, model1_path, config_file, config_inc_file, rank_id,
+                                               device_id)
         self.argmax_model = load_post_model(model2_path, config_post_sampling, rank_id, device_id)
         self.topk_model = load_post_model(model3_path, config_post_sampling, rank_id, device_id)
         self.shm_names = []
@@ -166,11 +169,10 @@ class WorkAgent:
         else:
             post_inputs[0].shape = outputs_np.shape
             post_inputs[0] = outputs_np
-
         post_sampling_out = self.argmax_model.predict(post_inputs)
         return post_sampling_out[0].get_data_to_numpy().astype(np.int32)
 
-    def do_sample(self, decode_params, p_args, outs, candidate_token_num: int = 100) -> int:
+    def do_sample(self, decode_params, p_args, outs, targets, index, candidate_token_num: int = 100) -> int:
         """
         Args:
            p_args: numpy.ndarray, index
@@ -196,7 +198,7 @@ class WorkAgent:
             p = softmax_np(p)
             p_args = p_args
         target_index = np.random.choice(len(p), p=p)
-        return p_args[target_index]
+        targets[index] = p_args[target_index]
 
     def _post_sampling_topk_npu(self, outputs_np, decode_index, prefill=True) -> np.ndarray:
         """
@@ -228,12 +230,10 @@ class WorkAgent:
             thread_num = Baseconfig.prefill_batch_size
         else:
             thread_num = self.current_batch_size
-        all_task = [pool.submit(self.do_sample, self.decode_params_map[decode_index[i]], p_args[i], outs[i]) for i in range(thread_num)]
-        ress_ = []
-        for x in as_completed(all_task):
-            res = x.result()
-            ress_.append(res)
-        targets = np.array(ress_, np.int32)
+        targets = np.zeros((thread_num,), np.int32)
+        all_task = [pool.submit(self.do_sample, self.decode_params_map[decode_index[i]], p_args[i], outs[i], targets, i)
+                    for i in range(thread_num)]
+        wait(all_task)
         return targets
 
     def _post_sampling_topk_host(self, outputs_np):
@@ -275,7 +275,6 @@ class WorkAgent:
             do_sample = True
         else:
             do_sample = self.decode_params_map[decode_index[0]].do_sample
-
         return do_sample
 
     def do_post_sampling(self, outputs_np, outputs_shm, decode_index, prefill=True) -> np.ndarray:
@@ -287,7 +286,6 @@ class WorkAgent:
             target = self._post_smapling_argmax_npu(outputs_np)
         else:
             target = self._post_sampling_topk_npu(outputs_np, decode_index, prefill)
-
         if self.index == 0 and prefill:
             tmp = np.ndarray((index + 1,), dtype=target.dtype, buffer=outputs_shm.buf)
             tmp[index: index + 1] = target[:]
@@ -313,7 +311,7 @@ class WorkAgent:
         tmp_shms.append(gen_parms_shm)
         self.current_batch_size = current_batch if current_batch else Baseconfig.prefill_batch_size
 
-        logging.info("batch_size right now is ----------------------------------: {}".format(self.current_batch_size))
+        logging.info(f"batch_size right now is {self.current_batch_size}")
 
         if self.is_prefill:
             first_group = np.ndarray((shape_list[0]), dtype=np.int32, buffer=existing_shm0.buf)
@@ -383,7 +381,8 @@ class WorkAgent:
 
             self.decode_params_map = dict(sorted(self.decode_params_map.items(), key=lambda x: x[0]))
 
-            for decode_params in self.decode_params_map.values():
+            for key in self.decode_params_map.keys():
+                decode_params = self.decode_params_map[key]
                 decode_params.current_index = decode_params.current_index + 1
                 decode_params.valid_length = decode_params.valid_length + 1
                 decode_params.init_reset = False
@@ -563,15 +562,15 @@ def startup_agents(config_file,
         os.mkdir(log_dir)
     for i in range(rank_size):
         logging.basicConfig(level=logging.DEBUG,
-                    filename=f"./output/agent_{i}.log",
-                    filemode='w',
-                    format=
-                    '%(asctime)s - %(pathname)s[line:%(lineno)d] - %(levelname)s: %(message)s')
+                            filename=f"./output/agent_{i}.log",
+                            filemode='w',
+                            format=
+                            '%(asctime)s - %(pathname)s[line:%(lineno)d] - %(levelname)s: %(message)s')
         agent_address = (AgentIP, agent_ports[i])
         config = Config(i + AgentConfig.device_start, i, config_file, config_inc_file, config_post_sampling,
-                        model0_paths[i], model1_paths[i], post_sampling_model_path[0], post_sampling_model_path2[0], agent_address, i)
+                        model0_paths[i], model1_paths[i], post_sampling_model_path[0], post_sampling_model_path2[0],
+                        agent_address, i)
         p = Process(target=start_agent_socket_server, args=(config, startup_queue))
         p.start()
         subprocess_list.append(p)
     listen_agents_after_startup(subprocess_list)
-

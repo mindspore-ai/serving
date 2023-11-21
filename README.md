@@ -43,6 +43,7 @@
     "input_function"      - 如用户想自定义模型入参，该字段设置为'custom'（并修改get_inputs_custom和ExtraInput函数），否则为'common'
 
 具体模型的设置可以参考doc/config
+注：后处理当前按照入图的方式进行，使用serving前请使用post_sampling_model.py重新导出后处理模型，保证数据类型与LLM模型的输出类型一致；
 
 
 #### 启动

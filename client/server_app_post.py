@@ -301,12 +301,12 @@ async def _get_request_numbers():
 
 
 @app.get("/serving/get_bs")
-async def async_full_generator():
+async def get_batch_size():
     return EventSourceResponse(_get_batch_size())
 
 
 @app.get("/serving/get_request_numbers")
-async def async_full_generator():
+async def get_request_numbers():
     return EventSourceResponse(_get_request_numbers())
 
 
