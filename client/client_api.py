@@ -20,7 +20,7 @@ import requests
 import logging
 
 from typing import Dict, Optional, List, AsyncIterator, Iterator
-from client_utils import ClientRequest, Parameters, Response, StreamResponse, Token
+from .client_utils import ClientRequest, Parameters, Response, StreamResponse, Token
 from enum import Enum
 
 logging.basicConfig(level=logging.DEBUG,
@@ -134,72 +134,18 @@ class BaseClient:
                 yield response
 
 
-INF_URL = os.environ.get(
-    "INF_URL", "http://localhost:9800"
-)
-
-
 class MindsporeInferenceClient(BaseClient):
 
-    def __init__(self, model_type: str, token: Optional[str] = None, timeout: int = 30000):
+    def __init__(self, model_type: str, server_url: str, token: Optional[str] = None, timeout: int = 30000):
         headers = {
             "user-agent": "mindspoer_serving/1.0"
         }
         if token is not None:
             headers["authorization"] = f"Bearer {token}"
 
-        base_url = f"{INF_URL}/models/{model_type}"
+        base_url = f"{server_url}/models/{model_type}"
 
         super(MindsporeInferenceClient, self).__init__(
             base_url, headers=headers, timeout=timeout
         )
 
-
-client = MindsporeInferenceClient("llama2")
-
-# 1. test generate
-text = client.generate("what is Monetary Policy?").generated_text
-print('text: ', text)
-
-# 2. test generate_stream
-text = ""
-for response in client.generate_stream("what is Monetary Policy?", do_sample=False, max_new_tokens=200):
-    print("response 0", response)
-    if response.token:
-        text += response.token.text
-    else:
-        text = response.generated_text
-logging.info(f"do_sample=False")
-logging.info(text)
-
-# 3. test do_sample, return_full_text
-text = ""
-for response in client.generate_stream("what is Monetary Policy?", do_sample=True, return_full_text=False):
-    print("response 1 ", response)
-    if response.token:
-        text += response.token.text
-logging.info(f"do_sample=True, return_full_text=False")
-logging.info(text)
-
-# 4. test top_k temperature
-text = ""
-for response in client.generate_stream("what is Monetary Policy?", do_sample=True, temperature=0.9, top_k=3):
-    print("response 2 ", response)
-    if response.token:
-        text += response.token.text
-    else:
-        text = response.generated_text
-logging.info(f"do_sample=True, temperature=0.9, top_k=3 ")
-logging.info(text)
-
-# 5. test top_k=100 top_p max_new_tokens
-text = ""
-for response in client.generate_stream("what is Monetary Policy?", do_sample=True, temperature=0.9, top_p=0.8,
-                                       top_k=100, max_new_tokens=200):
-    print("response 3 ", response)
-    if response.token:
-        text += response.token.text
-    else:
-        text = response.generated_text
-logging.info(f"do_sample=True, temperature=0.9, top_p=0.8, top_k=100, max_new_tokens=200")
-logging.info(text)

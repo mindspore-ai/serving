@@ -1,16 +1,18 @@
 from typing import Dict, List, Optional, Union
 import enum
 
+
 class EntryStatus(enum.Enum):
     """Status of a entry."""
-    WAITING = enum.auto()     # waiting for inference
-    RUNNING = enum.auto()     # doing inference
-    WAITING_BATCH = enum.auto()     # just using in static batch
-    FINISHED_STOPPED = enum.auto()       # inference over, request down 
-    FINISHED_LENGTH_CAPPED = enum.auto()    # over max_toekn_len
-    FINISHED_ABORTED = enum.auto()            # expection
-    FINISHED_IGNORED = enum.auto()                  # ingore this request
-    PADDING_INVAILED = enum.auto()                  # padding is invaild
+    WAITING = enum.auto()  # waiting for inference
+    RUNNING = enum.auto()  # doing inference
+    WAITING_BATCH = enum.auto()  # just using in static batch
+    FINISHED_STOPPED = enum.auto()  # inference over, request down
+    FINISHED_LENGTH_CAPPED = enum.auto()  # over max_toekn_len
+    FINISHED_ABORTED = enum.auto()  # expection
+    FINISHED_IGNORED = enum.auto()  # ingore this request
+    PADDING_INVAILED = enum.auto()  # padding is invaild
+    INPUT_OUTOFRANGE = enum.auto()
 
     @staticmethod
     def is_finished(status: "EntryStatus") -> bool:
@@ -19,7 +21,8 @@ class EntryStatus(enum.Enum):
             EntryStatus.FINISHED_LENGTH_CAPPED,
             EntryStatus.FINISHED_ABORTED,
             EntryStatus.FINISHED_IGNORED,
-            EntryStatus.PADDING_INVAILED
+            EntryStatus.PADDING_INVAILED,
+            EntryStatus.INPUT_OUTOFRANGE
         ]
 
     @staticmethod
@@ -32,10 +35,12 @@ class EntryStatus(enum.Enum):
             finish_reason = "abort"
         elif status == EntryStatus.FINISHED_IGNORED:
             finish_reason = "length"
+        elif status == EntryStatus.INPUT_OUTOFRANGE:
+            finish_reason = "prompt_out_of_range"
         else:
             finish_reason = None
         return finish_reason
-    
+
 
 # one sequence of a sample used to infer
 class EntryData:
@@ -48,9 +53,9 @@ class EntryData:
                  temperature: float = 1.0,
                  repetition_penalty: float = 1.0,
                  decode_index: int = 0):
-        self.is_finished = False          
+        self.is_finished = False
         self._prompt_tokens = prompt_tokens
-        self._output_tokens : List[int] = []
+        self._output_tokens: List[int] = []
         self.status = EntryStatus.WAITING
         self.max_token_len = max_token_len
         self.do_sample = do_sample
@@ -59,7 +64,7 @@ class EntryData:
         self.temperature = temperature
         self.repetition_penalty = repetition_penalty
         self.decode_index = decode_index
-        self.frequency_list = []    
+        self.frequency_list = []
 
     def get_status(self) -> EntryStatus:
         return self.status
@@ -72,10 +77,10 @@ class EntryData:
 
     def get_decode_index(self):
         return self.decode_index
-    
+
     def updata_output_tokens(self, token: int) -> None:
         self._output_tokens.append(token)
-    
+
     def get_prompt_token(self) -> List[int]:
         return self._prompt_tokens
 
@@ -84,7 +89,7 @@ class EntryData:
 
     def get_prompt_len(self) -> int:
         return len(self._prompt_tokens)
-    
+
     def get_output_token(self):
         return self._output_tokens
 
@@ -98,7 +103,7 @@ class EntryData:
         if not self._output_tokens:
             return self._prompt_tokens[-1]
         return self._output_tokens[-1]
-    
+
     def set_finished_statue(self, statue):
         self.is_finished = statue
 
@@ -107,7 +112,7 @@ class EntryData:
 
 
 class Entry:
-    def __init__(self, 
+    def __init__(self,
                  prompt: str,
                  prompt_tokens: List[int],
                  max_token_len):
@@ -117,12 +122,12 @@ class Entry:
         self.output_logprobs: List[Dict[int, float]] = []
         self.output_tokens: List[int] = []
         self.output_text = ""
-        self.status = EntryStatus.WAITING   
+        self.status = EntryStatus.WAITING
         self.max_token_len = max_token_len
-    
+
     def append_token_id(
-        self,
-        token: int,
+            self,
+            token: int,
     ) -> None:
         self.entry_data.updata_output_tokens()
 
@@ -146,13 +151,12 @@ class Entry:
 
     def get_output_token_ids(self) -> List[int]:
         return self.entry_data.get_output_token()
-    
+
     def is_finished(self) -> bool:
         return EntryStatus.is_finished(self.status)
-    
+
     def set_finished_statue(self, statue: bool) -> None:
         self.entry_data.set_finished_statue(statue)
-    
 
 
 class EntryMetaData:
@@ -161,35 +165,35 @@ class EntryMetaData:
     """
 
     def __init__(
-        self,
-        request_id: str,
-        is_prompt: bool,
-        entry_data: EntryData,
-        entry_id: int,
-        prompt: str,
+            self,
+            request_id: str,
+            is_prompt: bool,
+            entry_data: EntryData,
+            entry_id: int,
+            prompt: str,
     ) -> None:
         self.request_id = request_id
         self.is_prompt = is_prompt
         self.entry_data = entry_data
         self.entry_id = entry_id
         self.prompt = prompt
-        
+
     def get_prompt(self) -> str:
         return self.prompt
 
     def get_entry_id(self) -> int:
         return self.entry_id
-    
+
     def get_entry_data(self) -> EntryData:
         return self.entry_data
 
     def get_token(self):
         """get token of a request used to conduct inference"""
         return self.entry_data.get_all_tokens()
-    
+
     def get_infer_stage(self):
         return self.is_prompt
-    
+
     def set_is_prompt(self, statue: bool) -> None:
         self.is_prompt = statue
 

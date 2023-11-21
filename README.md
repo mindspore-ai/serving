@@ -1,41 +1,89 @@
-# LLL-Serving
+# MindSpore Serving
 
-- High Perfomance LLM Inference Serving based on MindSpore-Lite
-- Concurrency
+### serving is a fast and easy-to-use inference framework
 
-# 功能介绍
+---
+### Features
+- model parallel deployment
+- token streaming via Server-Sent Events
+- custom model inputs
+- static/continuous batching of prompts
+- do post sampling via npu
 
-# 使用说明
-- 基本设置:
-  - device: NPU的起始序号; 
-  - tokenizer_path: 分词器模型路径; 
-  - ModelName：模型名称，用于构造mindspore_lite模型输入; 
-  - AgentIP: Agent的IP地址; 
-  - TOPP_NUM：top_p的默认参数，5000;
-  
+### Supports the most popular LLMs, including the following architectures:
+- LLaMA-2
+- InternLM
 
-- Agent配置:
-  - 在config/serving_config.py中配置-AgentConfig:
-  - ctx_setting: 全量模型配置的路径;
-  - inc_setting: 增量模型配置路径;
-  - post_model_setting: 后处理模型配置的路径;
-  - npu_nums: 并行所用的卡数;
-  - prefill_model: 全量模型MINDIR路径;
-  - decode_model: 增量模型MINDIR路径;
-  - argmax_model : argmax模型MINDIR路径topk_model: topk（k=100）模型MINDIR路径;
-  - AgentPorts: 端口号
+### Get Started
+#### 环境依赖
+- python 3.7
+- [mindspore](https://www.mindspore.cn/install)
+- [mindspore-lite](https://www.mindspore.cn/lite/docs/zh-CN/master/use/downloads.html?highlight=%E5%AE%89%E8%A3%85) 
+- [mindformers](https://gitee.com/mindspore/mindformers#%E4%BA%8Cmindformers%E5%AE%89%E8%A3%85)
+- easydict
 
-- 模型配置：在config/serving_config.py中配置BaseConfig:
-  - vocab_size : 词表长度 
-  - batch_size：批处理大小 
-  - model_type：模型类型，静态输入模型，动态分档模型;
-  - end_token: 词表的结束token
+#### 配置文件(serving_config.py)：
+    模型文件路径配置：
+    "prefill_model_path" - 全量模型mindir路径，如模型切分成多份，每个mindir路径用','隔开
+    "decode_model_path"  - 增量模型mindir路径
+    “argmax_model”       - argmax后处理mindir路径
+    "topk_model"         - topk后处理mindir路径 （这两个后处理模型可以通过post_sampling_model.py进行一键导出）
+    "ctx_path"           - 全量模型对应的ini路径
+    "inc_path"           - 增量模型对应的ini路径
+    "post_model_ini"     - 后处理模型对应的ini路径
+    "tokenizer_path"     - 大模型的分词model路径
+    
+    模型参数配置：
+    "max_generate_length" - 最大token生成长度
+    "end_token"           - eos token
+    "seq_length"          - 如果模型支持动态分档，需要使用该字段
+    "dyn_batch_size"      - 如果模型支持动态batch，需要使用该字段
+    "seq_type"            - 如果模型支持纯动态，该字段设置为'dyn'
+    "batching_strategy"   - 组batch的策略, 'continuous' / 'static'
+    "input_function"      - 如用户想自定义模型入参，该字段设置为'custom'（并修改get_inputs_custom和ExtraInput函数），否则为'common'
 
-- 启动顺序：
-  - 0、打开终端，设置环境变量env.sh、激活conda 环境、按需填充serving_config.py中的所有配置;
-  - 1、运行post_sampling_model.py导出后处理模型；（包括模型路径、模型配置路径）;
-  - 2、导出多卡的llama2 70B模型，写入serving_config.py文件（包括模型路径、模型配置路径）;
-  - 3、serving_config.py中设置AgentIP, AgentPorts;
-  - 4、启动test_agent.py脚本，拉起MindSpore-lite分布式推理服务;
-  - 5、拉起agent服务成功后，打开新终端，设置环境，及conda, python client/server_app_post.py, 拉起LLM-Serving服务;
-  - 6、server服务启动成功后，打开新终端，启动python client/test_client_post.py,发送请求;
+具体模型的设置可以参考doc/config
+
+
+#### 启动
+```shell
+python start_agent.py
+python client/server_app_post.py
+```
+
+然后可以通过“/models/model_name/generate”和"/models/model_name/generate_stream" 进行请求
+
+```shell
+curl 127.0.0.1:9800/models/llama2/generate \
+     -X POST \
+     -d '{"inputs":"Hello?","parameters":{"max_new_tokens":55, "do_sample":"False", "return_full_text":"True"}, "stream":"True"}' \
+     -H 'Content-Type: application/json'
+```
+
+```shell
+curl 127.0.0.1:9800/models/llama2/generate_stream \
+     -X POST \
+     -d '{"inputs":"Hello?","parameters":{"max_new_tokens":55, "do_sample":"False", "return_full_text":"True"}, "stream":"True"}' \
+     -H 'Content-Type: application/json'
+```
+
+或者通过python API
+```python
+from client import MindsporeInferenceClient
+
+client = MindsporeInferenceClient(model_type="llama2", server_url="http://127.0.0.1:8080")
+
+# 1. test generate
+text = client.generate("what is Monetary Policy?").generated_text
+print('text: ', text)
+
+# 2. test generate_stream
+text = ""
+for response in client.generate_stream("what is Monetary Policy?", do_sample=False, max_new_tokens=200):
+    print("response 0", response)
+    if response.token:
+        text += response.token.text
+    else:
+        text = response.generated_text
+print(text)
+```

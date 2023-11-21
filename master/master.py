@@ -3,26 +3,59 @@ import time
 import random
 import logging
 
-from lib.entry import EntryData, EntryMetaData, EntryStatus
+from utils.entry import EntryData, EntryMetaData, EntryStatus
 from .utils import Counter, ResponseOutput
 
 from schedule.schedule import Schedule
 from worker.worker import Worker
 from config.serving_config import Baseconfig, AgentIP, AgentConfig, ModelName
-from config.serving_config import get_token
+from utils.register import registers
+from mindformers.mindformer_book import MindFormerBook
+from mindformers import LlamaTokenizer
+from mindformers import AutoTokenizer
+
+Eps = 30
+
+
+def build_tokenizer(base_config):
+    tokenizer = None
+    if base_config.tokenizer in MindFormerBook.get_tokenizer_support_list():
+        logging.info('load tokenizer from mindformers')
+        tokenizer = AutoTokenizer.from_pretrained(base_config.tokenzier)
+    else:
+        if base_config.tokenizer == 'LlamaTokenizer':
+            tokenizer = LlamaTokenizer(base_config.tokenizer_path)
+            print(f'tokenizer special tokens is {tokenizer.all_special_tokens}')
+            return tokenizer
+        # logging.info('load custom tokenizer')
+        tokenizer = registers.TOKENIZER.get_obj_map()[base_config.tokenizer](base_config.tokenizer_path)
+    return tokenizer
 
 
 class Master:
     def __init__(self,
                  model_config=Baseconfig):
         self.model_config = model_config
-        self.tokenizer = get_token()
+        self.tokenizer = None
         self.counter = Counter()
         self.worker = Worker(AgentConfig.AgentPorts, AgentIP, ModelName)
-        self.scheduler = Schedule(batch_size=model_config.batch_size, max_len=model_config.max_generate_length)    # requeset pool & get a batch for inference, such as continous batch, static batch etc.
+        self.scheduler = Schedule(dyn_batch=model_config.dyn_batch_size,
+                                  batch_size=model_config.batch_size,
+                                  batch_waiting_time=model_config.batch_waiting_time,
+                                  decode_batch_waiting_time=model_config.decode_batch_waiting_time,
+                                  batching_strategy=model_config.batching_strategy,
+                                  max_input_len=model_config.seq_length[-1] - Eps)
+
         self.is_running = False
         self._init_workers()
         self._counter_of_token = 0
+        self._init_tokenizer()
+
+    def _init_tokenizer(self):
+        self.tokenizer = build_tokenizer(self.model_config)
+        if self.tokenizer is None:
+            logging.error('load tokenizer failed!')
+        print(f'self.tokenizer is {self.tokenizer}')
 
     def _init_workers(self):
         self.worker._init_worker()
@@ -32,35 +65,99 @@ class Master:
 
     def get_number_of_total_tokens(self):
         return self._counter_of_token
-        
-    def _detokenizer(self, outputs: List[int]) -> List[str]:
+
+    def _detokenizer(self, tokens: List[int]) -> List[str]:
+        """
+           tokens is results of post-sampling module.
+           output: texts list of batch
+        """
+        texts = []
+        for token in tokens:
+            token_input = [token]
+            text = self.tokenizer.decode(token_input, skip_special_tokens=True)
+            logging.info(f'tokenizer decode result is {text}, token id is {token}')
+            texts.append(text)
+        return texts
+
+    def _llama_detokenizer(self, outputs):
         str_outputs = []
+
         for output in outputs:
+
             output_ = self.tokenizer._convert_id_to_token(output)
+            #output_decode = self.tokenizer.decode([output])
+            #output_decode_skip = self.tokenizer.decode([output], skip_special_tokens=True)
+
+            if output_ == '<0x0A>':
+                output_ = '\n'
+            output_ = output_.replace('\u2581', ' ')
+
+            # print(f'_convert_id_to_token token input is {output}, str is {output_}')
+            # print(f'decode token input is {output}, str is {output_decode}')
+            # print(f'decode skip token input is {output}, str is {output_decode_skip}')
             str_outputs.append(output_)
+            logging.info(f'tokenizer decode result is {output_}')
         return str_outputs
 
-    def _postprocess(self,  
+    def _postprocess(self,
                      outputs: List[int],
-                     entry_metadata_list: List[EntryMetaData], 
-                     freq_list=[]) -> List[ResponseOutput]:
-        # detokenizer, convert token(int) into text(str)
-        end_token = 2   # for debug
-        str_outputs = self._detokenizer(outputs)
+                     entry_metadata_list: List[EntryMetaData],
+                     freq_list=[],
+                     index_list: List[int] = None,
+                     skip_inference=False) -> List[ResponseOutput]:
+
+        end_token = self.model_config.end_token  # for debug
+        str_outputs = ''
+        if self.model_config.tokenizer == 'LlamaTokenizer':
+            str_outputs = self._llama_detokenizer(outputs)
+        elif self.model_config.tokenizer == 'InternLMTokenizer':
+            str_outputs = self._detokenizer(outputs)
+
         self._counter_of_token += len(outputs)
+
         logging.info("current total token numbers is {}".format(self._counter_of_token))
-        self.scheduler.upate_entries_after_one_step(outputs, end_token)
+        self.scheduler.upate_entries_after_one_step(outputs, end_token, index_list)
+
         # generating output
         results: List[ResponseOutput] = []
-        
+
         for index, output in enumerate(outputs):
-            if entry_metadata_list[index].entry_data.status == EntryStatus.PADDING_INVAILED:
-                continue
-            results.append(ResponseOutput.generate_result(output, entry_metadata_list[index], str_outputs[index], end_token))
+            # prompt result, len(outputs) = 1
+            if index_list is not None:
+                if entry_metadata_list[index_list[0]].entry_data.status == EntryStatus.PADDING_INVAILED:
+                    logging.info(f'generate a invalid token, index in batch is {index}')
+                    continue
+                if skip_inference:
+                    print(f'input out of range, index in batch is {index}')
+                    results.append(ResponseOutput.generate_result(output,
+                                                                  entry_metadata_list[index_list[0]],
+                                                                  str_outputs[0],
+                                                                  end_token,
+                                                                  reason=f"ERROR202: prompt is too large for this model!  max len input tokens of model is {self.model_config.seq_length[-1]}, please using short prompt"))
+                    return results
+                results.append(ResponseOutput.generate_result(output,
+                                                              entry_metadata_list[index_list[0]],
+                                                              str_outputs[0],
+                                                              end_token))
+            # encode result
+            else:
+                if entry_metadata_list[index].entry_data.status == EntryStatus.PADDING_INVAILED:
+                    logging.info(f'generate a invalid token, index in batch is {index}')
+                    continue
+                results.append(ResponseOutput.generate_result(output,
+                                                              entry_metadata_list[index],
+                                                              str_outputs[index],
+                                                              end_token))
         return results
 
-    def abort_request(self, request_id) -> None:
-        
+    def get_current_batch(self):
+        return self.scheduler.get_dyn_batch()
+
+    def get_current_requestes_nums(self):
+        return self.scheduler.get_queue_len()
+
+    def abort_request(self,
+                      request_id: str) -> None:
         self.scheduler.abort_entry(request_id)
 
     def add_requests_to_schedule_pool(self,
@@ -71,12 +168,20 @@ class Master:
                                       top_p,
                                       temperature,
                                       repetition_penalty,
-                                      max_token_len
-                                      ):
+                                      max_token_len):
         time_tokenizer = time.time()
-        prompt_token_ids = self.tokenizer.encode(prompt)
+        prompt_token_ids = None
+
+        if self.model_config.tokenizer == 'LlamaTokenizer':
+            prompt_token_ids = self.tokenizer.encode(prompt)
+        elif self.model_config.tokenizer == 'InternLMTokenizer':
+            prompt_token_ids = self.tokenizer(prompt)['input_ids'][1:]
+        else:
+            print('incorrect Tokenizer name')
+            logging.debug('incorrect Tokenizer name')
         logging.info('tokenizer time is {}'.format((time.time() - time_tokenizer) * 1000))
-            
+
+        # if prompt_token_ids is not None and
         # Create the sequences.
         entry_id = next(self.counter)
         entry_data = EntryData(prompt_tokens=prompt_token_ids,
@@ -86,25 +191,26 @@ class Master:
                                top_p=top_p,
                                temperature=temperature,
                                repetition_penalty=repetition_penalty)
+
         entry_meta_data = EntryMetaData(request_id=request_id,
                                         is_prompt=True,
                                         entry_data=entry_data,
                                         entry_id=entry_id,
                                         prompt=prompt)
+
         logging.info("add request to schedule queue {}".format(entry_meta_data.request_id))
         self.scheduler.add_entrys(entry_meta_data)
-
 
     def step(self) -> List[ResponseOutput]:
         # do inference
         batch_time = time.time()
-        entry_metadata_list, _= self._schedule()
+        entry_metadata_list = self._schedule()
         # Execute the model.
-        # output: model infer out(token): 
+        # output: model infer out(token):
         # output is batch_size * n_src_vocab
         output = self._mock_run_workers_async(entry_metadata_list=entry_metadata_list, model_config=self.model_config)
         return self._postprocess(output, entry_metadata_list)
-    
+
     def _mock_run_workers_async(self, batch_size: int):
         outputs = []
         for i in range(batch_size):
@@ -112,29 +218,63 @@ class Master:
             outputs.append(output)
         time.sleep(0.15)
         return outputs
-    
+
 
 class AsyncMaster(Master):
     async def step_async(self) -> List[ResponseOutput]:
         batch_time = time.time()
-        entries_metadata_list = self._schedule()
-        if len(entries_metadata_list) == 0:
+        entries_metadata_list, current_batch_size = self._schedule()
+        valid_entry_len = 0
+        for metadata in entries_metadata_list:
+            if metadata.entry_data.get_status() == EntryStatus.RUNNING or metadata.entry_data.get_status() == EntryStatus.INPUT_OUTOFRANGE:
+                valid_entry_len += 1
+        if valid_entry_len == 0:
             return
-        run_worker_time = time.time()
-        output = await self._run_workers_async(entry_metadata_list=entries_metadata_list, model_config=self.model_config)
-        post_process_time = time.time()
-        results = self._postprocess(output, entry_metadata_list=entries_metadata_list)
-        logging.info('e-to-e time is {}'.format((time.time() - batch_time) * 1000))
-        logging.info('post_process_time time is {}'.format((time.time() - post_process_time) * 1000))
-        return results
 
-    async def _run_workers_async(self, entry_metadata_list, model_config):
-        tim_ = time.time()
-        return self.worker.predict(entry_metadata_list=entry_metadata_list, config=model_config)
-    
+        logging.info(f'valid entry_data is {valid_entry_len}')
+        output = await self._run_workers_async(current_batch_size, entry_metadata_list=entries_metadata_list,
+                                               model_config=self.model_config)
+        post_process_time = time.time()
+        # results = self._postprocess(output, entry_metadata_list=input_entry_metadata_list)
+        logging.info('post_process_time time is {}'.format((time.time() - post_process_time) * 1000))
+        return output
+
+    async def _run_workers_async(self, current_batch_size, entry_metadata_list, model_config):
+        e_t_e_time = time.time()
+        input_entry_metadata_list = entry_metadata_list
+        index_list = None
+        # for item in entries_metadata_list:
+        for index, item in enumerate(entry_metadata_list):
+            if item.is_prompt:
+                input_entry_metadata_list = [item]
+                index_list = [index]
+                if item.entry_data.status == EntryStatus.INPUT_OUTOFRANGE:
+                    return self._postprocess([111], entry_metadata_list=entry_metadata_list, index_list=index_list,
+                                             skip_inference=True)
+                else:
+                    break
+        logging.info('len of input entry_metadata_list is {}'.format(len(input_entry_metadata_list)))
+        # valid prompt add to batching list
+        if len(input_entry_metadata_list) == 1 and \
+                input_entry_metadata_list[0].entry_data.get_status() != EntryStatus.PADDING_INVAILED:
+            output = self.worker.predict(current_batch_size, entry_metadata_list=input_entry_metadata_list, config=model_config)
+        # invalid prompt add to batching list
+        elif len(input_entry_metadata_list) == 1 and \
+                input_entry_metadata_list[0].entry_data.get_status() == EntryStatus.PADDING_INVAILED:
+            output = self.worker.predict(current_batch_size, entry_metadata_list=input_entry_metadata_list, config=model_config)
+        # decode
+        else:
+            output = self.worker.predict(current_batch_size, entry_metadata_list=input_entry_metadata_list, config=model_config)
+        result = self._postprocess(output, entry_metadata_list=entry_metadata_list, index_list=index_list)
+        logging.info('e-to-e time is {}'.format((time.time() - e_t_e_time) * 1000))
+        return result
+
     async def _mock_run_workers_async(self, batch_size: int):
         outputs = []
         for i in range(batch_size):
             output = random.randint(0, 32000)
             outputs.append(output)
         return outputs
+
+    def stop(self):
+        return self.worker.stop()
