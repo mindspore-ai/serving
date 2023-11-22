@@ -64,7 +64,7 @@ def build_dependencies():
         _write_config(f)
 
 required_package = [
-    'numpy==1.21.6',
+    'numpy>=1.21.6',
     'protobuf >= 3.13.0',
     'grpcio >= 1.36.0, <= 1.47.0',
     'psutil >= 5.9.1',
