@@ -1,7 +1,6 @@
 
 import numpy as np
-
-# from config.serving_config import TOPP_NUM
+TOPP_NUM = 100
 
 
 def topk(x, top_k, axis=-1, largest=True, sort=True):
@@ -73,10 +72,12 @@ def softmax_matrix(x):
     return x
 
 
-def post_sampling(logits, top_p, top_k_num):
+def post_sampling(logits, decode_params, targets, origin_index):
     # sampling
     P = None
     p_args = None
+    top_p = decode_params.top_p
+    top_k_num = decode_params.top_k
     if top_p < 1.0:
         # Only consider the 5000 largest logits to reduce computation
         sorted_logits, index = topk(logits, TOPP_NUM)
@@ -109,8 +110,7 @@ def post_sampling(logits, top_p, top_k_num):
 
     target_index = np.random.choice(len(P), p=P)
     print('target_index: ', target_index)
-    target = p_args[target_index]
-    return target
+    targets[origin_index] = p_args[target_index]
 
 
 if __name__ == '__main__':
