@@ -172,6 +172,13 @@ class WorkAgent:
         post_sampling_out = self.argmax_model.predict(post_inputs)
         return post_sampling_out[0].get_data_to_numpy().astype(np.int32)
 
+    def _post_sampling_argmax_host(self, outputs) -> np.ndarray:
+        if isinstance(outputs, Tensor):
+            outputs = outputs.get_data_to_numpy()
+        outputs.reshape((outputs.shape[0], outputs.shape[-1]))
+        argmax_out = np.argmax(outputs, axis=-1)
+        return np.array([argmax_out]).astype(np.int32)[0]
+
     def do_sample(self, decode_params, p_args, outs, targets, index, candidate_token_num: int = 100) -> int:
         """
         Args:
@@ -282,10 +289,16 @@ class WorkAgent:
         do_sample = self.get_consistent_batch(decode_index)
         # DO Argmax NPU
         # bs = outputs_np.shape[0]
-        if not do_sample:
-            target = self._post_smapling_argmax_npu(outputs_np)
+        # if not do_sample:
+        # TODO 切换
+        target = self._post_sampling_argmax_host(outputs_np)
+        if prefill:
+            target.reshape((1,))
         else:
-            target = self._post_sampling_topk_npu(outputs_np, decode_index, prefill)
+            target.reshape((self.current_batch_size,))
+            target = np.squeeze(target, axis=1)
+        # else:
+        #     target = self._post_sampling_topk_npu(outputs_np, decode_index, prefill)
         if self.index == 0 and prefill:
             tmp = np.ndarray((index + 1,), dtype=target.dtype, buffer=outputs_shm.buf)
             tmp[index: index + 1] = target[:]
