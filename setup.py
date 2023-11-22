@@ -73,8 +73,7 @@ required_package = [
     'easydict',
     'fastapi',
     'uvicorn',
-    'sentencepiece',
-    'shared-memory38'
+    'sentencepiece'
 ]
 
 package_data = {
