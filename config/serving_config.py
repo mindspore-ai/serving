@@ -81,7 +81,8 @@ AgentConfig = EasyDict({
     'argmax_model': argmax_model,
     'topk_model': topk_model,
     'AgentPorts': [9820, 9821],
-    'device_start': device
+    'device_start': device,
+    "enable_host_post_sampling": False
 })
 
 AgentIP: str = "localhost"

@@ -243,18 +243,23 @@ class WorkAgent:
         wait(all_task)
         return targets
 
-    def _post_sampling_topk_host(self, outputs_np):
+    def _post_sampling_topk_host(self, outputs, decode_index, prefill):
         """
          topk top-p in cpu, time-cost function,
         """
-        outputs_np = outputs_np.reshape(VOCAB_LEN)
-        all_task = [pool.submit(post_sampling, np.array(item), self.top_p_list[0],
-                                self.top_k_list[0]) for item in [outputs_np]]
-        target = []
-        for x in as_completed(all_task):
-            res = x.result()
-            target.append(res)
-        self.target = np.array(target).astype(np.int32)
+        if isinstance(outputs, Tensor):
+            outputs = outputs.get_data_to_numpy()
+        outputs = np.reshape(outputs, (outputs.shape[0], outputs.shape[-1]))
+        if prefill:
+            thread_num = Baseconfig.prefill_batch_size
+        else:
+            thread_num = self.current_batch_size
+        targets = np.zeros((thread_num,), np.int32)
+        all_task = [pool.submit(post_sampling, np.array(item), self.decode_params_map[decode_index[i]], targets, i)
+                    for i, item in enumerate(outputs)]
+        wait(all_task)
+        return targets
+
 
     def multi_thread_post_sampling(self, outputs_np, outputs_shm, decode_index_np, bs=1):
 
@@ -287,18 +292,22 @@ class WorkAgent:
     def do_post_sampling(self, outputs_np, outputs_shm, decode_index, prefill=True) -> np.ndarray:
         index = int(decode_index[0])
         do_sample = self.get_consistent_batch(decode_index)
-        # DO Argmax NPU
-        # bs = outputs_np.shape[0]
-        # if not do_sample:
-        # TODO 切换
-        target = self._post_sampling_argmax_host(outputs_np)
-        if prefill:
-            target.reshape((1,))
+
+        if AgentConfig.enable_host_post_sampling:
+            if not do_sample:
+                target = self._post_sampling_argmax_host(outputs_np)
+                if prefill:
+                    target.reshape((1,))
+                else:
+                    target.reshape((self.current_batch_size,))
+                    target = np.squeeze(target, axis=1)
+            else:
+                target = self._post_sampling_topk_host(outputs_np, decode_index, prefill)
         else:
-            target.reshape((self.current_batch_size,))
-            target = np.squeeze(target, axis=1)
-        # else:
-        #     target = self._post_sampling_topk_npu(outputs_np, decode_index, prefill)
+            if not do_sample:
+                target = self._post_smapling_argmax_npu(outputs_np)
+            else:
+                target = self._post_sampling_topk_npu(outputs_np, decode_index, prefill)
         if self.index == 0 and prefill:
             tmp = np.ndarray((index + 1,), dtype=target.dtype, buffer=outputs_shm.buf)
             tmp[index: index + 1] = target[:]
