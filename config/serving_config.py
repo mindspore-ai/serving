@@ -60,7 +60,7 @@ Baseconfig = EasyDict({
     'seq_length': [310, 600, 1024, 2048],
     'vocab_size': 32000,
     'batch_size': 8,
-    'dyn_batch_size': [1, 2, 4, 8],
+    'dyn_batch_size': [1, 8, 16],
     'prefill_batch_size': 1,
     'model_type': 0,  # 0 is dyn-shape model, 1 is static-shape model
     'batch_waiting_time': 0.0,
