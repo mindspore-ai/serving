@@ -7,3 +7,5 @@ do
 	mv output/new.log output/6_$i.log
 done
 
+
+
