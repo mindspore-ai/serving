@@ -28,7 +28,7 @@ import sentencepiece as spm
 from mindformers.tools import logger
 from mindformers.models.base_tokenizer import Tokenizer
 from mindformers.tools.register import MindFormerRegister, MindFormerModuleType
-from utils.register import registers
+from serving_utils.register import registers
 
 
 VOCAB_FILES_NAMES = {"vocab_file": "./tokenizer.model"}

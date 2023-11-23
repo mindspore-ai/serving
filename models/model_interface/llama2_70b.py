@@ -1,6 +1,6 @@
 import numpy as np
 
-from utils.register import registers
+from serving_utils.register import registers
 
 
 @registers.MODEL_INTERFACE.register()

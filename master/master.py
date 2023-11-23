@@ -3,13 +3,13 @@ import time
 import random
 import logging
 
-from utils.entry import EntryData, EntryMetaData, EntryStatus
+from serving_utils.entry import EntryData, EntryMetaData, EntryStatus
 from .utils import Counter, ResponseOutput
 
 from schedule.schedule import Schedule
 from worker.worker import Worker
 from config.serving_config import Baseconfig, AgentIP, AgentConfig, ModelName
-from utils.register import registers
+from serving_utils.register import registers
 from mindformers.mindformer_book import MindFormerBook
 from mindformers import LlamaTokenizer
 from mindformers import AutoTokenizer
