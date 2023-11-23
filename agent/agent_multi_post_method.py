@@ -22,10 +22,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed, wait
 from multiprocessing import shared_memory
 import logging
 import time
-from config.serving_config import Baseconfig, AgentConfig, AgentIP, get_warmup_inputs
+from config.serving_config import Baseconfig, AgentConfig, AgentIP, get_warmup_inputs, ExtraInput
 from models.post_sampling.topk import post_sampling, softmax_np
 from mindspore_lite import Tensor, DataType
-from utils.err_code import AgentStatus
+from serving_utils.err_code import AgentStatus
 
 pool = ThreadPoolExecutor(max_workers=20, thread_name_prefix='test_thread')
 
@@ -292,7 +292,6 @@ class WorkAgent:
     def do_post_sampling(self, outputs_np, outputs_shm, decode_index, prefill=True) -> np.ndarray:
         index = int(decode_index[0])
         do_sample = self.get_consistent_batch(decode_index)
-
         if AgentConfig.enable_host_post_sampling:
             if not do_sample:
                 target = self._post_sampling_argmax_host(outputs_np)
@@ -357,6 +356,13 @@ class WorkAgent:
             temperature_list = gen_parms[:, 3]
             repetition_penalty_list = gen_parms[:, 4]
             decode_index_list = gen_parms[:, 5].astype(np.int32)
+            extra_input = []
+            for i in range(1, len(shape_list) - 1):
+                existing_shm = shared_memory.SharedMemory(name=self.shm_names[i])
+                tmp_shms.append(existing_shm)
+                # To Do np.int64 ?
+                extra_input.append(np.ndarray((shape_list[i]), dtype=np.int64, buffer=existing_shm.buf))
+
             decode_params = DecodeParams(
                 do_sample=bool(do_sample_list[0]),
                 top_p=top_p_list[0],
@@ -412,6 +418,8 @@ class WorkAgent:
                 valid_length.append(decode_params.valid_length)
                 init_reset.append(decode_params.init_reset)
                 decode_index.append(decode_params.decode_index)
+
+            extra_input = ExtraInput(input_ids, current_index, None, False, valid_length)
             current_index = np.array(current_index, dtype=np.int32)
             if Baseconfig.model_type == 0:
                 valid_length = np.array(valid_length, dtype=np.int64)
@@ -427,6 +435,10 @@ class WorkAgent:
 
         else:
             tmp_in = [input_ids, current_index, init_reset, valid_length]
+
+        if len(extra_input) > 0:
+            tmp_in.extend(extra_input)
+
         # 调用ms lite进行推理
         model = self.prefill if self.is_prefill else self.decode
         lite_inputs = [mslite.Tensor(item) for item in tmp_in]

@@ -1,6 +1,6 @@
 from typing import Dict, List, Optional, Union
 
-from utils.entry import *
+from serving_utils.entry import *
 
 
 class CompletionOutput:

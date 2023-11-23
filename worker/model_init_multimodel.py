@@ -138,11 +138,10 @@ class InputOfInfer:
             tensor list of mslite.
         """
         name = ""
+        if Baseconfig['input_function'] == 'custom':
+            model_name = "custom"
+            print('---------------------', model_name)
         if model_name not in InputOfInfer.MAPPING:
-            print(Baseconfig)
-            if Baseconfig['input_function'] == 'custom':
-                model_name = "custom"
-            print('---------------------',model_name)
             for k in InputOfInfer.MAPPING:
                 if model_name.startswith(k):
                     name = k

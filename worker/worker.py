@@ -5,7 +5,7 @@ from typing import List
 import numpy as np
 
 from .model_init_multimodel import DisModel
-from utils.entry import EntryMetaData
+from serving_utils.entry import EntryMetaData
 from config.serving_config import Baseconfig, ExtraInput, ModelName
 from multiprocessing import shared_memory
 from concurrent.futures import ThreadPoolExecutor

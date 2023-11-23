@@ -2,7 +2,7 @@ import time
 from typing import Dict, List
 import logging
 
-from utils.entry import EntryMetaData, EntryStatus, EntryData
+from serving_utils.entry import EntryMetaData, EntryStatus, EntryData
 from queue import Queue
 import copy
 from config.serving_config import Baseconfig
@@ -187,14 +187,6 @@ class Schedule:
                 self.max_valid_index = index
 
     def _determine_batch_size(self):
-
-        bf_batch = self.batch_size
-        self._update_status_after_one_itreation()
-        queue_len = self.waiting_request_queue.qsize()
-        bs_list_len = len(self.dyn_batch)
-        # 1. 请求队列长度大于当前batch_size，扩容
-        dyn_index = -1
-
         self._update_status_after_one_itreation()
         bf_batch = self.batch_size
         queue_len = self.waiting_request_queue.qsize()
@@ -233,6 +225,7 @@ class Schedule:
         if bf_batch >= af_batch:
             self.running_request_list = self.running_request_list[:af_batch]
         else:
+            bf_batch = 0 if self.max_valid_index == -1 else bf_batch
             for i in range(bf_batch, af_batch):
                 entry_meta_data = EntryMetaData(request_id="",
                                                 is_prompt=True,

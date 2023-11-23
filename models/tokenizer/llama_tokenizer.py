@@ -25,7 +25,7 @@ from shutil import copyfile
 from typing import Any, Dict, List, Optional
 
 import sentencepiece as spm
-from utils.register import registers
+from serving_utils.register import registers
 
 __all__ = ['LlamaTokenizer']
 VOCAB_FILES_NAMES = {"vocab_file": "tokenizer.model"}

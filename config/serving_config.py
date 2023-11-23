@@ -22,7 +22,7 @@ import time
 import numpy as np
 from easydict import EasyDict
 # import models.tokenizer
-from utils.register import import_all_modules_for_register
+from serving_utils.register import import_all_modules_for_register
 
 
 device = 6
@@ -69,7 +69,8 @@ Baseconfig = EasyDict({
     'batching_strategy': 'continuous',
     'tokenizer': 'LlamaTokenizer',  # if import tokenizer, setting None # InternLMTokenizer for internlm
     'tokenizer_path': tokenizer_path,
-    'input_function': 'common' # for interNLM : common
+    'input_function': 'custom',  # for interNLM : common
+    'zactivate_len':  [512, 1024, 2048, 4096]
 })
 
 AgentConfig = EasyDict({
@@ -94,18 +95,20 @@ def llama_inputs_for_warmup(seq_length, batch_size, full_model):
     current_index = np.array([1] * batch_size, dtype=np.int32)
 
     if full_model:
-        init_reset = np.array([False] * batch_size, dtype=np.bool_)
+        init_reset = np.array([False] * 1, dtype=np.bool_)
     else:
-        init_reset = np.array([True] * batch_size, dtype=np.bool_)
+        init_reset = np.array([True] * 1, dtype=np.bool_)
 
     batch_valid_length = np.array([1] * batch_size, dtype=np.int64)
 
     if Baseconfig['batching_strategy'] == 'continuous':
         decode_index = np.array(range(batch_size), dtype=np.int64)
-        inputs_list = [input_ids,  current_index, batch_valid_length, decode_index]
+        inputs_list = [input_ids, current_index, batch_valid_length, decode_index]
     else:
         inputs_list = [input_ids, current_index, init_reset, batch_valid_length]
 
+    input_extra_list = ExtraInput(input_ids, current_index, init_reset, full_model, batch_valid_length)
+    inputs_list.extend(input_extra_list)
     return inputs_list
 
 
@@ -147,80 +150,34 @@ def get_warmup_inputs(seq_length=Baseconfig.seq_length[0] if len(Baseconfig.seq_
 
 
 def get_inputs_custom(input_ids=None, current_index=None, valid_length=None,
-                   init_reset=None, is_first_iteration=True, InputExtraList=[], **kwargs):
-        mask = InputExtraList[0]
-        freq_cos = InputExtraList[1]
-        freq_sin = InputExtraList[2]
-        if not is_first_iteration:
-            inputs_tmp = []
-            for i in range(len(current_index)):
-                current_index_tmp = int(current_index[i]) - i * input_ids.shape[1]  # multibatch
-                inputs_tmp.append(input_ids[i][current_index_tmp:current_index_tmp + 1])
-            input_ids = np.array(inputs_tmp, dtype=np.int32)
-        if is_first_iteration:
-            inputs = [input_ids, current_index, init_reset, valid_length, mask, freq_cos, freq_sin]
-        else:
-            inputs = [input_ids, current_index, init_reset, valid_length]
-        return inputs
+                      init_reset=None, is_first_iteration=True, InputExtraList=[], **kwargs):
+    act_len = InputExtraList[0]
+    if not is_first_iteration:
+        inputs_tmp = []
+        for i in range(len(current_index)):
+            current_index_tmp = int(current_index[i]) - i * input_ids.shape[1]  # multibatch
+            inputs_tmp.append(input_ids[i][current_index_tmp:current_index_tmp + 1])
+        input_ids = np.array(inputs_tmp, dtype=np.int32)
+    inputs = [input_ids, current_index, init_reset, valid_length, act_len]
+
+    return inputs
 
 
 def ExtraInput(input_ids, current_index, init_reset, is_prefill, valid_length, **kwargs):
-    from enum import Enum
-    class SeqExtendMethod(Enum):
-        """Stores the acceptable string identifiers for seq length extend method"""
-        PI = "PI"
-        NTK = "NTK"
-        NONE = "None"
-    
-    def precompute_freqs_cis(
-        dim: int,
-        end: int,
-        real_seqlen: int,
-        theta: float = 10000.0,
-        pretrain_seqlen=2048,
-        extend_method=SeqExtendMethod.NONE.value):
-        """
-        Precompute of freqs and mask for rotary embedding.
-        """
-        ratio = 1.
-        if extend_method != SeqExtendMethod.NONE.value and end > pretrain_seqlen:
-            ratio = end / pretrain_seqlen
-        if extend_method == SeqExtendMethod.NTK.value:
-            theta *= ratio
-        freqs_base = np.arange(0, dim, 2)[: (dim // 2)].astype(np.float32) # (head_dim // 2, )
-        freqs = 1.0 / (theta ** (freqs_base / dim)) # (head_dim // 2, )
-        if extend_method == SeqExtendMethod.PI.value:
-            t = np.arange(0, end / ratio, 1 / ratio).astype(np.float32)
-        else:
-            t = np.arange(0, end, 1).astype(np.float32)  # type: ignore # (seq_len,)
-        freqs = np.outer(t, freqs)  # type: ignore (seq_len, head_dim // 2)
-        emb = np.concatenate((freqs, freqs), axis=-1)
-        freqs_cos = np.cos(emb)
-        freqs_sin = np.sin(emb)
+    def get_act_length(seq_len, act_len_list):
+        for seq in act_len_list:
+            if seq_len <= seq:
+                act_len = np.zeros((seq), np.int64)
+                break
+        return act_len
 
-        return freqs_cos[:real_seqlen,:], freqs_sin[:real_seqlen,:]
-
-    def get_mask(input_ids):
-        input_mask = np.not_equal(input_ids, 0)
-        seq_length = input_ids.shape[1]
-        input_shape = np.shape(input_mask)
-        shape_right = (input_shape[0], 1, input_shape[1])
-        shape_left = input_shape + (1,)
-        # Mask the padded inputs
-        mask_left = np.reshape(input_mask, shape_left)
-        mask_right = np.reshape(input_mask, shape_right)
-        attention_mask = mask_left * mask_right
-
-        ones = np.ones(shape=(seq_length, seq_length), dtype=input_ids.dtype)
-        # Default lower triangle mask matrix
-        lower_triangle_mask = np.tril(ones)
-        lower_traiangle = np.expand_dims(lower_triangle_mask, 0)
-        out = lower_traiangle * attention_mask
-        return out.astype(np.float16)
-    if is_prefill:
-        freq_cos, freq_sin = precompute_freqs_cis(128, 3210, input_ids.shape[-1], pretrain_seqlen=4096)
-        extraList = [get_mask(input_ids), freq_cos, freq_sin]
-    else:
-        extraList = [None, None, None]
-
-    return extraList
+    if not is_prefill:
+        max_seq = 0
+        for i in range(len(valid_length)):
+            max_seq = max(max_seq, valid_length[i] + 1)
+        return [get_act_length(max_seq, Baseconfig.zactivate_len)]
+    max_prefill_length = 0
+    for item in valid_length:
+        max_prefill_length = max(max_prefill_length, item)
+    act_len = get_act_length(max_prefill_length + 1, Baseconfig.zactivate_len)
+    return [act_len]
