@@ -46,7 +46,7 @@ class EntryStatus(enum.Enum):
 class EntryData:
     def __init__(self,
                  prompt_tokens: List[int],
-                 max_token_len: int = 300,
+                 max_token_len: int = 5000,
                  do_sample: bool = False,
                  tok_k: int = 1,
                  top_p: float = 1.0,
