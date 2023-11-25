@@ -169,6 +169,7 @@ def ExtraInput(input_ids, current_index, init_reset, is_prefill, valid_length, *
             if seq_len <= seq:
                 act_len = np.zeros((seq), np.int64)
                 break
+            act_len = np.zeros((act_len_list[-1]), np.int64)
         return act_len
 
     if not is_prefill:
