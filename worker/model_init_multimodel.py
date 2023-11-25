@@ -353,9 +353,6 @@ class DisModel:
         if is_first_iteration:
             lite_inputs = self.get_model_inputs(input_ids, current_index, valid_length,
                                                 init_reset, is_first_iteration, InputExtraList=InputExtraList, **kwargs)
-            # print("input length: ", lite_inputs, lite_inputs[0].shape)
-            # for inp in lite_inputs:
-            # print(inp.shape, inp.dtype)
             # 前4个array拼接成一个
             # init_reset变成[batch_size, 1]
             logging.debug("prefill input_ids {} \ncurrent_index {} \n valid_length {} \n".format(input_ids,
@@ -364,13 +361,10 @@ class DisModel:
             first_group, second_group = self.get_warp_inputs(lite_inputs=lite_inputs, **kwargs)
             
             shape_list = []
-            type_list = []
             first = np.ndarray(first_group.shape, dtype=first_group.dtype, buffer=shms[0].buf)
             first[:] = first_group[:]
             shape_list.append(first_group.shape)
-            
-            # type_list.append(dtype_to_int[first_group.dtype])
-            # type_list.append()
+
             # 如果是prefill的话，需要将另外三个array也写到共享内存中
 
             if len(second_group) != 0:
@@ -382,8 +376,6 @@ class DisModel:
                    
                     shape_list.append(second_group[j].shape)
             mem_index = len(second_group)
-                # type_list.append(dtype_to_int[second_group[-1].dtype])
-            
             parms_np_dtype = np.float16
             parms_np = self.get_gen_parms_np(Baseconfig.prefill_batch_size, parms_np_dtype, **kwargs)
             gen_index = max(3, mem_index)
@@ -407,15 +399,17 @@ class DisModel:
 
         for item in self.agent_stubs:
             item.sendall(shapes_str)
-        _ = self.agent_stubs[0].recv(1, socket.MSG_WAITALL).decode()
-
+        recv_data = self.agent_stubs[0].recv(1, socket.MSG_WAITALL).decode()
+        # print(recv_data)
         result = []
+        if recv_data == "2":
+            for _ in decode_index_list:
+                result.append(int(Baseconfig.end_token))
+            print("--------------------predict failed, abandon current prompt, please try again----------------")
+            return result, 1
         for decode_index in decode_index_list:
-            
             tmp = np.ndarray((decode_index + 1,), dtype=np.int32, buffer=shms[5].buf)
             result.append(int(tmp[decode_index:decode_index + 1]))
-            # result.append(int(tmp[decode_index]))
-        # print("result : ", result)
         logging.info("model.call time is {} ".format((time.time() - time_start) * 1000))
         return result, 1
 

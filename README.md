@@ -28,8 +28,8 @@
     "decode_model_path"  - 增量模型mindir路径
     “argmax_model”       - argmax后处理mindir路径
     "topk_model"         - topk后处理mindir路径 （这两个后处理模型可以通过post_sampling_model.py进行一键导出）
-    "ctx_path"           - 全量模型对应的ini路径
-    "inc_path"           - 增量模型对应的ini路径
+    "ctx_path"           - 全量模型对应的ini路径 (str)
+    "inc_path"           - 增量模型对应的ini路径 (list(str))
     "post_model_ini"     - 后处理模型对应的ini路径
     "tokenizer_path"     - 大模型的分词model路径
     
