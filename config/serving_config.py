@@ -45,7 +45,10 @@ decode_model_path = [
 argmax_model = ["/path/to/argmax.mindir"]
 topk_model = ["/path/to/topk.mindir"]
 ctx_path = '/path/to/prompt_config.ini'
-inc_path = '/path/to/decode_config.ini'
+inc_path = ['/path/to/decode_config1.ini',
+            '/path/to/decode_config2.ini',
+            '/path/to/decode_config3.ini',
+            '/path/to/decode_config4.ini']
 post_model_ini = '/path/to/post_model.ini'
 tokenizer_path = '/path/to/tokenizer.model'
 
@@ -70,7 +73,8 @@ Baseconfig = EasyDict({
     'tokenizer': 'LlamaTokenizer',  # if import tokenizer, setting None # InternLMTokenizer for internlm
     'tokenizer_path': tokenizer_path,
     'input_function': 'custom',  # for interNLM : common
-    'zactivate_len':  [512, 1024, 2048, 4096]
+    'zactivate_len':  [512, 1024, 2048, 4096],
+    'slice_model' : True
 })
 
 AgentConfig = EasyDict({
@@ -90,7 +94,7 @@ AgentIP: str = "localhost"
 ModelName: str = "llama_dyn"  # internlm_7b for internlm
 
 
-def llama_inputs_for_warmup(seq_length, batch_size, full_model):
+def llama_inputs_for_warmup(seq_length, batch_size, full_model, valid_length=None):
     input_ids = np.ones([batch_size, seq_length], dtype=np.int32)
     current_index = np.array([1] * batch_size, dtype=np.int32)
 
@@ -99,7 +103,10 @@ def llama_inputs_for_warmup(seq_length, batch_size, full_model):
     else:
         init_reset = np.array([True] * 1, dtype=np.bool_)
 
-    batch_valid_length = np.array([1] * batch_size, dtype=np.int64)
+    if valid_length is None:
+        batch_valid_length = np.array([1] * batch_size, dtype=np.int64)
+    else:
+        batch_valid_length = np.array(valid_length * batch_size, dtype=np.int64)
 
     if Baseconfig['batching_strategy'] == 'continuous':
         decode_index = np.array(range(batch_size), dtype=np.int64)
@@ -133,18 +140,18 @@ def internlm_inputs_for_warmup(seq_length, batch_size, full_model):
 
 WARMUP_MODEL_INPUTS_MAP = {
     "llama": llama_inputs_for_warmup,
-    "internlm": internlm_inputs_for_warmup,
+    "internlm": llama_inputs_for_warmup,    # 和llama一致
 }
 
 
 def get_warmup_inputs(seq_length=Baseconfig.seq_length[0] if len(Baseconfig.seq_length) >= 1 else 2048,
                       batch_size=Baseconfig.batch_size,
                       full_model=True,
-                      model_name=ModelName):
+                      model_name=ModelName, valid_length=None):
     model_prefix = model_name.split('_')[0]
     if model_prefix in WARMUP_MODEL_INPUTS_MAP.keys():
         func = WARMUP_MODEL_INPUTS_MAP[model_prefix]
-        return func(seq_length, batch_size, full_model)
+        return func(seq_length, batch_size, full_model, valid_length)
     else:
         print("model not support warmup : ", model_name)
 

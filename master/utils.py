@@ -1,3 +1,4 @@
+import logging
 from typing import Dict, List, Optional, Union
 
 from serving_utils.entry import *
@@ -54,7 +55,6 @@ class ResponseOutput:
         index = entry_meta_data.get_entry_data().get_output_len()
         token_ids = entry_meta_data.get_entry_data().get_all_tokens()
         request_id = entry_meta_data.request_id
-
         status = entry_meta_data.get_entry_data().get_status()
         finished_reason = None
         finished = False
@@ -64,26 +64,26 @@ class ResponseOutput:
                 finished_reason = EntryStatus.get_finished_reason(status)
 
         if status == EntryStatus.INPUT_OUTOFRANGE:
-            print(f'>>>>>>request {entry_meta_data.request_id} input is too large, out of input length of model')
+            print(f'>>>>>>request {request_id} input is too large, out of input length of model')
             finished = True
             finished_reason = EntryStatus.get_finished_reason(status)
             completion_out = CompletionOutput(index, text=reason, finished=finished_reason)
             entry_meta_data.entry_data.status = EntryStatus.FINISHED_STOPPED
-            return cls(entry_meta_data.request_id,
+            return cls(request_id,
                        entry_meta_data.get_prompt(),
                        entry_meta_data.get_entry_data().get_prompt_token(),
                        [completion_out],
                        finished)
-
-        if output == eos_id:
+        if status == EntryStatus.PADDING_INVAILED:
+            finished = False
+        elif output == eos_id:
             finished = True
-
         elif entry_meta_data.entry_data.get_output_len() == entry_meta_data.entry_data.max_token_len:
-            print(f"stop inference because of iteration is max_len, request is {request_id}")
+            logging.debug("stop inference because of iteration is max_len, request is {}".format(request_id))
             finished = True
 
         completion_out = CompletionOutput(index, text=output_str, finished=finished_reason)
-        return cls(entry_meta_data.request_id,
+        return cls(request_id,
                    entry_meta_data.get_prompt(),
                    entry_meta_data.get_entry_data().get_prompt_token(),
                    [completion_out],

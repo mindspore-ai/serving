@@ -50,7 +50,7 @@ class Config:
         self.index = index
 
 
-def load_model(model0_path, model1_path, config_file, config_inc_file, rank_id, device_id):
+def load_model(model0_path, model1_path, config_file, config_inc_file_list, rank_id, device_id):
     # 加载模型
     context = mslite.Context()
     print('device_id: ', device_id)
@@ -67,14 +67,52 @@ def load_model(model0_path, model1_path, config_file, config_inc_file, rank_id, 
         return model0, model1
 
     # rank_table_file放在config_file中
-    model0 = mslite.Model()
-    model1 = mslite.Model()
+    all_models = [mslite.Model()]  # prefill
+    # decode
+    for _ in config_inc_file_list:
+        all_models.append(mslite.Model())
     model_group = mslite.ModelGroup(mslite.ModelGroupFlag.SHARE_WEIGHT)
-    model_group.add_model([model0, model1])
-    model0.build_from_file(model0_path, mslite.ModelType.MINDIR, context, config_file)
-    model1.build_from_file(model1_path, mslite.ModelType.MINDIR, context, config_inc_file)
-    print(f"load model {model0_path} and {model1_path} in rank {rank_id} successful")
-    return model0, model1
+    model_group.add_model(all_models)
+
+    all_models[0].build_from_file(model0_path, mslite.ModelType.MINDIR, context, config_file)
+    # warm up prefill model
+    logging.info('warmup prefill model ...')
+    prefill_inputs_list = get_warmup_inputs(batch_size=1, full_model=True)
+    prefill_lite_inputs = [mslite.Tensor(item) for item in prefill_inputs_list]
+    for item in prefill_lite_inputs:
+        print("prefill item ", item.shape, item.dtype)
+    all_models[0].predict(prefill_lite_inputs)
+    logging.info('warmup prefill model finish')
+    logging.info('warmup decode model ...')
+    if 'zactivate_len' not in Baseconfig or len(config_inc_file_list) != len(Baseconfig.zactivate_len):
+        logging.error('zactivate len config is not consistent with config_inc_file_list')
+    for i in range(len(config_inc_file_list)):
+        act_len = Baseconfig.zactivate_len[i]
+        print(f"starting warm up {act_len} decode model")
+        if 'dyn_batch_size' in Baseconfig:
+            warm_batch_size = Baseconfig.dyn_batch_size[0]
+        else:
+            warm_batch_size = Baseconfig.batch_size
+        if 'seq_type' in Baseconfig and Baseconfig.seq_type == 'dyn':
+            warm_seq_length = 1
+        else:
+            warm_seq_length = Baseconfig.seq_length[0]
+
+        decode_inputs_list = get_warmup_inputs(seq_length=warm_seq_length, batch_size=warm_batch_size, full_model=False, valid_length=[act_len - 1])
+
+        decode_lite_inputs = [mslite.Tensor(item) for item in decode_inputs_list]
+
+        for item in decode_lite_inputs:
+            print("decode item ", item.shape, item.dtype, flush=True)
+            print(item, flush=True)
+
+        all_models[i + 1].build_from_file(model1_path, mslite.ModelType.MINDIR, context, config_inc_file_list[i])
+        all_models[i + 1].predict(decode_lite_inputs)
+        print(f"finish warm up {act_len} decode model")
+
+    print('warmup all decode models finish', flush=True)
+    print(f"load model {model0_path} and {model1_path} in rank {rank_id} successful", flush=True)
+    return all_models[0], all_models[1:]
 
 
 def load_post_model(model_path, config_file, rank_id, device_id):
@@ -316,7 +354,18 @@ class WorkAgent:
             tmp[:] = target[:]
             self.targets[:] = target[:]
 
-    def predict(self, shape_list=None, current_batch=None):
+    def model_choice_seq(self, act_len, decode_model_map):
+        if len(decode_model_map) == 1:
+            return decode_model_map[0]
+        act_len_list = Baseconfig.zactivate_len
+        if len(act_len_list) != len(decode_model_map):
+            logging.error('act_len config is inconsistent with decode'
+                          'model ini,please check them')
+        model_index = act_len_list.index(act_len)
+        logging.debug('current act_len model is: {}'.format(act_len))
+        return decode_model_map[model_index]
+
+    def predict(self, shape_list=None, current_batch=None, batch_valid_flag=None):
         self.status = AgentStatus.busy
         tmp_shms = []
         start_time = time.time()
@@ -388,6 +437,11 @@ class WorkAgent:
             init_reset = []
             decode_index = []
             current_batch_size = self.current_batch_size
+            if self.current_batch_size != len(batch_valid_flag):
+                logging.error("batch size is not equal to the length of batch_valid_flag: batch size is {}, "
+                              "batch_valid_flag is {}".format(self.current_batch_size, batch_valid_flag))
+                batch_valid_flag.clear()
+                batch_valid_flag = [1 for _ in range(self.current_batch_size)]
             before_batch_size = len(self.decode_params_map.keys())
             if before_batch_size < current_batch_size:
                 input_ids = np.ndarray((before_batch_size,), dtype=np.int32, buffer=output_shm.buf)
@@ -414,8 +468,12 @@ class WorkAgent:
                 decode_params.current_index = decode_params.current_index + 1
                 decode_params.valid_length = decode_params.valid_length + 1
                 decode_params.init_reset = False
-                current_index.append(decode_params.current_index)
-                valid_length.append(decode_params.valid_length)
+                if batch_valid_flag[key] == 1:
+                    current_index.append(decode_params.current_index)
+                    valid_length.append(decode_params.valid_length)
+                else:
+                    current_index.append(0)
+                    valid_length.append(0)
                 init_reset.append(decode_params.init_reset)
                 decode_index.append(decode_params.decode_index)
 
@@ -438,9 +496,14 @@ class WorkAgent:
 
         if len(extra_input) > 0:
             tmp_in.extend(extra_input)
-
+        for tmp in tmp_in:
+            logging.debug("item shape is {}, dtype is {}".format(tmp.shape, tmp.dtype))
+            logging.debug("item is {}".format(tmp))
         # 调用ms lite进行推理
-        model = self.prefill if self.is_prefill else self.decode
+        if len(extra_input[0]) > 0:
+            model = self.prefill if self.is_prefill else self.model_choice_seq(len(extra_input[0]), self.decode)
+        else:
+            model = self.prefill if self.is_prefill else self.decode[0]
         lite_inputs = [mslite.Tensor(item) for item in tmp_in]
 
         logging.info('agent pre-process time is {}'.format((time.time() - start_time) * 1000))
@@ -451,11 +514,10 @@ class WorkAgent:
             outputs_list = model.predict(lite_inputs)
         else:
             outputs_list = model.predict(lite_inputs)
-
+        logging.debug("outputs tensor after model predict is {}".format(outputs_list[0]))
         logging.info('predict time is {}'.format((time.time() - predict_time) * 1000))
 
         post_time = time.time()
-
         if self.rank_id == 0:
             multi_thread_time = time.time()
             if self.is_prefill:
@@ -493,12 +555,13 @@ def warmup_models(work_agent):
 
 
 def start_agent_socket_server(config, startup_queue):
+    logging.basicConfig(level=logging.DEBUG,
+                        filename=f"./output/agent_{config.rank_id}.log",
+                        filemode='w',
+                        format=
+                        '%(asctime)s - %(pathname)s[line:%(lineno)d] - %(levelname)s: %(message)s')
     """启动agent进程, 由_agent_process进行调用, 创建agent进程"""
     work_agent = WorkAgent(config)
-
-    # warmup
-    warmup_models(work_agent)
-    logging.info('agent %d warmup finish', config.rank_id)
 
     parent_process = psutil.Process(os.getppid())
     print(config.agent_address)
@@ -556,9 +619,14 @@ def start_agent_socket_server(config, startup_queue):
                     conn.sendall("1".encode())
                 elif data.startswith('a'):
                     # 增量推理
-                    current_batch_dyn = int(data.split('_')[-1])
+                    decode_data = data.split('_')
+                    current_batch_dyn = int(decode_data[-2])
+                    batch_valid_flag = []
+                    for ele in decode_data[-1].split(" "):
+                        batch_valid_flag.append(int(ele))
+                    logging.debug("batch valid flag received is {}".format(batch_valid_flag))
                     work_agent.is_prefill = False
-                    _, _ = work_agent.predict(current_batch=current_batch_dyn)
+                    _, _ = work_agent.predict(current_batch=current_batch_dyn, batch_valid_flag=batch_valid_flag)
                     conn.sendall("1".encode())
                 elif data.startswith('e'):
                     # worker退出获取agent状态，free状态下才允许退出
@@ -595,11 +663,6 @@ def startup_agents(config_file,
     if not os.path.exists(log_dir):
         os.mkdir(log_dir)
     for i in range(rank_size):
-        logging.basicConfig(level=logging.DEBUG,
-                            filename=f"./output/agent_{i}.log",
-                            filemode='w',
-                            format=
-                            '%(asctime)s - %(pathname)s[line:%(lineno)d] - %(levelname)s: %(message)s')
         agent_address = (AgentIP, agent_ports[i])
         config = Config(i + AgentConfig.device_start, i, config_file, config_inc_file, config_post_sampling,
                         model0_paths[i], model1_paths[i], post_sampling_model_path[0], post_sampling_model_path2[0],

@@ -170,7 +170,7 @@ class Master:
                                       max_token_len):
         time_tokenizer = time.time()
         prompt_token_ids = None
-
+        logging.debug("request id add_requests_to_schedule_pool {}".format(request_id))
         if self.model_config.tokenizer == 'LlamaTokenizer':
             prompt_token_ids = self.tokenizer.encode(prompt)
         elif self.model_config.tokenizer == 'InternLMTokenizer':
@@ -225,7 +225,9 @@ class AsyncMaster(Master):
         entries_metadata_list, current_batch_size = self._schedule()
         valid_entry_len = 0
         for metadata in entries_metadata_list:
-            if metadata.entry_data.get_status() == EntryStatus.RUNNING or metadata.entry_data.get_status() == EntryStatus.INPUT_OUTOFRANGE:
+            logging.debug("entry_data status after schedule is {}".format(metadata.entry_data.get_status()))
+            if metadata.entry_data.get_status() == EntryStatus.RUNNING or \
+                    metadata.entry_data.get_status() == EntryStatus.INPUT_OUTOFRANGE:
                 valid_entry_len += 1
         if valid_entry_len == 0:
             return
