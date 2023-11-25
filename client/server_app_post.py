@@ -13,7 +13,8 @@
 # limitations under the License.
 # ============================================================================
 """MindSpore Serving server app"""
-
+import signal
+import sys
 import uuid
 import asyncio
 import logging
@@ -310,7 +311,16 @@ async def get_request_numbers():
     return EventSourceResponse(_get_request_numbers())
 
 
+def sig_term_handler(signal, frame):
+    print("catch SIGTERM")
+    global llm_server
+    llm_server.stop()
+    print("----serving exit----")
+    sys.exit(0)
+
+
 if __name__ == "__main__":
+    signal.signal(signal.SIGTERM, sig_term_handler)
     init_server_app()
     # warmup_model(ModelName)
     run_server_app()

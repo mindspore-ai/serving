@@ -496,9 +496,11 @@ class WorkAgent:
 
         if len(extra_input) > 0:
             tmp_in.extend(extra_input)
+
         for tmp in tmp_in:
             logging.debug("item shape is {}, dtype is {}".format(tmp.shape, tmp.dtype))
             logging.debug("item is {}".format(tmp))
+
         # 调用ms lite进行推理
         if len(extra_input[0]) > 0:
             model = self.prefill if self.is_prefill else self.model_choice_seq(len(extra_input[0]), self.decode)
@@ -513,7 +515,21 @@ class WorkAgent:
         if self.is_prefill:
             outputs_list = model.predict(lite_inputs)
         else:
+            # try:
+            #     for lite_in in lite_inputs:
+            #         np_in = lite_in.get_data_to_numpy()
+            #         logging.debug("item shape is {}, dtype is {}".format(np_in.shape, np_in.dtype))
+            #         logging.debug("item is {}".format(np_in))
             outputs_list = model.predict(lite_inputs)
+            # except RuntimeError:
+            #     logging.debug("retry predict start")
+            #     for lite_in in lite_inputs:
+            #         np_in = lite_in.get_data_to_numpy()
+            #         logging.debug("item shape is {}, dtype is {}".format(np_in.shape, np_in.dtype))
+            #         logging.debug("item is {}".format(np_in))
+            #     outputs_list = model.predict(lite_inputs)
+            #     logging.debug("retry predict successful")
+
         logging.debug("outputs tensor after model predict is {}".format(outputs_list[0]))
         logging.info('predict time is {}'.format((time.time() - predict_time) * 1000))
 
@@ -639,6 +655,9 @@ def start_agent_socket_server(config, startup_queue):
                         conn.sendall("free".encode())
             except ConnectionResetError:
                 break
+            except RuntimeError:
+                logging.error("predict failed, abandon prompts")
+                conn.sendall("2".encode())
         conn.close()
 
 

@@ -50,6 +50,7 @@ class Master:
         self._init_workers()
         self._counter_of_token = 0
         self._init_tokenizer()
+        self.decode_cache = {}
 
     def _init_tokenizer(self):
         self.tokenizer = build_tokenizer(self.model_config)
@@ -81,22 +82,30 @@ class Master:
 
     def _llama_detokenizer(self, outputs):
         str_outputs = []
+        batch_size = len(outputs)
+        before_batch_size = len(self.decode_cache.keys())
+        if batch_size > before_batch_size:
+            for i in range(before_batch_size, batch_size):
+                self.decode_cache[i] = []
+        else:
+            while len(self.decode_cache.keys()) > batch_size:
+                self.decode_cache.popitem()
+        for i in range(batch_size):
+            self.decode_cache[i].append(outputs[i])
+            new_text = self.tokenizer.decode(self.decode_cache[i], skip_special_tokens=True )
+            if not new_text.endswith("�"):
+                begin_token = self.tokenizer._convert_id_to_token(self.decode_cache[i][0])
+                if begin_token == '<0x0A>':
+                    begin_token = '\n'
+                elif '\u2581' in begin_token:
+                    begin_token = ' '
+                else:
+                    begin_token = ''
 
-        for output in outputs:
-
-            output_ = self.tokenizer._convert_id_to_token(output)
-            #output_decode = self.tokenizer.decode([output])
-            #output_decode_skip = self.tokenizer.decode([output], skip_special_tokens=True)
-
-            if output_ == '<0x0A>':
-                output_ = '\n'
-            output_ = output_.replace('\u2581', ' ')
-
-            # print(f'_convert_id_to_token token input is {output}, str is {output_}')
-            # print(f'decode token input is {output}, str is {output_decode}')
-            # print(f'decode skip token input is {output}, str is {output_decode_skip}')
-            str_outputs.append(output_)
-            logging.info(f'tokenizer decode result is {output_}')
+                str_outputs.append(begin_token + new_text)
+                self.decode_cache[i] = []
+            else:
+                str_outputs.append('')
         return str_outputs
 
     def _postprocess(self,
