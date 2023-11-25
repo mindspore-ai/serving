@@ -16,6 +16,8 @@ class RequestEngine:
         """Add ResponseOutput to Asycnio Queue."""
         
         request_id = request_output.request_id
+        if request_id == '':
+            return
         self._results_streams[request_id].put(request_output)
         if request_output.finished:
             self.abort_request(request_id)
