@@ -140,7 +140,7 @@ class InputOfInfer:
         name = ""
         if Baseconfig['input_function'] == 'custom':
             model_name = "custom"
-            print('---------------------', model_name)
+            logging.debug('model name {}'.format(model_name))
         if model_name not in InputOfInfer.MAPPING:
             for k in InputOfInfer.MAPPING:
                 if model_name.startswith(k):
@@ -309,7 +309,6 @@ class DisModel:
 
     def get_model_inputs(self, input_ids, current_index=None,
                          valid_length=None, init_reset=None, is_first_iteration=True, **kwargs) -> np.array:
-        print("------------>", is_first_iteration)
         if is_first_iteration:
             init_reset = np.array([False])
             lite_inputs = self.get_predict_inputs(input_ids, current_index,
@@ -345,11 +344,11 @@ class DisModel:
         return parms_np
 
     def callV3(self, shms: List, input_ids, current_index,
-               valid_length, init_reset, is_first_iteration, InputExtraList=[], current_batch_size=None, **kwargs):
+               valid_length, init_reset, is_first_iteration, valid_batch_flag, InputExtraList=[],
+               current_batch_size=None, **kwargs):
         """kvcache infer"""
         time_start = time.time()
-        logging.info("length of input ids {}".format(len(input_ids)))
-        logging.info("is prefill {}".format(is_first_iteration))
+        logging.debug("is prefill {}".format(is_first_iteration))
         decode_index_list = kwargs.get("decode_index_list")
         if is_first_iteration:
             lite_inputs = self.get_model_inputs(input_ids, current_index, valid_length,
@@ -359,7 +358,9 @@ class DisModel:
             # print(inp.shape, inp.dtype)
             # 前4个array拼接成一个
             # init_reset变成[batch_size, 1]
-
+            logging.debug("prefill input_ids {} \ncurrent_index {} \n valid_length {} \n".format(input_ids,
+                                                                                                 current_index,
+                                                                                                 valid_length))
             first_group, second_group = self.get_warp_inputs(lite_inputs=lite_inputs, **kwargs)
             
             shape_list = []
@@ -397,7 +398,9 @@ class DisModel:
                 shape_strs.append(shape_str)
             shapes_str = "*" + ",".join(element for element in shape_strs)
         else:
-            shapes_str = "a" + '_' + str(current_batch_size)
+            logging.debug("valid_batch_flag in decode is {}".format(valid_batch_flag))
+            batch_flag_str = " ".join(str(element) for element in valid_batch_flag)
+            shapes_str = "a" + '_' + str(current_batch_size) + '_' + batch_flag_str
         logging.info("get input lite is {} ".format((time.time() - time_start) * 1000))
         logging.info("server decode batch size is {} ".format(current_batch_size))
         shapes_str = shapes_str.encode()

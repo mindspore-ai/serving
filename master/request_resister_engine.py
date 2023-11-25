@@ -1,9 +1,10 @@
-
+import logging
 from typing import Dict, List, Tuple, Set
 import asyncio
 
 from .utils import ResponseOutput
 from .response_async_queue import AsyncResultsOfOneRequest
+from serving_utils.constant import *
 
 
 class RequestEngine:
@@ -16,7 +17,8 @@ class RequestEngine:
         """Add ResponseOutput to Asycnio Queue."""
         
         request_id = request_output.request_id
-        if request_id == '':
+        if request_id == PADDING_REQUEST_ID:
+            logging.debug("process padding request output")
             return
         self._results_streams[request_id].put(request_output)
         if request_output.finished:

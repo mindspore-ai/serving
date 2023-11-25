@@ -48,6 +48,7 @@ class LLMServer:
     async def register_request(self,
                                request_id: str,
                                **add_request_info) -> AsyncResultsOfOneRequest:
+        logging.debug("background loop {}".format(self.background_loop))
         if self.background_loop is None:
             self.start_background_loop()
 
@@ -68,10 +69,8 @@ class LLMServer:
         if self.status == 0:
             return
         new_requests, finished_requests = self.request_engine.get_requests_from_register_pool()
-
         for new_request in new_requests:
             self.master.add_requests_to_schedule_pool(**new_request)
-
         if finished_requests:
             await self._master_abort(finished_requests)
         request_outputs = await self.master.step_async()

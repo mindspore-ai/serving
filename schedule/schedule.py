@@ -1,4 +1,5 @@
 import time
+import uuid
 from typing import Dict, List
 import logging
 
@@ -6,7 +7,7 @@ from serving_utils.entry import EntryMetaData, EntryStatus, EntryData
 from queue import Queue
 import copy
 from config.serving_config import Baseconfig
-
+from serving_utils.constant import *
 
 class Schedule:
     """static batch strategy"""
@@ -227,11 +228,12 @@ class Schedule:
         else:
             bf_batch = 0 if self.max_valid_index == -1 else bf_batch
             for i in range(bf_batch, af_batch):
-                entry_meta_data = EntryMetaData(request_id="",
+                entry_meta_data = EntryMetaData(request_id=PADDING_REQUEST_ID,
                                                 is_prompt=True,
-                                                entry_data=EntryData(prompt_tokens=[Baseconfig.end_token]),
+                                                entry_data=EntryData(prompt_tokens=[Baseconfig.end_token],
+                                                                     max_token_len=5000),
                                                 entry_id=-1,
-                                                prompt="")
+                                                prompt=PADDING_PROMPT)
                 entry_meta_data.get_entry_data().set_decode_index(i)
                 entry_meta_data.get_entry_data().set_status(EntryStatus.PADDING_INVAILED)
                 self.running_request_list.append(entry_meta_data)

@@ -5,7 +5,7 @@ from typing import List
 import numpy as np
 
 from .model_init_multimodel import DisModel
-from serving_utils.entry import EntryMetaData
+from serving_utils.entry import EntryMetaData, EntryStatus
 from config.serving_config import Baseconfig, ExtraInput, ModelName
 from multiprocessing import shared_memory
 from concurrent.futures import ThreadPoolExecutor
@@ -84,9 +84,7 @@ class Worker:
     def _predict(self,
                  input_ids: List[List[int]],
                  is_prefill: bool,
-                 frequency_penalty: float = 0.0,
-                 presence_penalty: float = 0.0,
-                 frequency_list=None,
+                 valid_batch_flag: List[int],
                  current_batch_size=None,
                  **generate_parms) -> List:
         time_start = time.time()
@@ -107,7 +105,9 @@ class Worker:
                 else:
                     seq_length = Baseconfig.seq_length[0]
             input_ids = self._padding(input_ids, seq_length)
+            logging.debug("seq_length is {}, input_ids after padding is {}".format(seq_length, input_ids))
             self.valid_length, self.batch_size = self._get_valid_length(input_ids)
+            logging.debug("valid length is {}".format(self.valid_length))
             current_index_ = [self.valid_length[i] - 1 + i * seq_length for i in range(self.batch_size)]
             self.current_index = np.array(current_index_, np.int32)
         # If target length exceeds seq_length, use seq_length instead
@@ -125,7 +125,8 @@ class Worker:
         # Call a single inference with input size of (bs, seq_length)
         call = time.time()
         result, shm = self.model.callV3(self.shms, np.array(input_ids, np.int32),
-                                        self.current_index, self.valid_length, init, is_prefill, InputExtraList=input_list, current_batch_size=current_batch_size,
+                                        self.current_index, self.valid_length, init, is_prefill, valid_batch_flag,
+                                        InputExtraList=input_list, current_batch_size=current_batch_size,
                                         **generate_parms)
         if is_prefill:
             logging.info("PrefillTime {} ".format((time.time() - call) * 1000))
@@ -163,6 +164,7 @@ class Worker:
     def predict(self, current_batch_size, entry_metadata_list: List[EntryMetaData], config=Baseconfig):
         if_prefill = entry_metadata_list[0].is_prompt
         inputs_ids = []  # length is batch size
+        valid_batch_flag = []
         for item in entry_metadata_list:
             entry_data = item.get_entry_data()
             token_ids = entry_data.get_all_tokens()
@@ -170,13 +172,18 @@ class Worker:
                 inputs_ids.append(token_ids)
             else:
                 inputs_ids.append(token_ids[-1])
+            logging.debug("batch_item status is {}".format(entry_data.get_status()))
+            if entry_data.get_status() == EntryStatus.RUNNING:
+                valid_batch_flag.append(1)
+            else:
+                valid_batch_flag.append(0)
             # add frequency list
         generate_parms = self.get_generate_parms(entry_metadata_list)
         time_start = time.time()
         # add frequency list
         current_batch_size_dyn = current_batch_size
 
-        outputs = self._predict(inputs_ids, if_prefill, current_batch_size=current_batch_size_dyn, **generate_parms)
+        outputs = self._predict(inputs_ids, if_prefill, valid_batch_flag, current_batch_size=current_batch_size_dyn, **generate_parms)
         return outputs
 
     def stop(self):
