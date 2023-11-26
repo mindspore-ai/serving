@@ -84,10 +84,15 @@ def load_model(model0_path, model1_path, config_file, config_inc_file_list, rank
     all_models[0].predict(prefill_lite_inputs)
     logging.info('warmup prefill model finish')
     logging.info('warmup decode model ...')
-    if 'zactivate_len' not in Baseconfig or len(config_inc_file_list) != len(Baseconfig.zactivate_len):
+    if 'zactivate_len' in Baseconfig and len(config_inc_file_list) != 1 \
+            and len(config_inc_file_list) != len(Baseconfig.zactivate_len):
         logging.error('zactivate len config is not consistent with config_inc_file_list')
     for i in range(len(config_inc_file_list)):
-        act_len = Baseconfig.zactivate_len[i]
+        if 'zactivate_len' in Baseconfig:
+            act_len = Baseconfig.zactivate_len[i]
+        else:
+            act_len = 2
+
         print(f"starting warm up {act_len} decode model")
         if 'dyn_batch_size' in Baseconfig:
             warm_batch_size = Baseconfig.dyn_batch_size[0]
@@ -98,7 +103,10 @@ def load_model(model0_path, model1_path, config_file, config_inc_file_list, rank
         else:
             warm_seq_length = Baseconfig.seq_length[0]
 
-        decode_inputs_list = get_warmup_inputs(seq_length=warm_seq_length, batch_size=warm_batch_size, full_model=False, valid_length=[act_len - 1])
+        decode_inputs_list = get_warmup_inputs(seq_length=warm_seq_length,
+                                               batch_size=warm_batch_size,
+                                               full_model=False,
+                                               valid_length=[act_len - 1])
 
         decode_lite_inputs = [mslite.Tensor(item) for item in decode_inputs_list]
 
@@ -217,7 +225,7 @@ class WorkAgent:
         argmax_out = np.argmax(outputs, axis=-1)
         return np.array([argmax_out]).astype(np.int32)[0]
 
-    def do_sample(self, decode_params, p_args, outs, targets, index, candidate_token_num: int = 100) -> int:
+    def do_sample(self, decode_params, p_args, outs, targets, index, candidate_token_num: int = 1) -> int:
         """
         Args:
            p_args: numpy.ndarray, index
@@ -229,7 +237,8 @@ class WorkAgent:
             logging.error('top k is out of range,please set topk in [1,100]')
             topk = 100
         if topp < 1.0:
-            top_p_num = sum(outs > topp)
+            outs_ = np.cumsum(outs, axis=-1)
+            top_p_num = sum(outs_ > topp)
             if top_p_num == 0:
                 top_p_num = candidate_token_num
             top_p_num = min(top_p_num, topk)
@@ -502,7 +511,7 @@ class WorkAgent:
             logging.debug("item is {}".format(tmp))
 
         # 调用ms lite进行推理
-        if extra_input and len(extra_input[0]) > 0:
+        if 'zactivate_len' in Baseconfig and len(extra_input) > 0:
             model = self.prefill if self.is_prefill else self.model_choice_seq(len(extra_input[0]), self.decode)
         else:
             model = self.prefill if self.is_prefill else self.decode[0]

@@ -2,6 +2,7 @@ import logging
 from typing import Dict, List, Optional, Union
 
 from serving_utils.entry import *
+from serving_utils.constant import *
 
 
 class CompletionOutput:
@@ -62,8 +63,8 @@ class ResponseOutput:
         if status != EntryStatus.RUNNING or status != EntryStatus.WAITING:
             if status != EntryStatus.WAITING_BATCH:
                 finished_reason = EntryStatus.get_finished_reason(status)
+        if reason is not None:
 
-        if status == EntryStatus.INPUT_OUTOFRANGE:
             print(f'>>>>>>request {request_id} input is too large, out of input length of model')
             finished = True
             finished_reason = EntryStatus.get_finished_reason(status)
@@ -74,11 +75,20 @@ class ResponseOutput:
                        entry_meta_data.get_entry_data().get_prompt_token(),
                        [completion_out],
                        finished)
+
         if status == EntryStatus.PADDING_INVAILED:
             finished = False
+
+        elif output == -1:
+            output_str = output_str + RETURN_REASON_PREDICT_FAILED
+
         elif output == eos_id:
+
+            output_str = output_str + RETURN_REASON_EOS
             finished = True
         elif entry_meta_data.entry_data.get_output_len() == entry_meta_data.entry_data.max_token_len:
+            output_str = output_str + RETURN_REASON_MAX_NEW_TOKENS
+
             logging.debug("stop inference because of iteration is max_len, request is {}".format(request_id))
             finished = True
 

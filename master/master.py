@@ -92,7 +92,7 @@ class Master:
                 self.decode_cache.popitem()
         for i in range(batch_size):
             self.decode_cache[i].append(outputs[i])
-            new_text = self.tokenizer.decode(self.decode_cache[i], skip_special_tokens=True )
+            new_text = self.tokenizer.decode(self.decode_cache[i], skip_special_tokens=True)
             if not new_text.endswith("�"):
                 begin_token = self.tokenizer._convert_id_to_token(self.decode_cache[i][0])
                 if begin_token == '<0x0A>':
@@ -116,15 +116,18 @@ class Master:
                      skip_inference=False) -> List[ResponseOutput]:
 
         end_token = self.model_config.end_token  # for debug
+        self.scheduler.upate_entries_after_one_step(outputs, end_token, index_list)
+
         str_outputs = ''
-        if self.model_config.tokenizer == 'LlamaTokenizer':
+
+        if self.model_config.tokenizer == 'LlamaTokenizer' and outputs[0] != -1:
             str_outputs = self._llama_detokenizer(outputs)
-        elif self.model_config.tokenizer == 'InternLMTokenizer':
+        elif self.model_config.tokenizer == 'InternLMTokenizer' and outputs[0] != -1:
             str_outputs = self._detokenizer(outputs)
 
         self._counter_of_token += len(outputs)
         logging.info("current total token numbers is {}".format(self._counter_of_token))
-        self.scheduler.upate_entries_after_one_step(outputs, end_token, index_list)
+
 
         # generating output
         results: List[ResponseOutput] = []
@@ -140,8 +143,7 @@ class Master:
                     results.append(ResponseOutput.generate_result(output,
                                                                   entry_metadata_list[index_list[0]],
                                                                   str_outputs[0],
-                                                                  end_token,
-                                                                  reason=f"ERROR202: prompt is too large for this model!  max len input tokens of model is {self.model_config.seq_length[-1]}, please using short prompt"))
+                                                                  end_token, reason='Error202: prompt out of range'))
                     return results
                 results.append(ResponseOutput.generate_result(output,
                                                               entry_metadata_list[index_list[0]],

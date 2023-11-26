@@ -400,11 +400,12 @@ class DisModel:
         for item in self.agent_stubs:
             item.sendall(shapes_str)
         recv_data = self.agent_stubs[0].recv(1, socket.MSG_WAITALL).decode()
-        # print(recv_data)
+
         result = []
         if recv_data == "2":
             for _ in decode_index_list:
-                result.append(int(Baseconfig.end_token))
+                # result.append(int(Baseconfig.end_token))
+                result.append(int(-1))
             print("--------------------predict failed, abandon current prompt, please try again----------------")
             return result, 1
         for decode_index in decode_index_list:
