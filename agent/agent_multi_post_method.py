@@ -502,7 +502,7 @@ class WorkAgent:
             logging.debug("item is {}".format(tmp))
 
         # 调用ms lite进行推理
-        if len(extra_input[0]) > 0:
+        if extra_input and len(extra_input[0]) > 0:
             model = self.prefill if self.is_prefill else self.model_choice_seq(len(extra_input[0]), self.decode)
         else:
             model = self.prefill if self.is_prefill else self.decode[0]
