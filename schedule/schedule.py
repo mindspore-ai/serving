@@ -294,6 +294,11 @@ class Schedule:
         if entry_data.status == EntryStatus.INPUT_OUTOFRANGE:
             self.running_request_list[index].get_entry_data().set_status(EntryStatus.FINISHED_STOPPED)
             return
+        # predict failed
+        if token == -1:
+            logging.info("a request predict failed, token equal to {}".format(token))
+            self.running_request_list[index].get_entry_data().set_status(EntryStatus.FINISHED_STOPPED)
+            return
 
     def upate_entries_after_one_step(self, outputs: List[int], eos_id: int, index_list: List[int] = None):
         """update status after ever iteration"""

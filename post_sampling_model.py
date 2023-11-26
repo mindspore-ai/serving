@@ -10,7 +10,7 @@ from mindspore import ops, nn, export
 from mindspore import Tensor, context
 import mindspore as ms
 
-from config.serving_config import Baseconfig
+from config.serving_config import *
 
 
 
@@ -57,24 +57,12 @@ def run_mindspore():
     )
     topk_topp_ = temperature_TopK()
     argmax_ = ArgmaxPost()
-    # inputs_np = Tensor(np.random.rand(bs, vocab_size).astype(np.float16), mstype.float16)
+
     input_ids_dyn = Tensor(shape=[None, None, None], dtype=mstype.float16)
     temperature_ = Tensor(shape=[None, ], dtype=mstype.float32)
 
-    # temperature_ = Tensor(np.tile(np.array([0.7], np.float16), (bs,)), mstype.float16)
-    # topk_num_ = Tensor(np.tile(np.array([5], np.int32), (bs,)), mstype.int32)
-    """
-    argmax_.set_inputs(input_ids_dyn)
-    input1 = Tensor(np.array([[1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4]]), dtype=ms.float32)
-    output = argmax_(input1)
-    print(output)
-
-    input1 = Tensor(np.array([[1, 2, 3, 4], [1, 2, 3, 4]]), dtype=ms.float16)
-    output = argmax_(input1)
-    print(output)
-    """
-    export(topk_topp_, input_ids_dyn, temperature_, file_name=f"extends/dyn_batch_topk_post_calc_bz{bs}", file_format='MINDIR')
-    export(argmax_, input_ids_dyn, file_name=f"extends/dyn_batch_argmax_post_calc_bz{bs}", file_format='MINDIR')
+    export(topk_topp_, input_ids_dyn, temperature_, file_name=argmax_model[0], file_format='MINDIR')
+    export(argmax_, input_ids_dyn, file_name=topk_model[0], file_format='MINDIR')
     print("export finished")
 
 
@@ -87,7 +75,7 @@ def run_mslite():
     context.target = ["Ascend"]
 
     model = mslite.Model()
-    model.build_from_file("/home/sc/serving/extends/1101_topk_post_calc_bz1.mindir", mslite.ModelType.MINDIR, context)
+    model.build_from_file("./extends/dyn_batch_argmax_post_model.mindir", mslite.ModelType.MINDIR, context)
     inputs = model.get_inputs()
     print('inputs: ', inputs)
     inputs_np = np.random.rand(bs, vocab_size).astype(np.float16)
@@ -104,4 +92,4 @@ def run_mslite():
 
 if __name__ == '__main__':
     run_mindspore()
-    # run_mslite()
+    #run_mslite()
