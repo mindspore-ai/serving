@@ -76,7 +76,7 @@ class Master:
         for token in tokens:
             token_input = [token]
             text = self.tokenizer.decode(token_input, skip_special_tokens=True)
-            logging.info(f'tokenizer decode result is {text}, token id is {token}')
+            logging.debug(f'tokenizer decode result is {text}, token id is {token}')
             texts.append(text)
         return texts
 
@@ -126,7 +126,7 @@ class Master:
             str_outputs = self._detokenizer(outputs)
 
         self._counter_of_token += len(outputs)
-        logging.info("current total token numbers is {}".format(self._counter_of_token))
+        logging.debug("current total token numbers is {}".format(self._counter_of_token))
 
 
         # generating output
@@ -136,10 +136,10 @@ class Master:
             # prompt result, len(outputs) = 1
             if index_list is not None:
                 if entry_metadata_list[index_list[0]].entry_data.status == EntryStatus.PADDING_INVAILED:
-                    logging.info(f'generate a invalid token, index in batch is {index}')
+                    logging.debug(f'generate a invalid token, index in batch is {index}')
                     continue
                 if skip_inference:
-                    print(f'input out of range, index in batch is {index}')
+                    logging.debug(f'input out of range, index in batch is {index}')
                     results.append(ResponseOutput.generate_result(output,
                                                                   entry_metadata_list[index_list[0]],
                                                                   str_outputs[0],
@@ -152,7 +152,7 @@ class Master:
             # encode result
             else:
                 if entry_metadata_list[index].entry_data.status == EntryStatus.PADDING_INVAILED:
-                    logging.info(f'generate a invalid token, index in batch is {index}')
+                    logging.debug(f'generate a invalid token, index in batch is {index}')
                     continue
                 results.append(ResponseOutput.generate_result(output,
                                                               entry_metadata_list[index],
@@ -208,7 +208,7 @@ class Master:
                                         entry_id=entry_id,
                                         prompt=prompt)
 
-        logging.info("add request to schedule queue {}".format(entry_meta_data.request_id))
+        logging.debug("add request to schedule queue {}".format(entry_meta_data.request_id))
         self.scheduler.add_entrys(entry_meta_data)
 
     def step(self) -> List[ResponseOutput]:
@@ -232,7 +232,6 @@ class Master:
 
 class AsyncMaster(Master):
     async def step_async(self) -> List[ResponseOutput]:
-        batch_time = time.time()
         entries_metadata_list, current_batch_size = self._schedule()
         valid_entry_len = 0
         for metadata in entries_metadata_list:
@@ -243,7 +242,7 @@ class AsyncMaster(Master):
         if valid_entry_len == 0:
             return
 
-        logging.info(f'valid entry_data is {valid_entry_len}')
+        logging.debug(f'valid entry_data is {valid_entry_len}')
         output = await self._run_workers_async(current_batch_size, entry_metadata_list=entries_metadata_list,
                                                model_config=self.model_config)
         post_process_time = time.time()
@@ -266,7 +265,7 @@ class AsyncMaster(Master):
                                              skip_inference=True)
                 else:
                     break
-        logging.info('len of input entry_metadata_list is {}'.format(len(input_entry_metadata_list)))
+        logging.debug('len of input entry_metadata_list is {}'.format(len(input_entry_metadata_list)))
         # valid prompt add to batching list
         if len(input_entry_metadata_list) == 1 and \
                 input_entry_metadata_list[0].entry_data.get_status() != EntryStatus.PADDING_INVAILED:

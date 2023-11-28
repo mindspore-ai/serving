@@ -48,8 +48,7 @@
 
 #### 启动
 ```shell
-python start_agent.py
-python client/server_app_post.py
+python start.py # 先后拉起模型和serving进程
 ```
 
 然后可以通过“/models/model_name/generate”和"/models/model_name/generate_stream" 进行请求

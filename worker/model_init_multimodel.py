@@ -393,8 +393,8 @@ class DisModel:
             logging.debug("valid_batch_flag in decode is {}".format(valid_batch_flag))
             batch_flag_str = " ".join(str(element) for element in valid_batch_flag)
             shapes_str = "a" + '_' + str(current_batch_size) + '_' + batch_flag_str
-        logging.info("get input lite is {} ".format((time.time() - time_start) * 1000))
-        logging.info("server decode batch size is {} ".format(current_batch_size))
+        logging.debug("get input lite is {} ".format((time.time() - time_start) * 1000))
+        logging.debug("server decode batch size is {} ".format(current_batch_size))
         shapes_str = shapes_str.encode()
 
         for item in self.agent_stubs:
@@ -407,6 +407,7 @@ class DisModel:
                 # result.append(int(Baseconfig.end_token))
                 result.append(int(-1))
             print("--------------------predict failed, abandon current prompt, please try again----------------")
+            logging.error("predict failed, abandon current prompt, please try again")
             return result, 1
         for decode_index in decode_index_list:
             tmp = np.ndarray((decode_index + 1,), dtype=np.int32, buffer=shms[5].buf)

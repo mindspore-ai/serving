@@ -67,7 +67,7 @@ class Schedule:
 
                 entry_meta_data.get_entry_data().set_decode_index(index)
                 self.running_request_list.append(entry_meta_data)
-                logging.info(f'waiting and add invalid request in batch init, batch size index is {index}')
+                logging.debug(f'waiting and add invalid request in batch init, batch size index is {index}')
             else:
                 data = self.waiting_request_queue.get_nowait()
                 if data.entry_data.get_prompt_len() >= self.max_input_len:
@@ -77,10 +77,10 @@ class Schedule:
 
                 data.get_entry_data().set_decode_index(index)
                 self.running_request_list.append(data)
-                logging.info(f'add new valid request in batch, batch size index is {index}')
+                logging.debug(f'add new valid request in batch, batch size index is {index}')
         else:
             data = self.waiting_request_queue.get_nowait()
-            logging.info('get_nowait2')
+            logging.debug('get_nowait2')
 
             if data.entry_data.get_prompt_len() >= self.max_input_len:
                 data.get_entry_data().set_status(EntryStatus.INPUT_OUTOFRANGE)
@@ -89,7 +89,7 @@ class Schedule:
 
             data.get_entry_data().set_decode_index(index)
             self.running_request_list.append(data)
-            logging.info(f'add new valid request in batch, batch size index is {index}')
+            logging.debug(f'add new valid request in batch, batch size index is {index}')
 
     def _get_next_batch(self):
         self.running_request_list.clear()
@@ -110,7 +110,7 @@ class Schedule:
 
             data.get_entry_data().set_decode_index(count)
             self.running_request_list.append(data)
-            logging.info(f'add new valid request in batch, batch size index is {count}')
+            logging.debug(f'add new valid request in batch, batch size index is {count}')
             count += 1
         # if batching list not full, add invalid padding request into batching list
         if len(self.running_request_list) < self.batch_size + 1:
@@ -149,13 +149,13 @@ class Schedule:
             time.sleep(self.batch_waiting_time / float(len(self.running_request_list)))
             # no new request, continue finished valid decode
             if self.waiting_request_queue.empty():
-                # logging.info('waiting and no new request, continue finished valid decode')
+                logging.debug('waiting and no new request, continue finished valid decode')
                 return
             # new requestes in queue
             else:
-                logging.info('add a new request into batching list')
+                logging.debug('add a new request into batching list')
                 data = self.waiting_request_queue.get_nowait()
-                logging.info('get_nowait3')
+                logging.debug('get_nowait3')
                 if data.entry_data.get_prompt_len() >= self.max_input_len:
                     data.get_entry_data().set_status(EntryStatus.INPUT_OUTOFRANGE)
 
@@ -163,18 +163,18 @@ class Schedule:
                     data.get_entry_data().set_status(EntryStatus.RUNNING)
                 data.get_entry_data().set_decode_index(index)
                 self.running_request_list[index] = data
-                logging.info(f'add new valid request in batch, batch size index is {index}')
+                logging.debug(f'add new valid request in batch, batch size index is {index}')
         else:
-            logging.info('add a new request into batching list')
+            logging.debug('add a new request into batching list')
             data = self.waiting_request_queue.get_nowait()
-            logging.info('get_nowait4')
+            logging.debug('get_nowait4')
             if data.entry_data.get_prompt_len() >= self.max_input_len:
                 data.get_entry_data().set_status(EntryStatus.INPUT_OUTOFRANGE)
             else:
                 data.get_entry_data().set_status(EntryStatus.RUNNING)
             data.get_entry_data().set_decode_index(index)
             self.running_request_list[index] = data
-            logging.info(f'add new valid request in batch, batch size index is {index}')
+            logging.debug(f'add new valid request in batch, batch size index is {index}')
 
     def _update_status_after_one_itreation(self):
         self.count_of_invalid_sample = 0
@@ -220,9 +220,9 @@ class Schedule:
         self.batch_size = bs_after_changing if bs_after_changing > 0 else self.dyn_batch[0]
         af_batch = self.batch_size
         if af_batch != bf_batch:
-            logging.info(('----bs changed from  {} '.format(bf_batch)))
-            logging.info(('----bs changed to  {} '.format(af_batch)))
-            logging.info(('----dyn_index to  {} max_valid_index {}'.format(dyn_index, self.max_valid_index)))
+            logging.debug(('----bs changed from  {} '.format(bf_batch)))
+            logging.debug(('----bs changed to  {} '.format(af_batch)))
+            logging.debug(('----dyn_index to  {} max_valid_index {}'.format(dyn_index, self.max_valid_index)))
         if bf_batch >= af_batch:
             self.running_request_list = self.running_request_list[:af_batch]
         else:
@@ -238,23 +238,26 @@ class Schedule:
                 entry_meta_data.get_entry_data().set_status(EntryStatus.PADDING_INVAILED)
                 self.running_request_list.append(entry_meta_data)
         # 3. 请求队列长度大于count_of_invalid_sample且小于当前batch_size，batch不变
-            logging.info(('----padding running list  {} '.format(len(self.running_request_list))))
+            logging.debug(('----padding running list  {} '.format(len(self.running_request_list))))
+        for item in self.running_request_list:
+            logging.debug("the status of item in running list is ", item.get_entry_data().get_status())
 
     def _continuous_batch(self):
         # init batch size when running_request_list is empty.
         if len(self.running_request_list) == 0:
+            logging.debug("1111")
             self._get_next_batch()
         # update invalid request number in batching list.
         self._update_status_after_one_itreation()
         if self.count_of_invalid_sample == self.batch_size:
+            logging.debug("2222 invalid sample cnt is ", self.count_of_invalid_sample)
             self._get_next_batch()
         # update status after one inference step
         else:
             checkout_list = self.checkout_entry()
             for index, data in enumerate(checkout_list):
                 if data and index < self.batch_size:
-                    # logging.info('have eos or max_length in batching list')
-                    logging.info('----{}-th prefill request in batching padded to batch.'.format(index))
+                    logging.debug('----{}-th prefill request in batching padded to batch.'.format(index))
                     self._padding_new_prompt_to_batch(index)
 
     def _static_batch(self):
@@ -280,13 +283,14 @@ class Schedule:
     def _finished_request(self, index, token, eos_id):
         # eos
         if token == eos_id:
-            logging.info("a request finished, token equal to {}".format(token))
+            logging.debug("a request finished, token equal to {}".format(token))
             self.running_request_list[index].get_entry_data().set_status(EntryStatus.FINISHED_STOPPED)
             return
 
         # max len
         entry_data = self.running_request_list[index].get_entry_data()
         if entry_data.max_token_len <= entry_data.get_output_len():
+            logging.debug("a request reached the max generate token length")
             self.running_request_list[index].get_entry_data().set_status(EntryStatus.FINISHED_LENGTH_CAPPED)
             return
 
@@ -296,7 +300,7 @@ class Schedule:
             return
         # predict failed
         if token == -1:
-            logging.info("a request predict failed, token equal to {}".format(token))
+            logging.debug("a request predict failed, token equal to {}".format(token))
             self.running_request_list[index].get_entry_data().set_status(EntryStatus.FINISHED_STOPPED)
             return
 

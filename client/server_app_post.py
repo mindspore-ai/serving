@@ -33,7 +33,7 @@ from server.llm_server_post import LLMServer
 from client.client_utils import ClientRequest, Parameters
 
 
-logging.basicConfig(level=logging.DEBUG,
+logging.basicConfig(level=logging.ERROR,
                     filename='./output/server_app.log',
                     filemode='w',
                     format=
@@ -68,7 +68,7 @@ async def get_full_res_sse(request, results):
             text = ""
         all_texts += text
 
-    ret = {"event": "message", "retry": 15000, "generated_text": all_texts}
+    ret = {"event": "message", "retry": 30000, "generated_text": all_texts}
     yield json.dumps(ret)
 
 
@@ -113,13 +113,13 @@ async def get_stream_res_sse(request, results):
         else:
             index += 1
         all_texts += text
-        ret = {"event": "message", "retry": 15000, "data": text}
+        ret = {"event": "message", "retry": 30000, "data": text}
         yield json.dumps(ret)
 
     print(all_texts)
 
     if request.parameters.return_full_text:
-        ret = {"event": "message", "retry": 15000, "data": all_texts}
+        ret = {"event": "message", "retry": 30000, "data": all_texts}
         yield json.dumps(ret)
 
 
@@ -147,14 +147,10 @@ def send_request(request: ClientRequest):
 
     if request.parameters.top_k < 0:
         request.parameters.top_k = 0
-    #if request.parameters.top_k > 100:
-        #request.parameters.top_k = 100
     if request.parameters.top_p < 0.01:
         request.parameters.top_p = 0.01
     if request.parameters.top_p > 1.0:
         request.parameters.top_p = 1.0
-    #if request.parameters.max_new_tokens is None:
-        # request.parameters.max_new_tokens = 128
 
     params = {
         "prompt": request.inputs,
@@ -183,23 +179,15 @@ async def async_generator(request: ClientRequest):
             print('get_stream_res...')
             return StreamingResponse(get_stream_res(request, results))
     else:
-        if request.parameters.return_protocol == "sse":
-            print('get_full_res_sse...')
-            return EventSourceResponse(get_full_res_sse(request, results))
-        else:
-            print('get_full_res...')
-            return StreamingResponse(get_full_res(request, results))
+        print('get_full_res...')
+        return StreamingResponse(get_full_res(request, results))
 
 
 @app.post("/models/llama2/generate")
 async def async_full_generator(request: ClientRequest):
     results = send_request(request)
-    if request.parameters.return_protocol == "sse":
-        print('get_full_res_sse...')
-        return EventSourceResponse(get_full_res_sse(request, results))
-    else:
-        print('get_full_res...')
-        return StreamingResponse(get_full_res(request, results))
+    print('get_full_res...')
+    return StreamingResponse(get_full_res(request, results))
 
 
 @app.post("/models/llama2/generate_stream")
@@ -290,14 +278,14 @@ def warmup_model(model_name):
 async def _get_batch_size():
     global llm_server
     batch_size = llm_server.get_bs_current()
-    ret = {'event': "message", "retry": 15000, "data": batch_size}
+    ret = {'event': "message", "retry": 30000, "data": batch_size}
     yield json.dumps(ret)
 
 
 async def _get_request_numbers():
     global llm_server
     queue_size = llm_server.get_queue_current()
-    ret = {'event': "message", "retry": 15000, "data": queue_size}
+    ret = {'event': "message", "retry": 30000, "data": queue_size}
     yield json.dumps(ret)
 
 
