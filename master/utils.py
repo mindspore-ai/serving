@@ -80,15 +80,11 @@ class ResponseOutput:
             finished = False
 
         elif output == -1:
-            output_str = output_str + RETURN_REASON_PREDICT_FAILED
+            output_str = RETURN_REASON_PREDICT_FAILED
 
         elif output == eos_id:
-
-            output_str = output_str + RETURN_REASON_EOS
             finished = True
         elif entry_meta_data.entry_data.get_output_len() == entry_meta_data.entry_data.max_token_len:
-            output_str = output_str + RETURN_REASON_MAX_NEW_TOKENS
-
             logging.debug("stop inference because of iteration is max_len, request is {}".format(request_id))
             finished = True
 

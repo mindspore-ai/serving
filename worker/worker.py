@@ -177,10 +177,7 @@ class Worker:
                 valid_batch_flag.append(1)
             else:
                 valid_batch_flag.append(0)
-            # add frequency list
         generate_parms = self.get_generate_parms(entry_metadata_list)
-        time_start = time.time()
-        # add frequency list
         current_batch_size_dyn = current_batch_size
 
         outputs = self._predict(inputs_ids, if_prefill, valid_batch_flag, current_batch_size=current_batch_size_dyn, **generate_parms)

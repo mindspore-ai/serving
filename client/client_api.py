@@ -23,12 +23,6 @@ from typing import Dict, Optional, List, AsyncIterator, Iterator
 from .client_utils import ClientRequest, Parameters, Response, StreamResponse, Token
 from enum import Enum
 
-logging.basicConfig(level=logging.DEBUG,
-                    filename='./output/client_app.log',
-                    filemode='w',
-                    format=
-                    '%(asctime)s - %(pathname)s[line:%(lineno)d] - %(levelname)s: %(message)s')
-
 
 class BaseClient:
 

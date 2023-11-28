@@ -1,6 +1,7 @@
 
+
 import numpy as np
-TOPP_NUM = 100
+TOPP_NUM = 1
 
 
 def topk(x, top_k, axis=-1, largest=True, sort=True):
@@ -22,8 +23,6 @@ def topk(x, top_k, axis=-1, largest=True, sort=True):
         )
         topk_data = np.take_along_axis(topk_data, sort_index, axis=axis)
         topk_index = np.take_along_axis(topk_index, sort_index, axis=axis)
-    print('topk_data: ', topk_data)
-    print('topk_index: ', topk_index)
     return topk_data, topk_index
 
 
@@ -73,28 +72,25 @@ def softmax_matrix(x):
 
 
 def post_sampling(logits, decode_params, targets, origin_index):
-    # sampling
-    P = None
-    p_args = None
+
     top_p = decode_params.top_p
     top_k_num = decode_params.top_k
     if top_p < 1.0:
         # Only consider the 5000 largest logits to reduce computation
-        sorted_logits, index = topk(logits, TOPP_NUM)
-        cumsum_logits = np.cumsum(sorted_logits, 0)
-        cumsum_logits = cumsum_logits
-        sorted_logits = sorted_logits
-        top_p_num = sum(cumsum_logits > top_p)
+        sorted_logits, index = topk(logits, top_k_num)
+        sorted_logits = softmax_np(sorted_logits)
+        cumsum_logits = np.cumsum(sorted_logits, axis=-1)
+        top_p_num = sum(cumsum_logits < top_p)
         # In case the probability is smooth, the sum of 5000 largest probabilities are not large enough
         if top_p_num == 0:
             top_p_num = TOPP_NUM
+        top_p_num = min(top_p_num, top_k_num)
         # Get the corresponding probs and indices
         probs = sorted_logits[:top_p_num]
         p_args = index[:top_p_num]
         if np.sum(probs) == 0:
             probs = np.array([1 / top_p_num for _ in range(top_p_num)])
         p = softmax_np(probs)
-        P = p
     # if top_p is set to 1.0, use top_k sampling
     else:
         probs, index = topk(logits, top_k_num)
@@ -106,22 +102,7 @@ def post_sampling(logits, decode_params, targets, origin_index):
             probs = np.array([1 / top_k_num for _ in range(top_k_num)])
 
         p = softmax_np(probs)
-        P = p
 
-    target_index = np.random.choice(len(P), p=P)
-    print('target_index: ', target_index)
+    target_index = np.random.choice(len(p), p=p)
+
     targets[origin_index] = p_args[target_index]
-
-
-if __name__ == '__main__':
-      a = np.array([1.2, 3, -1.5, 12, 23.7, 11.0, -3])
-      p = softmax_np(a)
-      print(p)
-
-      for i in range(200):
-          a = np.random.rand(i + 1)
-          print(a)
-          p = softmax_np(a)
-          print('p', p)
-          target_index = np.random.choice(len(p), p=p)
-          print(target_index)

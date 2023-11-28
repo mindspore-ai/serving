@@ -98,10 +98,8 @@ def load_model(model0_path, model1_path, config_file, config_inc_file_list, rank
             warm_batch_size = Baseconfig.dyn_batch_size[0]
         else:
             warm_batch_size = Baseconfig.batch_size
-        if 'seq_type' in Baseconfig and Baseconfig.seq_type == 'dyn':
-            warm_seq_length = 1
-        else:
-            warm_seq_length = Baseconfig.seq_length[0]
+
+        warm_seq_length = 1
 
         decode_inputs_list = get_warmup_inputs(seq_length=warm_seq_length,
                                                batch_size=warm_batch_size,
@@ -237,8 +235,9 @@ class WorkAgent:
             logging.error('top k is out of range,please set topk in [1,100]')
             topk = 100
         if topp < 1.0:
+            outs = softmax_np(outs[:topk])
             outs_ = np.cumsum(outs, axis=-1)
-            top_p_num = sum(outs_ > topp)
+            top_p_num = sum(outs_ < topp)
             if top_p_num == 0:
                 top_p_num = candidate_token_num
             top_p_num = min(top_p_num, topk)
@@ -390,7 +389,7 @@ class WorkAgent:
         tmp_shms.append(gen_parms_shm)
         self.current_batch_size = current_batch if current_batch else Baseconfig.prefill_batch_size
 
-        logging.info(f"batch_size right now is {self.current_batch_size}")
+        logging.debug(f"batch_size right now is {self.current_batch_size}")
 
         if self.is_prefill:
             first_group = np.ndarray((shape_list[0]), dtype=np.int32, buffer=existing_shm0.buf)
@@ -497,7 +496,7 @@ class WorkAgent:
             input_ids = input_ids.reshape((-1, 1))
 
         if Baseconfig['batching_strategy'] == 'continuous':
-            logging.info('continous batching input')
+            logging.debug('continous batching input')
             tmp_in = [input_ids, current_index, valid_length, decode_index_np]
 
         else:
@@ -580,7 +579,7 @@ def warmup_models(work_agent):
 
 
 def start_agent_socket_server(config, startup_queue):
-    logging.basicConfig(level=logging.DEBUG,
+    logging.basicConfig(level=logging.ERROR,
                         filename=f"./output/agent_{config.rank_id}.log",
                         filemode='w',
                         format=
@@ -619,7 +618,7 @@ def start_agent_socket_server(config, startup_queue):
                 if not data:
                     break
                 data = data.decode()
-                logging.info(f"data received is {data}")
+                logging.debug(f"data received is {data}")
                 # worker 和 agent建联
                 if data.startswith('#'):
                     if work_agent.status & AgentStatus.unconnected == AgentStatus.unconnected:

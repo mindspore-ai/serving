@@ -61,8 +61,8 @@ def run_mindspore():
     input_ids_dyn = Tensor(shape=[None, None, None], dtype=mstype.float16)
     temperature_ = Tensor(shape=[None, ], dtype=mstype.float32)
 
-    export(topk_topp_, input_ids_dyn, temperature_, file_name=argmax_model[0], file_format='MINDIR')
-    export(argmax_, input_ids_dyn, file_name=topk_model[0], file_format='MINDIR')
+    export(topk_topp_, input_ids_dyn, temperature_, file_name=topk_model[0], file_format='MINDIR')
+    export(argmax_, input_ids_dyn, file_name=argmax_model[0], file_format='MINDIR')
     print("export finished")
 
 
