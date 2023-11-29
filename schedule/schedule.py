@@ -99,7 +99,7 @@ class Schedule:
             return
         # add request into batching list
         while not self.waiting_request_queue.empty():
-            if count > self.batch_size:
+            if count >= self.batch_size:
                 break
             data = self.waiting_request_queue.get_nowait()
 
@@ -239,18 +239,14 @@ class Schedule:
                 self.running_request_list.append(entry_meta_data)
         # 3. 请求队列长度大于count_of_invalid_sample且小于当前batch_size，batch不变
             logging.debug(('----padding running list  {} '.format(len(self.running_request_list))))
-        for item in self.running_request_list:
-            logging.debug("the status of item in running list is ", item.get_entry_data().get_status())
 
     def _continuous_batch(self):
         # init batch size when running_request_list is empty.
         if len(self.running_request_list) == 0:
-            logging.debug("1111")
             self._get_next_batch()
         # update invalid request number in batching list.
         self._update_status_after_one_itreation()
         if self.count_of_invalid_sample == self.batch_size:
-            logging.debug("2222 invalid sample cnt is ", self.count_of_invalid_sample)
             self._get_next_batch()
         # update status after one inference step
         else:
