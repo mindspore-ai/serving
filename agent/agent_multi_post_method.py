@@ -235,7 +235,7 @@ class WorkAgent:
             logging.error('top k is out of range,please set topk in [1,100]')
             topk = 100
         if topp < 1.0:
-            outs = softmax_np(outs[:topk])
+            # outs = softmax_np(outs[:topk])
             outs_ = np.cumsum(outs, axis=-1)
             top_p_num = sum(outs_ < topp)
             if top_p_num == 0:
