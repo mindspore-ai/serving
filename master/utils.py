@@ -81,6 +81,7 @@ class ResponseOutput:
 
         elif output == -1:
             output_str = RETURN_REASON_PREDICT_FAILED
+            finished = True
 
         elif output == eos_id:
             finished = True

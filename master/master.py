@@ -118,7 +118,7 @@ class Master:
         end_token = self.model_config.end_token  # for debug
         self.scheduler.upate_entries_after_one_step(outputs, end_token, index_list)
 
-        str_outputs = ''
+        str_outputs = [''] * len(outputs)
 
         if self.model_config.tokenizer == 'LlamaTokenizer' and outputs[0] != -1:
             str_outputs = self._llama_detokenizer(outputs)
