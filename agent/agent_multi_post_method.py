@@ -73,7 +73,7 @@ def load_model(model0_path, model1_path, config_file, config_inc_file_list, rank
         all_models.append(mslite.Model())
     model_group = mslite.ModelGroup(mslite.ModelGroupFlag.SHARE_WEIGHT)
     model_group.add_model(all_models)
-
+    logging.info('load prefill model ...')
     all_models[0].build_from_file(model0_path, mslite.ModelType.MINDIR, context, config_file)
     # warm up prefill model
     logging.info('warmup prefill model ...')
@@ -94,6 +94,7 @@ def load_model(model0_path, model1_path, config_file, config_inc_file_list, rank
             act_len = 2
 
         print(f"starting warm up {act_len} decode model")
+        logging.info(f"starting warm up {act_len} decode model")
         if 'dyn_batch_size' in Baseconfig:
             warm_batch_size = Baseconfig.dyn_batch_size[0]
         else:
@@ -110,6 +111,7 @@ def load_model(model0_path, model1_path, config_file, config_inc_file_list, rank
 
         for item in decode_lite_inputs:
             print("decode item ", item.shape, item.dtype, flush=True)
+            logging.debug(f"decode item shape is {item.shape}, type is {item.dtype}")
             print(item, flush=True)
 
         all_models[i + 1].build_from_file(model1_path, mslite.ModelType.MINDIR, context, config_inc_file_list[i])
@@ -481,7 +483,7 @@ class WorkAgent:
                     valid_length.append(decode_params.valid_length)
                 else:
                     current_index.append(0)
-                    valid_length.append(0)
+                    valid_length.append(1)
                 init_reset.append(decode_params.init_reset)
                 decode_index.append(decode_params.decode_index)
 

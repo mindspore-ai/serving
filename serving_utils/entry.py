@@ -65,6 +65,8 @@ class EntryData:
         self.repetition_penalty = repetition_penalty
         self.decode_index = decode_index
         self.frequency_list = []
+        self.prefix_index = 0
+        self.read_index = 0
 
     def get_status(self) -> EntryStatus:
         return self.status

@@ -21,6 +21,7 @@
 - [mindspore-lite](https://www.mindspore.cn/lite/docs/zh-CN/master/use/downloads.html?highlight=%E5%AE%89%E8%A3%85) 
 - [mindformers](https://gitee.com/mindspore/mindformers#%E4%BA%8Cmindformers%E5%AE%89%E8%A3%85)
 - easydict
+- transformers==4.35.0
 
 #### 配置文件(serving_config.py)：
     模型文件路径配置：

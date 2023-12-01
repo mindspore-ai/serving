@@ -8,11 +8,12 @@ from .utils import Counter, ResponseOutput
 
 from schedule.schedule import Schedule
 from worker.worker import Worker
-from config.serving_config import Baseconfig, AgentIP, AgentConfig, ModelName
+from config.serving_config import Baseconfig, AgentIP, AgentConfig, ModelName, transformer_tokenizer_path
 from serving_utils.register import registers
 from mindformers.mindformer_book import MindFormerBook
 from mindformers import LlamaTokenizer
-from mindformers import AutoTokenizer
+# from mindformers import AutoTokenizer
+from transformers import AutoTokenizer
 
 Eps = 30
 
@@ -24,7 +25,8 @@ def build_tokenizer(base_config):
         tokenizer = AutoTokenizer.from_pretrained(base_config.tokenzier)
     else:
         if base_config.tokenizer == 'LlamaTokenizer':
-            tokenizer = LlamaTokenizer(base_config.tokenizer_path)
+            # tokenizer = LlamaTokenizer(base_config.tokenizer_path)
+            tokenizer = AutoTokenizer.from_pretrained(transformer_tokenizer_path)
             print(f'tokenizer special tokens is {tokenizer.all_special_tokens}')
             return tokenizer
         # logging.info('load custom tokenizer')
@@ -108,6 +110,39 @@ class Master:
                 str_outputs.append('')
         return str_outputs
 
+    def _llama_detokenizer_function(self, index, entry_metadata_list, skip_special_tokens=True):
+
+        prefix_index = entry_metadata_list[index].get_entry_data().prefix_index
+        read_index = entry_metadata_list[index].get_entry_data().read_index
+        all_outputs_ids = entry_metadata_list[index].get_entry_data().get_output_token()
+
+        prefix_text = self.tokenizer.decode(all_outputs_ids[prefix_index: read_index],
+                                            skip_special_tokens=skip_special_tokens)
+
+        new_text = self.tokenizer.decode(all_outputs_ids[prefix_index:], skip_special_tokens=skip_special_tokens)
+
+        if len(new_text) > len(prefix_text) and not new_text.endswith("�"):
+            new_text = new_text[len(prefix_text):]
+            entry_metadata_list[index].get_entry_data().prefix_index = read_index
+            entry_metadata_list[index].get_entry_data().read_index = len(all_outputs_ids)
+            return new_text
+        else:
+            return ""
+
+    def _llama_detokenizer_v2(self,
+                              outputs,
+                              entry_metadata_list,
+                              index_list=None,
+                              skip_special_tokens=True):
+        # prompt
+        if index_list is not None:
+            return [self._llama_detokenizer_function(index_list[0], entry_metadata_list, skip_special_tokens)]
+        # decode
+        str_outputs = []
+        for index, output in enumerate(outputs):
+            str_outputs.append(self._llama_detokenizer_function(index, entry_metadata_list, skip_special_tokens))
+        return str_outputs
+
     def _postprocess(self,
                      outputs: List[int],
                      entry_metadata_list: List[EntryMetaData],
@@ -121,14 +156,15 @@ class Master:
         str_outputs = [''] * len(outputs)
 
         if self.model_config.tokenizer == 'LlamaTokenizer' and outputs[0] != -1:
-            str_outputs = self._llama_detokenizer(outputs)
+            # str_outputs = self._llama_detokenizer(outputs)
+            str_outputs = self._llama_detokenizer_v2(outputs, entry_metadata_list,
+                                                     index_list, skip_special_tokens=True)
+
         elif self.model_config.tokenizer == 'InternLMTokenizer' and outputs[0] != -1:
             str_outputs = self._detokenizer(outputs)
 
         self._counter_of_token += len(outputs)
         logging.debug("current total token numbers is {}".format(self._counter_of_token))
-
-
         # generating output
         results: List[ResponseOutput] = []
 
