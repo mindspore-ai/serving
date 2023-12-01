@@ -51,6 +51,7 @@ inc_path = ['/path/to/decode_config1.ini',
             '/path/to/decode_config4.ini']
 post_model_ini = '/path/to/post_model.ini'
 tokenizer_path = '/path/to/tokenizer.model'
+transformer_tokenizer_path = '/path/to/transformers/llama'
 
 Baseconfig = EasyDict({
     'frequency_penalty': 1.5,

@@ -72,7 +72,8 @@ required_package = [
     'easydict',
     'fastapi',
     'uvicorn',
-    'sentencepiece'
+    'sentencepiece',
+    'transformers==4.35.0'
 ]
 
 package_data = {

@@ -80,12 +80,19 @@ class ResponseOutput:
             finished = False
 
         elif output == -1:
+            entry_meta_data.get_entry_data().prefix_index = 0
+            entry_meta_data.get_entry_data().read_index = 0
             output_str = RETURN_REASON_PREDICT_FAILED
             finished = True
 
         elif output == eos_id:
+            entry_meta_data.get_entry_data().prefix_index = 0
+            entry_meta_data.get_entry_data().read_index = 0
             finished = True
+
         elif entry_meta_data.entry_data.get_output_len() == entry_meta_data.entry_data.max_token_len:
+            entry_meta_data.get_entry_data().prefix_index = 0
+            entry_meta_data.get_entry_data().read_index = 0
             logging.debug("stop inference because of iteration is max_len, request is {}".format(request_id))
             finished = True
 
@@ -95,7 +102,6 @@ class ResponseOutput:
                    entry_meta_data.get_entry_data().get_prompt_token(),
                    [completion_out],
                    finished)
-
 
 class Counter:
     def __init__(self, start=0) -> None:
