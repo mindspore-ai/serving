@@ -24,7 +24,6 @@ class temperature_TopK(nn.Cell):
         super(temperature_TopK, self).__init__()
         self.divide = P.Div()
         self.topk = P.TopK(sorted=True)
-        self.softmax = nn.Softmax()
         self.top_k_num = 100
         # self.reshape = ops.reshape()
 
@@ -32,7 +31,6 @@ class temperature_TopK(nn.Cell):
         x = ops.reshape(x, (x.shape[0], x.shape[-1]))
         x = self.divide(x, temperature)
         logit, pargs = self.topk(x, self.top_k_num)
-        logit = self.softmax(logit)
         return logit, pargs
 
 
@@ -54,6 +52,7 @@ def run_mindspore():
         mode=context.GRAPH_MODE,
         device_target="Ascend",
         pynative_synchronize=False,
+        device_id=0
     )
     topk_topp_ = temperature_TopK()
     argmax_ = ArgmaxPost()

@@ -75,34 +75,19 @@ def post_sampling(logits, decode_params, targets, origin_index):
 
     top_p = decode_params.top_p
     top_k_num = decode_params.top_k
-    if top_p < 1.0:
-        # Only consider the 5000 largest logits to reduce computation
-        sorted_logits, index = topk(logits, top_k_num)
-        sorted_logits = softmax_np(sorted_logits)
-        cumsum_logits = np.cumsum(sorted_logits, axis=-1)
+    sorted_logits, index = topk(logits, top_k_num)
+    if top_p < 1:
+        cumsum_logits = softmax_np(sorted_logits)
+        cumsum_logits = np.cumsum(cumsum_logits, axis=-1)
         top_p_num = sum(cumsum_logits < top_p)
-        # In case the probability is smooth, the sum of 5000 largest probabilities are not large enough
+            # In case the probability is smooth, the sum of 5000 largest probabilities are not large enough
         if top_p_num == 0:
             top_p_num = TOPP_NUM
-        top_p_num = min(top_p_num, top_k_num)
-        # Get the corresponding probs and indices
-        probs = sorted_logits[:top_p_num]
-        p_args = index[:top_p_num]
-        if np.sum(probs) == 0:
-            probs = np.array([1 / top_p_num for _ in range(top_p_num)])
-        p = softmax_np(probs)
-    # if top_p is set to 1.0, use top_k sampling
-    else:
-        probs, index = topk(logits, top_k_num)
-        probs = probs
-        p_args = index
-        # Avoid rounding error
+            # Get the corresponding probs and indices
+        sorted_logits = sorted_logits[:top_p_num]
+        index = index[:top_p_num]
 
-        if np.sum(probs) == 0:
-            probs = np.array([1 / top_k_num for _ in range(top_k_num)])
-
-        p = softmax_np(probs)
-
+    p_args = index
+    p = softmax_np(sorted_logits)
     target_index = np.random.choice(len(p), p=p)
-
     targets[origin_index] = p_args[target_index]

@@ -234,24 +234,18 @@ class WorkAgent:
         topp = decode_params.top_p
         topk = decode_params.top_k
         if topk > 100:
-            logging.error('top k is out of range,please set topk in [1,100]')
             topk = 100
+            logging.error('top k out of range [1,100]')
+        outs = outs[:topk]
         if topp < 1.0:
-            # outs = softmax_np(outs[:topk])
-            outs_ = np.cumsum(outs, axis=-1)
+            outs_ = np.cumsum(softmax_np(outs), axis=-1)
             top_p_num = sum(outs_ < topp)
             if top_p_num == 0:
                 top_p_num = candidate_token_num
-            top_p_num = min(top_p_num, topk)
             outs = outs[:top_p_num]
             p_args = p_args[:top_p_num]
-            if np.sum(outs) == 0:
-                outs = np.array([1 / top_p_num for _ in range(top_p_num)])
-            p = softmax_np(outs)
-        else:
-            p = outs[:topk]
-            p = softmax_np(p)
-            p_args = p_args
+
+        p = softmax_np(outs)
         target_index = np.random.choice(len(p), p=p)
         targets[index] = p_args[target_index]
 
@@ -507,9 +501,9 @@ class WorkAgent:
         if len(extra_input) > 0:
             tmp_in.extend(extra_input)
 
-        for tmp in tmp_in:
-            logging.debug("item shape is {}, dtype is {}".format(tmp.shape, tmp.dtype))
-            logging.debug("item is {}".format(tmp))
+        #for tmp in tmp_in:
+            #logging.debug("item shape is {}, dtype is {}".format(tmp.shape, tmp.dtype))
+            #logging.debug("item is {}".format(tmp))
 
         # 调用ms lite进行推理
         if 'zactivate_len' in Baseconfig and len(extra_input) > 0:
