@@ -6,6 +6,7 @@
 #
 # http://www.apache.org/licenses/LICENSE-2.0
 #
+
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,25 +14,22 @@
 # limitations under the License.
 # ============================================================================
 """MindSpore Serving server app"""
+import asyncio
+import json
+import logging
 import signal
 import sys
 import uuid
-import asyncio
-import logging
-import time
 from multiprocessing import Process
 
-from fastapi import FastAPI, Request
-from fastapi.responses import StreamingResponse
-from sse_starlette.sse import EventSourceResponse
-
 import uvicorn
-import json
+from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
+from sse_starlette.sse import EventSourceResponse, ServerSentEvent
 
-from config.serving_config import Baseconfig, SERVER_APP_HOST, SERVER_APP_PORT, ModelName
-from server.llm_server_post import LLMServer
 from client.client_utils import ClientRequest, Parameters
-
+from config.serving_config import SERVER_APP_HOST, SERVER_APP_PORT
+from server.llm_server_post import LLMServer
 
 logging.basicConfig(level=logging.ERROR,
                     filename='./output/server_app.log',
@@ -56,7 +54,7 @@ async def get_full_res(request, results):
     ret = {
         "generated_text": all_texts,
     }
-    yield (json.dumps(ret) + '\n').encode("utf-8")
+    yield (json.dumps(ret, ensure_ascii=False) + '\n').encode("utf-8")
 
 
 async def get_full_res_sse(request, results):
@@ -69,7 +67,7 @@ async def get_full_res_sse(request, results):
         all_texts += text
 
     ret = {"event": "message", "retry": 30000, "generated_text": all_texts}
-    yield json.dumps(ret)
+    yield json.dumps(ret, ensure_ascii=False)
 
 
 async def get_stream_res(request, results):
@@ -92,14 +90,14 @@ async def get_stream_res(request, results):
             },
         }
         print(ret, index)
-        yield ("data:" + json.dumps(ret) + '\n').encode("utf-8")
+        yield ("data:" + json.dumps(ret, ensure_ascii=False) + '\n').encode("utf-8")
     print(all_texts)
     return_full_text = request.parameters.return_full_text
     if return_full_text:
         ret = {
             "generated_text": all_texts,
         }
-        yield ("data:" + json.dumps(ret) + '\n').encode("utf-8")
+        yield ("data:" + json.dumps(ret, ensure_ascii=False) + '\n').encode("utf-8")
 
 
 async def get_stream_res_sse(request, results):
@@ -114,13 +112,13 @@ async def get_stream_res_sse(request, results):
             index += 1
         all_texts += text
         ret = {"event": "message", "retry": 30000, "data": text}
-        yield json.dumps(ret)
+        yield json.dumps(ret, ensure_ascii=False)
 
     print(all_texts)
 
     if request.parameters.return_full_text:
         ret = {"event": "message", "retry": 30000, "data": all_texts}
-        yield json.dumps(ret)
+        yield json.dumps(ret, ensure_ascii=False)
 
 
 def send_request(request: ClientRequest):
@@ -174,7 +172,11 @@ async def async_generator(request: ClientRequest):
     if request.stream:
         if request.parameters.return_protocol == "sse":
             print('get_stream_res_sse...')
-            return EventSourceResponse(get_stream_res_sse(request, results))
+            return EventSourceResponse(get_stream_res_sse(request, results),
+                                       media_type="text/event-stream",
+                                       ping_message_factory=lambda: ServerSentEvent(
+                                           **{"comment": "You can't see this ping"}),
+                                       ping=600)
         else:
             print('get_stream_res...')
             return StreamingResponse(get_stream_res(request, results))
@@ -195,7 +197,11 @@ async def async_stream_generator(request: ClientRequest):
     results = send_request(request)
     if request.parameters.return_protocol == "sse":
         print('get_stream_res_sse...')
-        return EventSourceResponse(get_stream_res_sse(request, results))
+        return EventSourceResponse(get_stream_res_sse(request, results),
+                                   media_type="text/event-stream",
+                                   ping_message_factory=lambda: ServerSentEvent(
+                                       **{"comment": "You can't see this ping"}),
+                                   ping=600)
     else:
         print('get_stream_res...')
         return StreamingResponse(get_stream_res(request, results))
@@ -208,19 +214,19 @@ def update_internlm_request(request: ClientRequest):
 
 @app.post("/models/internlm")
 async def async_internlm_generator(request: ClientRequest):
-    update_internlm_request(request)
+    # update_internlm_request(request)
     return await async_generator(request)
 
 
 @app.post("/models/internlm/generate")
 async def async_internlm_full_generator(request: ClientRequest):
-    update_internlm_request(request)
+    # update_internlm_request(request)
     return await async_full_generator(request)
 
 
 @app.post("/models/internlm/generate_stream")
 async def async_internlm_stream_generator(request: ClientRequest):
-    update_internlm_request(request)
+    # update_internlm_request(request)
     return await async_stream_generator(request)
 
 
@@ -279,24 +285,30 @@ async def _get_batch_size():
     global llm_server
     batch_size = llm_server.get_bs_current()
     ret = {'event': "message", "retry": 30000, "data": batch_size}
-    yield json.dumps(ret)
+    yield json.dumps(ret, ensure_ascii=False)
 
 
 async def _get_request_numbers():
     global llm_server
     queue_size = llm_server.get_queue_current()
     ret = {'event': "message", "retry": 30000, "data": queue_size}
-    yield json.dumps(ret)
+    yield json.dumps(ret, ensure_ascii=False)
 
 
 @app.get("/serving/get_bs")
 async def get_batch_size():
-    return EventSourceResponse(_get_batch_size())
+    return EventSourceResponse(_get_batch_size(),
+                               media_type="text/event-stream",
+                               ping_message_factory=lambda: ServerSentEvent(**{"comment": "You can't see this ping"}),
+                               ping=600)
 
 
 @app.get("/serving/get_request_numbers")
 async def get_request_numbers():
-    return EventSourceResponse(_get_request_numbers())
+    return EventSourceResponse(_get_request_numbers(),
+                               media_type="text/event-stream",
+                               ping_message_factory=lambda: ServerSentEvent(**{"comment": "You can't see this ping"}),
+                               ping=600)
 
 
 def sig_term_handler(signal, frame):

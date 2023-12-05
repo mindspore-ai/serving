@@ -1,3 +1,4 @@
+import sys
 import time
 import logging
 from typing import List
@@ -54,7 +55,16 @@ class Worker:
 
     def _init_worker(self) -> None:
         logging.info(">>>>>>>>>>>>>>>>>_init_worker in worker, server llm model is: {}".format(self.model_name))
-        self.model.init(self.agent_ip, self.agent_ports, self.model_name, self.shm_names)
+        try:
+            self.model.init(self.agent_ip, self.agent_ports, self.model_name, self.shm_names)
+        except ConnectionError:
+            self.model.reset_agent_status(self.agent_ip, self.agent_ports)
+            # sys.exit()
+            self.model.init(self.agent_ip, self.agent_ports, self.model_name, self.shm_names)
+
+    def __del__(self):
+        for shm in self.shms:
+            shm.close()
     
     @staticmethod
     def _get_seq_length_dynmic_dinning(seq_list, seq_length):

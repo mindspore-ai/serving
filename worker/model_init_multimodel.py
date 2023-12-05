@@ -269,18 +269,31 @@ class DisModel:
             client.connect((agent_ip, port))
             send_str = '#' + ",".join(str(element) for element in shm_names)
             client.sendall(send_str.encode())
-            data = client.recv(6, socket.MSG_WAITALL)
+            data = client.recv(6, socket.MSG_WAITALL).decode()
             print(data)
-            if data.decode() == "failed":
-                print("there exists another connected serving now, stop the previous serving at first")
-                sys.exit()
+            if data == "failed":
+                client.close()
+                for agent in self.agent_stubs:
+                    agent.close()
+                raise ConnectionError("there exists another connected serving now, stop the previous serving at first")
             self.agent_stubs.append(client)
             client.settimeout(None)
             # send shm_names
         self.model_name = model_name
 
-    # def __del__(self):
-    #     self.stop()
+    def reset_agent_status(self, agent_ports, agent_ip):
+        print("waiting to reset agents status")
+        for port in agent_ports:
+            client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            # socket是1对1的，设置超时机制，防止多个serving连接同一个LLM
+            client.settimeout(5)
+            client.connect((agent_ip, port))
+            client.sendall("r".encode())
+            data = client.recv(6, socket.MSG_WAITALL).decode()
+            print(data)
+            if data == "succes":
+                print("reset")
+        print("reset all agents!")
 
     def stop(self):
         print("waiting worker to exit")

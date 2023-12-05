@@ -113,5 +113,5 @@ class LLMServer:
         # 1. stop background
         self.status = 0
         # asyncio.get_event_loop().stop()
-        time.sleep(1)
+        # time.sleep(1)
         return self.master.stop()

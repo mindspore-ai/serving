@@ -627,10 +627,10 @@ def start_agent_socket_server(config, startup_queue):
                         data = data[1:]
                         work_agent.shm_names = data.split(",")
                         work_agent.status = AgentStatus.connected
-                        print("send succes")
+                        print("connect succes")
                         conn.sendall("succes".encode())
                     else:
-                        print("send failed")
+                        print("connect failed")
                         conn.sendall("failed".encode())
                 elif data.startswith('*'):
                     # 全量推理
@@ -642,7 +642,8 @@ def start_agent_socket_server(config, startup_queue):
                         shape = list(map(int, shape_str.split(" ")))
                         input_shapes.append(shape)
                     _, _ = work_agent.predict(shape_list=input_shapes)
-                    conn.sendall("1".encode())
+                    if config.rank_id == 0:
+                        conn.sendall("1".encode())
                 elif data.startswith('a'):
                     # 增量推理
                     decode_data = data.split('_')
@@ -653,7 +654,8 @@ def start_agent_socket_server(config, startup_queue):
                     logging.debug("batch valid flag received is {}".format(batch_valid_flag))
                     work_agent.is_prefill = False
                     _, _ = work_agent.predict(current_batch=current_batch_dyn, batch_valid_flag=batch_valid_flag)
-                    conn.sendall("1".encode())
+                    if config.rank_id == 0:
+                        conn.sendall("1".encode())
                 elif data.startswith('e'):
                     # worker退出获取agent状态，free状态下才允许退出
                     if work_agent.status & AgentStatus.busy == AgentStatus.busy:
@@ -663,6 +665,11 @@ def start_agent_socket_server(config, startup_queue):
                         work_agent.status = AgentStatus.unconnected
                         print("free")
                         conn.sendall("free".encode())
+                elif data.startswith('r'):
+                    # reset agents status
+                    work_agent.status = AgentStatus.unconnected
+                    print("reset succes")
+                    conn.sendall("succes".encode())
             except ConnectionResetError:
                 break
             except RuntimeError:
