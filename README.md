@@ -16,7 +16,7 @@
 
 ### Get Started
 #### 环境依赖
-- python 3.7
+- python 3.9.9
 - [mindspore](https://www.mindspore.cn/install)
 - [mindspore-lite](https://www.mindspore.cn/lite/docs/zh-CN/master/use/downloads.html?highlight=%E5%AE%89%E8%A3%85) 
 - [mindformers](https://gitee.com/mindspore/mindformers#%E4%BA%8Cmindformers%E5%AE%89%E8%A3%85)
