@@ -7,7 +7,7 @@
 ### 主要特性和增强
 
 #### OS
-- [STABLE] 适配Python 3.9.9版本
+- [STABLE] 适配Python 3.9版本
 - [STABLE] 适配MindSpore 2.2.10版本
 - [STABLE] 适配MindSpore Lite 2.2.10版本
 

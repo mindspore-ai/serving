@@ -5,7 +5,7 @@
 ### Major Features and Improvements
 
 #### OS
-- [STABLE] add support for Python 3.9.9
+- [STABLE] add support for Python 3.9
 - [STABLE] add support for MindSpore 2.2.10
 - [STABLE] add support for MindSpore Lite 2.2.10
 
