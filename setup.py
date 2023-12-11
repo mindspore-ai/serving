@@ -18,6 +18,7 @@
 import os
 import stat
 import platform
+import sys
 
 from setuptools import setup, find_packages
 from setuptools.command.egg_info import egg_info
@@ -148,48 +149,49 @@ class BuildPy(build_py):
         update_permissions(mindspore_dir)
 
 
-setup(
-    name="mindspore_serving",
-    version=version,
-    author='The MindSpore Authors',
-    author_email='contact@mindspore.cn',
-    url='https://www.mindspore.cn',
-    download_url='https://gitee.com/mindspore/serving/tags',
-    project_urls={
-        'Sources': 'https://gitee.com/mindspore/serving',
-        'Issue Tracker': 'https://gitee.com/mindspore/serving/issues',
-    },
-    description='MindSpore is a new open source deep learning training/inference '
-                'framework that could be used for mobile, edge and cloud scenarios.',
-    long_description="\n\n".join([readme]),
-    long_description_content_type="text/markdown",
-    data_files=bin_files(),
-    packages=find_packages(),
-    package_data=package_data,
-    include_package_data=True,
-    cmdclass={
-        'egg_info': EggInfo,
-        'build_py': BuildPy,
-    },
-    python_requires='>=3.7',
-    install_requires=required_package,
-    classifiers=[
-        'Development Status :: 4 - Beta',
-        'Environment :: Console',
-        'Intended Audience :: Science/Research',
-        'Intended Audience :: Developers',
-        'License :: OSI Approved :: Apache Software License',
-        'Programming Language :: Python :: 3 :: Only',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8',
-        'Programming Language :: Python :: 3.9',
-        'Programming Language :: C++',
-        'Topic :: Scientific/Engineering',
-        'Topic :: Scientific/Engineering :: Artificial Intelligence',
-        'Topic :: Software Development',
-        'Topic :: Software Development :: Libraries',
-        'Topic :: Software Development :: Libraries :: Python Modules',
-    ],
-    license='Apache 2.0',
-    keywords='mindspore machine learning',
-)
+if __name__ == '__main__':
+    version_info = sys.version_info
+    if (version_info.major, version_info.minor, version_info.micro) < (3, 9, 9):
+        sys.stderr.write("Python version should be at least 3.9.9\r\n")
+        sys.exit(1)
+    setup(
+        name="mindspore_serving",
+        version=version,
+        author='The MindSpore Authors',
+        author_email='contact@mindspore.cn',
+        url='https://www.mindspore.cn',
+        download_url='https://gitee.com/mindspore/serving/tags',
+        project_urls={
+            'Sources': 'https://gitee.com/mindspore/serving',
+            'Issue Tracker': 'https://gitee.com/mindspore/serving/issues',
+        },
+        description='MindSpore is a new open source deep learning training/inference '
+                    'framework that could be used for mobile, edge and cloud scenarios.',
+        long_description="\n\n".join([readme]),
+        long_description_content_type="text/markdown",
+        data_files=bin_files(),
+        packages=find_packages(),
+        package_data=package_data,
+        include_package_data=True,
+        cmdclass={
+            'egg_info': EggInfo,
+            'build_py': BuildPy,
+        },
+        python_requires='>=3.9.9',
+        install_requires=required_package,
+        classifiers=[
+            'Development Status :: 4 - Beta',
+            'Environment :: Console',
+            'Intended Audience :: Science/Research',
+            'Intended Audience :: Developers',
+            'License :: OSI Approved :: Apache Software License',
+            'Programming Language :: Python :: 3.9',
+            'Topic :: Scientific/Engineering',
+            'Topic :: Scientific/Engineering :: Artificial Intelligence',
+            'Topic :: Software Development',
+            'Topic :: Software Development :: Libraries',
+            'Topic :: Software Development :: Libraries :: Python Modules',
+        ],
+        license='Apache 2.0',
+        keywords='mindspore machine learning',
+    )
