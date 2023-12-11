@@ -150,10 +150,6 @@ class BuildPy(build_py):
 
 
 if __name__ == '__main__':
-    version_info = sys.version_info
-    if (version_info.major, version_info.minor, version_info.micro) < (3, 9, 9):
-        sys.stderr.write("Python version should be at least 3.9.9\r\n")
-        sys.exit(1)
     setup(
         name="mindspore_serving",
         version=version,
