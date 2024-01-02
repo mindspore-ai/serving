@@ -25,33 +25,36 @@ from easydict import EasyDict
 from serving_utils.register import import_all_modules_for_register
 
 
-device = 6
+device = 0
 
 
 import_all_modules_for_register()
 
 SERVER_APP_HOST = 'localhost'
 
-SERVER_APP_PORT = 9811
+SERVER_APP_PORT = 61116
 
 prefill_model_path = [
-    "/path/to/prefill_graph.mindir"
+    # "/home/renyujin/ft-predict-opt/mindformers/research/baichuan2/baichuan2_13b_bs1_seq1500_pa224/baichuan2_13b_prefill_graph.mindir"
+    # "/home/renyujin/ft-predict-opt/mindformers/research/baichuan2/baichuan2_13b_bs1_seq1500_pa224_2l/baichuan2_13b_prefill_graph.mindir"
+    # "/home/renyujin/ft-predict-opt/mindformers/research/baichuan2/baichuan2_13b_bs1_dyn_pa224_2l/baichuan2_13b_prefill_graph.mindir"
+    "/home/renyujin/ft-predict-opt/mindformers/research/baichuan2/baichuan2_13b_bs1_dyn_pa224/baichuan2_13b_prefill_graph.mindir"
 ]
 
 decode_model_path = [
-    "/path/to/inc_graph.mindir"
+    # "/home/renyujin/ft-predict-opt/mindformers/research/baichuan2/baichuan2_13b_bs16_seq4096_pa224/baichuan2_13b_inc_graph.mindir"
+    # "/home/renyujin/ft-predict-opt/mindformers/research/baichuan2/baichuan2_13b_bs16_seq4096_pa224_2l/baichuan2_13b_inc_graph.mindir",
+    "/home/renyujin/ft-predict-opt/mindformers/research/baichuan2/baichuan2_13b_bs16_seq4096_pa224/baichuan2_13b_inc_graph.mindir"
 ]
 
-argmax_model = ["/path/to/argmax.mindir"]
-topk_model = ["/path/to/topk.mindir"]
-ctx_path = '/path/to/prompt_config.ini'
-inc_path = ['/path/to/decode_config1.ini',
-            '/path/to/decode_config2.ini',
-            '/path/to/decode_config3.ini',
-            '/path/to/decode_config4.ini']
-post_model_ini = '/path/to/post_model.ini'
-tokenizer_path = '/path/to/tokenizer.model'
-transformer_tokenizer_path = '/path/to/transformers/llama'
+argmax_model = ["extends/argmax.mindir"]
+topk_model = ["extends/topk.mindir"]
+# ctx_path = '/mnt/disk0/z00838343/baichuan_pa/configs/full.ini'
+ctx_path = "/mnt/disk0/z00838343/baichuan_pa/configs/910b_default_prefill.cfg"
+inc_path = ['/mnt/disk0/z00838343/baichuan_pa/configs/inc.ini']
+
+post_model_ini = '/mnt/disk0/z00838343/baichuan_pa/configs/baichuan2/config.ini'
+tokenizer_path = '/mnt/disk0/z00838343/baichuan_pa/2_layer_model/tokenizer.model'
 
 Baseconfig = EasyDict({
     'frequency_penalty': 1.5,
@@ -61,20 +64,20 @@ Baseconfig = EasyDict({
     'top_k_num': 100,
     'top_p': 1.0,
     'end_token': 2,
-    'seq_length': [310, 600, 1024, 2048],
-    'vocab_size': 32000,
-    'batch_size': 8,
-    'dyn_batch_size': [1, 8, 16],
+    'seq_length': [1500, 2048, 4096],
+    'vocab_size': 125696,
+    'batch_size': 16,
+    'dyn_batch_size': [16],
     'prefill_batch_size': 1,
-    'model_type': 0,  # 0 is dyn-shape model, 1 is static-shape model
+    'model_type': 1,  # 0 is dyn-shape model, 1 is static-shape model
     'batch_waiting_time': 0.0,
-    'seq_type': 'dyn',  # 'dyn'
+    # 'seq_type': 'dyn',  # 'dyn'
     'decode_batch_waiting_time': 0.00,
-    'batching_strategy': 'continuous',
-    'tokenizer': 'LlamaTokenizer',  # if import tokenizer, setting None # InternLMTokenizer for internlm
+    'batching_strategy': 'continuous',  # static
+    'tokenizer': 'Baichuan2Tokenizer',  # if import tokenizer, setting None # InternLMTokenizer for internlm
     'tokenizer_path': tokenizer_path,
-    'input_function': 'custom',  # for interNLM : common
-    'zactivate_len':  [512, 1024, 2048, 4096],
+    'input_function': 'common',  # for interNLM : common
+    'zactivate_len':  [4096],
     'slice_model' : True
 })
 
@@ -86,13 +89,19 @@ AgentConfig = EasyDict({
     'decode_model': decode_model_path,
     'argmax_model': argmax_model,
     'topk_model': topk_model,
-    'AgentPorts': [9820, 9821],
+    'AgentPorts': [61117],
     'device_start': device,
     "enable_host_post_sampling": False
 })
 
+PageAttentionConfig = EasyDict({
+    'num_blocks' : 224,  # 16 * 14
+    'block_size' : 128,  # 和模型一致
+    'decode_seq_length': 4096
+})
+
 AgentIP: str = "localhost"
-ModelName: str = "llama_dyn"  # internlm_7b for internlm
+ModelName: str = "baichuan2pa" # "baichuan2"  # internlm_7b for internlm
 
 
 def llama_inputs_for_warmup(seq_length, batch_size, full_model, valid_length=None):
@@ -105,7 +114,7 @@ def llama_inputs_for_warmup(seq_length, batch_size, full_model, valid_length=Non
         init_reset = np.array([True] * 1, dtype=np.bool_)
 
     if valid_length is None:
-        batch_valid_length = np.array([1] * batch_size, dtype=np.int64)
+        batch_valid_length = np.array([1] * batch_size, dtype=np.int32)
     else:
         batch_valid_length = np.array(valid_length * batch_size, dtype=np.int64)
 
@@ -119,6 +128,62 @@ def llama_inputs_for_warmup(seq_length, batch_size, full_model, valid_length=Non
     inputs_list.extend(input_extra_list)
     return inputs_list
 
+
+def baichuan2_inputs_for_warmup(seq_length, batch_size, full_model, valid_length=None):
+    input_ids = np.ones([batch_size, seq_length], dtype=np.int32)
+    current_index = np.array([1] * batch_size, dtype=np.int32)
+
+    if full_model:
+        init_reset = np.array([False] * 1, dtype=np.bool_)
+    else:
+        init_reset = np.array([True] * 1, dtype=np.bool_)
+
+    if valid_length is None:
+        batch_valid_length = np.array([1] * batch_size, dtype=np.int32)
+    else:
+        batch_valid_length = np.array(valid_length * batch_size, dtype=np.int32)
+
+    if Baseconfig['batching_strategy'] == 'continuous':
+        decode_index = np.array(range(batch_size), dtype=np.int64)
+        inputs_list = [input_ids, current_index, batch_valid_length, decode_index]
+    else:
+        batch_index = np.array([128] * batch_size, dtype=np.int32)
+        inputs_list = [input_ids, current_index, init_reset, batch_valid_length, batch_index]
+
+    input_extra_list = ExtraInput(input_ids, current_index, init_reset, full_model, batch_valid_length)
+    # inputs_list.extend(input_extra_list)
+
+    print('inputs_list: ', inputs_list, flush=True)
+    return inputs_list
+
+def baichuan2_pa_inputs_for_warmup(seq_length, batch_size, full_model, valid_length=None):
+    full_seq_len = Baseconfig.seq_length[-1]
+    inc_seq_len = PageAttentionConfig.decode_seq_length
+    current_index = np.array([0] * batch_size, dtype=np.int32)
+    if full_model:
+        input_ids = np.zeros([batch_size, full_seq_len], dtype=np.int32)
+        for i in range(batch_size):
+            input_ids[i][0] = 16829
+        init_reset = np.array([False] * 1, dtype=np.bool_)
+        slot_mapping = np.full((full_seq_len,), 0, dtype=np.int32)
+        slot_mapping[0] = 128
+    else:
+        input_ids = np.full([batch_size, 1], 16829, dtype=np.int32)
+        init_reset = np.array([True] * 1, dtype=np.bool_)
+        slot_mapping = np.full((batch_size,), 128, dtype=np.int32)
+    batch_valid_length = np.array([1] * batch_size, dtype=np.int32)
+    batch_index = np.array(list(range(batch_size)), dtype=np.int32)
+    block_tables = np.full((batch_size, inc_seq_len // 128), -1, dtype=np.int32)
+    logging.debug("block tables shape: %s, seq_length is: %s", block_tables.shape, inc_seq_len)
+    for i in range(batch_size):
+        block_tables[i][0] = 1
+    if full_model:
+        inputs_list = [input_ids, current_index, init_reset, batch_valid_length, batch_index, slot_mapping]
+    else:
+        inputs_list = [input_ids, current_index, init_reset, batch_valid_length, batch_index, block_tables, slot_mapping]
+    for item in inputs_list:
+        logging.debug("baichuan2pa warm up inputs: %s, %s", item, item.shape)
+    return inputs_list
 
 def internlm_inputs_for_warmup(seq_length, batch_size, full_model):
     input_ids = np.ones([batch_size, seq_length], dtype=np.int32)
@@ -142,6 +207,8 @@ def internlm_inputs_for_warmup(seq_length, batch_size, full_model):
 WARMUP_MODEL_INPUTS_MAP = {
     "llama": llama_inputs_for_warmup,
     "internlm": llama_inputs_for_warmup,    # 和llama一致
+    "baichuan2": baichuan2_inputs_for_warmup,    # 和llama一致
+    "baichuan2pa": baichuan2_pa_inputs_for_warmup
 }
 
 
@@ -178,7 +245,8 @@ def ExtraInput(input_ids, current_index, init_reset, is_prefill, valid_length, *
                 act_len = np.zeros((seq), np.int64)
                 break
             act_len = np.zeros((act_len_list[-1]), np.int64)
-        return act_len
+        # return act_len
+        return []
 
     if not is_prefill:
         max_seq = 0
@@ -189,4 +257,5 @@ def ExtraInput(input_ids, current_index, init_reset, is_prefill, valid_length, *
     for item in valid_length:
         max_prefill_length = max(max_prefill_length, item)
     act_len = get_act_length(max_prefill_length + 1, Baseconfig.zactivate_len)
-    return [act_len]
+    # return [act_len]
+    return []

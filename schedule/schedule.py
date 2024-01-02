@@ -1,6 +1,6 @@
 import time
 import uuid
-from typing import Dict, List
+from typing import Dict, List, Deque
 import logging
 
 from serving_utils.entry import EntryMetaData, EntryStatus, EntryData
@@ -8,6 +8,7 @@ from queue import Queue
 import copy
 from config.serving_config import Baseconfig
 from serving_utils.constant import *
+from schedule.cache_engine import ServingBlockMemPool, ServingCacheEngine
 
 class Schedule:
     """static batch strategy"""
@@ -21,7 +22,7 @@ class Schedule:
                  decode_batch_waiting_time: float = 0.06,
                  batching_strategy: str = 'static',
                  max_input_len: int = 8192):
-        self.waiting_request_queue: Queue[EntryMetaData] = Queue()
+        self.waiting_request_queue: Deque[EntryMetaData] = Deque([])
         self.running_request_list: List[EntryMetaData] = []
         self.count_of_invalid_sample = 0
         self.batch_size = batch_size if dyn_batch is None or len(dyn_batch) <= 1 else 0
@@ -38,11 +39,11 @@ class Schedule:
         return self.batch_size
 
     def get_queue_len(self):
-        return self.waiting_request_queue.qsize()
+        return len(self.waiting_request_queue)
 
     def add_entrys(self, entry_meta_data: EntryMetaData):
         entry_meta_data.get_entry_data().set_status(EntryStatus.WAITING)
-        self.waiting_request_queue.put_nowait(entry_meta_data)
+        self.waiting_request_queue.append(entry_meta_data)
 
     def _padding_batch_size(self):
         while len(self.running_request_list) < self.batch_size:
@@ -55,9 +56,9 @@ class Schedule:
             self.running_request_list[index].get_entry_data().set_status(EntryStatus.FINISHED_STOPPED)
 
     def _padding_request_into_batching_list(self, index):
-        if self.waiting_request_queue.empty():
+        if not self.waiting_request_queue:
             time.sleep(self.batch_waiting_time / float(len(self.running_request_list)))
-            if self.waiting_request_queue.empty():
+            if not self.waiting_request_queue:
                 entry_meta_data = copy.deepcopy(self.running_request_list[-1])
 
                 if entry_meta_data.entry_data.get_prompt_len() >= self.max_input_len:
@@ -69,7 +70,7 @@ class Schedule:
                 self.running_request_list.append(entry_meta_data)
                 logging.debug(f'waiting and add invalid request in batch init, batch size index is {index}')
             else:
-                data = self.waiting_request_queue.get_nowait()
+                data = self.waiting_request_queue.popleft()
                 if data.entry_data.get_prompt_len() >= self.max_input_len:
                     data.get_entry_data().set_status(EntryStatus.INPUT_OUTOFRANGE)
                 else:
@@ -79,7 +80,7 @@ class Schedule:
                 self.running_request_list.append(data)
                 logging.debug(f'add new valid request in batch, batch size index is {index}')
         else:
-            data = self.waiting_request_queue.get_nowait()
+            data = self.waiting_request_queue.popleft()
             logging.debug('get_nowait2')
 
             if data.entry_data.get_prompt_len() >= self.max_input_len:
@@ -95,13 +96,13 @@ class Schedule:
         self.running_request_list.clear()
         count = 0
         # no request in schedule queue, return
-        if self.waiting_request_queue.empty():
+        if not self.waiting_request_queue:
             return
         # add request into batching list
-        while not self.waiting_request_queue.empty():
+        while self.waiting_request_queue:
             if count >= self.batch_size:
                 break
-            data = self.waiting_request_queue.get_nowait()
+            data = self.waiting_request_queue.popleft()
 
             if data.entry_data.get_prompt_len() >= self.max_input_len:
                 data.get_entry_data().set_status(EntryStatus.INPUT_OUTOFRANGE)
@@ -144,7 +145,7 @@ class Schedule:
 
     def _padding_new_prompt_to_batch(self, index):
         # queue is empty, no new request in schedule queue
-        if self.waiting_request_queue.empty():
+        if not self.waiting_request_queue:
             # waiting
             time.sleep(self.batch_waiting_time / float(len(self.running_request_list)))
             # no new request, continue finished valid decode
@@ -154,7 +155,7 @@ class Schedule:
             # new requestes in queue
             else:
                 logging.debug('add a new request into batching list')
-                data = self.waiting_request_queue.get_nowait()
+                data = self.waiting_request_queue.popleft()
                 logging.debug('get_nowait3')
                 if data.entry_data.get_prompt_len() >= self.max_input_len:
                     data.get_entry_data().set_status(EntryStatus.INPUT_OUTOFRANGE)
@@ -166,7 +167,7 @@ class Schedule:
                 logging.debug(f'add new valid request in batch, batch size index is {index}')
         else:
             logging.debug('add a new request into batching list')
-            data = self.waiting_request_queue.get_nowait()
+            data = self.waiting_request_queue.popleft()
             logging.debug('get_nowait4')
             if data.entry_data.get_prompt_len() >= self.max_input_len:
                 data.get_entry_data().set_status(EntryStatus.INPUT_OUTOFRANGE)
@@ -190,7 +191,7 @@ class Schedule:
     def _determine_batch_size(self):
         self._update_status_after_one_itreation()
         bf_batch = self.batch_size
-        queue_len = self.waiting_request_queue.qsize()
+        queue_len = len(self.waiting_request_queue)
         bs_list_len = len(self.dyn_batch)
         # 1. 请求队列长度大于当前batch_size，扩容
         dyn_index = self.max_valid_index + 1
@@ -229,7 +230,7 @@ class Schedule:
             bf_batch = 0 if self.max_valid_index == -1 else bf_batch
             for i in range(bf_batch, af_batch):
                 entry_meta_data = EntryMetaData(request_id=PADDING_REQUEST_ID,
-                                                is_prompt=True,
+                                                is_prompt=False, # True
                                                 entry_data=EntryData(prompt_tokens=[Baseconfig.end_token],
                                                                      max_token_len=5000),
                                                 entry_id=-1,
@@ -256,6 +257,157 @@ class Schedule:
                     logging.debug('----{}-th prefill request in batching padded to batch.'.format(index))
                     self._padding_new_prompt_to_batch(index)
 
+    def log_running_list(self, header=None):
+        if header:
+            logging.debug(header)
+        for entry in self.running_request_list:
+            logging.debug("status: %s, token len: %s, output len: %s",
+                          entry.get_entry_data().get_status().name,
+                          entry.get_entry_data().get_len(),
+                          entry.get_entry_data().get_output_len())
+
+    def _insert_new_prompt_to_batch_pa(self, index):
+        # logging.debug('add a new request into batching list')
+        # data = self.waiting_request_queue.get_nowait()
+        data = self.waiting_request_queue.popleft()
+        if data.entry_data.get_prompt_len() >= self.max_input_len:
+            data.get_entry_data().set_status(EntryStatus.INPUT_OUTOFRANGE)
+        else:
+            data.get_entry_data().set_status(EntryStatus.RUNNING)
+        data.get_entry_data().set_decode_index(index)
+        self.running_request_list[index] = data
+        logging.debug(f'add new valid request in batch, batch size index is {index}')
+
+    def try_substitute_entry(self):
+        checkout_list = self.checkout_entry()
+        is_invalid_index_list = []
+        for index, is_invalid in enumerate(checkout_list):
+            if is_invalid:
+                is_invalid_index_list.append(index)
+        if not is_invalid_index_list:
+            # logging.debug("no invalid entry to substitute")
+            return False
+        # 如果有空槽位，尝试替代一条新请求：
+        index_to_substitute = is_invalid_index_list[0]
+        logging.debug("trying to substitute old entry at index: %s", index_to_substitute)
+        # 如果新entry需要的block数量，小于can_substitute entry的block数量 + mem pool全局剩余block数量
+        new_entry = self.waiting_request_queue[0]
+        if new_entry.cache_engine.try_use_budget(new_entry.get_entry_data().get_len()):
+            self._insert_new_prompt_to_batch_pa(index_to_substitute)
+            return True
+        logging.debug("failed inserting to existing entry")
+        # 如果空间不足，那么连第一条waiting的请求就无法替换，直接退出
+        return False
+    
+    def reset_all_budgets(self):
+        # logging.debug("current running list")
+        for entry in self.running_request_list:
+            entry.cache_engine.release_budget()
+
+    def can_predict_current_batch(self):
+        checkout_list = self.checkout_entry()
+        for index, is_invalid in enumerate(checkout_list):
+            # 对于batch中running的请求
+            if is_invalid:
+                continue
+            entry = self.running_request_list[index]
+            entry_cache_engine = entry.cache_engine
+            if entry.is_prompt:
+                if not entry_cache_engine.try_use_budget(entry.get_entry_data().get_len()):
+                    return False
+            else:
+                if not entry_cache_engine.try_use_budget(1):
+                    return False
+        # logging.debug("can decode current batch return true")
+        return True
+
+    def try_initialize_paddings_pa(self):
+        # running list和batch size不匹配时，添加padding位补充
+        # 场景：1.启动server后，runninglist为空；2.升档后
+        # logging.debug("try initialize paddings...")
+        if len(self.running_request_list) == self.batch_size:
+            return
+        elif len(self.running_request_list) > self.batch_size:
+            raise RuntimeError("running list size: %s larger than batch size: %s!", len(self.running_request_list), self.batch_size)
+        for index in range(len(self.running_request_list), self.batch_size):
+            padding_entry = EntryMetaData(request_id=PADDING_REQUEST_ID,
+                                            is_prompt=False, # True
+                                            entry_data=EntryData(prompt_tokens=[Baseconfig.end_token],
+                                                                max_token_len=5000),
+                                            entry_id=-1,
+                                            prompt=PADDING_PROMPT)
+            padding_entry.get_entry_data().set_decode_index(index)
+            padding_entry.get_entry_data().set_status(EntryStatus.PADDING_INVAILED)
+            cache_engine = padding_entry.cache_engine
+            cache_engine.assign_null_block()
+            self.running_request_list.append(padding_entry)
+
+    def insert_padding_entry(self, index):
+        padding_entry = EntryMetaData(request_id=PADDING_REQUEST_ID,
+                                        is_prompt=False, # True
+                                        entry_data=EntryData(prompt_tokens=[Baseconfig.end_token],
+                                                            max_token_len=5000),
+                                        entry_id=-1,
+                                        prompt=PADDING_PROMPT)
+        padding_entry.get_entry_data().set_decode_index(index)
+        padding_entry.get_entry_data().set_status(EntryStatus.PADDING_INVAILED)
+        cache_engine = padding_entry.cache_engine
+        cache_engine.assign_null_block()
+        self.running_request_list[index] = padding_entry
+
+    def try_swap_valid_entries(self):
+        is_invalid_list = self.checkout_entry()
+        num_tokens_index_list = []
+        for index, is_invalid in enumerate(is_invalid_list):
+            if is_invalid:
+                continue
+            num_tokens_index_list.append((self.running_request_list[index].get_entry_data().get_len(), index))
+        if not num_tokens_index_list:
+            raise RuntimeError("no valid entry to pop!")
+        
+        num_tokens_index_list.sort(key=lambda x : x[0])
+        _, index_to_swap = num_tokens_index_list[0]
+
+        # 释放一条长度最短的valid entries（认为是最后进来的，TODO：按照时间顺序pop掉最晚进来的entry）
+        entry_to_swap = self.running_request_list[index_to_swap]
+        entry_to_swap.get_entry_data().set_status(EntryStatus.WAITING)
+        entry_to_swap.get_entry_data().set_decode_index(0)
+        entry_to_swap.is_prompt = True
+        entry_to_swap.cache_engine.release_cache()
+        # append回waiting list
+        logging.warning("swap entry out, index: %s", index_to_swap)
+        self.waiting_request_queue.appendleft(entry_to_swap)
+        # 用padding替代
+        # logging.debug("inserting padding to popped entry %s", index_to_swap)
+        self.insert_padding_entry(index_to_swap)
+
+
+    def _continuous_batch_pa(self):
+        ServingBlockMemPool.instance().reset_budget()
+        # ServingBlockMemPool.instance().log_status()
+        self.try_initialize_paddings_pa()
+        # self.log_running_list("schedule start running status")
+        # 判断batch内的running entry，能否进行本轮推理？
+        num_entry_swapped_out = 0
+        while not self.can_predict_current_batch():
+            # 如果不能，swap出去已有请求
+            self.reset_all_budgets()
+            self.try_swap_valid_entries()
+            num_entry_swapped_out += 1
+        if num_entry_swapped_out:
+            self.reset_all_budgets()
+            return
+        # 3. 处理新请求
+        # logging.debug("determine if can process new request...")
+        while self.waiting_request_queue:
+            # 如果有空batch槽，尝试插入
+            # logging.debug("has new entry, trying to enter current batch")
+            if not self.try_substitute_entry():
+                # 尝试失败，退出
+                break
+        self.reset_all_budgets()
+        # ServingBlockMemPool.instance().log_status()
+
     def _static_batch(self):
         if self._all_samples_in_batch_is_over() or len(self.running_request_list) == 0:
             self._get_next_batch()
@@ -266,14 +418,15 @@ class Schedule:
             self._get_next_batch()
 
     def schedule(self) -> List[EntryMetaData]:
-        if self.dyn_batch and len(self.dyn_batch) > 1:
-            self._determine_batch_size()
-        if self.batching_strategy == 'static':
-            self._static_batch()
-        elif self.batching_strategy == 'continuous':
-            self._continuous_batch()
-        else:
-            raise ValueError("Invalid batching strategy!, please setting static or continuous")
+        # if self.dyn_batch and len(self.dyn_batch) > 1:
+        #     self._determine_batch_size()
+        # if self.batching_strategy == 'static':
+        #     self._static_batch()
+        # elif self.batching_strategy == 'continuous':
+        #     self._continuous_batch()
+        # else:
+        #     raise ValueError("Invalid batching strategy!, please setting static or continuous")
+        self._continuous_batch_pa()
         return self.running_request_list, self.batch_size
 
     def _finished_request(self, index, token, eos_id):
@@ -281,6 +434,8 @@ class Schedule:
         if token == eos_id:
             logging.debug("a request finished, token equal to {}".format(token))
             self.running_request_list[index].get_entry_data().set_status(EntryStatus.FINISHED_STOPPED)
+            self.running_request_list[index].cache_engine.release_cache()
+            self.running_request_list[index].cache_engine.assign_null_block()
             return
 
         # max len
@@ -288,16 +443,29 @@ class Schedule:
         if entry_data.max_token_len <= entry_data.get_output_len():
             logging.debug("a request reached the max generate token length")
             self.running_request_list[index].get_entry_data().set_status(EntryStatus.FINISHED_LENGTH_CAPPED)
+            self.running_request_list[index].cache_engine.release_cache()
+            self.running_request_list[index].cache_engine.assign_null_block()
+            return
+        
+        if entry_data.get_len() >= Baseconfig.max_generate_length:
+            logging.debug("a request reached seq len: %s, index: %s", Baseconfig.max_generate_length, index)
+            self.running_request_list[index].get_entry_data().set_status(EntryStatus.FINISHED_LENGTH_CAPPED)
+            self.running_request_list[index].cache_engine.release_cache()
+            self.running_request_list[index].cache_engine.assign_null_block()
             return
 
         # input outofrange
         if entry_data.status == EntryStatus.INPUT_OUTOFRANGE:
             self.running_request_list[index].get_entry_data().set_status(EntryStatus.FINISHED_STOPPED)
+            self.running_request_list[index].cache_engine.release_cache()
+            self.running_request_list[index].cache_engine.assign_null_block()
             return
         # predict failed
         if token == -1:
             logging.debug("a request predict failed, token equal to {}".format(token))
             self.running_request_list[index].get_entry_data().set_status(EntryStatus.FINISHED_STOPPED)
+            self.running_request_list[index].cache_engine.release_cache()
+            self.running_request_list[index].cache_engine.assign_null_block()
             return
 
     def upate_entries_after_one_step(self, outputs: List[int], eos_id: int, index_list: List[int] = None):
@@ -317,6 +485,8 @@ class Schedule:
         else:
             for index, token in enumerate(outputs):
                 # update new token to result list
+                if self.running_request_list[index].get_entry_data().get_status() != EntryStatus.RUNNING:
+                    continue
                 self.running_request_list[index].get_entry_data().updata_output_tokens(token)
                 self._finished_request(index, token, eos_id)
 
