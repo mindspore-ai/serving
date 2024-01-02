@@ -399,7 +399,7 @@ class WorkAgent:
                 valid_length = np.squeeze(valid_length_, axis=-1).astype(np.int32)
             input_ids = first_group[:, :shape_list[0][1] - 3]
             self.input_lentgth = input_ids.shape[1]
-            gen_parms_id = -1
+            gen_parms_id = 1
             shape_parms = shape_list[gen_parms_id]
             gen_parms = np.ndarray((shape_parms), dtype=np.float16, buffer=gen_parms_shm.buf)
 
@@ -409,6 +409,10 @@ class WorkAgent:
             temperature_list = gen_parms[:, 3]
             repetition_penalty_list = gen_parms[:, 4]
             decode_index_list = gen_parms[:, 5].astype(np.int32)
+
+            block_tables_shape = shape_list[2]
+            slot_mapping_shape = shape_list[3]
+
             extra_input = []
             for i in range(1, len(shape_list) - 1):
                 existing_shm = shared_memory.SharedMemory(name=self.shm_names[i])
@@ -425,12 +429,12 @@ class WorkAgent:
                 decode_index=int(decode_index_list[0]),
                 current_index=int(current_index[0]),
                 valid_length=int(valid_length[0]),
-                init_reset=True
+                init_reset=False
             )
 
             self.decode_params_map[decode_params.decode_index] = decode_params
             init_reset = np.array([decode_params.init_reset], dtype=np.bool_)
-            decode_index_np = np.array([decode_params.decode_index], dtype=np.int64)
+            decode_index_np = np.array([decode_params.decode_index], dtype=np.int32)
             self.shape_list = shape_list
 
         else:
@@ -455,9 +459,12 @@ class WorkAgent:
                 input_ids = np.append(input_ids, addition_input_ids)
                 target_batch = self.current_batch_size
                 pad_key = list(self.decode_params_map.keys())[-1]
-                padding_obj = self.decode_params_map[pad_key]
                 for j in range(target_batch):
                     if j not in self.decode_params_map:
+                        padding_obj = copy.deepcopy(self.decode_params_map[pad_key])
+                        padding_obj.current_index = 0
+                        padding_obj.valid_length = 1
+                        padding_obj.decode_index = j
                         self.decode_params_map[j] = padding_obj
             else:
                 # pop
@@ -471,7 +478,7 @@ class WorkAgent:
                 decode_params = self.decode_params_map[key]
                 decode_params.current_index = decode_params.current_index + 1
                 decode_params.valid_length = decode_params.valid_length + 1
-                decode_params.init_reset = False
+                decode_params.init_reset = True
                 if batch_valid_flag[key] == 1:
                     current_index.append(decode_params.current_index)
                     valid_length.append(decode_params.valid_length)
@@ -488,22 +495,36 @@ class WorkAgent:
             else:
                 valid_length = np.array(valid_length, dtype=np.int32)
             init_reset = np.array(init_reset, dtype=np.bool_)
-            decode_index_np = np.array(decode_index, dtype=np.int64)
+            decode_index_np = np.array(decode_index, dtype=np.int32)
             input_ids = input_ids.reshape((-1, 1))
 
-        if Baseconfig['batching_strategy'] == 'continuous':
-            logging.debug('continous batching input')
-            tmp_in = [input_ids, current_index, valid_length, decode_index_np]
+            block_tables_shape = shape_list[0]
+            slot_mapping_shape = shape_list[1]
 
+        block_tables_shm = shared_memory.SharedMemory(name=self.shm_names[6])
+        slot_mapping_shm = shared_memory.SharedMemory(name=self.shm_names[7])
+        block_tables_np = np.ndarray((block_tables_shape), dtype=np.int32, buffer=block_tables_shm.buf)
+        slot_mapping_np = np.ndarray((slot_mapping_shape), dtype=np.int32, buffer=slot_mapping_shm.buf)
+        # if Baseconfig['batching_strategy'] == 'continuous':
+        #     logging.debug('continous batching input')
+        #     tmp_in = [input_ids, current_index, valid_length, decode_index_np]
+
+        # else:
+        #     tmp_in = [input_ids, current_index, init_reset, valid_length]
+
+        # if len(extra_input) > 0:
+        #     tmp_in.extend(extra_input)
+        # tmp_in = [input_ids, current_index, init_reset, valid_length, decode_index_np.astype(np.int32)]
+        
+        if self.is_prefill:
+            tmp_in = [input_ids, current_index, init_reset, valid_length, decode_index_np, slot_mapping_np]
         else:
-            tmp_in = [input_ids, current_index, init_reset, valid_length]
+            tmp_in = [input_ids, current_index, init_reset, valid_length, decode_index_np, block_tables_np, slot_mapping_np]
 
-        if len(extra_input) > 0:
-            tmp_in.extend(extra_input)
-
-        #for tmp in tmp_in:
-            #logging.debug("item shape is {}, dtype is {}".format(tmp.shape, tmp.dtype))
-            #logging.debug("item is {}".format(tmp))
+        # logging.debug("tmp_in: %s", tmp_in)
+        # for tmp in tmp_in:
+        #     logging.debug("item shape is {}, dtype is {}".format(tmp.shape, tmp.dtype))
+        #     logging.debug("item is {}".format(tmp))
 
         # 调用ms lite进行推理
         if 'zactivate_len' in Baseconfig and len(extra_input) > 0:
@@ -575,7 +596,7 @@ def warmup_models(work_agent):
 
 
 def start_agent_socket_server(config, startup_queue):
-    logging.basicConfig(level=logging.ERROR,
+    logging.basicConfig(level=logging.DEBUG,
                         filename=f"./output/agent_{config.rank_id}.log",
                         filemode='w',
                         format=
@@ -641,13 +662,17 @@ def start_agent_socket_server(config, startup_queue):
                 elif data.startswith('a'):
                     # 增量推理
                     decode_data = data.split('_')
-                    current_batch_dyn = int(decode_data[-2])
+                    current_batch_dyn = int(decode_data[-4])
                     batch_valid_flag = []
-                    for ele in decode_data[-1].split(" "):
+                    for ele in decode_data[-3].split(" "):
                         batch_valid_flag.append(int(ele))
+                    input_shapes = []
+                    for shape_str in [decode_data[-2], decode_data[-1]]:
+                        shape = list(map(int, shape_str.split(" ")))
+                        input_shapes.append(shape)
                     logging.debug("batch valid flag received is {}".format(batch_valid_flag))
                     work_agent.is_prefill = False
-                    _, _ = work_agent.predict(current_batch=current_batch_dyn, batch_valid_flag=batch_valid_flag)
+                    _, _ = work_agent.predict(current_batch=current_batch_dyn, batch_valid_flag=batch_valid_flag, shape_list=input_shapes)
                     if config.rank_id == 0:
                         conn.sendall("1".encode())
                 elif data.startswith('e'):
