@@ -1,5 +1,7 @@
 from typing import Dict, List, Optional, Union
 import enum
+import logging
+from schedule.cache_engine import ServingBlockMemPool, ServingCacheEngine
 
 
 class EntryStatus(enum.Enum):
@@ -179,6 +181,15 @@ class EntryMetaData:
         self.entry_data = entry_data
         self.entry_id = entry_id
         self.prompt = prompt
+        self.cache_engine = ServingCacheEngine(block_size=128, pool=ServingBlockMemPool.instance())
+
+    def get_num_blocks(self):
+        if self.entry_data.get_status() == EntryStatus.WAITING:
+            """对于未实际申请block的请求"""
+            num_tokens = self.entry_data.get_len()
+            return self.cache_engine.compute_required_num_block(num_tokens + self.cache_engine.block_size)
+        else:
+            return self.cache_engine.num_blocks()
 
     def get_prompt(self) -> str:
         return self.prompt

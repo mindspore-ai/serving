@@ -8,29 +8,33 @@ from .utils import Counter, ResponseOutput
 
 from schedule.schedule import Schedule
 from worker.worker import Worker
-from config.serving_config import Baseconfig, AgentIP, AgentConfig, ModelName, transformer_tokenizer_path
+from config.serving_config import Baseconfig, AgentIP, AgentConfig, ModelName, PageAttentionConfig
 from serving_utils.register import registers
 from mindformers.mindformer_book import MindFormerBook
-from mindformers import LlamaTokenizer
+# from mindformers import LlamaTokenizer
 # from mindformers import AutoTokenizer
-from transformers import AutoTokenizer
+from transformers import LlamaTokenizer
+from research.baichuan2.baichuan2_tokenizer import Baichuan2Tokenizer
+from schedule.cache_engine import ServingBlockMemPool
 
 Eps = 30
 
 
 def build_tokenizer(base_config):
     tokenizer = None
-    if base_config.tokenizer in MindFormerBook.get_tokenizer_support_list():
-        logging.info('load tokenizer from mindformers')
-        tokenizer = AutoTokenizer.from_pretrained(base_config.tokenzier)
-    else:
-        if base_config.tokenizer == 'LlamaTokenizer':
-            # tokenizer = LlamaTokenizer(base_config.tokenizer_path)
-            tokenizer = AutoTokenizer.from_pretrained(transformer_tokenizer_path)
-            print(f'tokenizer special tokens is {tokenizer.all_special_tokens}')
-            return tokenizer
+    #if base_config.tokenizer in MindFormerBook.get_tokenizer_support_list():
+    #    logging.info('load tokenizer from mindformers')
+    #    tokenizer = AutoTokenizer.from_pretrained(base_config.tokenzier)
+    #else:
+    #    if base_config.tokenizer == 'LlamaTokenizer':
+    #        tokenizer = LlamaTokenizer(base_config.tokenizer_path)
+    #        # tokenizer = AutoTokenizer.from_pretrained(transformer_tokenizer_path)
+    #        print(f'tokenizer special tokens is {tokenizer.all_special_tokens}')
+    #        return tokenizer
         # logging.info('load custom tokenizer')
-        tokenizer = registers.TOKENIZER.get_obj_map()[base_config.tokenizer](base_config.tokenizer_path)
+    #    tokenizer = registers.TOKENIZER.get_obj_map()[base_config.tokenizer](base_config.tokenizer_path)
+
+    tokenizer = Baichuan2Tokenizer(base_config.tokenizer_path)
     return tokenizer
 
 
@@ -53,6 +57,10 @@ class Master:
         self._counter_of_token = 0
         self._init_tokenizer()
         self.decode_cache = {}
+        self._init_mem_pool()
+
+    def _init_mem_pool(self):
+        ServingBlockMemPool.init(PageAttentionConfig.num_blocks, PageAttentionConfig.block_size)
 
     def _init_tokenizer(self):
         self.tokenizer = build_tokenizer(self.model_config)
@@ -155,13 +163,13 @@ class Master:
 
         str_outputs = [''] * len(outputs)
 
-        if self.model_config.tokenizer == 'LlamaTokenizer' and outputs[0] != -1:
-            # str_outputs = self._llama_detokenizer(outputs)
-            str_outputs = self._llama_detokenizer_v2(outputs, entry_metadata_list,
-                                                     index_list, skip_special_tokens=True)
+        # if self.model_config.tokenizer == 'LlamaTokenizer' and outputs[0] != -1:
+        #     # str_outputs = self._llama_detokenizer(outputs)
+        #     str_outputs = self._llama_detokenizer_v2(outputs, entry_metadata_list,
+        #                                              index_list, skip_special_tokens=True)
 
-        elif self.model_config.tokenizer == 'InternLMTokenizer' and outputs[0] != -1:
-            str_outputs = self._detokenizer(outputs)
+        # elif self.model_config.tokenizer in ('InternLMTokenizer', 'Baichuan2Tokenizer') and outputs[0] != -1:
+        #     str_outputs = self._detokenizer(outputs)
 
         self._counter_of_token += len(outputs)
         logging.debug("current total token numbers is {}".format(self._counter_of_token))
@@ -218,7 +226,7 @@ class Master:
         time_tokenizer = time.time()
         prompt_token_ids = None
         logging.debug("request id add_requests_to_schedule_pool {}".format(request_id))
-        if self.model_config.tokenizer == 'LlamaTokenizer':
+        if self.model_config.tokenizer in ('LlamaTokenizer', 'Baichuan2Tokenizer'):
             prompt_token_ids = self.tokenizer.encode(prompt)
         elif self.model_config.tokenizer == 'InternLMTokenizer':
             prompt_token_ids = self.tokenizer(prompt)['input_ids'][1:]
@@ -268,10 +276,12 @@ class Master:
 
 class AsyncMaster(Master):
     async def step_async(self) -> List[ResponseOutput]:
+        # schedule_time = time.time()
         entries_metadata_list, current_batch_size = self._schedule()
+        # logging.debug('schedule time is {}'.format((time.time() - schedule_time) * 1000))
         valid_entry_len = 0
         for metadata in entries_metadata_list:
-            logging.debug("entry_data status after schedule is {}".format(metadata.entry_data.get_status()))
+            # logging.debug("entry_data status after schedule is {}".format(metadata.entry_data.get_status()))
             if metadata.entry_data.get_status() == EntryStatus.RUNNING or \
                     metadata.entry_data.get_status() == EntryStatus.INPUT_OUTOFRANGE:
                 valid_entry_len += 1
@@ -302,17 +312,7 @@ class AsyncMaster(Master):
                 else:
                     break
         logging.debug('len of input entry_metadata_list is {}'.format(len(input_entry_metadata_list)))
-        # valid prompt add to batching list
-        if len(input_entry_metadata_list) == 1 and \
-                input_entry_metadata_list[0].entry_data.get_status() != EntryStatus.PADDING_INVAILED:
-            output = self.worker.predict(current_batch_size, entry_metadata_list=input_entry_metadata_list, config=model_config)
-        # invalid prompt add to batching list
-        elif len(input_entry_metadata_list) == 1 and \
-                input_entry_metadata_list[0].entry_data.get_status() == EntryStatus.PADDING_INVAILED:
-            output = self.worker.predict(current_batch_size, entry_metadata_list=input_entry_metadata_list, config=model_config)
-        # decode
-        else:
-            output = self.worker.predict(current_batch_size, entry_metadata_list=input_entry_metadata_list, config=model_config)
+        output = self.worker.predict(current_batch_size, entry_metadata_list=input_entry_metadata_list, config=model_config)
         result = self._postprocess(output, entry_metadata_list=entry_metadata_list, index_list=index_list)
         logging.info('e-to-e time is {}'.format((time.time() - e_t_e_time) * 1000))
         return result

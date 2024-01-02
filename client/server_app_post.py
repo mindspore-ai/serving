@@ -28,10 +28,10 @@ from fastapi.responses import StreamingResponse
 from sse_starlette.sse import EventSourceResponse, ServerSentEvent
 
 from client.client_utils import ClientRequest, Parameters
-from config.serving_config import SERVER_APP_HOST, SERVER_APP_PORT
+from config.serving_config import SERVER_APP_HOST, SERVER_APP_PORT, Baseconfig
 from server.llm_server_post import LLMServer
-
-logging.basicConfig(level=logging.ERROR,
+from research.baichuan2.baichuan2_tokenizer import Baichuan2Tokenizer
+logging.basicConfig(level=logging.DEBUG,
                     filename='./output/server_app.log',
                     filemode='w',
                     format=
@@ -40,17 +40,20 @@ logging.basicConfig(level=logging.ERROR,
 app = FastAPI()
 llm_server = None
 
+tokenizer = Baichuan2Tokenizer(Baseconfig.tokenizer_path)
 
 async def get_full_res(request, results):
     all_texts = ''
+    all_tks = []
     async for result in results:
         prompt_ = result.prompt
-        answer_texts = [output.text for output in result.outputs]
+        answer_texts = [output.token for output in result.outputs]
         text = answer_texts[0]
+        all_tks.append(text)
         if text is None:
             text = ""
-        all_texts += text
-
+        # all_texts += text
+    all_texts = tokenizer.decode(all_tks, skip_special_tokens=True)
     ret = {
         "generated_text": all_texts,
     }

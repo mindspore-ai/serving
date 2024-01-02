@@ -356,6 +356,60 @@ class DisModel:
                                   axis=-1)
         return parms_np
 
+    def _assemble_pa_inputs(self, is_first_iteration, batch_valid_length: np.array, cache_engine_list, seq_length, valid_batch_flag):
+        if is_first_iteration:
+            return self._assemble_pa_full_inputs(batch_valid_length, cache_engine_list, seq_length, valid_batch_flag)
+        else:
+            return self._assemble_pa_inc_inputs(batch_valid_length, cache_engine_list, seq_length, valid_batch_flag)
+
+    def _assemble_pa_full_inputs(self, batch_valid_length: np.array, cache_engine_list, seq_length, valid_batch_flag):
+        block_size = cache_engine_list[0].block_size
+        max_num_blocks_per_seq = seq_length // block_size
+
+        bs = len(valid_batch_flag)
+        block_tables = []
+        slot_mapping = []
+        for i in range(bs):
+            if valid_batch_flag[i]:
+                cache_engine_list[i].prepare_cache(batch_valid_length[i])
+            # 预留出首个块，给冗余写用，全量需要这个 TODO:后续优化ReshapeAndCache逻辑，跳过冗余位置
+            block_table = cache_engine_list[i].block_table
+            # padded_table = block_table + [ -1 for _ in range(max_num_blocks_per_seq - len(cache_engine_list[i].block_table) + 1)]
+            padded_table = block_table + [ -1 for _ in range(max_num_blocks_per_seq - len(cache_engine_list[i].block_table))]
+            block_tables.append(padded_table)
+
+            slots = [block_table[k // block_size] * block_size + k % block_size for k in range(batch_valid_length[i])]
+            null_slot_idx = 0
+            slots = slots + [ null_slot_idx for _ in range(seq_length - batch_valid_length[i])]
+            slot_mapping = slot_mapping + slots
+        block_tables = np.array(block_tables, dtype=np.int32)
+        slot_mapping = np.array(slot_mapping, dtype=np.int32)
+        return block_tables, slot_mapping
+    
+    def _assemble_pa_inc_inputs(self, batch_valid_length: np.array, cache_engine_list, seq_length, valid_batch_flag):
+        block_size = cache_engine_list[0].block_size
+        max_num_blocks_per_seq = seq_length // block_size
+        bs = len(valid_batch_flag)
+        block_tables = []
+        slot_mapping = []
+        for i in range(bs):
+            if valid_batch_flag[i]:
+                cache_engine_list[i].prepare_cache(1) # 增量推理时，每个序列新增一个token。
+                valid_length = cache_engine_list[i].num_token # - block_size
+            else:
+                valid_length = 1
+            block_table = cache_engine_list[i].block_table
+            padded_table = block_table + [ -1 for _ in range(max_num_blocks_per_seq - len(cache_engine_list[i].block_table))]
+            block_tables.append(padded_table)
+            curent_idx = valid_length - 1
+
+
+            slots = [block_table[curent_idx // block_size] * block_size + curent_idx % block_size]
+            slot_mapping = slot_mapping + slots
+        block_tables = np.array(block_tables, dtype=np.int32)
+        slot_mapping = np.array(slot_mapping, dtype=np.int32)
+        return block_tables, slot_mapping
+
     def callV3(self, shms: List, input_ids, current_index,
                valid_length, init_reset, is_first_iteration, valid_batch_flag, InputExtraList=[],
                current_batch_size=None, **kwargs):
@@ -363,6 +417,8 @@ class DisModel:
         time_start = time.time()
         logging.debug("is prefill {}".format(is_first_iteration))
         decode_index_list = kwargs.get("decode_index_list")
+        cache_engine_list = kwargs.get("cache_engine_list")
+        seq_length = kwargs.get("seq_length")
         if is_first_iteration:
             lite_inputs = self.get_model_inputs(input_ids, current_index, valid_length,
                                                 init_reset, is_first_iteration, InputExtraList=InputExtraList, **kwargs)
@@ -406,6 +462,24 @@ class DisModel:
             logging.debug("valid_batch_flag in decode is {}".format(valid_batch_flag))
             batch_flag_str = " ".join(str(element) for element in valid_batch_flag)
             shapes_str = "a" + '_' + str(current_batch_size) + '_' + batch_flag_str
+        block_tables, slot_mapping = self._assemble_pa_inputs(is_first_iteration, valid_length, cache_engine_list, seq_length, valid_batch_flag)
+        block_tables_np = np.array(block_tables, dtype=np.int32)
+        block_tables_shm = np.ndarray(block_tables_np.shape, dtype=block_tables_np.dtype, buffer=shms[6].buf)
+        block_tables_shm[:] = block_tables_np[:]
+        slot_mapping_np = np.array(slot_mapping, dtype=np.int32)
+        slot_mapping_shm = np.ndarray(slot_mapping_np.shape, dtype=slot_mapping_np.dtype, buffer=shms[7].buf)
+        slot_mapping_shm[:] = slot_mapping_np[:]
+
+        shape_strs = []
+        for shape in [block_tables_np.shape, slot_mapping_np.shape]:
+            shape_str = " ".join(str(element) for element in shape)
+            shape_strs.append(shape_str)
+        if is_first_iteration:
+            shapes_str += "," + ",".join(element for element in shape_strs)
+        else:
+            shapes_str += "_" + "_".join(element for element in shape_strs)
+            # a_bs_x x x x_btshape0 btshape1_smshape0
+
         logging.debug("get input lite is {} ".format((time.time() - time_start) * 1000))
         logging.debug("server decode batch size is {} ".format(current_batch_size))
         shapes_str = shapes_str.encode()

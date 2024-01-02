@@ -7,7 +7,7 @@ import numpy as np
 
 from .model_init_multimodel import DisModel
 from serving_utils.entry import EntryMetaData, EntryStatus
-from config.serving_config import Baseconfig, ExtraInput, ModelName
+from config.serving_config import Baseconfig, ExtraInput, ModelName, PageAttentionConfig
 from multiprocessing import shared_memory
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
@@ -47,8 +47,10 @@ class Worker:
         # 3 : freq_sin
         # 4 : gen_params, top_k top_p ...
         # 5 : predict output
+        # 6 : block table
+        # 7 : slot mapping
 
-        for i in range(6):
+        for i in range(8):
             tmp = shared_memory.SharedMemory(create=True, size=1024 * 1024 * 1024)
             self.shms.append(tmp)
             self.shm_names.append(tmp.name)
@@ -91,6 +93,27 @@ class Worker:
         valid_length = np.array(valid_length_each_example, dtype=np.int32)
         return valid_length, batch_size
 
+    def _get_seq_length(self, input_ids, is_prefill):
+        max_length = 0
+        if not is_prefill:
+            return PageAttentionConfig.decode_seq_length
+        for item in input_ids:
+            if isinstance(item, list):
+                max_length = max(max_length, len(item))
+            else:
+                max_length = max(max_length, 1)
+        if 'seq_type' in Baseconfig and Baseconfig.seq_type == 'dyn':
+            seq_length = max_length
+        elif len(Baseconfig.seq_length) > 1:
+            seq_length = self._get_seq_length_dynmic_dinning(self.seq_length_list, max_length)
+        else:
+            if 'seq_length' not in Baseconfig or (Baseconfig.seq_length == [] and Baseconfig.seq_type != 'dyn'):
+                logging.error('seq length is None ! using default 2048')
+                seq_length = 2048
+            else:
+                seq_length = Baseconfig.seq_length[0]
+        return seq_length
+    
     def _predict(self,
                  input_ids: List[List[int]],
                  is_prefill: bool,
@@ -100,20 +123,9 @@ class Worker:
         time_start = time.time()
         outputs = []
         # Init outputs with original inputs
+        seq_length = self._get_seq_length(input_ids, is_prefill)
+        generate_parms["seq_length"] = seq_length
         if is_prefill:
-            max_length = 0
-            for item in input_ids:
-                max_length = max(max_length, len(item))
-            if 'seq_type' in Baseconfig and Baseconfig.seq_type == 'dyn':
-                seq_length = max_length
-            elif len(Baseconfig.seq_length) > 1:
-                seq_length = self._get_seq_length_dynmic_dinning(self.seq_length_list, max_length)
-            else:
-                if 'seq_length' not in Baseconfig or (Baseconfig.seq_length == [] and Baseconfig.seq_type != 'dyn'):
-                    logging.error('seq length is None ! using default 2048')
-                    seq_length = 2048
-                else:
-                    seq_length = Baseconfig.seq_length[0]
             input_ids = self._padding(input_ids, seq_length)
             logging.debug("seq_length is {}, input_ids after padding is {}".format(seq_length, input_ids))
             self.valid_length, self.batch_size = self._get_valid_length(input_ids)
@@ -151,6 +163,7 @@ class Worker:
         temperature_list = []
         repetition_penalty = []
         decode_index_list = []
+        cache_engine_list = []
         for item in entry_metadata_list:
             entry_data = item.get_entry_data()
             do_sample_list.append(entry_data.do_sample)
@@ -159,7 +172,7 @@ class Worker:
             temperature_list.append(entry_data.temperature)
             repetition_penalty.append(entry_data.repetition_penalty)
             decode_index_list.append(entry_data.decode_index)
-
+            cache_engine_list.append(item.cache_engine)
         parms = {
             "do_sample_list": do_sample_list,
             "top_k_list": top_k_list,
@@ -167,6 +180,7 @@ class Worker:
             "temperature_list": temperature_list,
             "repetition_penalty": repetition_penalty,
             "decode_index_list": decode_index_list,
+            "cache_engine_list": cache_engine_list,
         }
 
         return parms
@@ -182,7 +196,7 @@ class Worker:
                 inputs_ids.append(token_ids)
             else:
                 inputs_ids.append(token_ids[-1])
-            logging.debug("batch_item status is {}".format(entry_data.get_status()))
+            # logging.debug("batch_item status is {}".format(entry_data.get_status()))
             if entry_data.get_status() == EntryStatus.RUNNING:
                 valid_batch_flag.append(1)
             else:

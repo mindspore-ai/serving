@@ -16,11 +16,13 @@ class CompletionOutput:
             self,
             index: int,
             text: str,
-            finished
+            finished,
+            token
     ) -> None:
         self.index = index
         self.text = text
         self.finish_reason = finished
+        self.token = token
 
     def finished(self) -> bool:
         return self.finish_reason is not None
@@ -68,7 +70,7 @@ class ResponseOutput:
             print(f'>>>>>>request {request_id} input is too large, out of input length of model')
             finished = True
             finished_reason = EntryStatus.get_finished_reason(status)
-            completion_out = CompletionOutput(index, text=reason, finished=finished_reason)
+            completion_out = CompletionOutput(index, text=reason, finished=finished_reason, token=output)
             entry_meta_data.entry_data.status = EntryStatus.FINISHED_STOPPED
             return cls(request_id,
                        entry_meta_data.get_prompt(),
@@ -96,7 +98,7 @@ class ResponseOutput:
             logging.debug("stop inference because of iteration is max_len, request is {}".format(request_id))
             finished = True
 
-        completion_out = CompletionOutput(index, text=output_str, finished=finished_reason)
+        completion_out = CompletionOutput(index, text=output_str, finished=finished_reason, token=output)
         return cls(request_id,
                    entry_meta_data.get_prompt(),
                    entry_meta_data.get_entry_data().get_prompt_token(),
