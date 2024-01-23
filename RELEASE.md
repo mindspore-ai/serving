@@ -22,7 +22,7 @@
 - [STABLE] continuous batching of incoming requests to make better NPU utilization
   
 #### Others
-- [STABLE] Token streaming using Server-Sent Events (SSE) for progressive generation
+- [STABLE] support token streaming using Server-Sent Events (SSE) for progressive generation
 - [BETA] provide launch script for convenience [start.py](./examples/start.py)
 
 #### 

@@ -1,0 +1,44 @@
+model_path:
+    prefill_model: ["/path/to/full_graph.mindir"]
+    decode_model: ["/path/to/inc_graph.mindir"]
+    argmax_model: "/path/to/argmax.mindir"
+    topk_model: "/path/to/topk.mindir"
+    prefill_ini : ['/path/to/full.ini']
+    decode_ini: ['/path/to/inc_.ini']
+    post_model_ini: '/path/to/post/config.ini'
+
+model_config:
+    model_name: 'llama_dyn'
+    max_generate_length: 4096
+    end_token: 2
+    seq_length: []
+    vocab_size: 32000
+    prefill_batch_size: [1]
+    decode_batch_size: [16]
+    zactivate_len: [512, 1024, 2048, 4096]
+    model_type: 0
+    seq_type: 'static'
+    batch_waiting_time: 0.0
+    decode_batch_waiting_time: 0.0
+    batching_strategy: 'continuous'
+    current_index: False
+    model_dtype: "DataType.FLOAT32"
+
+serving_config:
+    agent_ports: [13000, 13001, 13002, 13003]
+    start_device_id: 0
+    server_ip: 'localhost'
+    server_port: 19280
+
+tokenizer:
+    type: LlamaTokenizer
+    vocab_file: '/path/to/tokenizer.model'
+
+basic_inputs:
+    type: LlamaBasicInputs
+
+extra_inputs:
+    type: LlamaExtraInputs
+
+warmup_inputs:
+    type: LlamaWarmupInputs

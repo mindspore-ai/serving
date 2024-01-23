@@ -23,36 +23,26 @@
 - easydict
 - transformers==4.35.0
 
-#### 配置文件(serving_config.py)：
-    模型文件路径配置：
-    "prefill_model_path" - 全量模型mindir路径，如模型切分成多份，每个mindir路径用','隔开
-    "decode_model_path"  - 增量模型mindir路径
-    “argmax_model”       - argmax后处理mindir路径
-    "topk_model"         - topk后处理mindir路径 （这两个后处理模型可以通过post_sampling_model.py进行一键导出）
-    "ctx_path"           - 全量模型对应的ini路径 (str)
-    "inc_path"           - 增量模型对应的ini路径 (list(str))
-    "post_model_ini"     - 后处理模型对应的ini路径
-    "tokenizer_path"     - 大模型的分词model路径
-    
-    模型参数配置：
-    "max_generate_length" - 最大token生成长度
-    "end_token"           - eos token
-    "seq_length"          - 如果模型支持动态分档，需要使用该字段
-    "dyn_batch_size"      - 如果模型支持动态batch，需要使用该字段
-    "seq_type"            - 如果模型支持纯动态，该字段设置为'dyn'
-    "batching_strategy"   - 组batch的策略, 'continuous' / 'static'
-    "input_function"      - 如用户想自定义模型入参，该字段设置为'custom'（并修改get_inputs_custom和ExtraInput函数），否则为'common'
+#### 一键安装whl包
+```shell
+pip install mindspore-serving-xxx.whl
+```
 
-具体模型的设置可以参考doc/config
 注：后处理当前按照入图的方式进行，使用serving前请使用post_sampling_model.py重新导出后处理模型，保证数据类型与LLM模型的输出类型一致；
-
+```shell
+python tools/post_sampling_model.py --output_dir ./target_dir
+# args
+#   output_dir: 后处理模型生成的目录
+```
 
 #### 启动
 ```shell
-python start.py # 先后拉起模型和serving进程
+python examplse/start.py --config configs/xxx.yaml# 先后拉起模型和serving进程
 ```
+启动参数：config: 模型对应的yaml文件, refer to [model.yaml](configs/internLM_dyn.yaml)
 
-然后可以通过“/models/model_name/generate”和"/models/model_name/generate_stream" 进行请求
+#### 发起请求
+通过“/models/model_name/generate”和"/models/model_name/generate_stream" 进行请求
 
 ```shell
 curl 127.0.0.1:9800/models/llama2/generate \
@@ -69,8 +59,9 @@ curl 127.0.0.1:9800/models/llama2/generate_stream \
 ```
 
 或者通过python API
+
 ```python
-from client import MindsporeInferenceClient
+from mindspore_serving.client import MindsporeInferenceClient
 
 client = MindsporeInferenceClient(model_type="llama2", server_url="http://127.0.0.1:8080")
 

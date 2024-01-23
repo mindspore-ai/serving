@@ -37,7 +37,18 @@ def _read_file(filename):
         return f.read()
 
 
+def get_platform():
+    """
+    Get platform name.
+
+    Returns:
+        str, platform name in lowercase.
+    """
+    return platform.system().strip().lower()
+
+
 readme = _read_file('README.md')
+
 
 def _write_version(file):
     file.write("__version__ = '{}'\n".format(version))
@@ -45,6 +56,7 @@ def _write_version(file):
 
 def _write_config(file):
     file.write("__backend__ = '{}'\n".format(backend_policy))
+
 
 def build_dependencies():
     """generate python file"""
@@ -63,6 +75,7 @@ def build_dependencies():
     config_file = os.path.join(pwd, 'mindspore_serving', 'default_config.py')
     with open(config_file, 'w') as f:
         _write_config(f)
+
 
 required_package = [
     'numpy>=1.21.6',
@@ -143,9 +156,9 @@ class BuildPy(build_py):
 
     def run(self):
         super().run()
-        mindspore_dir = os.path.join(pkg_dir, 'build', 'lib', 'mindspore_serving')
+        mindspore_dir = os.path.join(pkg_dir, 'build', 'mindspore_serving/lib', 'mindspore_serving')
         update_permissions(mindspore_dir)
-        mindspore_dir = os.path.join(pkg_dir, 'build', 'lib', 'akg')
+        mindspore_dir = os.path.join(pkg_dir, 'build', 'mindspore_serving/lib', 'akg')
         update_permissions(mindspore_dir)
 
 
@@ -168,6 +181,7 @@ if __name__ == '__main__':
         data_files=bin_files(),
         packages=find_packages(),
         package_data=package_data,
+        platforms=[get_platform()],
         include_package_data=True,
         cmdclass={
             'egg_info': EggInfo,
