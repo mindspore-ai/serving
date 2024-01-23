@@ -1,4 +1,4 @@
-from client import MindsporeInferenceClient
+from mindspore_serving.client import MindsporeInferenceClient
 
 client = MindsporeInferenceClient(model_type="llama2", server_url="http://127.0.0.1:8080")
 

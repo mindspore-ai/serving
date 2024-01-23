@@ -1,0 +1,38 @@
+model_path:
+    prefill_model: ["/path/to/full_graph.mindir"]
+    decode_model: ["/path/to/inc_graph.mindir"]
+    argmax_model: "/path/to/argmax.mindir"
+    topk_model: "/path/to/topk.mindir"
+    prefill_ini : ['/path/to/full.ini']
+    decode_ini: ['/path/to/inc_.ini']
+    post_model_ini: '/path/to/post/config.ini'
+
+model_config:
+    model_name: 'internlm_7b'
+    max_generate_length: 4096
+    end_token: 2
+    seq_length: []
+    vocab_size: 103168
+    prefill_batch_size: [1]
+    decode_batch_size: [1, 2, 4]
+    zactivate_len: [4096]
+    model_type: 0
+
+serving_config:
+    agent_ports: [13000, 13001]
+    start_device_id: 0
+    server_ip: 'localhost'
+    server_port: 19280
+
+tokenizer:
+    type: InternLMTokenizer
+    vocab_file: '/path/to/tokenizer.model'
+
+basic_inputs:
+    type: InternLMBasicInputs
+
+extra_inputs:
+    type: InternLMExtraInputs
+
+warmup_inputs:
+    type: InternLMWarmupInputs
