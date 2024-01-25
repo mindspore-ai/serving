@@ -62,7 +62,7 @@ class ValidatorUtil:
 
     @staticmethod
     def validate_temperature(num):
-        if isinstance(num, float) and 0.1 < num <= 65536:
+        if isinstance(num, float) and 1e-5 < num <= 65536:
             return True
         else:
             return False
