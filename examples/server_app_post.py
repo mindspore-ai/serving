@@ -66,6 +66,9 @@ async def get_full_res(request, results):
         output_tokens_len = result.output_tokens_len
         for index, output in enumerate(result.outputs):
             answer_texts = output.text
+            if answer_texts is None:
+                continue
+
             res_list = {
                 "id": output.index,
                 "logprob": output.logprob,
@@ -101,6 +104,9 @@ async def get_full_res_sse(request, results):
         output_tokens_len = result.output_tokens_len
         for index, output in enumerate(result.outputs):
             answer_texts = output.text
+            if answer_texts is None:
+                continue
+
             res_list = {
                 "id": output.index,
                 "logprob": output.logprob,
@@ -130,9 +136,19 @@ async def get_full_res_sse(request, results):
 async def get_stream_res(request, results):
     all_texts = ""
     tokens_list = []
+    finish_reason = ""
+    output_tokens_len = 0
+    token_index = 0
     async for result in results:
+        finish_reason = result.finish_reason
+        output_tokens_len = result.output_tokens_len
         for index, output in enumerate(result.outputs):
             answer_texts = output.text
+            if answer_texts is None:
+                continue
+            else:
+                token_index += 1
+
             res_list = {
                 "id": output.index,
                 "logprob": output.logprob,
@@ -142,23 +158,50 @@ async def get_stream_res(request, results):
             tokens_list.append(res_list)
             all_texts += answer_texts
 
+            ret = {
+                "details": None,
+                "generated_text": answer_texts,
+                "tokens": res_list,
+                "top_tokens": [
+                    res_list
+                ],
+            }
+            logging.debug("get_stream_res one token_index is {}".format(token_index))
+            yield ("data:" + json.dumps(ret, ensure_ascii=False) + '\n').encode("utf-8")
+
+    return_full_text = request.parameters.return_full_text
+    if return_full_text:
         ret = {
-            "details": None,
             "generated_text": all_texts,
+            "finish_reason": finish_reason,
+            "generated_tokens": output_tokens_len,
+            "prefill": [tokens_list[0]],
+            "seed": 0,
             "tokens": tokens_list,
             "top_tokens": [
                 [tokens_list[0]]
             ],
+            "details": None
         }
-        yield (json.dumps(ret, ensure_ascii=False) + '\n').encode("utf-8")
+        yield ("data:" + json.dumps(ret, ensure_ascii=False) + '\n').encode("utf-8")
 
 
 async def get_stream_res_sse(request, results):
     all_texts = ""
     tokens_list = []
+    finish_reason = ""
+    output_tokens_len = 0
+    token_index = 0
     async for result in results:
+        finish_reason = result.finish_reason
+        output_tokens_len = result.output_tokens_len
         for index, output in enumerate(result.outputs):
             answer_texts = output.text
+            if answer_texts is None:
+                continue
+            else:
+                token_index += 1
+
             res_list = {
                 "id": output.index,
                 "logprob": output.logprob,
@@ -168,21 +211,46 @@ async def get_stream_res_sse(request, results):
             tokens_list.append(res_list)
             all_texts += answer_texts
 
-        ret = {
-            "event": "message",
-            "retry": 30000,
+            tmp_ret = {
+                "details": None,
+                "generated_text": answer_texts,
+                "tokens": res_list,
+                "top_tokens": [
+                    res_list
+                ]
+            },
+            ret = {
+                "event": "message",
+                "retry": 30000,
+                "data": tmp_ret
+            }
+            logging.debug("get_stream_res one token_index is {}".format(token_index))
+            yield (json.dumps(ret, ensure_ascii=False) + '\n').encode("utf-8")
+
+    return_full_text = request.parameters.return_full_text
+    if return_full_text:
+        full_tmp_ret = {
             "details": None,
             "generated_text": all_texts,
+            "finish_reason": finish_reason,
+            "generated_tokens": output_tokens_len,
+            "prefill": [tokens_list[0]],
+            "seed": 0,
             "tokens": tokens_list,
             "top_tokens": [
                 [tokens_list[0]]
-            ],
+            ]
+        },
+        ret = {
+            "event": "message",
+            "retry": 30000,
+            "data": full_tmp_ret
         }
         yield (json.dumps(ret, ensure_ascii=False) + '\n').encode("utf-8")
 
 
 def send_request(request: ClientRequest):
-    print('=============request: ', request)
+    print('request: ', request)
     request_id = str(uuid.uuid1())
 
     if request.parameters is None:
@@ -233,6 +301,7 @@ def send_request(request: ClientRequest):
 
     if not ValidatorUtil.validate_temperature(request.parameters.temperature):
         request.parameters.temperature = 1.0
+        request.parameters.do_sample = False
 
     params = {
         "prompt": request.inputs,
@@ -244,7 +313,7 @@ def send_request(request: ClientRequest):
         "max_token_len": request.parameters.max_new_tokens,
     }
 
-    print('=============params: ', params)
+    print('params: ', params)
     print('generate_answer...')
     global llm_server
     results = llm_server.generate_answer(request_id, **params)
