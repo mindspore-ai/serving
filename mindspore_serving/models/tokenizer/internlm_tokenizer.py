@@ -65,12 +65,6 @@ class InternLMTokenizer(Tokenizer):
         """ Initialisation"""
 
         self.sp_model_kwargs = {} if sp_model_kwargs is None else sp_model_kwargs
-        super().__init__(bos_token=bos_token,
-                         eos_token=eos_token,
-                         unk_token=unk_token,
-                         pad_token=pad_token,
-                         clean_up_tokenization_spaces=clean_up_tokenization_spaces,
-                         **kwargs)
         self.vocab_file = vocab_file
         self.add_bos_token = add_bos_token
         self.add_eos_token = add_eos_token
@@ -78,6 +72,12 @@ class InternLMTokenizer(Tokenizer):
         self.sp_model = spm.SentencePieceProcessor(**self.sp_model_kwargs)
         self.sp_model.Load(vocab_file)
         self._no_prefix_space_tokens = None
+        super().__init__(bos_token=bos_token,
+                         eos_token=eos_token,
+                         unk_token=unk_token,
+                         pad_token=pad_token,
+                         clean_up_tokenization_spaces=clean_up_tokenization_spaces,
+                         **kwargs)
         self.add_tokens(["<s>", "</s>", "<unk>"], special_tokens=True)
 
     @property
