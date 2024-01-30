@@ -254,12 +254,9 @@ def send_request(request: ClientRequest):
     print('request: ', request)
 
     if config.model_config.model_name == 'internlm_7b':
-        request.inputs = INTERNLM_PROMPT_FORMT.format(request.inputs)
+        request.inputs = INTERNLM_PROMPT_FORMAT.format(request.inputs)
     elif config.model_config.model_name == 'baichuan2pa':    
-        request.inputs = BAICHUAN_PROMPT_FORMT.format(request.inputs)
-
-    print('internlm_7b: ', INTERNLM_PROMPT_FORMT.format(request.inputs))
-    print('baichuan2pa: ', BAICHUAN_PROMPT_FORMT.format(request.inputs))
+        request.inputs = BAICHUAN_PROMPT_FORMAT.format(request.inputs)
 
     request_id = str(uuid.uuid1())
 
