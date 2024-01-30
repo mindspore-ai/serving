@@ -3,6 +3,7 @@ from mindspore_serving.config.config import ServingConfig
 from mindspore_serving.serving_utils.register import Registers
 from mindformers.mindformer_book import MindFormerBook
 from mindformers import AutoTokenizer
+from transformers import AutoTokenizer as TransfomersTokenizer
 from transformers import LlamaTokenizer
 from research.baichuan2.baichuan2_tokenizer import Baichuan2Tokenizer
 
@@ -32,6 +33,8 @@ def build_tokenizer(base_config: ServingConfig = None):
     # 加入百川tokenlizer
     elif tokenizer_type == 'BaichuanTokenizer':
         tokenizer = Baichuan2Tokenizer(base_config.tokenizer.vocab_file)
+    elif tokenizer_type == 'WizardCoderTokenizer':
+        tokenizer = TransfomersTokenizer.from_pretrained(base_config.tokenizer.vocab_file)
     else:
         tokenizer = Registers.TOKENIZER.get_obj_map()[tokenizer_type](base_config.tokenizer.vocab_file)
     return tokenizer

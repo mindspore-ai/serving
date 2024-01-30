@@ -20,7 +20,7 @@ def check_valid_config(config):
 
     # model_config校验
     model_config = config.model_config
-    if not (model_config.model_name and model_config.end_token and model_config.vocab_size and
+    if not (model_config.model_name and model_config.end_token is not None and model_config.vocab_size and
             model_config.prefill_batch_size and len(model_config.prefill_batch_size) > 0 and
             model_config.decode_batch_size and len(model_config.decode_batch_size) > 0):
         print("ERROR: there exists empty block on yaml, check the model_config part")

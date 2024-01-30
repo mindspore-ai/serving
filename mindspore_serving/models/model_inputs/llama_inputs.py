@@ -20,7 +20,11 @@ class LlamaBasicInputs(BaseBasicInputs):
         if use_current_index:
             inputs_list = [input_ids, current_index, batch_valid_length, decode_index]
         else:
-            inputs_list = [input_ids, batch_valid_length, decode_index]
+            model_type = args[1]
+            if model_type == "dyn":
+                inputs_list = [input_ids, batch_valid_length, decode_index]
+            else:
+                inputs_list = [input_ids, current_index, batch_valid_length]
         return inputs_list
 
 
@@ -103,7 +107,12 @@ class LlamaWarmupInputs(BaseWarmupInputs):
             if use_current_index:
                 inputs_list = [input_ids, current_index, batch_valid_length, decode_index]
             else:
-                inputs_list = [input_ids, batch_valid_length, decode_index]
+                model_type = kwargs.get('model_type', "dyn")
+                if model_type == "dyn":
+                    inputs_list = [input_ids, batch_valid_length, decode_index]
+                else:
+                    init_reset = np.array([False], np.bool_)
+                    inputs_list = [input_ids, current_index, init_reset, batch_valid_length]
 
         if page_attention:
             print("==============================================page_attention:", page_attention)
@@ -116,8 +125,12 @@ class LlamaWarmupInputs(BaseWarmupInputs):
                 inputs_list.append(block_tables)
                 inputs_list.append(slot_mapping)
         else:
-            extra_cls = LlamaExtraInputs()
-            input_extra_list = extra_cls.get_extra_inputs(input_ids, current_index, None, full_model,
-                                                          batch_valid_length, **kwargs)
-            inputs_list.extend(input_extra_list)
+            model_type = kwargs.pop('model_type')
+            logging.debug(f"model_type in llamaWarmup: {model_type}")
+            # dyn model type need 'act_len' parameter
+            if model_type == "dyn":
+                extra_cls = LlamaExtraInputs()
+                input_extra_list = extra_cls.get_extra_inputs(input_ids, current_index, None, full_model,
+                                                              batch_valid_length, **kwargs)
+                inputs_list.extend(input_extra_list)
         return inputs_list

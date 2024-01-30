@@ -1,0 +1,44 @@
+model_path:
+    prefill_model: ["/path/to/prefill_model.mindir"]
+    decode_model: ["/path/to/decode_model.mindir"]
+    argmax_model: "/path/to/argmax.mindir"
+    topk_model: "/path/to/topk.mindir"
+    prefill_ini : ['/path/to/lite.ini']
+    decode_ini: ['/path/to/lite.ini']
+    post_model_ini: '/path/to/lite.ini'
+
+model_config:
+    model_name: 'llama_dyn'
+    max_generate_length: 4096
+    end_token: 0
+    seq_length: [2048]
+    vocab_size: 49153
+    prefill_batch_size: [1]
+    decode_batch_size: [1]
+    zactivate_len: [2048]
+    model_type: 'static'
+    seq_type: 'static'
+    batch_waiting_time: 0.0
+    decode_batch_waiting_time: 0.0
+    batching_strategy: 'continuous'
+    current_index: False
+    page_attention: False
+
+serving_config:
+    agent_ports: [9980]
+    start_device_id: 0
+    server_ip: 'localhost'
+    server_port: 12359
+
+tokenizer:
+    type: WizardCoderTokenizer
+    vocab_file: '/path/to/transformers_config'
+
+basic_inputs:
+    type: LlamaBasicInputs
+
+extra_inputs:
+    type: LlamaExtraInputs
+
+warmup_inputs:
+    type: LlamaWarmupInputs
