@@ -71,7 +71,8 @@ def load_model(cfg: ServingConfig, rank_id: int, device_id: int):
                                                             full_model=True,
                                                             use_current_index=model_config.current_index,
                                                             page_attention=model_config.page_attention,
-                                                            zactivate_len=model_config.zactivate_len)
+                                                            zactivate_len=model_config.zactivate_len,
+                                                            model_type=model_config.model_type)
     prefill_lite_inputs = [mslite.Tensor(np.ascontiguousarray(item)) for item in prefill_inputs_list]
     if rank_id == 0:
         for item in prefill_lite_inputs:
@@ -101,20 +102,21 @@ def load_model(cfg: ServingConfig, rank_id: int, device_id: int):
             decode_inputs_list = warmup_func.get_warmup_inputs(seq_length=warm_seq_length,
                                                                batch_size=warm_batch_size,
                                                                full_model=False,
-															   use_current_index=model_config.current_index,
+                                                               use_current_index=model_config.current_index,
                                                                page_attention=model_config.page_attention,
                                                                zactivate_len=model_config.zactivate_len,
                                                                decode_seq_length=inc_seq_len,
                                                                block_size=cfg.pa_config.block_size)   # zactivate_len这里是否要加上zactivate_len
         else:
-            print(f"decode warmup page attention")
+            print(f"not decode warmup page attention")
             decode_inputs_list = warmup_func.get_warmup_inputs(seq_length=warm_seq_length,
                                                                batch_size=warm_batch_size,
                                                                full_model=False,
                                                                use_current_index=model_config.current_index,
                                                                valid_length=[act_len - 1],
                                                                page_attention=model_config.page_attention,
-                                                               zactivate_len=model_config.zactivate_len)
+                                                               zactivate_len=model_config.zactivate_len,
+                                                               model_type=model_config.model_type)
 
         decode_lite_inputs = [mslite.Tensor(np.ascontiguousarray(item)) for item in decode_inputs_list]
         if rank_id == 0:
@@ -381,7 +383,10 @@ class WorkAgent:
 
                 logprob_list = []
                 for tag in target:
-                    logprob_list.append(output_info[0][0][int(tag)])
+                    if len(output_info.shape) == 2:
+                        logprob_list.append(output_info[0][int(tag)])
+                    else:
+                        logprob_list.append(output_info[0][0][int(tag)])
                 tmp_logprob = np.ndarray((self.current_batch_size,), dtype=np.float64, buffer=output_logprob_shm.buf)
                 tmp_logprob[:] = logprob_list[:]
                 self.targets[:] = target[:]
@@ -421,7 +426,7 @@ class WorkAgent:
 
             valid_length_ = first_group[:, shape_list[0][1] - 1: shape_list[0][1]]
 
-            if self.config.model_config.model_type == 0 and self.config.model_config.current_index:
+            if self.config.model_config.current_index:
                 valid_length = np.squeeze(valid_length_, axis=-1).astype(np.int64)
                 logging.debug("prefill valid_length dtype is int64")
             else:
@@ -454,7 +459,9 @@ class WorkAgent:
                 tmp_shms.append(existing_shm)
                 # To Do np.int64 ?
                 extra_input.append(np.ndarray((shape_list[i]), dtype=np.int64, buffer=existing_shm.buf))
-            if self.config.model_config.page_attention:
+
+            # pa or static model type don't need 'act_len' parameter
+            if self.config.model_config.page_attention or self.config.model_config.model_type == "static":
                 extra_input = []
             else:
                 extra_input = self.extra_input_func.get_extra_inputs(input_ids, current_index, None, True, valid_length,
@@ -534,14 +541,16 @@ class WorkAgent:
                     valid_length.append(1)
                 init_reset.append(decode_params.init_reset)
                 decode_index.append(decode_params.decode_index)
-            if self.config.model_config.page_attention:
+
+            # pa or static model type don't need 'act_len' parameter
+            if self.config.model_config.page_attention or self.config.model_config.model_type == "static":
                 extra_input = []
             else:
                 extra_input = self.extra_input_func.get_extra_inputs(input_ids, current_index, None, False, valid_length,
                                                                  zactivate_len=self.config.model_config.zactivate_len
                                                                  )
             current_index = np.array(current_index, dtype=np.int32)
-            if self.config.model_config.model_type == 0 and self.config.model_config.current_index:
+            if self.config.model_config.current_index:
                 logging.debug("decode valid_length dtype is int64")
                 valid_length = np.array(valid_length, dtype=np.int64)
             else:
@@ -572,7 +581,8 @@ class WorkAgent:
                 tmp_in = [input_ids, valid_length,  block_tables_np, slot_mapping_np]
         else:
             tmp_in = self.basic_input_func.get_inputs(input_ids, current_index, init_reset, valid_length,
-                                                  self.config.model_config.current_index, decode_index_np)
+                                                      self.config.model_config.current_index, decode_index_np,
+                                                      self.config.model_config.model_type)
 
             if len(extra_input) > 0:
                 tmp_in.extend(extra_input)
@@ -592,14 +602,22 @@ class WorkAgent:
 
         predict_time = time.time()
         if self.is_prefill:
-            outputs_list = model.predict(lite_inputs)
+            if self.config.model_config.model_type == 'static':
+                init_reset_ms_tensor = mslite.Tensor(np.array([False], np.bool_))
+                outputs_list = model.predict((lite_inputs[0], lite_inputs[1], init_reset_ms_tensor, lite_inputs[2]))
+            else:
+                outputs_list = model.predict(lite_inputs)
         else:
             # try:
             #     for lite_in in lite_inputs:
             #         np_in = lite_in.get_data_to_numpy()
             #         logging.debug("item shape is {}, dtype is {}".format(np_in.shape, np_in.dtype))
             #         logging.debug("item is {}".format(np_in))
-            outputs_list = model.predict(lite_inputs)
+            if self.config.model_config.model_type == 'static':
+                init_reset_ms_tensor = mslite.Tensor(np.array([True], np.bool_))
+                outputs_list = model.predict((lite_inputs[0], lite_inputs[1], init_reset_ms_tensor, lite_inputs[2]))
+            else:
+                outputs_list = model.predict(lite_inputs)
             # except RuntimeError:
             #     logging.debug("retry predict start")
             #     for lite_in in lite_inputs:
