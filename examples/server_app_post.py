@@ -30,6 +30,7 @@ from sse_starlette.sse import EventSourceResponse, ServerSentEvent
 from mindspore_serving.client.client_utils import ClientRequest, Parameters, ValidatorUtil
 from mindspore_serving.config.config import ServingConfig, check_valid_config
 from mindspore_serving.server.llm_server_post import LLMServer
+from mindspore_serving.serving_utils.constant import *
 
 logging.basicConfig(level=logging.ERROR,
                     filename='./output/server_app.log',
@@ -251,6 +252,12 @@ async def get_stream_res_sse(request, results):
 
 def send_request(request: ClientRequest):
     print('request: ', request)
+
+    if config.model_config.model_name == 'internlm_7b':
+        request.inputs = INTERNLM_PROMPT_FORMAT.format(request.inputs)
+    elif config.model_config.model_name == 'baichuan2pa':    
+        request.inputs = BAICHUAN_PROMPT_FORMAT.format(request.inputs)
+
     request_id = str(uuid.uuid1())
 
     if request.parameters is None:
