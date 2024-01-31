@@ -66,7 +66,6 @@ class ResponseOutput:
         if reason is not None:
             print(f'>>>>>>request {request_id} input is too large, out of input length of model')
             finished = True
-            finished_reason = EntryStatus.get_finished_reason(status)
             completion_out = CompletionOutput(0, text=reason, logprob=0.0, special=False)
             entry_meta_data.get_entry_data().set_status(EntryStatus.FINISHED_STOPPED)
             return cls(request_id,
@@ -74,7 +73,7 @@ class ResponseOutput:
                        entry_meta_data.get_entry_data().get_prompt_token(),
                        [completion_out],
                        finished,
-                       finished_reason,
+                       "prompt_out_of_range",
                        0)
 
         if status == EntryStatus.PADDING_INVAILED:
@@ -85,24 +84,26 @@ class ResponseOutput:
             entry_meta_data.get_entry_data().read_index = 0
             output_str = RETURN_REASON_PREDICT_FAILED
             finished = True
+            finished_reason = "predict_failed"
 
         elif output_token == eos_id:
             entry_meta_data.get_entry_data().prefix_index = 0
             entry_meta_data.get_entry_data().read_index = 0
             finished = True
+            finished_reason = "eos"
 
         elif entry_meta_data.entry_data.get_output_len() == entry_meta_data.entry_data.max_token_len:
             entry_meta_data.get_entry_data().prefix_index = 0
             entry_meta_data.get_entry_data().read_index = 0
             logging.debug("stop inference because of iteration is max_len, request is {}".format(request_id))
             finished = True
+            finished_reason = "length"
 
         is_special = True
         if output_str != "":
             is_special = False
 
         completion_out = CompletionOutput(output_token, text=output_str, logprob=output_token_logprob, special=is_special)
-        logging.info("ResponseOutput is {}".format(completion_out))
 
         return cls(request_id,
                    entry_meta_data.get_prompt(),
