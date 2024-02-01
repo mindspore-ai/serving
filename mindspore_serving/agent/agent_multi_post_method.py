@@ -154,12 +154,12 @@ def load_post_model(model_path, config_file, rank_id, device_id):
     model = mslite.Model()
     print('post model path:', model_path)
     if not os.path.exists(model_path):
-        logging.debug(f"load post-sampling model_path {model_path} not exists.")
+        logging.error(f"load post-sampling model_path {model_path} not exists.")
         raise ValueError(f"load post-sampling model_path  {model_path} not exists.")
     
     if not os.path.exists(config_file):
-        logging.debug(f"load post-sampling config_file {config_file} not exists.")
-        raise ValueError(f"load post-sampling config_file {config_file} not exists.")
+        logging.error(f"load post-sampling post_model_ini {config_file} not exists.")
+        raise ValueError(f"load post-sampling post_model_ini {config_file} not exists.")
 
     model.build_from_file(model_path, mslite.ModelType.MINDIR, context, config_file)
     logging.debug(f"load post-sampling model  {model_path} successful")
