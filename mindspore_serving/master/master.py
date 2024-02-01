@@ -160,6 +160,15 @@ class Master:
         logging.debug("current total token numbers is {}".format(self._counter_of_token))
         # generating output
         results: List[ResponseOutput] = []
+
+        if index_list is None and skip_inference is False:
+            results.append(ResponseOutput.generate_result(output_tokens[0],
+                                                            0,
+                                                            entry_metadata_list[0],
+                                                            str_outputs[0],
+                                                            end_token, reason='Error203: prompt token ids empty'))
+            return results
+        
         # prompt result
         if index_list is not None:
             # idx: index_list and outputs data index, index: batch list index.
