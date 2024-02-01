@@ -1,3 +1,4 @@
+from email.policy import default
 import time
 import logging
 from typing import List
@@ -53,14 +54,16 @@ class Worker:
                 return data
         return seq_list[-1]
 
-    @staticmethod
-    def _padding(origin_inputs, seq_length):
+    def _padding(self, origin_inputs, seq_length):
         pad_ids = []
+        default_padding_values = 0
+        if self.config.model_config.padding_values:
+            default_padding_values = self.config.model_config.padding_values
         for item in origin_inputs:
             pad_length = seq_length - len(item)
             if pad_length < 0:
                 logging.error('input sequence length is over max in serving system!')
-            pad_item = np.pad(item, (0, pad_length), 'constant', constant_values=0)
+            pad_item = np.pad(item, (0, pad_length), 'constant', constant_values=default_padding_values)
             pad_ids.append(pad_item)
         return np.array(pad_ids)
 
