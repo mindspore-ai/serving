@@ -65,6 +65,8 @@ class Worker:
                 logging.error('input sequence length is over max in serving system!')
             pad_item = np.pad(item, (0, pad_length), 'constant', constant_values=default_padding_values)
             pad_ids.append(pad_item)
+
+        logging.debug('prefill _padding result list is {}'.format(pad_ids))
         return np.array(pad_ids)
 
     @staticmethod
