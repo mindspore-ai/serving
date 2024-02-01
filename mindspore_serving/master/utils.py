@@ -63,7 +63,19 @@ class ResponseOutput:
         if status != EntryStatus.RUNNING or status != EntryStatus.WAITING:
             if status != EntryStatus.WAITING_BATCH:
                 finished_reason = EntryStatus.get_finished_reason(status)
-        if reason is not None:
+        if output_token == 203:
+            finished = True
+            completion_out = CompletionOutput(0, text=reason, logprob=0.0, special=False)
+            entry_meta_data.get_entry_data().set_status(EntryStatus.FINISHED_STOPPED)
+            return cls(request_id,
+                       entry_meta_data.get_prompt(),
+                       entry_meta_data.get_entry_data().get_prompt_token(),
+                       [completion_out],
+                       finished,
+                       "prompt_token_ids_empty",
+                       0)
+        
+        if output_token == 202:
             print(f'>>>>>>request {request_id} input is too large, out of input length of model')
             finished = True
             completion_out = CompletionOutput(0, text=reason, logprob=0.0, special=False)

@@ -1,3 +1,4 @@
+from tabnanny import check
 from typing import List, Optional, Tuple
 import copy
 import time
@@ -159,6 +160,15 @@ class Master:
         logging.debug("current total token numbers is {}".format(self._counter_of_token))
         # generating output
         results: List[ResponseOutput] = []
+
+        if index_list is None and skip_inference is False:
+            results.append(ResponseOutput.generate_result(output_tokens[0],
+                                                            0,
+                                                            entry_metadata_list[0],
+                                                            str_outputs[0],
+                                                            end_token, reason='Error203: prompt token ids empty'))
+            return results
+        
         # prompt result
         if index_list is not None:
             # idx: index_list and outputs data index, index: batch list index.
@@ -355,9 +365,22 @@ class AsyncMaster(Master):
             input_entry_metadata_list.append(item)
             index_list.append(index)
         return input_entry_metadata_list, index_list
+    
+    @staticmethod
+    def _check_prompt_token(entry_metadata_list):
+        check_flag = False
+        for index, item in enumerate(entry_metadata_list):
+            if item.get_entry_data().get_prompt_token() == None or item.get_entry_data().get_prompt_len() == 0:
+                check_flag = True
+                break
+        return check_flag
 
     async def _run_workers_async(self, current_batch_size, entry_metadata_list):
         e_t_e_time = time.time()
+
+        if self._check_prompt_token(entry_metadata_list):
+            return self._postprocess([INPUT_EMPTY_TOKEN], entry_metadata_list=entry_metadata_list)
+
         # check prefill out of range data
         out_of_range_index_list = self._check_prompt_out_of_range_index_list(entry_metadata_list)
         logging.debug("out of range prompt index_list {}".format(out_of_range_index_list))
