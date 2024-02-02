@@ -56,8 +56,8 @@ class Worker:
     def _padding(self, origin_inputs, seq_length):
         pad_ids = []
         default_padding_values = 0
-        if self.config.model_config.padding_values:
-            default_padding_values = self.config.model_config.padding_values
+        if self.config.model_config.pad_token_id:
+            default_padding_values = self.config.model_config.pad_token_id
         for item in origin_inputs:
             pad_length = seq_length - len(item)
             if pad_length < 0:
@@ -72,8 +72,8 @@ class Worker:
         batch_size, _ = origin_inputs.shape
         valid_length_each_example = []
         default_padding_values = 0
-        if self.config.model_config.padding_values:
-            default_padding_values = self.config.model_config.padding_values
+        if self.config.model_config.pad_token_id:
+            default_padding_values = self.config.model_config.pad_token_id
         for i in range(batch_size):
             # As the nonzero returns the index and we need length
             valid_length_each_example.append(np.max(np.argwhere(origin_inputs[i] != default_padding_values)) + 1)

@@ -19,6 +19,8 @@ model_config:
     model_type: 1
     page_attention: True   # check
     current_index: False
+    model_dtype: "DataType.FLOAT32"
+    pad_token_id: 0
 
 serving_config:
     agent_ports: [61166]

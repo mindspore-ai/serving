@@ -23,6 +23,8 @@ model_config:
     batching_strategy: 'continuous'
     current_index: False
     page_attention: False
+    model_dtype: "DataType.FLOAT32"
+    pad_token_id: 0
 
 serving_config:
     agent_ports: [9980]
