@@ -68,13 +68,15 @@ class Worker:
         logging.debug("prefill _padding result list is {}".format(pad_ids))
         return np.array(pad_ids)
 
-    @staticmethod
-    def _get_valid_length(origin_inputs):
+    def _get_valid_length(self, origin_inputs):
         batch_size, _ = origin_inputs.shape
         valid_length_each_example = []
+        default_padding_values = 0
+        if self.config.model_config.padding_values:
+            default_padding_values = self.config.model_config.padding_values
         for i in range(batch_size):
             # As the nonzero returns the index and we need length
-            valid_length_each_example.append(np.max(np.argwhere(origin_inputs[i] != 0)) + 1)
+            valid_length_each_example.append(np.max(np.argwhere(origin_inputs[i] != default_padding_values)) + 1)
         valid_length = np.array(valid_length_each_example, dtype=np.int32)
         return valid_length, batch_size
 
