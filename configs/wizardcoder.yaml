@@ -24,7 +24,7 @@ model_config:
     current_index: False
     page_attention: False
     model_dtype: "DataType.FLOAT32"
-    pad_token_id: 0
+    pad_token_id: 49152
 
 serving_config:
     agent_ports: [9980]
