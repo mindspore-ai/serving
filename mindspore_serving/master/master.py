@@ -160,24 +160,14 @@ class Master:
         logging.debug("current total token numbers is {}".format(self._counter_of_token))
         # generating output
         results: List[ResponseOutput] = []
-
-        if index_list is None and skip_inference is False:
-            results.append(ResponseOutput.generate_result(output_tokens[0],
-                                                            0,
-                                                            entry_metadata_list[0],
-                                                            str_outputs[0],
-                                                            end_token, reason='Error203: prompt token ids empty'))
-            return results
-        
         # prompt result
         if index_list is not None:
             # idx: index_list and outputs data index, index: batch list index.
             for idx, index in enumerate(index_list):
-                output_token_logprob = output_logprob[idx]
                 if entry_metadata_list[index].entry_data.status == EntryStatus.PADDING_INVAILED:
                     logging.debug(f'generate a invalid token, index in batch is {index}')
                     continue
-                if skip_inference:
+                if output_tokens[0] ==202:
                     logging.debug(f'input out of range, index in batch is {index}')
                     results.append(ResponseOutput.generate_result(output_tokens[idx],
                                                                   0,
@@ -185,8 +175,18 @@ class Master:
                                                                   str_outputs[idx],
                                                                   end_token, reason='Error202: prompt out of range'))
                     return results
+                
+                if output_tokens[0] ==203:
+                    logging.debug(f'prompt token empty, index in batch is {index}')
+                    results.append(ResponseOutput.generate_result(output_tokens[idx],
+                                                                  0,
+                                                                  entry_metadata_list[index],
+                                                                  str_outputs[idx],
+                                                                  end_token, reason='Error203: prompt token empty'))
+                    return results
+
                 results.append(ResponseOutput.generate_result(output_tokens[idx],
-                                                              output_token_logprob,
+                                                              output_logprob[idx],
                                                               entry_metadata_list[index],
                                                               str_outputs[idx],
                                                               end_token))
@@ -367,19 +367,23 @@ class AsyncMaster(Master):
         return input_entry_metadata_list, index_list
     
     @staticmethod
-    def _check_prompt_token(entry_metadata_list):
-        check_flag = False
+    def _check_prompt_token_empty(entry_metadata_list,pad_token_id):
+        empty_list = []
         for index, item in enumerate(entry_metadata_list):
             if item.get_entry_data().get_prompt_token() == None or item.get_entry_data().get_prompt_len() == 0:
-                check_flag = True
-                break
-        return check_flag
+                empty_list.append(index)
+            if pad_token_id in item.get_entry_data().get_prompt_token():
+                empty_list.append(index)
+        return empty_list
 
     async def _run_workers_async(self, current_batch_size, entry_metadata_list):
         e_t_e_time = time.time()
 
-        if self._check_prompt_token(entry_metadata_list):
-            return self._postprocess([INPUT_EMPTY_TOKEN], entry_metadata_list=entry_metadata_list)
+        prompt_token_empty_list = self._check_prompt_token_empty(entry_metadata_list, self.config.model_config.pad_token_id)
+        logging.debug("prompt token empty list index_list {}".format(prompt_token_empty_list))
+        if len(prompt_token_empty_list) > 0:
+            return self._postprocess([INPUT_EMPTY_TOKEN], entry_metadata_list=entry_metadata_list, index_list=prompt_token_empty_list,
+                                     skip_inference=True)
 
         # check prefill out of range data
         out_of_range_index_list = self._check_prompt_out_of_range_index_list(entry_metadata_list)

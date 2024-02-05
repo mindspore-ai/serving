@@ -53,11 +53,9 @@ class Worker:
                 return data
         return seq_list[-1]
 
-    def _padding(self, origin_inputs, seq_length):
+    @staticmethod
+    def _padding(origin_inputs, seq_length, default_padding_values):
         pad_ids = []
-        default_padding_values = 0
-        if self.config.model_config.pad_token_id:
-            default_padding_values = self.config.model_config.pad_token_id
         for item in origin_inputs:
             pad_length = seq_length - len(item)
             if pad_length < 0:
@@ -68,12 +66,10 @@ class Worker:
         logging.debug("prefill _padding result list is {}".format(pad_ids))
         return np.array(pad_ids)
 
-    def _get_valid_length(self, origin_inputs):
+    @staticmethod
+    def _get_valid_length(origin_inputs, default_padding_values):
         batch_size, _ = origin_inputs.shape
         valid_length_each_example = []
-        default_padding_values = 0
-        if self.config.model_config.pad_token_id:
-            default_padding_values = self.config.model_config.pad_token_id
         for i in range(batch_size):
             # As the nonzero returns the index and we need length
             valid_length_each_example.append(np.max(np.argwhere(origin_inputs[i] != default_padding_values)) + 1)
@@ -115,8 +111,11 @@ class Worker:
         logging.info("decode_seq_length: %s", seq_length)
         generate_parms["seq_length"] = seq_length
         if is_prefill:
-            input_ids = self._padding(input_ids, seq_length)
-            self.valid_length, self.batch_size = self._get_valid_length(input_ids)
+            default_padding_values = 0
+            if self.config.model_config.pad_token_id:
+                default_padding_values = self.config.model_config.pad_token_id
+            input_ids = self._padding(input_ids, seq_length, default_padding_values)
+            self.valid_length, self.batch_size = self._get_valid_length(input_ids, default_padding_values)
             current_index_ = [self.valid_length[i] - 1 + i * seq_length for i in range(self.batch_size)]
             self.current_index = np.array(current_index_, np.int32)
         # If target length exceeds seq_length, use seq_length instead
