@@ -136,8 +136,7 @@ class Master:
                      outputs: List[tuple],
                      entry_metadata_list: List[EntryMetaData],
                      index_list: List[int] = None,
-                     skip_inference=False,
-                     error_code=000) -> List[ResponseOutput]:
+                     skip_inference=False) -> List[ResponseOutput]:
 
         end_token = self.config.model_config.end_token  # for debug
 
@@ -168,7 +167,7 @@ class Master:
                 if entry_metadata_list[index].entry_data.status == EntryStatus.PADDING_INVAILED:
                     logging.debug(f'generate a invalid token, index in batch is {index}')
                     continue
-                if error_code == 202:
+                if output_tokens[0] ==202:
                     logging.debug(f'input out of range, index in batch is {index}')
                     results.append(ResponseOutput.generate_result(output_tokens[idx],
                                                                   0,
@@ -177,7 +176,7 @@ class Master:
                                                                   end_token, reason='Error202: prompt out of range'))
                     return results
                 
-                if error_code == 203:
+                if output_tokens[0] ==203:
                     logging.debug(f'prompt token empty, index in batch is {index}')
                     results.append(ResponseOutput.generate_result(output_tokens[idx],
                                                                   0,
@@ -185,6 +184,7 @@ class Master:
                                                                   str_outputs[idx],
                                                                   end_token, reason='Error203: prompt token empty'))
                     return results
+
                 results.append(ResponseOutput.generate_result(output_tokens[idx],
                                                               output_logprob[idx],
                                                               entry_metadata_list[index],
@@ -383,14 +383,14 @@ class AsyncMaster(Master):
         logging.debug("prompt token empty list index_list {}".format(prompt_token_empty_list))
         if len(prompt_token_empty_list) > 0:
             return self._postprocess([INPUT_EMPTY_TOKEN], entry_metadata_list=entry_metadata_list, index_list=prompt_token_empty_list,
-                                     skip_inference=True,error_code=203)
+                                     skip_inference=True)
 
         # check prefill out of range data
         out_of_range_index_list = self._check_prompt_out_of_range_index_list(entry_metadata_list)
         logging.debug("out of range prompt index_list {}".format(out_of_range_index_list))
         if len(out_of_range_index_list) > 0:
             return self._postprocess([INPUT_OUT_OF_TOKEN], entry_metadata_list=entry_metadata_list, index_list=out_of_range_index_list,
-                                     skip_inference=True,error_code=202)
+                                     skip_inference=True)
 
         # filter prompt data batch list
         input_entry_metadata_list, index_list = self._get_prompt_batch_list(entry_metadata_list)
