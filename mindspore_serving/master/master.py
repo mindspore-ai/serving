@@ -131,7 +131,13 @@ class Master:
         for index, output in enumerate(outputs):
             str_outputs.append(self._llama_detokenizer_function(index, entry_metadata_list, skip_special_tokens))
         return str_outputs
-
+    
+    def _check_error_code(self, output_token):
+        error_code_list = [-1, -202, -203]
+        if output_token in error_code_list:
+            return True
+        return False
+    
     def _postprocess(self,
                      outputs: List[tuple],
                      entry_metadata_list: List[EntryMetaData],
@@ -148,12 +154,12 @@ class Master:
 
         self.scheduler.upate_entries_after_one_step(output_tokens, end_token, index_list)
         str_outputs = [''] * len(output_tokens)
-        if self.config.model_config.model_name == 'llama_dyn' and output_tokens[0] != -1:
+        if self.config.model_config.model_name == 'llama_dyn' and not self._check_error_code(output_tokens[0]):
             # str_outputs = self._llama_detokenizer(outputs)
             str_outputs = self._llama_detokenizer_v2(output_tokens, entry_metadata_list,
                                                      index_list, skip_special_tokens=True)
 
-        elif self.config.model_config.model_name in ('internlm_7b', 'baichuan2pa')and output_tokens[0] != -1:
+        elif self.config.model_config.model_name in ('internlm_7b', 'baichuan2pa') and not self._check_error_code(output_tokens[0]):
             str_outputs = self._detokenizer(output_tokens)
         self._counter_of_token += len(output_tokens)
         logging.debug("target is {}, str_outputs is {}".format(outputs, str_outputs))
@@ -167,7 +173,7 @@ class Master:
                 if entry_metadata_list[index].entry_data.status == EntryStatus.PADDING_INVAILED:
                     logging.debug(f'generate a invalid token, index in batch is {index}')
                     continue
-                if output_tokens[0] ==202:
+                if output_tokens[0] == INPUT_OUT_OF_TOKEN[0]:
                     logging.debug(f'input out of range, index in batch is {index}')
                     results.append(ResponseOutput.generate_result(output_tokens[idx],
                                                                   0,
@@ -176,7 +182,7 @@ class Master:
                                                                   end_token, reason='Error202: prompt out of range'))
                     return results
                 
-                if output_tokens[0] ==203:
+                if output_tokens[0] == INPUT_EMPTY_TOKEN[0]:
                     logging.debug(f'prompt token empty, index in batch is {index}')
                     results.append(ResponseOutput.generate_result(output_tokens[idx],
                                                                   0,
