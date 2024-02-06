@@ -63,7 +63,7 @@ class ResponseOutput:
         if status != EntryStatus.RUNNING or status != EntryStatus.WAITING:
             if status != EntryStatus.WAITING_BATCH:
                 finished_reason = EntryStatus.get_finished_reason(status)
-        if output_token == 203:
+        if output_token == INPUT_EMPTY_TOKEN[0]:
             finished = True
             completion_out = CompletionOutput(0, text=reason, logprob=0.0, special=False)
             entry_meta_data.get_entry_data().set_status(EntryStatus.FINISHED_STOPPED)
@@ -75,7 +75,7 @@ class ResponseOutput:
                        "prompt_token_ids_empty",
                        0)
         
-        if output_token == 202:
+        if output_token == INPUT_OUT_OF_TOKEN[0]:
             print(f'>>>>>>request {request_id} input is too large, out of input length of model')
             finished = True
             completion_out = CompletionOutput(0, text=reason, logprob=0.0, special=False)
@@ -91,7 +91,7 @@ class ResponseOutput:
         if status == EntryStatus.PADDING_INVAILED:
             finished = False
 
-        elif output_token == -1:
+        elif output_token == PREDICT_FAILED_CODE:
             entry_meta_data.get_entry_data().prefix_index = 0
             entry_meta_data.get_entry_data().read_index = 0
             output_str = RETURN_REASON_PREDICT_FAILED
