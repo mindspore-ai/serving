@@ -14,6 +14,7 @@ class EntryStatus(enum.Enum):
     FINISHED_IGNORED = enum.auto()  # ingore this request
     PADDING_INVAILED = enum.auto()  # padding is invaild
     INPUT_OUTOFRANGE = enum.auto()
+    EMPTY_PROMPT_TOKEN = enum.auto()
 
     @staticmethod
     def is_finished(status: "EntryStatus") -> bool:

@@ -380,8 +380,8 @@ class WorkAgent:
                 tmp[index: index + self.current_batch_size] = target[:]
 
                 logprob_list = []
-                for tag in target:
-                    logprob_list.append(output_info[0][int(tag)])
+                for index, tag in enumerate(target):
+                    logprob_list.append(output_info[index][int(tag)])
                 tmp_logprob = np.ndarray((index + self.current_batch_size,), dtype=np.float64, buffer=output_logprob_shm.buf)
                 tmp_logprob[index: index + self.current_batch_size] = logprob_list[:]
                 self.targets[index: index + self.current_batch_size] = target[:]
@@ -390,11 +390,11 @@ class WorkAgent:
                 tmp[:] = target[:]
 
                 logprob_list = []
-                for tag in target:
+                for index, tag in enumerate(target):
                     if len(output_info.shape) == 2:
-                        logprob_list.append(output_info[0][int(tag)])
+                        logprob_list.append(output_info[index][int(tag)])
                     else:
-                        logprob_list.append(output_info[0][0][int(tag)])
+                        logprob_list.append(output_info[index][0][int(tag)])
                 tmp_logprob = np.ndarray((self.current_batch_size,), dtype=np.float64, buffer=output_logprob_shm.buf)
                 tmp_logprob[:] = logprob_list[:]
                 self.targets[:] = target[:]
