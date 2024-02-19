@@ -1,0 +1,51 @@
+model_path:
+    prefill_model: ["/path/internlm/mindir_full_checkpoint/rank_0_graph.mindir"]
+    decode_model: ["/path/internlm/mindir_inc_checkpoint/rank_0_graph.mindir"]
+    argmax_model: "/path/post_process/argmax.mindir"
+    topk_model: "/path/post_process/topk.mindir"
+    prefill_ini : ['/path/config_ini/internLM_dyn_prefill.ini']
+    decode_ini: [/path/config_ini/internLM_dyn_decode.ini']
+    post_model_ini: '/path/config_static/post_config.cfg'
+
+model_config:
+    model_name: 'internlm_7b'
+    max_generate_length: 4096
+    end_token: 2
+    seq_length: [1024,2048,4096]
+    vocab_size: 125696
+    prefill_batch_size: [1]
+    decode_batch_size: [4]
+    zactivate_len: [4096]
+    model_type: 'dyn'
+    seq_type: 'static'
+    batch_waiting_time: 0.0
+    decode_batch_waiting_time: 0.0
+    batching_strategy: 'continuous'
+    current_index: False
+    page_attention: True
+    model_dtype: "DataType.FLOAT32"
+    pad_token_id: 0
+
+serving_config:
+    agent_ports: [61166]
+    start_device_id: 0
+    server_ip: 'localhost'
+    server_port: 61155
+
+pa_config:
+    num_blocks: 96
+    block_size: 128
+    decode_seq_length: 4096
+
+tokenizer:
+    type: InternLMTokenizer
+    vocab_file: '/path/tokenizer.model'
+
+basic_inputs:
+    type: LlamaBasicInputs
+
+extra_inputs:
+    type: LlamaExtraInputs
+
+warmup_inputs:
+    type: LlamaWarmupInputs

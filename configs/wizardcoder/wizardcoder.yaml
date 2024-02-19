@@ -1,39 +1,40 @@
 model_path:
-    prefill_model: ["/path/to/full_graph.mindir"]
-    decode_model: ["/path/to/inc_graph.mindir"]
+    prefill_model: ["/path/to/prefill_model.mindir"]
+    decode_model: ["/path/to/decode_model.mindir"]
     argmax_model: "/path/to/argmax.mindir"
     topk_model: "/path/to/topk.mindir"
-    prefill_ini : ['/path/to/full.ini']
-    decode_ini: ['/path/to/inc_.ini']
-    post_model_ini: '/path/to/post/config.ini'
+    prefill_ini : ['/path/to/lite.ini']
+    decode_ini: ['/path/to/lite.ini']
+    post_model_ini: '/path/to/lite.ini'
 
 model_config:
     model_name: 'llama_dyn'
     max_generate_length: 4096
-    end_token: 2
-    seq_length: []
-    vocab_size: 32000
+    end_token: 0
+    seq_length: [2048]
+    vocab_size: 49153
     prefill_batch_size: [1]
-    decode_batch_size: [16]
-    zactivate_len: [512, 1024, 2048, 4096]
-    model_type: 0
+    decode_batch_size: [1]
+    zactivate_len: [2048]
+    model_type: 'static'
     seq_type: 'static'
     batch_waiting_time: 0.0
     decode_batch_waiting_time: 0.0
     batching_strategy: 'continuous'
     current_index: False
+    page_attention: False
     model_dtype: "DataType.FLOAT32"
-    pad_token_id: 0
+    pad_token_id: 49152
 
 serving_config:
-    agent_ports: [13000, 13001, 13002, 13003]
+    agent_ports: [9980]
     start_device_id: 0
     server_ip: 'localhost'
-    server_port: 19280
+    server_port: 12359
 
 tokenizer:
-    type: LlamaTokenizer
-    vocab_file: '/path/to/tokenizer.model'
+    type: WizardCoderTokenizer
+    vocab_file: '/path/to/transformers_config'
 
 basic_inputs:
     type: LlamaBasicInputs
