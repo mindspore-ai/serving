@@ -9,10 +9,13 @@
 - custom model inputs
 - static/continuous batching of prompts
 - do post sampling via npu
+- PagedAttention
 
 ### Supports the most popular LLMs, including the following architectures:
 - LLaMA-2
 - InternLM
+- baichuan2
+- wizardcoder
 
 ### Get Started
 #### 环境依赖
@@ -37,11 +40,11 @@ python tools/post_sampling_model.py --output_dir ./target_dir
 
 #### 修改模型对应的配置文件
 
-##### 带PagedAttention 算法
+##### 带PagedAttention配置
 
 ###### yaml文件
 
-在模型对应的配置文件`configs/xxx.yaml`中，用户可自行修改模型，并通过`page_attention`开启PA的模型训练（True为启动模型PA功能，并在后面添加`pa_config`的设置项，具体参数根据模型来设置）
+在模型对应的配置文件`configs/模型名称/xxx.yaml`中，用户可自行修改模型，并通过`page_attention`开启PA的模型训练（True为启动模型PA功能，并在后面添加`pa_config`的设置项，具体参数根据模型来设置）
 
 ```
 model_path:
@@ -61,9 +64,11 @@ model_config:
     prefill_batch_size: [1]     #带PA功能只支持单batch
     decode_batch_size: [16]  	#带PA功能只支持多batch，但不支持多分档
     zactivate_len: [4096]
-    model_type: 1
+    model_type: 'dyn'
     page_attention: True   # True为启动模型PA功能
-    current_index: False   
+    current_index: False
+    model_dtype: "DataType.FLOAT32"
+    pad_token_id: 0   
     
 pa_config:  #带PA的配置此项，根据模型设置参数
     num_blocks: 512     
@@ -147,7 +152,7 @@ ge.dynamicNodeType=1
 
 
 
-##### 不带PagedAttention 算法
+##### 不带PagedAttention配置
 
 ```
 model_path:
@@ -168,7 +173,9 @@ model_config:
     decode_batch_size: [1,4,8,16,30,64]	#支持多分档
     zactivate_len: [512]
     model_type: "dyn"	#若无此字段默认为“dyn”，若有此字段需指定model_type
-    current_index: False  
+    current_index: False
+    model_dtype: "DataType.FLOAT32"
+    pad_token_id: 0  
     
 serving_config:
     agent_ports: [11330]
@@ -222,6 +229,69 @@ ge.dynamicNodeType=1
 ```
 
 
+##### WizardCoder配置（静态shape）
+
+```
+model_path:
+    prefill_model: ["/path/to/prefill_model.mindir"]
+    decode_model: ["/path/to/decode_model.mindir"]
+    argmax_model: "/path/to/argmax.mindir"
+    topk_model: "/path/to/topk.mindir"
+    prefill_ini : ['/path/to/lite.ini']
+    decode_ini: ['/path/to/lite.ini']
+    post_model_ini: '/path/to/lite.ini'
+
+model_config:
+    model_name: 'llama_dyn'
+    max_generate_length: 4096
+    end_token: 0
+    seq_length: [2048]
+    vocab_size: 49153
+    prefill_batch_size: [1]
+    decode_batch_size: [1]
+    zactivate_len: [2048]
+    model_type: 'static'
+    seq_type: 'static'
+    batch_waiting_time: 0.0
+    decode_batch_waiting_time: 0.0
+    batching_strategy: 'continuous'
+    current_index: False
+    page_attention: False
+    model_dtype: "DataType.FLOAT32"
+    pad_token_id: 49152
+
+serving_config:
+    agent_ports: [9980]
+    start_device_id: 0
+    server_ip: 'localhost'
+    server_port: 12359
+
+tokenizer:
+    type: WizardCoderTokenizer
+    vocab_file: '/path/to/transformers_config'
+
+basic_inputs:
+    type: LlamaBasicInputs
+
+extra_inputs:
+    type: LlamaExtraInputs
+
+warmup_inputs:
+    type: LlamaWarmupInputs
+```
+
+###### lite_ini
+
+```
+[ascend_context]
+plugin_custom_ops=All
+provider=ge
+[ge_session_options]
+ge.exec.formatMode=1
+ge.exec.precision_mode=must_keep_origin_dtype
+ge.externalWeight=1
+ge.exec.atomicCleanPolicy=1
+```
 
 #### 设置环境变量，变量配置如下
 
