@@ -12,7 +12,7 @@ class LlamaBasicInputs(BaseBasicInputs):
         super(LlamaBasicInputs, self).__init__()
 
     def get_inputs(self, input_ids, current_index, init_reset, batch_valid_length, use_current_index, *args):
-        if len(args) != 1:
+        if len(args) != 1 and len(args[0]) != 1:
             batch_size, _ = input_ids.shape
             decode_index = np.array(range(batch_size), dtype=np.int64)
         else:

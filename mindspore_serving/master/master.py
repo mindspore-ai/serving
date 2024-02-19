@@ -377,8 +377,10 @@ class AsyncMaster(Master):
         empty_list = []
         for index, item in enumerate(entry_metadata_list):
             if item.get_entry_data().get_prompt_token() == None or item.get_entry_data().get_prompt_len() == 0:
+                item.get_entry_data().set_status(EntryStatus.EMPTY_PROMPT_TOKEN)
                 empty_list.append(index)
             if pad_token_id in item.get_entry_data().get_prompt_token():
+                item.get_entry_data().set_status(EntryStatus.EMPTY_PROMPT_TOKEN)
                 empty_list.append(index)
         return empty_list
 

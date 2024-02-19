@@ -452,7 +452,7 @@ class Schedule:
             return
 
         # input outofrange
-        if entry_data.status == EntryStatus.INPUT_OUTOFRANGE:
+        if entry_data.status == EntryStatus.INPUT_OUTOFRANGE or entry_data.status == EntryStatus.EMPTY_PROMPT_TOKEN:
             self.running_request_list[index].get_entry_data().set_status(EntryStatus.FINISHED_STOPPED)
             self.running_request_list[index].cache_engine.release_cache()
             self.running_request_list[index].cache_engine.assign_null_block()
@@ -480,7 +480,7 @@ class Schedule:
             return
 
         # input outofrange
-        if entry_data.status == EntryStatus.INPUT_OUTOFRANGE:
+        if entry_data.status == EntryStatus.INPUT_OUTOFRANGE or entry_data.status == EntryStatus.EMPTY_PROMPT_TOKEN:
             self.running_request_list[index].get_entry_data().set_status(EntryStatus.FINISHED_STOPPED)
             return
         # predict failed
@@ -499,12 +499,20 @@ class Schedule:
                 # invalid prompt
                 if self.running_request_list[index].get_entry_data().get_status() == EntryStatus.PADDING_INVAILED:
                     continue
-                self.running_request_list[index].get_entry_data().updata_output_tokens(outputs[idx])
+
+                if self.running_request_list[index].get_entry_data().get_status() == EntryStatus.INPUT_OUTOFRANGE:
+                    update_token = INPUT_OUT_OF_TOKEN[0]
+                elif self.running_request_list[index].get_entry_data().get_status() == EntryStatus.EMPTY_PROMPT_TOKEN:
+                    update_token = INPUT_EMPTY_TOKEN[0]
+                else:
+                    update_token = outputs[idx]
+
+                self.running_request_list[index].get_entry_data().updata_output_tokens(update_token)
                 # valid prompt 区分PA处理
                 if self.config.model_config.page_attention:
-                    self._finished_pa_request(index, outputs[idx], eos_id)
+                    self._finished_pa_request(index, update_token, eos_id)
                 else:
-                    self._finished_request(index, outputs[idx], eos_id)
+                    self._finished_request(index, update_token, eos_id)
         # decode
         else:
             for index, token in enumerate(outputs):
