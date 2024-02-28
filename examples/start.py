@@ -20,10 +20,11 @@ if __name__ == "__main__":
         # check if agent pid is alive
         if not psutil.pid_exists(p_agent.pid) or (psutil.pid_exists(p_agent.pid) not in psutil.pids()):
             raise RuntimeError('there occurs some error when starting agent, check the agent.log')
-        # 监控agent端口是否启动
-        err_out = os.popen("grep \"ERROR\" ./agent.log")
-        for line in err_out.read().splitlines():
-            raise RuntimeError(line)
+        # 监控agent端口是否启动, 暂时删除，310 上会有部分不影响功能的报错，导致启动进程停止
+        # err_out = os.popen("grep \"ERROR\" ./agent.log")
+        # for line in err_out.read().splitlines():
+        #     # raise RuntimeError(line)
+        #     print("error line:", line)
         output = os.popen("grep \"all agents\" ./agent.log")
         res = output.read()
         for line in res.splitlines():

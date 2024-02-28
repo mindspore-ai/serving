@@ -8,7 +8,7 @@ model_path:
     post_model_ini: '/path/to/lite.ini'
 
 model_config:
-    model_name: 'llama_dyn'
+    model_name: 'wizard_coder'
     max_generate_length: 4096
     end_token: 0
     seq_length: [2048]
@@ -37,10 +37,10 @@ tokenizer:
     vocab_file: '/path/to/transformers_config'
 
 basic_inputs:
-    type: LlamaBasicInputs
+    type: WizardCoderBasicInputs
 
 extra_inputs:
-    type: LlamaExtraInputs
+    type: WizardCoderExtraInputs
 
 warmup_inputs:
-    type: LlamaWarmupInputs
+    type: WizardCoderWarmupInputs
