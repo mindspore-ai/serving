@@ -3,13 +3,13 @@ from mindspore_serving.models.base_inputs import *
 from mindspore_serving.serving_utils.register import Registers
 import logging
 
-__all__ = ['LlamaBasicInputs', 'LlamaExtraInputs', 'LlamaWarmupInputs']
+__all__ = ['WizardCoderBasicInputs', 'WizardCoderExtraInputs', 'WizardCoderWarmupInputs']
 
 
 @Registers.BASIC_INPUTS.register()
-class LlamaBasicInputs(BaseBasicInputs):
+class WizardCoderBasicInputs(BaseBasicInputs):
     def __init__(self):
-        super(LlamaBasicInputs, self).__init__()
+        super(WizardCoderBasicInputs, self).__init__()
 
     def get_inputs(self, input_ids, current_index, init_reset, batch_valid_length, use_current_index, *args):
         if len(args) != 1 and len(args[0]) != 1:
@@ -20,14 +20,18 @@ class LlamaBasicInputs(BaseBasicInputs):
         if use_current_index:
             inputs_list = [input_ids, current_index, batch_valid_length, decode_index]
         else:
-            inputs_list = [input_ids, batch_valid_length, decode_index]
+            model_type = args[1]
+            if model_type == "dyn":
+                inputs_list = [input_ids, batch_valid_length, decode_index]
+            else:
+                inputs_list = [input_ids, current_index, batch_valid_length]
         return inputs_list
 
 
 @Registers.EXTRA_INPUTS.register()
-class LlamaExtraInputs(BaseExtraInputs):
+class WizardCoderExtraInputs(BaseExtraInputs):
     def __init__(self):
-        super(LlamaExtraInputs, self).__init__()
+        super(WizardCoderExtraInputs, self).__init__()
 
     def get_extra_inputs(self, input_ids, current_index, init_reset, is_prefill, valid_length, **kwargs):
         zactivate_len = kwargs.pop('zactivate_len')
@@ -55,9 +59,9 @@ class LlamaExtraInputs(BaseExtraInputs):
 
 
 @Registers.WARMUP_INPUTS.register()
-class LlamaWarmupInputs(BaseWarmupInputs):
+class WizardCoderWarmupInputs(BaseWarmupInputs):
     def __init__(self):
-        super(LlamaWarmupInputs, self).__init__()
+        super(WizardCoderWarmupInputs, self).__init__()
 
     def get_warmup_inputs_pa(self, seq_length, batch_size, full_model, **kwargs):
         full_seq_len = seq_length
@@ -79,11 +83,9 @@ class LlamaWarmupInputs(BaseWarmupInputs):
         for i in range(batch_size):
             block_tables[i][0] = 1
         return slot_mapping, block_tables
-
     # 加入page attention判断
 
-    def get_warmup_inputs(self, seq_length, batch_size, full_model, use_current_index=True, valid_length=None,
-                          page_attention=False, **kwargs):
+    def get_warmup_inputs(self, seq_length, batch_size, full_model, use_current_index=True, valid_length=None, page_attention=False, **kwargs):
         print("===========================get_warmup_inputs")
         input_ids = np.ones([batch_size, seq_length], dtype=np.int32)
         current_index = np.array([1] * batch_size, dtype=np.int32)
@@ -105,7 +107,12 @@ class LlamaWarmupInputs(BaseWarmupInputs):
             if use_current_index:
                 inputs_list = [input_ids, current_index, batch_valid_length, decode_index]
             else:
-                inputs_list = [input_ids, batch_valid_length, decode_index]
+                model_type = kwargs.get('model_type', "dyn")
+                if model_type == "dyn":
+                    inputs_list = [input_ids, batch_valid_length, decode_index]
+                else:
+                    init_reset = np.array([False], np.bool_)
+                    inputs_list = [input_ids, current_index, init_reset, batch_valid_length]
 
         if page_attention:
             print("==============================================page_attention:", page_attention)
@@ -119,9 +126,11 @@ class LlamaWarmupInputs(BaseWarmupInputs):
                 inputs_list.append(slot_mapping)
         else:
             model_type = kwargs.pop('model_type')
-            logging.debug(f"model_type in llamaWarmup: {model_type}")
-            extra_cls = LlamaExtraInputs()
-            input_extra_list = extra_cls.get_extra_inputs(input_ids, current_index, None, full_model,
-                                                          batch_valid_length, **kwargs)
-            inputs_list.extend(input_extra_list)
+            logging.debug(f"model_type in wizardCoderWarmup: {model_type}")
+            # dyn model type need 'act_len' parameter
+            if model_type == "dyn":
+                extra_cls = WizardCoderExtraInputs()
+                input_extra_list = extra_cls.get_extra_inputs(input_ids, current_index, None, full_model,
+                                                              batch_valid_length, **kwargs)
+                inputs_list.extend(input_extra_list)
         return inputs_list
