@@ -113,6 +113,7 @@ class InputOfInfer:
         "glm2": CommonInputsOfInfer,
         "common": CommonInputsOfInfer,
         "llama_dyn": CommonInputsOfInferDyn,
+        "wizard_coder": CommonInputsOfInferDyn,
         "internlm": CommonInputsOfInfer,
         "baichuan2": CommonInputsOfInfer,
         "custom": CustomInputsOfInfer
@@ -200,6 +201,7 @@ class WarpInputOfInfer:
         "glm2": CommonWarp,
         "common": CommonWarp,
         "llama_dyn": CommonWarpDyn,
+        "wizard_coder": CommonWarpDyn,
         "internlm": CommonWarp,
         "baichuan2": CommonWarp,
     }

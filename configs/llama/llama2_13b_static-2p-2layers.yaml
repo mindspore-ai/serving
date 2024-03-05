@@ -1,0 +1,45 @@
+model_path:
+  prefill_model: [ "/home/hyh/weights_0205/2p_40layers_use_kvcache_slice/mindir_full_checkpoint/rank_0_graph.mindir",
+                   "/home/hyh/weights_0205/2p_40layers_use_kvcache_slice/mindir_full_checkpoint/rank_1_graph.mindir" ]
+  decode_model: [ "/home/hyh/weights_0205/2p_40layers_use_kvcache_slice/mindir_inc_checkpoint/rank_0_graph.mindir",
+                  "/home/hyh/weights_0205/2p_40layers_use_kvcache_slice/mindir_inc_checkpoint/rank_1_graph.mindir" ]
+  argmax_model: "/home/anhaitao/serving_dev/extends/static/argmax.mindir"
+  topk_model: "/home/anhaitao/serving_dev/extends/static/topk.mindir"
+  prefill_ini: [ '/home/hyh/mindformers/lite_ori.ini' ]
+  decode_ini: [ '/home/hyh/mindformers/lite_ori.ini' ]
+  post_model_ini: '/home/hyh/mindformers/lite_ori.ini'
+
+model_config:
+  model_name: 'llama_dyn'
+  max_generate_length: 8192
+  end_token: 2
+  seq_length: [ 2048 ]
+  vocab_size: 32000
+  prefill_batch_size: [ 1 ]
+  decode_batch_size: [ 1 ]
+  zactivate_len: [ 2048 ]
+  model_type: 'static'
+  seq_type: 'static'
+  batch_waiting_time: 0.0
+  decode_batch_waiting_time: 0.0
+  batching_strategy: 'continuous'
+  current_index: False
+
+serving_config:
+  agent_ports: [ 13000, 13001 ]
+  start_device_id: 0
+  server_ip: 'localhost'
+  server_port: 19280
+
+tokenizer:
+  type: LlamaTokenizer
+  vocab_file: '/home/anhaitao/serving_dev/tokenizer/tokenizer.model'
+
+basic_inputs:
+  type: LlamaBasicInputs
+
+extra_inputs:
+  type: LlamaExtraInputs
+
+warmup_inputs:
+  type: LlamaWarmupInputs

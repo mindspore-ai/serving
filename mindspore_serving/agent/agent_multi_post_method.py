@@ -58,7 +58,8 @@ def load_model(cfg: ServingConfig, rank_id: int, device_id: int):
         prefill_inputs_list = warmup_func.get_warmup_inputs(seq_length=prefill_seq_length,
                                                             batch_size=prefill_batch_size,
                                                             full_model=True,
-                                                            use_current_index=model_config.current_index, # 这里需要考虑加入use_current_index测试
+                                                            use_current_index=model_config.current_index,
+                                                            # 这里需要考虑加入use_current_index测试
                                                             page_attention=model_config.page_attention,
                                                             zactivate_len=model_config.zactivate_len,
                                                             decode_seq_length=inc_seq_len,
@@ -106,7 +107,7 @@ def load_model(cfg: ServingConfig, rank_id: int, device_id: int):
                                                                page_attention=model_config.page_attention,
                                                                zactivate_len=model_config.zactivate_len,
                                                                decode_seq_length=inc_seq_len,
-                                                               block_size=cfg.pa_config.block_size)   # zactivate_len这里是否要加上zactivate_len
+                                                               block_size=cfg.pa_config.block_size)  # zactivate_len这里是否要加上zactivate_len
         else:
             print(f"not decode warmup page attention")
             decode_inputs_list = warmup_func.get_warmup_inputs(seq_length=warm_seq_length,
@@ -156,7 +157,7 @@ def load_post_model(model_path, config_file, rank_id, device_id):
     if not os.path.exists(model_path):
         logging.error(f"load post-sampling model_path {model_path} not exists.")
         raise ValueError(f"load post-sampling model_path  {model_path} not exists.")
-    
+
     if not os.path.exists(config_file):
         logging.error(f"load post-sampling post_model_ini {config_file} not exists.")
         raise ValueError(f"load post-sampling post_model_ini {config_file} not exists.")
@@ -382,7 +383,8 @@ class WorkAgent:
                 logprob_list = []
                 for index, tag in enumerate(target):
                     logprob_list.append(output_info[index][int(tag)])
-                tmp_logprob = np.ndarray((index + self.current_batch_size,), dtype=np.float64, buffer=output_logprob_shm.buf)
+                tmp_logprob = np.ndarray((index + self.current_batch_size,), dtype=np.float64,
+                                         buffer=output_logprob_shm.buf)
                 tmp_logprob[index: index + self.current_batch_size] = logprob_list[:]
                 self.targets[index: index + self.current_batch_size] = target[:]
             else:
@@ -459,7 +461,7 @@ class WorkAgent:
                 print("model_name:", self.config.model_config.model_name)
                 block_tables_shape = shape_list[2]  # 这里的shapeindex会不会变？？
                 slot_mapping_shape = shape_list[3]
-            
+
             logging.debug("prefill after page aatention get shape list")
             extra_input = []
             for i in range(1, len(shape_list) - 1):
@@ -468,12 +470,13 @@ class WorkAgent:
                 # To Do np.int64 ?
                 extra_input.append(np.ndarray((shape_list[i]), dtype=np.int64, buffer=existing_shm.buf))
 
-            # pa or static model type don't need 'act_len' parameter
-            if self.config.model_config.page_attention or self.config.model_config.model_type == "static":
+            # pa or wizardcoder static model type don't need 'act_len' parameter
+            if self.config.model_config.page_attention or (
+                    self.config.model_config.model_name == 'wizard_coder' and self.config.model_config.model_type == "static"):
                 extra_input = []
             else:
                 extra_input = self.extra_input_func.get_extra_inputs(input_ids, current_index, None, True, valid_length,
-                                                                 zactivate_len=self.config.model_config.zactivate_len)
+                                                                     zactivate_len=self.config.model_config.zactivate_len)
 
             logging.debug("prefill beofore decode Params")
             self.current_batch_size = len(input_ids)
@@ -520,7 +523,7 @@ class WorkAgent:
                 input_ids = np.append(input_ids, addition_input_ids)
                 target_batch = self.current_batch_size
                 pad_key = list(self.decode_params_map.keys())[-1]
-                #padding_obj = self.decode_params_map[pad_key]
+                # padding_obj = self.decode_params_map[pad_key]
                 for j in range(target_batch):
                     if j not in self.decode_params_map:
                         padding_obj = copy.deepcopy(self.decode_params_map[pad_key])
@@ -551,12 +554,14 @@ class WorkAgent:
                 decode_index.append(decode_params.decode_index)
 
             # pa or static model type don't need 'act_len' parameter
-            if self.config.model_config.page_attention or self.config.model_config.model_type == "static":
+            if self.config.model_config.page_attention or (
+                    self.config.model_config.model_name == 'wizard_coder' and self.config.model_config.model_type == "static"):
                 extra_input = []
             else:
-                extra_input = self.extra_input_func.get_extra_inputs(input_ids, current_index, None, False, valid_length,
-                                                                 zactivate_len=self.config.model_config.zactivate_len
-                                                                 )
+                extra_input = self.extra_input_func.get_extra_inputs(input_ids, current_index, None, False,
+                                                                     valid_length,
+                                                                     zactivate_len=self.config.model_config.zactivate_len
+                                                                     )
             current_index = np.array(current_index, dtype=np.int32)
             if self.config.model_config.current_index:
                 logging.debug("decode valid_length dtype is int64")
@@ -573,7 +578,7 @@ class WorkAgent:
                 slot_mapping_shape = shape_list[1]
         if self.config.model_config.page_attention:  # 下面代码可考虑集成到百川 basic_get_inputs函数
             # todo  7/8取值
-            block_tables_shm = shared_memory.SharedMemory(name=self.shm_names[7])  #   这里的共享内存index要改
+            block_tables_shm = shared_memory.SharedMemory(name=self.shm_names[7])  # 这里的共享内存index要改
             slot_mapping_shm = shared_memory.SharedMemory(name=self.shm_names[8])
             block_tables_np = np.ndarray((block_tables_shape), dtype=np.int32, buffer=block_tables_shm.buf)
             slot_mapping_np = np.ndarray((slot_mapping_shape), dtype=np.int32, buffer=slot_mapping_shm.buf)
@@ -586,7 +591,7 @@ class WorkAgent:
                 # todo 这里要不要加self.config.model_config.current_index
                 tmp_in = [input_ids, valid_length, slot_mapping_np]
             else:
-                tmp_in = [input_ids, valid_length,  block_tables_np, slot_mapping_np]
+                tmp_in = [input_ids, valid_length, block_tables_np, slot_mapping_np]
         else:
             tmp_in = self.basic_input_func.get_inputs(input_ids, current_index, init_reset, valid_length,
                                                       self.config.model_config.current_index, decode_index_np,
@@ -609,33 +614,17 @@ class WorkAgent:
         logging.info('agent pre-process time is {}'.format((time.time() - start_time) * 1000))
 
         predict_time = time.time()
-        if self.is_prefill:
-            if self.config.model_config.model_type == 'static':
+        if self.config.model_config.model_name == 'wizard_coder' and self.config.model_config.model_type == "static":
+            if self.is_prefill:
                 init_reset_ms_tensor = mslite.Tensor(np.array([False], np.bool_))
-                outputs_list = model.predict((lite_inputs[0], lite_inputs[1], init_reset_ms_tensor, lite_inputs[2]))
             else:
-                outputs_list = model.predict(lite_inputs)
-        else:
-            # try:
-            #     for lite_in in lite_inputs:
-            #         np_in = lite_in.get_data_to_numpy()
-            #         logging.debug("item shape is {}, dtype is {}".format(np_in.shape, np_in.dtype))
-            #         logging.debug("item is {}".format(np_in))
-            if self.config.model_config.model_type == 'static':
                 init_reset_ms_tensor = mslite.Tensor(np.array([True], np.bool_))
-                outputs_list = model.predict((lite_inputs[0], lite_inputs[1], init_reset_ms_tensor, lite_inputs[2]))
-            else:
-                outputs_list = model.predict(lite_inputs)
-            # except RuntimeError:
-            #     logging.debug("retry predict start")
-            #     for lite_in in lite_inputs:
-            #         np_in = lite_in.get_data_to_numpy()
-            #         logging.debug("item shape is {}, dtype is {}".format(np_in.shape, np_in.dtype))
-            #         logging.debug("item is {}".format(np_in))
-            #     outputs_list = model.predict(lite_inputs)
-            #     logging.debug("retry predict successful")
+            outputs_list = model.predict((lite_inputs[0], lite_inputs[1], init_reset_ms_tensor, lite_inputs[2]))
+        else:
+            outputs_list = model.predict(lite_inputs)
 
-        logging.debug("outputs tensor after model predict type {}, value is {}".format(outputs_list[0].dtype, outputs_list[0]))
+        logging.debug(
+            "outputs tensor after model predict type {}, value is {}".format(outputs_list[0].dtype, outputs_list[0]))
         logging.info('predict time is {}'.format((time.time() - predict_time) * 1000))
 
         post_time = time.time()
@@ -725,7 +714,8 @@ def start_agent_socket_server(i, cfg: ServingConfig, startup_queue):
                     # 增量推理
                     decode_data = data.split('_')
                     # 增加PA的判断
-                    current_batch_dyn = int(decode_data[-4]) if cfg.model_config.page_attention else int(decode_data[-2])
+                    current_batch_dyn = int(decode_data[-4]) if cfg.model_config.page_attention else int(
+                        decode_data[-2])
                     batch_valid_flag = []
                     batch_valid = decode_data[-3] if cfg.model_config.page_attention else decode_data[-1]
                     for ele in batch_valid.split(" "):
@@ -737,7 +727,8 @@ def start_agent_socket_server(i, cfg: ServingConfig, startup_queue):
                             shape = list(map(int, shape_str.split(" ")))
                             input_shapes.append(shape)
                     work_agent.is_prefill = False
-                    _, _ = work_agent.predict(current_batch=current_batch_dyn, batch_valid_flag=batch_valid_flag, shape_list=input_shapes)
+                    _, _ = work_agent.predict(current_batch=current_batch_dyn, batch_valid_flag=batch_valid_flag,
+                                              shape_list=input_shapes)
                     if i == 0:
                         conn.sendall("1".encode())
                 elif data.startswith('e'):
