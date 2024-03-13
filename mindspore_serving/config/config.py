@@ -33,6 +33,8 @@ def check_valid_config(config):
         model_config['current_index'] = False
     if model_config.page_attention is None:
         model_config['page_attention'] = False
+    if model_config.backend is None:
+        model_config['backend'] = 'ge'
 
     #   # pa_config校验
     if model_config.page_attention:   #  todo 非PA模型这里有bug

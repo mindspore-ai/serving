@@ -43,9 +43,9 @@ if __name__ == "__main__":
         if not psutil.pid_exists(p_server.pid) or (psutil.pid_exists(p_server.pid) not in psutil.pids()):
             raise RuntimeError('there occurs some error when starting serving, check the server.log')
         # 监控agent端口是否启动
-        err_out = os.popen("grep \"ERROR\" ./server.log")
-        for line in err_out.read().splitlines():
-            raise RuntimeError(line)
+        # err_out = os.popen("grep \"ERROR\" ./server.log")
+        # for line in err_out.read().splitlines():
+        #     raise RuntimeError(line)
         output = os.popen("grep \"Uvicorn running on\" ./server.log")
         res = output.read()
         for line in res.splitlines():

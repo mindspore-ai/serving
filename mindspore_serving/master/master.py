@@ -14,6 +14,7 @@ from mindspore_serving.config.config import ServingConfig
 from mindspore_serving.models.build_tokenizer import build_tokenizer
 from mindspore_serving.schedule.cache_engine import ServingBlockMemPool
 from mindspore_serving.serving_utils.constant import *
+from mindformers.mindformer_book import MindFormerBook
 
 Eps = 30
 
@@ -34,6 +35,7 @@ class Master:
         self.decode_cache = {}
         if self.config.model_config.page_attention:
             self._init_mem_pool()  # PA
+
     # PA
 
     def _init_mem_pool(self):
@@ -43,7 +45,7 @@ class Master:
         self.tokenizer = build_tokenizer(self.config)
         if self.tokenizer is None:
             logging.error('load tokenizer failed!')
-        print(f'self.tokenizer is {self.tokenizer}')
+        logging.debug(f'self.tokenizer is {self.tokenizer}')
 
     def _init_workers(self):
         self.worker._init_worker()
@@ -131,13 +133,13 @@ class Master:
         for index, output in enumerate(outputs):
             str_outputs.append(self._llama_detokenizer_function(index, entry_metadata_list, skip_special_tokens))
         return str_outputs
-    
+
     def _check_error_code(self, output_token):
         error_code_list = [-1, -202, -203]
         if output_token in error_code_list:
             return True
         return False
-    
+
     def _postprocess(self,
                      outputs: List[tuple],
                      entry_metadata_list: List[EntryMetaData],
@@ -154,12 +156,15 @@ class Master:
 
         self.scheduler.upate_entries_after_one_step(output_tokens, end_token, index_list)
         str_outputs = [''] * len(output_tokens)
-        if self.config.model_config.model_name in ('llama_dyn', 'wizard_coder') and not self._check_error_code(output_tokens[0]):
+        if (self.config.model_config.model_name.startswith(
+                'llama') or self.config.model_config.model_name == 'wizard_coder') and not self._check_error_code(
+            output_tokens[0]):
             # str_outputs = self._llama_detokenizer(outputs)
             str_outputs = self._llama_detokenizer_v2(output_tokens, entry_metadata_list,
                                                      index_list, skip_special_tokens=True)
 
-        elif self.config.model_config.model_name in ('internlm_7b', 'baichuan2pa') and not self._check_error_code(output_tokens[0]):
+        elif self.config.model_config.model_name in (
+                'internlm_7b', 'baichuan2pa', 'gpt2') and not self._check_error_code(output_tokens[0]):
             str_outputs = self._detokenizer(output_tokens)
         self._counter_of_token += len(output_tokens)
         logging.debug("target is {}, str_outputs is {}".format(outputs, str_outputs))
@@ -181,7 +186,7 @@ class Master:
                                                                   str_outputs[idx],
                                                                   end_token, reason='Error202: prompt out of range'))
                     return results
-                
+
                 if output_tokens[0] == INPUT_EMPTY_TOKEN[0]:
                     logging.debug(f'prompt token empty, index in batch is {index}')
                     results.append(ResponseOutput.generate_result(output_tokens[idx],
@@ -233,13 +238,18 @@ class Master:
         prompt_token_ids = None
         logging.debug("request id add_requests_to_schedule_pool {}".format(request_id))
         # 加入baichuan
-        if self.config.model_config.model_name in ('llama_dyn', 'baichuan2pa', 'wizard_coder'):
+        if self.config.model_config.model_name in (
+                'baichuan2pa', 'wizard_coder') or self.config.model_config.model_name.startswith('llama'):
             prompt_token_ids = self.tokenizer.encode(prompt)
         elif self.config.model_config.model_name == 'internlm_7b':
             prompt_token_ids = self.tokenizer(prompt)['input_ids'][1:]
+        elif self.config.model_config.model_name in MindFormerBook.get_tokenizer_support_list():
+            prompt_token_ids = self.tokenizer(prompt)['input_ids']
         else:
             print('incorrect model_name')
             logging.debug('incorrect model_name')
+
+        logging.info('tokenizer result prompt_token_ids is {}'.format(prompt_token_ids))
         logging.info('tokenizer time is {}'.format((time.time() - time_tokenizer) * 1000))
 
         # if prompt_token_ids is not None and
@@ -323,7 +333,7 @@ class AsyncMaster(Master):
 
     @staticmethod
     def get_last_prompt_entry(entry_metadata_list):
-        for i in range(len(entry_metadata_list)-1, -1, -1):
+        for i in range(len(entry_metadata_list) - 1, -1, -1):
             entry_meta_data = entry_metadata_list[i]
             if entry_meta_data.is_prompt:
                 return entry_meta_data
@@ -371,9 +381,9 @@ class AsyncMaster(Master):
             input_entry_metadata_list.append(item)
             index_list.append(index)
         return input_entry_metadata_list, index_list
-    
+
     @staticmethod
-    def _check_prompt_token_empty(entry_metadata_list,pad_token_id):
+    def _check_prompt_token_empty(entry_metadata_list, pad_token_id):
         empty_list = []
         for index, item in enumerate(entry_metadata_list):
             if item.get_entry_data().get_prompt_token() == None or item.get_entry_data().get_prompt_len() == 0:
@@ -387,17 +397,20 @@ class AsyncMaster(Master):
     async def _run_workers_async(self, current_batch_size, entry_metadata_list):
         e_t_e_time = time.time()
 
-        prompt_token_empty_list = self._check_prompt_token_empty(entry_metadata_list, self.config.model_config.pad_token_id)
+        prompt_token_empty_list = self._check_prompt_token_empty(entry_metadata_list,
+                                                                 self.config.model_config.pad_token_id)
         logging.debug("prompt token empty list index_list {}".format(prompt_token_empty_list))
         if len(prompt_token_empty_list) > 0:
-            return self._postprocess([INPUT_EMPTY_TOKEN], entry_metadata_list=entry_metadata_list, index_list=prompt_token_empty_list,
+            return self._postprocess([INPUT_EMPTY_TOKEN], entry_metadata_list=entry_metadata_list,
+                                     index_list=prompt_token_empty_list,
                                      skip_inference=True)
 
         # check prefill out of range data
         out_of_range_index_list = self._check_prompt_out_of_range_index_list(entry_metadata_list)
         logging.debug("out of range prompt index_list {}".format(out_of_range_index_list))
         if len(out_of_range_index_list) > 0:
-            return self._postprocess([INPUT_OUT_OF_TOKEN], entry_metadata_list=entry_metadata_list, index_list=out_of_range_index_list,
+            return self._postprocess([INPUT_OUT_OF_TOKEN], entry_metadata_list=entry_metadata_list,
+                                     index_list=out_of_range_index_list,
                                      skip_inference=True)
 
         # filter prompt data batch list
