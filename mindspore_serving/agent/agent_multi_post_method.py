@@ -9,19 +9,40 @@ import os
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor, as_completed, wait
 from multiprocessing import Process, shared_memory
-from mindspore_lite import Tensor
-import mindspore_lite as mslite
+try:
+    import mindspore_lite as mslite
+    IMPORT_LITE_FAILED = False
+except ImportError:
+    IMPORT_LITE_FAILED = True
+from mindspore.common.tensor import Tensor
 from mindspore_serving.serving_utils.err_code import AgentStatus
 from mindspore_serving.models.post_sampling.topk import post_sampling, softmax_np
-# from mindspore_serving.serving_utils.register import import_all_modules_for_register
 from mindspore_serving.sub_process.sub_process import listen_agents_after_startup
 from mindspore_serving.config.config import ServingConfig
 from mindspore_serving.models.build_inputs import build_inputs
 
+import mindspore
+from mindformers import AutoConfig, AutoModel
+from tools.post_sampling_model import temperature_TopK, ArgmaxPost
+
 pool = ThreadPoolExecutor(max_workers=20, thread_name_prefix='test_thread')
 
 
-def load_model(cfg: ServingConfig, rank_id: int, device_id: int):
+def load_model_for_kbk(cfg: ServingConfig, rank_id: int, device_id: int):
+    # 加载模型
+    model_config = cfg.model_config
+    logging.info(f"load model {model_config.model_name} in rank {rank_id} start.")
+
+    # 0: mindspore.GRAPH_MODE, 1: mindspore.PYNATIVE_MODE
+    mindspore.set_context(mode=mindspore.PYNATIVE_MODE, device_id=device_id, device_target="Ascend")
+    model = AutoModel.from_config(model_config.model_cfg_path)
+    model.set_train(False)
+
+    logging.info(f"load model {model_config.model_name} in rank {rank_id} end.")
+    return model
+
+
+def load_model_for_ge(cfg: ServingConfig, rank_id: int, device_id: int):
     # 加载模型
     model_path = cfg.model_path
     model_config = cfg.model_config
@@ -202,18 +223,23 @@ class WorkAgent:
         self.rank_id = rank_id
         model_path = cfg.model_path
         serving_config = cfg.serving_config
-
         device_id = rank_id + serving_config.start_device_id
 
-        self.prefill, self.decode = load_model(cfg, rank_id, device_id)
-        self.argmax_model = load_post_model(model_path.argmax_model,
-                                            model_path.post_model_ini,
-                                            rank_id,
-                                            device_id)
-        self.topk_model = load_post_model(model_path.topk_model,
-                                          model_path.post_model_ini,
-                                          rank_id,
-                                          device_id)
+        if cfg.model_config.backend == "ge":
+            self.prefill, self.decode = load_model_for_ge(cfg, rank_id, device_id)
+            self.argmax_model = load_post_model(model_path.argmax_model,
+                                                model_path.post_model_ini,
+                                                rank_id,
+                                                device_id)
+            self.topk_model = load_post_model(model_path.topk_model,
+                                              model_path.post_model_ini,
+                                              rank_id,
+                                              device_id)
+        else:
+            self.mindspore_model = load_model_for_kbk(cfg, rank_id, device_id)
+            self.argmax_model = ArgmaxPost()
+            self.topk_model = temperature_TopK()
+
         self.shm_names = []
         self.init_reset = None
         self.current_index = None
@@ -225,6 +251,7 @@ class WorkAgent:
         self.post_mode_list = None
         self.input_length = None
         self.targets = []
+        self.kbk_targets = None
         self.decode_params_map = {}
         self.status = AgentStatus.unconnected
         self.current_batch_size = None
@@ -249,7 +276,7 @@ class WorkAgent:
 
     @staticmethod
     def _post_sampling_argmax_host(outputs) -> np.ndarray:
-        if isinstance(outputs, Tensor):
+        if isinstance(outputs, mslite.Tensor):
             outputs = outputs.get_data_to_numpy()
         outputs.reshape((outputs.shape[0], outputs.shape[-1]))
         argmax_out = np.argmax(outputs, axis=-1)
@@ -316,11 +343,51 @@ class WorkAgent:
         wait(all_task)
         return targets
 
+    def _get_seq_length(self, input_ids, is_prefill):
+        max_length = 0
+        if not is_prefill:
+            if self.config.model_config.page_attention:
+                return self.config.pa_config.decode_seq_length
+        for item in input_ids:
+            if isinstance(item, list):
+                max_length = max(max_length, len(item))
+            else:
+                max_length = max(max_length, 1)
+        if self.config.model_config.seq_type == 'dyn':
+            seq_length = max_length
+        elif len(self.config.model_config.seq_length) > 1:
+            seq_length = self._get_seq_length_dynmic_dinning(self.config.model_config.seq_length, max_length)
+        else:
+            if len(self.config.model_config.seq_length) == 0 and self.config.model_config.seq_type != 'dyn':
+                logging.error('seq length is None ! using default 2048')
+                seq_length = 2048
+            else:
+                seq_length = self.config.model_config.seq_length[0]
+        return seq_length
+
+    @staticmethod
+    def _get_seq_length_dynmic_dinning(seq_list, seq_length):
+        for data in seq_list:
+            if seq_length < data:
+                return data
+        return seq_list[-1]
+
+    @staticmethod
+    def _padding(origin_inputs, seq_length, default_padding_values):
+        pad_ids = list()
+        for item in origin_inputs:
+            pad_length = seq_length - len(item)
+            if pad_length < 0:
+                logging.error('input sequence length is over max in serving system!')
+            pad_item = np.pad(item, (0, pad_length), 'constant', constant_values=default_padding_values)
+            pad_ids.append(pad_item)
+        return np.array(pad_ids)
+
     def _post_sampling_topk_host(self, outputs, decode_index, prefill):
         """
          topk top-p in cpu, time-cost function,
         """
-        if isinstance(outputs, Tensor):
+        if isinstance(outputs, mslite.Tensor):
             outputs = outputs.get_data_to_numpy()
         outputs = np.reshape(outputs, (outputs.shape[0], outputs.shape[-1]))
         thread_num = self.current_batch_size
@@ -359,44 +426,56 @@ class WorkAgent:
         return do_sample
 
     def do_post_sampling(self, outputs_np, outputs_shm, output_logprob_shm, decode_index, prefill=True):
-        index = int(decode_index[0])
+        logging.info("do_post_sampling outputs_np type is {}, value is {}".format(outputs_np.dtype, outputs_np))
         do_sample = self.get_consistent_batch(decode_index)
-        if self.config.serving_config.enable_host_post_sampling:
-            if not do_sample:
-                target = self._post_sampling_argmax_host(outputs_np)
-                target.reshape((self.current_batch_size,))
-                target = np.squeeze(target, axis=1)
+        if self.config.model_config.backend == "ge":
+            if self.config.serving_config.enable_host_post_sampling:
+                if not do_sample:
+                    target = self._post_sampling_argmax_host(outputs_np)
+                    target.reshape((self.current_batch_size,))
+                    target = np.squeeze(target, axis=1)
+                else:
+                    target = self._post_sampling_topk_host(outputs_np, decode_index, prefill)
             else:
-                target = self._post_sampling_topk_host(outputs_np, decode_index, prefill)
+                if not do_sample:
+                    target = self._post_sampling_argmax_npu(outputs_np)
+                else:
+                    target = self._post_sampling_topk_npu(outputs_np, decode_index, prefill)
+            output_info = outputs_np.get_data_to_numpy()
         else:
             if not do_sample:
-                target = self._post_sampling_argmax_npu(outputs_np)
+                target = self.argmax_model(outputs_np)
             else:
-                target = self._post_sampling_topk_npu(outputs_np, decode_index, prefill)
+                target = self.topk_model(outputs_np)
+            if isinstance(target, Tensor):
+                target = target.asnumpy()
+            output_info = outputs_np.asnumpy()
 
-        output_info = outputs_np.get_data_to_numpy()
+        logging.info("do_post_sampling target type is {}, value is {}".format(target.dtype, target))
+        logging.info("do_post_sampling output_info type is {}, value is {}".format(output_info.dtype, output_info))
         if self.rank_id == 0:
             if prefill:
-                tmp = np.ndarray((index + self.current_batch_size,), dtype=target.dtype, buffer=outputs_shm.buf)
-                tmp[index: index + self.current_batch_size] = target[:]
+                for index in decode_index:
+                    tmp = np.ndarray((index + self.current_batch_size,), dtype=target.dtype, buffer=outputs_shm.buf)
+                    tmp[index: index + self.current_batch_size] = target[:]
 
-                logprob_list = []
-                for index, tag in enumerate(target):
-                    logprob_list.append(output_info[index][int(tag)])
-                tmp_logprob = np.ndarray((index + self.current_batch_size,), dtype=np.float64,
-                                         buffer=output_logprob_shm.buf)
-                tmp_logprob[index: index + self.current_batch_size] = logprob_list[:]
-                self.targets[index: index + self.current_batch_size] = target[:]
+                    logprob_list = []
+                    for idx, tag in enumerate(target):
+                        logprob_list.append(output_info[idx][int(tag)])
+                    tmp_logprob = np.ndarray((index + self.current_batch_size,), dtype=np.float64,
+                                             buffer=output_logprob_shm.buf)
+                    tmp_logprob[index: index + self.current_batch_size] = logprob_list[:]
+                    self.targets[index: index + self.current_batch_size] = target[:]
             else:
                 tmp = np.ndarray((self.current_batch_size,), dtype=target.dtype, buffer=outputs_shm.buf)
                 tmp[:] = target[:]
 
                 logprob_list = []
-                for index, tag in enumerate(target):
+                for idx, tag in enumerate(target):
                     if len(output_info.shape) == 2:
-                        logprob_list.append(output_info[index][int(tag)])
+                        logprob_list.append(output_info[idx][int(tag)])
                     else:
-                        logprob_list.append(output_info[index][0][int(tag)])
+                        logprob_list.append(output_info[idx][0][int(tag)])
                 tmp_logprob = np.ndarray((self.current_batch_size,), dtype=np.float64, buffer=output_logprob_shm.buf)
                 tmp_logprob[:] = logprob_list[:]
                 self.targets[:] = target[:]
@@ -426,7 +505,6 @@ class WorkAgent:
         tmp_shms.append(output_logprob_shm)
 
         gen_params_id = 4
-
         gen_params_shm = shared_memory.SharedMemory(name=self.shm_names[gen_params_id])
         tmp_shms.append(gen_params_shm)
         if self.is_prefill:
@@ -435,19 +513,15 @@ class WorkAgent:
             current_index = np.squeeze(current_index_, axis=-1)
 
             valid_length_ = first_group[:, shape_list[0][1] - 1: shape_list[0][1]]
-
-            if self.config.model_config.current_index:
+            if self.config.model_config.current_index or self.config.model_config.backend == "kbk":
                 valid_length = np.squeeze(valid_length_, axis=-1).astype(np.int64)
-                logging.debug("prefill valid_length dtype is int64")
             else:
                 valid_length = np.squeeze(valid_length_, axis=-1).astype(np.int32)
-                logging.debug("prefill valid_length dtype is int32")
+
             input_ids = first_group[:, :shape_list[0][1] - 3]
             gen_params_id = 1  # 改为1，正向取值，原始shape_list只有两个值，现在多加了两个
             shape_params = shape_list[gen_params_id]
             gen_params = np.ndarray(shape_params, dtype=np.float16, buffer=gen_params_shm.buf)
-
-            logging.debug("prefill after gen_params")
 
             do_sample_list = gen_params[:, 0].astype(np.bool_)
             top_p_list = gen_params[:, 1]
@@ -462,7 +536,6 @@ class WorkAgent:
                 block_tables_shape = shape_list[2]  # 这里的shapeindex会不会变？？
                 slot_mapping_shape = shape_list[3]
 
-            logging.debug("prefill after page aatention get shape list")
             extra_input = []
             for i in range(1, len(shape_list) - 1):
                 existing_shm = shared_memory.SharedMemory(name=self.shm_names[i])
@@ -470,15 +543,16 @@ class WorkAgent:
                 # To Do np.int64 ?
                 extra_input.append(np.ndarray((shape_list[i]), dtype=np.int64, buffer=existing_shm.buf))
 
-            # pa or wizardcoder static model type don't need 'act_len' parameter
-            if self.config.model_config.page_attention or (
-                    self.config.model_config.model_name == 'wizard_coder' and self.config.model_config.model_type == "static"):
-                extra_input = []
-            else:
-                extra_input = self.extra_input_func.get_extra_inputs(input_ids, current_index, None, True, valid_length,
-                                                                     zactivate_len=self.config.model_config.zactivate_len)
+            if self.config.model_config.backend == "ge":
+                # pa or static model type don't need 'act_len' parameter
+                if self.config.model_config.page_attention or (
+                        self.config.model_config.model_name == 'wizard_coder' and self.config.model_config.model_type == "static"):
+                    extra_input = []
+                else:
+                    extra_input = self.extra_input_func.get_extra_inputs(input_ids, current_index, None, True,
+                                                                         valid_length,
+                                                                         zactivate_len=self.config.model_config.zactivate_len)
 
-            logging.debug("prefill beofore decode Params")
             self.current_batch_size = len(input_ids)
             init_reset = []
             decode_index = []
@@ -499,7 +573,6 @@ class WorkAgent:
                 decode_index.append(decode_params.decode_index)
             init_reset = np.array(init_reset, dtype=np.bool_)
             decode_index_np = np.array(decode_index, dtype=np.int64)
-            logging.debug("prefill after decode Params")
         else:
             # keep decode map size equal to current batch size
             # extend
@@ -538,7 +611,6 @@ class WorkAgent:
                 input_ids = np.ndarray((current_batch_size,), dtype=np.int32, buffer=output_shm.buf)
 
             self.decode_params_map = dict(sorted(self.decode_params_map.items(), key=lambda x: x[0]))
-
             for key in self.decode_params_map.keys():
                 decode_params = self.decode_params_map[key]
                 decode_params.current_index = decode_params.current_index + 1
@@ -553,21 +625,20 @@ class WorkAgent:
                 init_reset.append(decode_params.init_reset)
                 decode_index.append(decode_params.decode_index)
 
-            # pa or static model type don't need 'act_len' parameter
-            if self.config.model_config.page_attention or (
-                    self.config.model_config.model_name == 'wizard_coder' and self.config.model_config.model_type == "static"):
-                extra_input = []
-            else:
-                extra_input = self.extra_input_func.get_extra_inputs(input_ids, current_index, None, False,
-                                                                     valid_length,
-                                                                     zactivate_len=self.config.model_config.zactivate_len
-                                                                     )
+            if self.config.model_config.backend == "ge":
+                # pa or static model type don't need 'act_len' parameter
+                if self.config.model_config.page_attention or (
+                        self.config.model_config.model_name == 'wizard_coder' and self.config.model_config.model_type == "static"):
+                    extra_input = []
+                else:
+                    extra_input = self.extra_input_func.get_extra_inputs(input_ids, current_index, None, False,
+                                                                         valid_length,
+                                                                         zactivate_len=self.config.model_config.zactivate_len)
+
             current_index = np.array(current_index, dtype=np.int32)
-            if self.config.model_config.current_index:
-                logging.debug("decode valid_length dtype is int64")
+            if self.config.model_config.current_index or self.config.model_config.backend == "kbk":
                 valid_length = np.array(valid_length, dtype=np.int64)
             else:
-                logging.debug("decode valid_length dtype is int32")
                 valid_length = np.array(valid_length, dtype=np.int32)
             init_reset = np.array(init_reset, dtype=np.bool_)
             decode_index_np = np.array(decode_index, dtype=np.int64)
@@ -576,43 +647,106 @@ class WorkAgent:
             if self.config.model_config.page_attention:
                 block_tables_shape = shape_list[0]
                 slot_mapping_shape = shape_list[1]
-        if self.config.model_config.page_attention:  # 下面代码可考虑集成到百川 basic_get_inputs函数
-            # todo  7/8取值
+
+        block_tables_np = None
+        slot_mapping_np = None
+        if self.config.model_config.page_attention:
             block_tables_shm = shared_memory.SharedMemory(name=self.shm_names[7])  # 这里的共享内存index要改
             slot_mapping_shm = shared_memory.SharedMemory(name=self.shm_names[8])
             block_tables_np = np.ndarray((block_tables_shape), dtype=np.int32, buffer=block_tables_shm.buf)
             slot_mapping_np = np.ndarray((slot_mapping_shape), dtype=np.int32, buffer=slot_mapping_shm.buf)
-            print("block_tables_shape:", block_tables_shape)
-            print("slot_mapping_shape:", slot_mapping_shape)
-            print("block_tables_np:", block_tables_np.shape)
-            print("slot_mapping_np", slot_mapping_np.shape)
-            logging.debug("page attention beofore predict")
-            if self.is_prefill:  # 问zhengyi在这里修改decode_index_np类型是否可行
-                # todo 这里要不要加self.config.model_config.current_index
-                tmp_in = [input_ids, valid_length, slot_mapping_np]
+            logging.debug(
+                f"===before predict block_tables shape is {block_tables_np.shape}, dtype is {block_tables_np.dtype}, value is {block_tables_np}")
+            logging.debug(
+                f"===before predict slot_mapping shape is {slot_mapping_np.shape}, dtype is {slot_mapping_np.dtype}, value is {slot_mapping_np}")
+
+        if self.config.model_config.backend == "ge":
+            if self.config.model_config.page_attention:
+                logging.debug("page attention beofore predict")
+                if self.is_prefill:
+                    tmp_in = [input_ids, valid_length, slot_mapping_np]
+                else:
+                    tmp_in = [input_ids, valid_length, block_tables_np, slot_mapping_np]
             else:
-                tmp_in = [input_ids, valid_length, block_tables_np, slot_mapping_np]
+                tmp_in = self.basic_input_func.get_inputs(input_ids, current_index, init_reset, valid_length,
+                                                          self.config.model_config.current_index, decode_index_np,
+                                                          self.config.model_config.model_type)
+                if len(extra_input) > 0:
+                    tmp_in.extend(extra_input)
+
+            for tmp in tmp_in:
+                logging.debug("item shape is {}, dtype is {}".format(tmp.shape, tmp.dtype))
+                logging.debug("item is {}".format(tmp))
+
+            outputs = self.predict_for_ge(extra_input, start_time, tmp_in)
         else:
-            tmp_in = self.basic_input_func.get_inputs(input_ids, current_index, init_reset, valid_length,
-                                                      self.config.model_config.current_index, decode_index_np,
-                                                      self.config.model_config.model_type)
+            seq_length = self._get_seq_length(input_ids, False)
+            # init kbk_targets, shape(current_batch, seq_length), default value: self.config.model_config.pad_token_id
+            if self.kbk_targets is None:
+                decode_batch_size = self.config.model_config.decode_batch_size[0]
+                logging.debug(
+                    f"predict decode_batch_size value is {decode_batch_size}, seq_length value is {seq_length}")
+                self.kbk_targets = np.full((decode_batch_size, seq_length), self.config.model_config.pad_token_id)
 
-            if len(extra_input) > 0:
-                tmp_in.extend(extra_input)
+            logging.debug(
+                f"predict self.kbk_targets value is {self.kbk_targets}, shape is {self.kbk_targets.shape}, dtype is {self.kbk_targets.dtype}")
 
-        for tmp in tmp_in:
-            logging.debug("item shape is {}, dtype is {}".format(tmp.shape, tmp.dtype))
-            logging.debug("item is {}".format(tmp))
+            # decode [[4]]
+            logging.debug(
+                f"predict input_ids before update value is {input_ids}, shape is {input_ids.shape}, dtype is {input_ids.dtype}")
 
+            # decode 时，先将 shape 与 prefill 改为一致
+            if input_ids.shape[1] == 1:
+                input_ids = np.concatenate((input_ids, np.zeros((input_ids.shape[0], seq_length - 1))), axis=1)
+                logging.debug(
+                    f"predict input_ids before update value is {input_ids}, shape is {input_ids.shape}, dtype is {input_ids.dtype}")
+
+            # 遍历decode_index
+            for idx, index in enumerate(decode_index):
+                index = int(decode_index[0])
+                logging.debug(f"===============predict self.kbk_targets len:{len(self.kbk_targets)}")
+                logging.debug(f"===============predict decode index:{index}")
+                if self.is_prefill:
+                    logging.debug("kbk predict prefill start.")
+                    self.kbk_targets[index] = input_ids[idx]
+                else:
+                    logging.debug("kbk predict decode start.")
+                    current_index_value = int(current_index[idx])
+                    logging.debug(
+                        f"predict decode before curr_input_ids==============current_index_value：{current_index_value}")
+                    self.kbk_targets[index][current_index_value:current_index_value + 1] = input_ids[idx][:1]
+                    input_ids[idx] = self.kbk_targets[index]
+                    logging.debug(
+                        f"predict input_ids after update value is {input_ids}, shape is {input_ids.shape}, dtype is {input_ids.dtype}")
+
+            logging.debug(f"predict current_index value is {current_index}")
+            logging.debug(
+                f"predict valid_length value is {valid_length}, shape is {valid_length.shape}, dtype is {valid_length.dtype}")
+            logging.info('agent pre-process time is {}'.format((time.time() - start_time) * 1000))
+            outputs = self.predict_for_kbk(current_index, input_ids, valid_length, block_tables_np, slot_mapping_np)
+
+        post_time = time.time()
+        if self.rank_id == 0:
+            multi_thread_time = time.time()
+            if self.is_prefill:
+                self.do_post_sampling(outputs, output_shm, output_logprob_shm, decode_index_np, prefill=True)
+            else:
+                self.do_post_sampling(outputs, output_shm, output_logprob_shm, decode_index_np, prefill=False)
+                logging.info('multi_thread_post_sampling time is {}'.format((time.time() - multi_thread_time) * 1000))
+            logging.info('target is  {}'.format((self.targets)))
+        logging.info('post_time is {}'.format((time.time() - post_time) * 1000))
+        logging.info('npu_total_time is {}'.format((time.time() - start_time) * 1000))
+        self.status &= ~AgentStatus.busy
+        return self.targets, tmp_shms
+
+    def predict_for_ge(self, extra_input, start_time, tmp_in):
         # 调用ms lite进行推理
         if len(extra_input) > 0:
             model = self.prefill if self.is_prefill else self.model_choice_seq(len(extra_input[0]), self.decode)
         else:
             model = self.prefill if self.is_prefill else self.decode[0]
         lite_inputs = [mslite.Tensor(np.ascontiguousarray(item)) for item in tmp_in]
-
         logging.info('agent pre-process time is {}'.format((time.time() - start_time) * 1000))
-
         predict_time = time.time()
         if self.config.model_config.model_name == 'wizard_coder' and self.config.model_config.model_type == "static":
             if self.is_prefill:
@@ -622,24 +756,40 @@ class WorkAgent:
             outputs_list = model.predict((lite_inputs[0], lite_inputs[1], init_reset_ms_tensor, lite_inputs[2]))
         else:
             outputs_list = model.predict(lite_inputs)
-
         logging.debug(
             "outputs tensor after model predict type {}, value is {}".format(outputs_list[0].dtype, outputs_list[0]))
         logging.info('predict time is {}'.format((time.time() - predict_time) * 1000))
+        outputs = outputs_list[0]
+        return outputs
 
-        post_time = time.time()
-        if self.rank_id == 0:
-            multi_thread_time = time.time()
-            if self.is_prefill:
-                self.do_post_sampling(outputs_list[0], output_shm, output_logprob_shm, decode_index_np, prefill=True)
+    def predict_for_kbk(self, current_index, input_ids, valid_length, block_tables, slot_mapping):
+        # 封装调用模型参数
+        model_kwargs = {"current_index": current_index}
+        model_inputs = self.mindspore_model.prepare_inputs_for_generation(input_ids, **model_kwargs)
+        logging.debug(f"predict model_inputs value is {model_inputs}")
+        # 调用mindformers进行推理
+        predict_time = time.time()
+        if self.mindspore_model.config.use_past:
+            logging.debug(f"predict before pa predict_for_kbk.")
+            if self.config.model_config.page_attention:
+                logging.debug(f"predict before model predict_for_kbk.")
+                if self.is_prefill:
+                    self.mindspore_model.is_first_iteration = True
+                res = self.mindspore_model._incremental_kbk_infer(model_inputs=model_inputs,
+                                                                  current_index=current_index,
+                                                                  valid_length_each_example=valid_length,
+                                                                  block_tables=block_tables,
+                                                                  slot_mapping=slot_mapping)
             else:
-                self.do_post_sampling(outputs_list[0], output_shm, output_logprob_shm, decode_index_np, prefill=False)
-                logging.info('multi_thread_post_sampling time is {}'.format((time.time() - multi_thread_time) * 1000))
-            logging.info('target is  {}'.format((self.targets)))
-        logging.info('post_time is {}'.format((time.time() - post_time) * 1000))
-        logging.info('npu_total_time is {}'.format((time.time() - start_time) * 1000))
-        self.status &= ~AgentStatus.busy
-        return self.targets, tmp_shms
+                res = self.mindspore_model._incremental_infer(model_inputs=model_inputs,
+                                                              current_index=current_index,
+                                                              valid_length_each_example=valid_length)
+        else:
+            res = self.mindspore_model(**model_inputs)
+        logging.info('predict time is {}'.format((time.time() - predict_time) * 1000))
+        logging.info("mindspore_model res : %s;", res)
+        outputs = res[0] if isinstance(res, tuple) else res
+        return outputs
 
 
 def start_agent_socket_server(i, cfg: ServingConfig, startup_queue):
@@ -649,6 +799,8 @@ def start_agent_socket_server(i, cfg: ServingConfig, startup_queue):
                         format=
                         '%(asctime)s - %(pathname)s[line:%(lineno)d] - %(levelname)s: %(message)s')
     """启动agent进程, 由_agent_process进行调用, 创建agent进程"""
+    if IMPORT_LITE_FAILED:
+        logging.warning("import mindspore_lite failed, using kbk backend.")
     work_agent = WorkAgent(i, cfg)
 
     agent_ports = cfg.serving_config.agent_ports
@@ -758,12 +910,8 @@ def handler(sig_num, addition):
 
 
 def startup_agents(config, startup_queue):
-    # import_all_modules_for_register()
-    # if isinstance(config, ServingConfig):
-    #     raise TypeError("expect type of 'ServingConfig', but got {}".format(type(config)))
     signal.signal(signal.SIGTERM, handler)
     signal.signal(signal.SIGINT, handler)
-    # TODO 校验
     agent_ports = config.serving_config.agent_ports
     subprocess_list = []
     log_dir = os.path.join(os.getcwd(), "output")

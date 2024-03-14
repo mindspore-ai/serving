@@ -18,15 +18,14 @@ def build_tokenizer(base_config: ServingConfig = None):
         # check_and_add_vocab_file_path(base_config)
         # return Registers.TOKENIZER.get_instance_from_cfg(base_config)
     tokenizer_type = base_config.tokenizer.type
-    print(base_config.tokenizer)
-    print(tokenizer_type)
+    logging.info(f'tokenizer tokens is {base_config.tokenizer}')
     if tokenizer_type in MindFormerBook.get_tokenizer_support_list():
         logging.info('load tokenizer from mindformers')
-        tokenizer = AutoTokenizer.from_pretrained(base_config.tokenzier)
+        tokenizer = AutoTokenizer.from_pretrained(base_config.tokenizer.type)
     elif tokenizer_type == 'LlamaTokenizer':
         # tokenizer = LlamaTokenizer(base_config.tokenizer_path)
         tokenizer = LlamaTokenizer(base_config.tokenizer.vocab_file)
-        print(f'tokenizer special tokens is {tokenizer.all_special_tokens}')
+        logging.info(f'tokenizer special tokens is {tokenizer.all_special_tokens}')
         return tokenizer
         # logging.info('load custom tokenizer')
 

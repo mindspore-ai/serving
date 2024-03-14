@@ -29,15 +29,14 @@ from typing import Any, Dict, List, Optional
 import sentencepiece as spm
 
 from mindformers.tools import logger
-from mindformers.models.base_tokenizer import Tokenizer, AddedToken
+from mindformers.models.tokenization_utils import PreTrainedTokenizer, AddedToken
 from mindspore_serving.serving_utils.register import Registers
 
 VOCAB_FILES_NAMES = {"vocab_file": "tokenizer.model"}
 
 
-# @MindFormerRegister.register(MindFormerModuleType.TOKENIZER)
 @Registers.TOKENIZER.register()
-class Baichuan2Tokenizer(Tokenizer):
+class Baichuan2Tokenizer(PreTrainedTokenizer):
     r"""
     Tokenize the input string and convert them into the ids. The tokenizer use the sentence piece internally.
 

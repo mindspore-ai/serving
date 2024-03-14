@@ -1,5 +1,4 @@
 import time
-from mindspore_lite import Model
 import logging
 import numpy as np
 from typing import List
@@ -13,7 +12,7 @@ class BaseInputsOfInfer:
     BaseInputsOfInfer interface.
     """
 
-    def get_inputs(self, model: Model, **kwargs):
+    def get_inputs(self, model, **kwargs):
         pass
 
     @staticmethod

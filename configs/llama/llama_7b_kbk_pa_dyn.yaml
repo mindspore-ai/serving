@@ -1,0 +1,53 @@
+model_path:
+    prefill_model: ["/path/llama2-13b-mindir/full_graph.mindir"]
+    decode_model: ["/path/llama2-13b-mindir/inc_graph.mindir"]
+    argmax_model: "/path/post_process/argmax.mindir"
+    topk_model: "/path/post_process/topk.mindir"
+    prefill_ini : ['/path/llma2_13b_pa_dyn_prefill.ini']
+    decode_ini: ['/path/llma2_13b_pa_dyn_decode.ini']
+    post_model_ini: '/path/post_config.ini'
+
+model_config:
+    model_name: 'llama_7b'
+    max_generate_length: 4096
+    end_token: 2
+    seq_length: [4096]
+    vocab_size: 32000
+    prefill_batch_size: [1]
+    decode_batch_size: [1]
+    zactivate_len: [512, 1024, 2048, 4096]
+    model_type: 'dyn'
+    seq_type: 'static'
+    batch_waiting_time: 0.0
+    decode_batch_waiting_time: 0.0
+    batching_strategy: 'continuous'
+    current_index: False
+    page_attention: True
+    model_dtype: "DataType.FLOAT32"
+    pad_token_id: 0
+    backend: 'kbk' # 'ge'
+    model_cfg_path: 'checkpoint_download/llama/llama_7b.yaml'
+
+serving_config:
+    agent_ports: [14002]
+    start_device_id: 7
+    server_ip: 'localhost'
+    server_port: 19291
+
+pa_config:
+    num_blocks: 2048
+    block_size: 16
+    decode_seq_length: 4096
+
+tokenizer:
+    type: LlamaTokenizer
+    vocab_file: '/home/wsc/llama/tokenizer/tokenizer.model'
+
+basic_inputs:
+    type: LlamaBasicInputs
+
+extra_inputs:
+    type: LlamaExtraInputs
+
+warmup_inputs:
+    type: LlamaWarmupInputs
