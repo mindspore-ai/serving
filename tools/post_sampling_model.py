@@ -5,8 +5,10 @@ from mindspore.ops import operations as P
 from mindspore import ops, nn, export
 from mindspore import Tensor, context
 import mindspore as ms
-bs = 1
+import numpy as np
 
+bs = 1
+default_temperature = Tensor(np.array([1]), ms.float32)
 
 class temperature_TopK(nn.Cell):
     def __init__(self):
@@ -16,7 +18,7 @@ class temperature_TopK(nn.Cell):
         self.top_k_num = 100
         # self.reshape = ops.reshape()
 
-    def construct(self, x, temperature):
+    def construct(self, x, temperature=default_temperature):
         x = ops.reshape(x, (x.shape[0], x.shape[-1]))
         x = self.divide(x, temperature)
         logit, pargs = self.topk(x, self.top_k_num)

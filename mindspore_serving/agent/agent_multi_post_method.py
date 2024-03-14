@@ -343,6 +343,25 @@ class WorkAgent:
         wait(all_task)
         return targets
 
+    def _post_sampling_topk_kbk(self, outputs_np, decode_index) -> np.ndarray:
+        """
+        Args:
+           outputs_np: np.ndarray or ms.Tensor, (bs, 1, vocab_size)
+        """
+        decode_params = self.decode_params_map[int(decode_index[0])]
+        self.targets.clear()
+        tempreture_ = np.array([decode_params.temperature], dtype=np.float32)
+        tempreture_t = Tensor(tempreture_, mindspore.float32)
+        post_sampling_out = self.topk_model(outputs_np, tempreture_t)
+        outs = post_sampling_out[0].asnumpy().astype(np.float16)
+        p_args = post_sampling_out[1].asnumpy()
+        thread_num = self.current_batch_size
+        targets = np.zeros((thread_num,), np.int32)
+        all_task = [pool.submit(self.do_sample, self.decode_params_map[decode_index[i]], p_args[i], outs[i], targets, i)
+                    for i in range(thread_num)]
+        wait(all_task)
+        return targets
+
     def _get_seq_length(self, input_ids, is_prefill):
         max_length = 0
         if not is_prefill:
@@ -444,9 +463,10 @@ class WorkAgent:
             output_info = outputs_np.get_data_to_numpy()
         else:
             if not do_sample:
+                self.targets.clear()
                 target = self.argmax_model(outputs_np)
             else:
-                target = self.topk_model(outputs_np)
+                target = self._post_sampling_topk_kbk(outputs_np, decode_index)
             if isinstance(target, Tensor):
                 target = target.asnumpy()
             output_info = outputs_np.asnumpy()
