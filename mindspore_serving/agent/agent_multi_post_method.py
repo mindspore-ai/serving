@@ -11,6 +11,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed, wait
 from multiprocessing import Process, shared_memory
 try:
     import mindspore_lite as mslite
+    IMPORT_LITE_FAILED = False
 except ImportError:
     IMPORT_LITE_FAILED = True
 from mindspore.common.tensor import Tensor
