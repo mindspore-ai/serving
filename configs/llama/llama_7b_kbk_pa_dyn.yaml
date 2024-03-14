@@ -26,7 +26,7 @@ model_config:
     model_dtype: "DataType.FLOAT32"
     pad_token_id: 0
     backend: 'kbk' # 'ge'
-    model_cfg_path: 'checkpoint_download/llama/llama_7b.yml'
+    model_cfg_path: 'checkpoint_download/llama/llama_7b.yaml'
 
 serving_config:
     agent_ports: [14002]
