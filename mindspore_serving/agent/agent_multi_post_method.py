@@ -9,7 +9,10 @@ import os
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor, as_completed, wait
 from multiprocessing import Process, shared_memory
-import mindspore_lite as mslite
+try:
+    import mindspore_lite as mslite
+except ImportError:
+    IMPORT_LITE_FAILED = True
 from mindspore.common.tensor import Tensor
 from mindspore_serving.serving_utils.err_code import AgentStatus
 from mindspore_serving.models.post_sampling.topk import post_sampling, softmax_np
@@ -795,6 +798,8 @@ def start_agent_socket_server(i, cfg: ServingConfig, startup_queue):
                         format=
                         '%(asctime)s - %(pathname)s[line:%(lineno)d] - %(levelname)s: %(message)s')
     """启动agent进程, 由_agent_process进行调用, 创建agent进程"""
+    if IMPORT_LITE_FAILED:
+        logging.warning("import mindspore_lite failed, using kbk backend.")
     work_agent = WorkAgent(i, cfg)
 
     agent_ports = cfg.serving_config.agent_ports
