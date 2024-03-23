@@ -26,7 +26,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import sentencepiece as spm
 
 from mindformers.tools import logger
-from mindformers.models.tokenization_utils import PreTrainedTokenizer
+from mindformers.models.base_tokenizer import Tokenizer
 from mindspore_serving.serving_utils.register import Registers
 
 VOCAB_FILES_NAMES = {"vocab_file": "./tokenizer.model"}
@@ -35,7 +35,7 @@ PRETRAINED_VOCAB_FILES_MAP = {}
 
 
 @Registers.TOKENIZER.register()
-class InternLMTokenizer(PreTrainedTokenizer):
+class InternLMTokenizer(Tokenizer):
     """
     Construct a InternLM tokenizer. Based on byte-level Byte-Pair-Encoding.
 
